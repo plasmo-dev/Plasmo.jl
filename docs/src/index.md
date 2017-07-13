@@ -10,9 +10,7 @@ More text -->
 
 ```@contents
 Pages = [
-    "tutorials/simple_example.md",
-    "tutorials/modular_example.md",
-    "tutorials/solving_with_pipsnlp.md"
+    "quick_start/simple_example.md",
     ]
 Depth = 2
 ```
