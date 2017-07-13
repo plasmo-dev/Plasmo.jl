@@ -1,7 +1,7 @@
-site_name:           Plasmo
+site_name:           Plasmo.jl
 repo_url:            https://github.com/jalving/Plasmo.jl
 site_description:    Description
-site_author:         You
+site_author:         Jordan Jalving
 theme:               readthedocs
 
 markdown_extensions:
@@ -9,7 +9,7 @@ markdown_extensions:
   - extra
   - tables
   - fenced_code
-  - mdx_math # For LaTeX
+#  - mdx_math # For LaTeX
 
 extra_css:
   - assets/Documenter.css
@@ -23,10 +23,10 @@ docs_dir: 'build'
 pages:
 - Introduction: index.md
 - Tutorial:
-  - Title 1: tutorials/page1.md
-  - Title 2: tutorials/page2.md
-  - Title 3: tutorials/page3.md
-- Another Section:
-  - Title 1: sec2/page1.md
-  - Title 2: sec2/page2.md
-  - Title 3: sec2/page3.md
+  - A simple graph model: tutorials/simple_example.md
+  # - Title 2: tutorials/page2.md
+  # - Title 3: tutorials/page3.md
+- Documentation:
+  - Graph Functions: documentation/graph_functions.md
+  # - Title 2: sec2/page2.md
+  # - Title 3: sec2/page3.md

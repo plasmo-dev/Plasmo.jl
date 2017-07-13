@@ -1,0 +1,54 @@
+{
+    "docs": [
+        {
+            "location": "/",
+            "text": "Plasmo.jl Documentation\n\n\nPlasmo.jl is a graph-based modeling/optimization package for constructing hierarchical and modular system models.\n\n\nMore text \u2013>\n\n\n\n\nTutorials\n\n\n\n\nSimple Plasmo Example\n\n\n\n\n\n\nDocumentation\n\n\n\n\nThe Plasmo Graph\n\n\nGraph Functions\n\n\n\n\n\n\n\n\n\n\nIndex\n\n\n\n\nPlasmo.PlasmoGraph\n\n\nBase.getindex\n\n\nBase.getindex\n\n\nBase.getindex",
+            "title": "Introduction"
+        },
+        {
+            "location": "/#plasmojl-documentation",
+            "text": "Plasmo.jl is a graph-based modeling/optimization package for constructing hierarchical and modular system models.  More text \u2013>",
+            "title": "Plasmo.jl Documentation"
+        },
+        {
+            "location": "/#tutorials",
+            "text": "Simple Plasmo Example",
+            "title": "Tutorials"
+        },
+        {
+            "location": "/#documentation",
+            "text": "The Plasmo Graph  Graph Functions",
+            "title": "Documentation"
+        },
+        {
+            "location": "/#index",
+            "text": "Plasmo.PlasmoGraph  Base.getindex  Base.getindex  Base.getindex",
+            "title": "Index"
+        },
+        {
+            "location": "/tutorials/simple_example/",
+            "text": "Simple Plasmo Example",
+            "title": "A simple graph model"
+        },
+        {
+            "location": "/tutorials/simple_example/#simple-plasmo-example",
+            "text": "",
+            "title": "Simple Plasmo Example"
+        },
+        {
+            "location": "/documentation/graph_functions/",
+            "text": "The Plasmo Graph\n\n\nA PlasmoGraph wraps a LightGraphs.jl Graph (or DiGraph) and adds additional attributes for managing subgraphs and models. These are all of the graph functions a user might use in plasmo.  Most core functions from LightGraphs.jl have been dispatched.\n\n\n\n\nGraph Functions\n\n\n#\n\n\nPlasmo.PlasmoGraph\n \u2014 \nType\n.\n\n\nThe PlasmoGraph Type.  Contains a reference to a LightGraphs.Graph \n\n\n#\n\n\nBase.getindex\n \u2014 \nMethod\n.\n\n\ngetindex(:PlasmoGraph)\n\nGet the index of a subgraph within EACH of its graphs.  Returns 0 if the graph is not a subgraph.\n\n\n\n\n\n#\n\n\nBase.getindex\n \u2014 \nMethod\n.\n\n\ngetindex(::PlasmoGraph,::NodeOrEdge)\nGet the index of a node or edge within a PlasmoGraph\n\n\n\n\n\n#\n\n\nBase.getindex\n \u2014 \nMethod\n.\n\n\ngetindex(::PlasmoGraph,::NodeOrEdge)\nReturn a dictionary of a node's or edge's index in each of its graphs.",
+            "title": "Graph Functions"
+        },
+        {
+            "location": "/documentation/graph_functions/#the-plasmo-graph",
+            "text": "A PlasmoGraph wraps a LightGraphs.jl Graph (or DiGraph) and adds additional attributes for managing subgraphs and models. These are all of the graph functions a user might use in plasmo.  Most core functions from LightGraphs.jl have been dispatched.",
+            "title": "The Plasmo Graph"
+        },
+        {
+            "location": "/documentation/graph_functions/#graph-functions",
+            "text": "#  Plasmo.PlasmoGraph  \u2014  Type .  The PlasmoGraph Type.  Contains a reference to a LightGraphs.Graph   #  Base.getindex  \u2014  Method .  getindex(:PlasmoGraph)\n\nGet the index of a subgraph within EACH of its graphs.  Returns 0 if the graph is not a subgraph.  #  Base.getindex  \u2014  Method .  getindex(::PlasmoGraph,::NodeOrEdge)\nGet the index of a node or edge within a PlasmoGraph  #  Base.getindex  \u2014  Method .  getindex(::PlasmoGraph,::NodeOrEdge)\nReturn a dictionary of a node's or edge's index in each of its graphs.",
+            "title": "Graph Functions"
+        }
+    ]
+}

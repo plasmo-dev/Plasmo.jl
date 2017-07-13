@@ -2,27 +2,27 @@
 
 Plasmo.jl is a graph-based modeling/optimization package for constructing hierarchical and modular system models.
 
-## Subtitle
+<!-- ## Subtitle
 
-More text
+More text -->
 
 ## Tutorials
 
 ```@contents
 Pages = [
-    "tutorials/page1.md",
-    "tutorials/page2.md",
-    "tutorials/page3.md"
+    "tutorials/simple_example.md",
+    "tutorials/modular_example.md",
+    "tutorials/solving_with_pipsnlp.md"
     ]
 Depth = 2
 ```
 
-## Another Section
+## Documentation
 ```@contents
 Pages = [
-    "sec2/page1.md",
-    "sec2/page2.md",
-    "sec2/page3.md"
+    "documentation/graph_functions.md",
+    "documentation/model_functions.md",
+    "documentation/modeling_with_JuMP.md"
     ]
 Depth = 2
 ```

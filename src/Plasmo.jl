@@ -12,28 +12,33 @@ using Compat, MathProgBase, JuMP
 
 export PlasmoGraph, PlasmoNode, PlasmoEdge, Node, Edge, NodeOrEdge,
 
-#Plasmo graph functions
-getnode,getedge,getnodeoredge,getconnectedto,getconnectedfrom,getsupportingnodes,getsupportingedges,is_connected,
-
 #Add dispatch to LightGraphs.jl package functions
-add_vertex!,add_edge!,add_node!,add_subgraph!,create_node,
+add_vertex!,add_edge!,add_node!,nv,vertices,edges,src,dst,ne,degree,
+in_edges,in_degree,in_neighbors,
+out_edges,out_degree,out_neighbors,
 
-nv,vertices,edges,src,dst,ne,
+#Plasmo graph functions
+add_subgraph!,add_subgraph,
 
-getvertexindex,getedgeindex,getnodeindex,getnodes,getedges,out_edges,out_degree,
+#Node functions
+create_node,add_node,getsupportingedges,getnodeindex,
 
-out_neighbors,in_edges,in_degree,in_neighbors,degree,
+#Edge functions
+add_edge,getconnectedto,getconnectedfrom,getsupportingnodes,getedgeindex,
+
+#Helper functions
+getnode,getedge,getnodeoredge,getnodesandedges,is_connected,getnodes,getedges,contains_node,getsubgraphlist,
 
 #Attributes
-addattribute!,rmattribute!,getattribute,hasattribute,_copy_subgraphs!,
+addattribute!,rmattribute!,getattribute,hasattribute,
 
-#JuMP Models
-GraphModel,FlatGraphModel,create_flat_graph_model,getmodel,hasmodel,
-getgraph,getnodes,getedges,getnodesandedges,getnodevariables,getnodeobjective,getnodeconstraints,getlinkconstraints,getnodedata,getnode,
-is_graphmodel,
-setmodel!,solve,setsolution!,setvalue,
+#Model functions
+setmodel,resetmodel,is_nodevar,getmodel,hasmodel,getlinkconstraints,
 
-create_flat_graph_model,
+#The JuMP Extension
+FlatGraphModel,create_flat_graph_model,
+getgraph,getnodevariables,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
+solve,setsolution,setvalue,
 
 #macros
 @linkconstraint,@getconstraintlist
@@ -60,6 +65,5 @@ include("macros.jl")
 #     include("solvers/plasmoDspInterface.jl")     #TODO Check libraries
 # end
 #end
-
 
 end

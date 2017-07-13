@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<!--[if IE 8]><html class="no-js lt-ie9" lang="en" > <![endif]-->
+<!--[if gt IE 8]><!--> <html class="no-js" lang="en" > <!--<![endif]-->
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  
+  <title>Graph Functions - Plasmo.jl</title>
+  
+
+  <link rel="shortcut icon" href="../../img/favicon.ico">
+
+  
+  <link href='https://fonts.googleapis.com/css?family=Lato:400,700|Roboto+Slab:400,700|Inconsolata:400,700' rel='stylesheet' type='text/css'>
+
+  <link rel="stylesheet" href="../../css/theme.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/theme_extra.css" type="text/css" />
+  <link rel="stylesheet" href="../../css/highlight.css">
+  <link href="../../assets/Documenter.css" rel="stylesheet">
+
+  
+  <script>
+    // Current page data
+    var mkdocs_page_name = "Graph Functions";
+  </script>
+  
+  <script src="../../js/jquery-2.1.1.min.js"></script>
+  <script src="../../js/modernizr-2.8.3.min.js"></script>
+  <script type="text/javascript" src="../../js/highlight.pack.js"></script>
+  <script src="../../js/theme.js"></script> 
+  <script src="https://cdn.mathjax.org/mathjax/latest/MathJax.js?config=TeX-AMS_HTML"></script>
+  <script src="../../assets/mathjaxhelper.js"></script>
+
+  
+</head>
+
+<body class="wy-body-for-nav" role="document">
+
+  <div class="wy-grid-for-nav">
+
+    
+    <nav data-toggle="wy-nav-shift" class="wy-nav-side stickynav">
+      <div class="wy-side-nav-search">
+        <a href="../.." class="icon icon-home"> Plasmo.jl</a>
+        <div role="search">
+  <form id ="rtd-search-form" class="wy-form" action="../../search.html" method="get">
+    <input type="text" name="q" placeholder="Search docs" />
+  </form>
+</div>
+      </div>
+
+      <div class="wy-menu wy-menu-vertical" data-spy="affix" role="navigation" aria-label="main navigation">
+        <ul class="current">
+          
+            <li>
+    <li class="toctree-l1 ">
+        <a class="" href="../..">Introduction</a>
+        
+    </li>
+<li>
+          
+            <li>
+    <ul class="subnav">
+    <li><span>Tutorial</span></li>
+
+        
+            
+    <li class="toctree-l1 ">
+        <a class="" href="../../tutorials/simple_example/">A simple graph model</a>
+        
+    </li>
+
+        
+    </ul>
+<li>
+          
+            <li>
+    <ul class="subnav">
+    <li><span>Documentation</span></li>
+
+        
+            
+    <li class="toctree-l1 current">
+        <a class="current" href="./">Graph Functions</a>
+        
+            <ul>
+            
+                <li class="toctree-l3"><a href="#the-plasmo-graph">The Plasmo Graph</a></li>
+                
+                    <li><a class="toctree-l4" href="#graph-functions">Graph Functions</a></li>
+                
+            
+            </ul>
+        
+    </li>
+
+        
+    </ul>
+<li>
+          
+        </ul>
+      </div>
+      &nbsp;
+    </nav>
+
+    <section data-toggle="wy-nav-shift" class="wy-nav-content-wrap">
+
+      
+      <nav class="wy-nav-top" role="navigation" aria-label="top navigation">
+        <i data-toggle="wy-nav-top" class="fa fa-bars"></i>
+        <a href="../..">Plasmo.jl</a>
+      </nav>
+
+      
+      <div class="wy-nav-content">
+        <div class="rst-content">
+          <div role="navigation" aria-label="breadcrumbs navigation">
+  <ul class="wy-breadcrumbs">
+    <li><a href="../..">Docs</a> &raquo;</li>
+    
+      
+        
+          <li>Documentation &raquo;</li>
+        
+      
+    
+    <li>Graph Functions</li>
+    <li class="wy-breadcrumbs-aside">
+      
+        
+          <a href="https://github.com/jalving/Plasmo.jl" class="icon icon-github"> Edit on GitHub</a>
+        
+      
+    </li>
+  </ul>
+  <hr/>
+</div>
+          <div role="main">
+            <div class="section">
+              
+                <p><a id='The-Plasmo-Graph-1'></a></p>
+<h1 id="the-plasmo-graph">The Plasmo Graph</h1>
+<p>A PlasmoGraph wraps a LightGraphs.jl Graph (or DiGraph) and adds additional attributes for managing subgraphs and models. These are all of the graph functions a user might use in plasmo.  Most core functions from LightGraphs.jl have been dispatched.</p>
+<p><a id='Graph-Functions-1'></a></p>
+<h2 id="graph-functions">Graph Functions</h2>
+<p><a id='Plasmo.PlasmoGraph' href='#Plasmo.PlasmoGraph'>#</a>
+<strong><code>Plasmo.PlasmoGraph</code></strong> &mdash; <em>Type</em>.</p>
+<p>The PlasmoGraph Type.  Contains a reference to a LightGraphs.Graph </p>
+<p><a id='Base.getindex-Tuple{Plasmo.PlasmoGraph}' href='#Base.getindex-Tuple{Plasmo.PlasmoGraph}'>#</a>
+<strong><code>Base.getindex</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre>getindex(:PlasmoGraph)
+
+Get the index of a subgraph within EACH of its graphs.  Returns 0 if the graph is not a subgraph.
+</pre></div>
+
+
+<p><a id='Base.getindex-Tuple{Plasmo.PlasmoGraph,Union{Plasmo.AbstractEdge, Plasmo.AbstractNode}}' href='#Base.getindex-Tuple{Plasmo.PlasmoGraph,Union{Plasmo.AbstractEdge, Plasmo.AbstractNode}}'>#</a>
+<strong><code>Base.getindex</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre>getindex(::PlasmoGraph,::NodeOrEdge)
+Get the index of a node or edge within a PlasmoGraph
+</pre></div>
+
+
+<p><a id='Base.getindex-Tuple{Union{Plasmo.AbstractEdge, Plasmo.AbstractNode}}' href='#Base.getindex-Tuple{Union{Plasmo.AbstractEdge, Plasmo.AbstractNode}}'>#</a>
+<strong><code>Base.getindex</code></strong> &mdash; <em>Method</em>.</p>
+<div class="codehilite"><pre>getindex(::PlasmoGraph,::NodeOrEdge)
+Return a dictionary of a node&#39;s or edge&#39;s index in each of its graphs.
+</pre></div>
+              
+            </div>
+          </div>
+          <footer>
+  
+    <div class="rst-footer-buttons" role="navigation" aria-label="footer navigation">
+      
+      
+        <a href="../../tutorials/simple_example/" class="btn btn-neutral" title="A simple graph model"><span class="icon icon-circle-arrow-left"></span> Previous</a>
+      
+    </div>
+  
+
+  <hr/>
+
+  <div role="contentinfo">
+    <!-- Copyright etc -->
+    
+  </div>
+
+  Built with <a href="http://www.mkdocs.org">MkDocs</a> using a <a href="https://github.com/snide/sphinx_rtd_theme">theme</a> provided by <a href="https://readthedocs.org">Read the Docs</a>.
+</footer>
+	  
+        </div>
+      </div>
+
+    </section>
+
+  </div>
+
+<div class="rst-versions" role="note" style="cursor: pointer">
+    <span class="rst-current-version" data-toggle="rst-current-version">
+      
+          <a class="icon icon-github" style="float: left; color: #fcfcfc"> GitHub</a>
+      
+      
+        <span><a href="../../tutorials/simple_example/" style="color: #fcfcfc;">&laquo; Previous</a></span>
+      
+      
+    </span>
+</div>
+
+</body>
+</html>

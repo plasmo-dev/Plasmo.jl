@@ -1,7 +1,10 @@
 import JuMP: isexpr, constraint_error, quot, getname, buildrefsets,_canonicalize_sense,parseExprToplevel, AffExpr, getloopedcode,addtoexpr_reorder,
 constructconstraint!,ConstraintRef,AbstractConstraint,@constraint,JuMPArray
 
-#macro for defining linkconstraints between nodes and edges.  Link constraints are associated with nodes and edges within their respective graph.
+"""
+    @linkconstraint(graph,args...)
+    macro for defining linkconstraints between nodes and edges.  Link constraints are associated with nodes and edges within their respective graph.
+"""
 macro linkconstraint(graph,args...)
     #Check the inputs are the correct types.  This needs to throw
     checkinputs = quote

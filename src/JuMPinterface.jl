@@ -1,5 +1,5 @@
 #This file contains all of the constructs to create and manage a JuMP GraphModel.  The idea is that you use PLASMO to create your graph, associate models, and build the
-#flattened model which JuMP can always solve serially.
+#flattened model which JuMP can always solve in serial.
 
 import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue
 import MathProgBase
@@ -73,16 +73,18 @@ function create_flat_graph_model(graph::PlasmoGraph)
     flat_graph = getgraph(flat_model)
     #copy number of subgraphs (might need recursive function here!)
     _copy_subgraphs!(graph,flat_graph)
+    println(flat_graph.subgraphlist)
     #first copy all nodes, then setup all the subgraphs
     for (index,node) in getnodes(graph)
         new_node = add_node!(flat_model,index = index)  #create the node and add a vertex to the top level graph.  We pass the index explicity for this graph
         node_index = getindex(node) #returns dict of {graph => index}
-        #setup subgraph references
-        for igraph in keys(node_index)
+
+        for igraph in keys(node_index)       #For each subgraph this node is contained in....
             if igraph.index != 0             #if it's not the top level graph
                 graph_index = igraph.index   #the index of this subgraph
-                subgraph = flat_graph.subgraphlist[graph_index]
-                add_node!(subgraph,new_node,index = node.index[igraph.subgraphlist[index]])
+                subgraph = flat_graph.subgraphlist[graph_index]  #the flat_model subgraph
+                add_node!(subgraph,new_node,index = node.index[igraph])
+                #add_node!(subgraph,new_node,index = node.index[igraph.subgraphlist[graph_index]])  #should be index of the node within igraph (the subgraph)
             end
         end
         if hasmodel(node)
@@ -114,8 +116,8 @@ function create_flat_graph_model(graph::PlasmoGraph)
 
     #add the linking constraints
     #inspect the link constraints, and map them to variables within flat model
-    #TODO Check all of the subgraph link constraints as well
-    for linkconstraint in getlinkconstraints(graph)
+    #Check all of the subgraph link constraints as well
+    for linkconstraint in get_all_linkconstraints(graph)
         indexmap = Dict() #{node variable => flat variable index} Need index of node variables to flat model variables
         vars = linkconstraint.terms.vars
         for var in vars
@@ -254,7 +256,7 @@ function _splicevars!(expr::Expr,var_map::Dict)
 end
 
 #copy the solution from one graph to another where nodes and variables match
-function set_solution!(graph1::PlasmoGraph,graph2::PlasmoGraph)
+function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
     for (index,nodeoredge) in getnodesandedges(graph1)
         nodeoredge2 = getnodeoredge(graph2,index)       #get the corresponding node or edge in graph2
         for (key,var) in getnodevariables(nodeoredge)
@@ -273,6 +275,6 @@ function solve(graph::PlasmoGraph;kwargs...)
     status = JuMP.solve(m_flat,kwargs...)
     if status == :Optimal
         #Now get our solution data back into the original model
-        set_solution!(getgraph(m_flat),graph)
+        setsolution(getgraph(m_flat),graph)
     end
 end

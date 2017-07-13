@@ -31,6 +31,9 @@ function resetmodel!(nodeoredge::NodeOrEdge,m::AbstractModel)
     #throw warnings if link constraints break
 end
 
+const setmodel = setmodel!
+const resetmodel = resetmodel!
+
 #TODO
 #removemodel!(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
 getmodel(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model]
@@ -40,6 +43,18 @@ getindex(nodeoredge::NodeOrEdge,s::Symbol) = getmodel(nodeoredge)[s]  #get a nod
 getlinkconstraints(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:LinkData].linkconstraintmap
 getlinkconstraints(graph::PlasmoGraph,nodeoredge::NodeOrEdge) = nodeoredge.attributes[:LinkData].linkconstraintmap[graph]
 getlinkconstraints(graph::PlasmoGraph) = graph.attributes[:LinkData].linkconstraints
+
+"""
+    Get every link constraint in the graph, including subgraphs
+"""
+function get_all_linkconstraints(graph::PlasmoGraph)
+    links = []
+    for subgraph in getsubgraphlist(graph)
+        append!(links,getlinkconstraints(subgraph))
+    end
+    append!(links,getlinkconstraints(graph))
+    return links
+end
 
 #Add nodes and set the model as well
 function add_node!(graph::PlasmoGraph,m::AbstractModel)
