@@ -1,5 +1,5 @@
 using Plasmo
 using Base.Test
 
-# write your own tests here
-@test 1 == 2
+#Test the graph functionality
+@test include("graph_tests.jl")
