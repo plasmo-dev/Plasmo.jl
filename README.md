@@ -43,9 +43,6 @@ Plasmo.@linkconstraint(graph,n1[:x] == n2[:x])
 
 #Get all of the link constraints in a graph
 links = Plasmo.getlinkconstraints(graph)
-for link in links
-    println(link)
-end
 
 Plasmo.solve(graph)
 
