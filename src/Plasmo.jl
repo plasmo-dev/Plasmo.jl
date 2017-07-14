@@ -56,14 +56,19 @@ include("model.jl")
 include("JuMPinterface.jl")
 include("macros.jl")
 
-#Pkg.installed("MPI")
-#if isdefined(:MPI) #this doesn't work
-# if  !isempty(Libdl.find_library("libparpipsnlp"))
-#     include("solvers/plasmoPipsNlpInterface.jl") #TODO Check libraries
-# end
+#load PIPS-NLP if the library can be found
+if  !isempty(Libdl.find_library("libparpipsnlp"))
+    include("solvers/plasmoPipsNlpInterface.jl")
+    using .PlasmoPipsNlpInterface
+    export pipsnlp_solve
+end
+
+#load DSP if the library can be found
 # if !isempty(Libdl.find_library("libDsp"))
-#     include("solvers/plasmoDspInterface.jl")     #TODO Check libraries
+#     include("solvers/plasmoDspInterface.jl")
+#     using .PlasmoDspInterface
+#     export dsp_solve
 # end
-#end
+
 
 end

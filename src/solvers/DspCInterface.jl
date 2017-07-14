@@ -1,6 +1,5 @@
 # Julia Interface to DSP
-# Kibaek Kim
-# Argonne National Laboratory, 2016
+# Original interface by: Kibaek Kim; Argonne National Laboratory, 2016
 module DspCInterface
 
 #import ..Dsp
@@ -16,14 +15,14 @@ Pkg.installed("MPI") == nothing || using MPI
 ###############################################################################
 macro dsp_ccall(func, args...)
     @static if is_unix()
-        return quote
+        return esc(quote
             ccall(($func, "libDsp"), $(args...))
-        end
+        end)
     end
     @static if is_windows()
-        return quote
+        return esc(quote
             ccall(($func, "libDsp"), stdcall, $(args...))
-        end
+        end)
     end
 end
 

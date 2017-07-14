@@ -4,9 +4,11 @@ module PlasmoPipsNlpInterface
 
 importall MathProgBase.SolverInterface
 import MPI
+import JuMP
+import Plasmo
 include("PipsNlpSolver.jl")
 using .PipsNlpSolver
-export PipsNlp_solve
+export pipsnlp_solve
 
 function convert_to_c_idx(indicies)
     for i in 1:length(indicies)
@@ -75,13 +77,13 @@ end
 #     modelList = [getmodel(master); submodels]
 # end
 
-function PipsNlp_solve(graph::PlasmoGraph,master_node::NodeOrEdge,children_nodes::Vector{NodeOrEdge})
+function pipsnlp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,children_nodes::Vector{Plasmo.NodeOrEdge})
     #need to check that the structure makes sense
 
-    submodels = [getmodel(child) for child in children_nodes]
+    submodels = [Plasmo.getmodel(child) for child in children_nodes]
     scen = length(children_nodes)
 
-    master = getmodel(master_node)
+    master = Plasmo.getmodel(master_node)
     modelList = [master; submodels]
 
     #Add ModelData to each model
@@ -92,7 +94,7 @@ function PipsNlp_solve(graph::PlasmoGraph,master_node::NodeOrEdge,children_nodes
     master_linear_lb = []
     master_linear_ub = []
 
-    linkconstraints = getlinkconstraints(graph) #get all of the link constraints in the graph
+    linkconstraints = Plasmo.getlinkconstraints(graph) #get all of the link constraints in the graph
     #get arrays of lower and upper bounds for each link constraint
     for con in linkconstraints
         push!(master_linear_lb,con.lb)
@@ -272,8 +274,8 @@ function PipsNlp_solve(graph::PlasmoGraph,master_node::NodeOrEdge,children_nodes
         node = modelList[nodeid+1]
         local_initval = copy(node.colVal)
         if any(isnan,node.colVal)
-            local_initval[isnan(node.colVal)] = 0
-            local_initval = min(max(node.colLower,local_initval),node.colUpper)
+            local_initval[isnan.(node.colVal)] = 0
+            local_initval = min.(max.(node.colLower,local_initval),node.colUpper)
         end
         original_copy(local_initval,x0)
     end
@@ -297,7 +299,7 @@ function PipsNlp_solve(graph::PlasmoGraph,master_node::NodeOrEdge,children_nodes
     			nlp_lb, nlp_ub = JuMP.constraintbounds(node)
          		local_data.local_m  = length(nlp_lb)
 
-    			newRowId = Array(Int, local_data.local_m)
+    			newRowId = Array{Int}(local_data.local_m)
     			eqId = 1
     			ineqId = 1
                 for c in 1:local_data.local_m
@@ -434,7 +436,7 @@ function PipsNlp_solve(graph::PlasmoGraph,master_node::NodeOrEdge,children_nodes
         else
             local_x = x1
         end
-        local_g = Array(Float64, local_data.local_m)
+        local_g = Array{Float64}(local_data.local_m)
         eval_g(local_d, local_g, local_x)
         new_eq_g[1:end] = [local_g[local_data.eq_idx]; local_data.firstJeqmat*x0+local_data.secondJeqmat*x1]
         new_inq_g[1:end] = [local_g[local_data.ineq_idx]; local_data.firstJineqmat*x0+local_data.secondJineqmat*x1]
@@ -460,7 +462,7 @@ function PipsNlp_solve(graph::PlasmoGraph,master_node::NodeOrEdge,children_nodes
         else
             local_x = x1
         end
-        local_grad_f = Array(Float64, local_data.n)
+        local_grad_f = Array{Float64}(local_data.n)
         eval_grad_f(local_d, local_grad_f, local_x)
         local_scl = (node.objSense == :Min) ? 1.0 : -1.0
         scale!(local_grad_f,local_scl)
@@ -515,7 +517,7 @@ function PipsNlp_solve(graph::PlasmoGraph,master_node::NodeOrEdge,children_nodes
                     else
                         local_x = x1
                     end
-                    local_values = Array(Float64, length(node.ext[:Ijaceq])+length(node.ext[:Ijacineq]))
+                    local_values = Array{Float64}(length(node.ext[:Ijaceq])+length(node.ext[:Ijacineq]))
                     eval_jac_g(local_data.d, local_values, local_x)
                     jac_eq_index = node.ext[:jac_eq_index]
                     jac_ineq_index = node.ext[:jac_ineq_index]
@@ -602,7 +604,7 @@ function PipsNlp_solve(graph::PlasmoGraph,master_node::NodeOrEdge,children_nodes
                 else
                     local_x = x1
                 end
-                local_unsym_values = Array(Float64, local_data.local_unsym_hessnnz)
+                local_unsym_values = Array{Float64}(local_data.local_unsym_hessnnz)
                 node_val = ones(Float64,length(node_Hrows))
                 local_scl = (node.objSense == :Min) ? 1.0 : -1.0
                 local_m_eq = length(local_data.eq_idx)
@@ -735,7 +737,7 @@ function sparseKeepZero{Tv,Ti<:Integer}(I::AbstractVector{Ti},
     end
 
     # Work array
-    Wj = Array(Ti, max(nrow,ncol)+1)
+    Wj = Array{Ti}(max(nrow,ncol)+1)
     # Allocate sparse matrix data structure
     # Count entries in each row
     Rnz = zeros(Ti, nrow+1)
@@ -749,8 +751,8 @@ function sparseKeepZero{Tv,Ti<:Integer}(I::AbstractVector{Ti},
         nz += 1
     end
     Rp = cumsum(Rnz)
-    Ri = Array(Ti, nz)
-    Rx = Array(Tv, nz)
+    Ri = Array{Ti}(nz)
+    Rx = Array{Tv}(nz)
 
     # Construct row form
     # place triplet (i,j,x) in column i of R
@@ -796,8 +798,8 @@ function sparseKeepZero{Tv,Ti<:Integer}(I::AbstractVector{Ti},
     end
 
     # Transpose from row format to get the CSC format
-    RiT = Array(Ti, anz)
-    RxT = Array(Tv, anz)
+    RiT = Array{Ti}(anz)
+    RxT = Array{Tv}(anz)
 
     # Reset work array to build the final colptr
     Wj[1] = 1

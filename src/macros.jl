@@ -10,7 +10,6 @@ macro linkconstraint(graph,args...)
     checkinputs = quote
         #@assert Plasmo.is_graphmodel($m)
         @assert isa($graph,Plasmo.PlasmoGraph)
-        #@assert isa($nodeoredge,Plasmo.NodeOrEdge)
     end
     #generate constraint list and them to node or edge linkdata
     refscode = quote

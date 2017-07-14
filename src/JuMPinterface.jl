@@ -73,7 +73,6 @@ function create_flat_graph_model(graph::PlasmoGraph)
     flat_graph = getgraph(flat_model)
     #copy number of subgraphs (might need recursive function here!)
     _copy_subgraphs!(graph,flat_graph)
-    println(flat_graph.subgraphlist)
     #first copy all nodes, then setup all the subgraphs
     for (index,node) in getnodes(graph)
         new_node = add_node!(flat_model,index = index)  #create the node and add a vertex to the top level graph.  We pass the index explicity for this graph

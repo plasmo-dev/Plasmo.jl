@@ -2,9 +2,8 @@
 module PlasmoDspInterface
 
 include("DspCInterface.jl")
-#using .DspCInterface
-#import .DspCInterface:DspModel,@dspccall
-import .DspCInterface:DspModel,@dsp_ccall
+
+import .DspCInterface:DspModel,@dsp_ccall,check_problem
 import Plasmo
 import JuMP
 
@@ -13,18 +12,19 @@ export dsp_solve
 #Build up Dsp Model using structure from Plasmo
 # This function is hooked by JuMP (see block.jl)
 function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,children_nodes::Vector{Plasmo.NodeOrEdge}; suppress_warnings = false, options...)
-    master = getmodel(master_node)
-    submodels = [getmodel(child) for child in children_nodes]
-    linkconstraints = getlinkconstraints(graph) #get all of the link constraints in the graph
+    master = Plasmo.getmodel(master_node)
+    submodels = [Plasmo.getmodel(child) for child in children_nodes]
+    linkconstraints = Plasmo.getlinkconstraints(graph) #get all of the link constraints in the graph
     #scen = length(children_nodes)
 
+    dspmodel = DspCInterface.DspModel()
     # parse options
     for (optname, optval) in options
         if optname == :param
-            DspCInterface.readParamFile(Dsp.model, optval)
+            DspCInterface.readParamFile(dspmodel, optval)
         elseif optname == :solve_type
             if optval in [:Dual, :Benders, :Extensive]
-                Dsp.model.solve_type = optval
+                dspmodel.solve_type = optval
             else
                 warn("solve_type $optval is not available.")
             end
@@ -33,19 +33,22 @@ function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,chil
         end
     end
 
-    # load the Plasmo models to Dsp
-    loadProblem(Dsp.model,graph, master, submodels)
+    nblocks = length(submodels)
+    DspCInterface.setBlockIds(dspmodel, nblocks)
+
+    # load the plasmo models to Dsp
+    loadProblem(dspmodel,graph, master, submodels)
 
     # solve
-    DspCInterface.solve(Dsp.model)
+    DspCInterface.solve(dspmodel)
 
     # solution status
-    statcode = DspCInterface.getSolutionStatus(Dsp.model)
+    statcode = DspCInterface.getSolutionStatus(dspmodel)
     stat = parseStatusCode(statcode)
 
     # Extract solution from the solver
-    Dsp.model.numRows = DspCInterface.getNumRows(Dsp.model, 0) + DspCInterface.getNumRows(Dsp.model, 1) * DspCInterface.getNumScenarios(Dsp.model)
-    Dsp.model.numCols = DspCInterface.getTotalNumCols(Dsp.model)
+    dspmodel.numRows = DspCInterface.getNumRows(dspmodel, 0) + DspCInterface.getNumRows(dspmodel, 1) * DspCInterface.getNumScenarios(dspmodel)
+    dspmodel.numCols = DspCInterface.getTotalNumCols(dspmodel)
 
     #this should be the graph objective and column values?
     #TODO
@@ -57,7 +60,7 @@ function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,chil
     end
 
     if !(stat == :Infeasible || stat == :Unbounded)
-        getDspSolution(master,submodels)
+        getDspSolution(dspmodel,master,submodels)
     end
 
     # Return the solve status
@@ -69,30 +72,33 @@ function loadProblem(dsp::DspModel,graph::Plasmo.PlasmoGraph, master::JuMP.Model
 
     #if haskey(model.ext, :DspBlocks) #if there are children models given.....
     if length(subproblems) > 0
-        loadStochasticProblem(dsp, graph, master,subproblems, dedicatedMaster;probabilties = Dict(zip(1:length(subproblems),fill(1/length(subproblems),length(subproblems)))))
+        loadStochasticProblem(dsp, graph, master,subproblems, dedicatedMaster,probabilities = Dict(zip(1:length(subproblems),fill(1/length(subproblems),length(subproblems)))))
     else #Do I even need to support this?
         warn("No blocks were defined.")
         loadDeterministicProblem(dsp, master)
     end
 end
-loadProblem(dsp::DspModel,master::JuMP.Model, subproblems::Vector{JuMP.Model}) = loadProblem(dsp, master, subproblems, true);
+loadProblem(dsp::DspModel,graph::Plasmo.PlasmoGraph,master::JuMP.Model, subproblems::Vector{JuMP.Model}) = loadProblem(dsp,graph, master, subproblems, true);
 
 #TODO
-function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool;probabilities)
-    #model was a Dsp JuMP model
+function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool;probabilities = nothing)
+    # model was a Dsp JuMP model
     # get DspBlocks
     #blocks = model.ext[:DspBlocks]    #this is a blockstructure with ids and weights
-    blocks = subproblems #maybe this will work?
+    #blocks = subproblems #maybe this will work?
 
     nscen  = dsp.nblocks
     ncols1 = master.numCols
     nrows1 = length(master.linconstr)
     ncols2 = 0
     nrows2 = 0
-    #for s in values(blocks.children)
+    #for s in values(blocks.children)  #these are models
+    #Do I need to figure out which variables are actually first stage?
     for s in subproblems
-        ncols2 = s.numCols
-        nrows2 = length(s.linconstr)
+        node = Plasmo.getnode(s)
+        link_cons = Plasmo.getlinkconstraints(node)[graph]  #link constraints specific to this subproblem
+        ncols2 = s.numCols  #this is normally the number of second stage variables, but I'm lifting so....
+        nrows2 = length(s.linconstr) + length(link_cons)
         break #this only runs the loop once?
     end
 
@@ -101,6 +107,14 @@ function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master:
         ncols2 = MPI.allreduce([ncols2], MPI.MAX, dsp.comm)[1]
         nrows2 = MPI.allreduce([nrows2], MPI.MAX, dsp.comm)[1]
     end
+
+    #Need to include linkconstraints on subproblems in dimensions
+
+    @show nscen
+    @show ncols1
+    @show ncols2
+    @show nrows1
+    @show nrows2
 
     @dsp_ccall("setNumberOfScenarios", Void, (Ptr{Void}, Cint), dsp.p, convert(Cint, nscen))
     @dsp_ccall("setDimensions", Void,
@@ -111,6 +125,17 @@ function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master:
     # this is the master model
     start, index, value, clbd, cubd, ctype, obj, rlbd, rubd = getDataFormat(master)
 
+    @show start
+    @show index
+    @show value
+    @show clbd
+    @show cubd
+    @show ctype
+    @show obj
+    @show rlbd
+    @show rubd
+
+
     @dsp_ccall("loadFirstStage", Void,
         (Ptr{Void}, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}, Ptr{Cdouble},
             Ptr{Cdouble}, Ptr{UInt8}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}),
@@ -119,10 +144,11 @@ function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master:
     for id in dsp.block_ids
         # model and probability
         #blk = blocks.children[id] #the sub model
-        blk = subproblems[id]
+        blk = subproblems[id]  #need to be careful with block ids here
+        node = Plasmo.getnode(blk)
         #probability = blocks.weight[id] #probability of this scenario
         probability = probabilities[id]
-        linkcons = Plasmo.getlinkconstraints(blk)[graph]
+        linkcons = Plasmo.getlinkconstraints(node)[graph]
         # get model data
         start, index, value, clbd, cubd, ctype, obj, rlbd, rubd = getDataFormat(master,blk,linkcons)
         @dsp_ccall("loadSecondStage", Void,
@@ -213,9 +239,9 @@ function getDataFormat(model::JuMP.Model)
 end
 
 #Get the data format for a child node.  We also need to pass the child's linkconstraints
-function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{JuMP.AbstractConstraint})
+function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{Union{JuMP.AbstractConstraint, JuMP.ConstraintRef}})
     # Column wise sparse matrix
-    mat = JuMP.prepChildConstrMatrix(master,child,linkcons)
+    mat = prepChildConstrMatrix(master,child,linkcons)
     # Tranpose; now I have row-wise sparse matrix
     mat = mat'
 
@@ -226,10 +252,10 @@ function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{JuM
 
     # column type
     ctype = ""
-    for i = 1:length(model.colCat)
-        if model.colCat[i] == :Int
+    for i = 1:length(child.colCat)
+        if child.colCat[i] == :Int
             ctype = ctype * "I";
-        elseif model.colCat[i] == :Bin
+        elseif child.colCat[i] == :Bin
             ctype = ctype * "B";
         else
             ctype = ctype * "C";
@@ -238,9 +264,10 @@ function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{JuM
     ctype = convert(Vector{UInt8}, ctype)
 
     # objective coefficients
-    obj = JuMP.prepAffObjective(model)
+    obj = JuMP.prepAffObjective(child)
 
-    allconstr = [linconstr;linkconstraints]
+    linconstr = child.linconstr
+    allconstr = [linconstr;linkcons]
     child_linear_lb = []
     child_linear_ub = []
 
@@ -253,18 +280,18 @@ function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{JuM
     rubd = child_linear_ub
 
     # set objective sense
-    if model.objSense == :Max
+    if child.objSense == :Max
         obj *= -1
     end
 
-    return start, index, value, model.colLower, model.colUpper, ctype, obj, rlbd, rubd
+    return start, index, value, child.colLower, child.colUpper, ctype, obj, rlbd, rubd
 end
 
-function prepChildConstrMatrix(master::JuMP.Model,child::JuMP.Model,linkconstraints::Vector{JuMP.AbstractConstraint})
+function prepChildConstrMatrix(master::JuMP.Model,child::JuMP.Model,linkconstraints::Vector{Union{JuMP.AbstractConstraint, JuMP.ConstraintRef}})
     rind = Int[]
     cind = Int[]
     value = Float64[]
-    linconstr = m.linconstr              #these should be local model constraints
+    linconstr = master.linconstr              #these should be local model constraints
     #linkconstr = getlinkconstraints(node)[graph]#the constraints that connect this model to the parent
     allconstr = [linconstr;linkconstraints]
     for (nrow,con) in enumerate(allconstr)
@@ -274,7 +301,7 @@ function prepChildConstrMatrix(master::JuMP.Model,child::JuMP.Model,linkconstrai
             if allconstr[nrow].terms.vars[id].m == master   #if the variable belongs to the master, use the master column index
                 push!(cind, var.col)
             elseif allconstr[nrow].terms.vars[id].m == child          #if it's a local variable to the subproblem
-                push!(cind, blocks.parent.numCols + var.col)          #push the variable passed the master column
+                push!(cind, master.numCols + var.col)          #push the variable passed the master column
             end
             push!(value, aff.coeffs[id])
             # splice!(aff.vars, id)   #remove the variable and coefficient from aff
@@ -310,14 +337,14 @@ function parseStatusCode(statcode::Integer)
     stat
 end
 
-function getDspSolution(master,subproblems)
-    Dsp.model.primVal = DspCInterface.getPrimalBound(Dsp.model)
-    Dsp.model.dualVal = DspCInterface.getDualBound(Dsp.model)
+function getDspSolution(dspmodel,master,subproblems)
+    dspmodel.primVal = DspCInterface.getPrimalBound(dspmodel)
+    dspmodel.dualVal = DspCInterface.getDualBound(dspmodel)
     if Dsp.model.solve_type == :Dual
-        Dsp.model.rowVal = DspCInterface.getDualSolution(Dsp.model)
+        dspmodel.rowVal = DspCInterface.getDualSolution(dspmodel)
         #Need to get primal solution
     else
-        Dsp.model.colVal = DspCInterface.getSolution(Dsp.model)
+        dspmodel.colVal = DspCInterface.getSolution(dspmodel)
         if master != nothing
             # parse solution to each block
             #start with the master

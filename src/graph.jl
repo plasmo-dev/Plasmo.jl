@@ -225,10 +225,6 @@ dst(pgraph::PlasmoGraph,edge::PlasmoEdge) = getnode(pgraph,LightGraphs.dst(edge.
 src(pgraph::PlasmoGraph,edge::LightGraphs.Edge) = getnode(pgraph,LightGraphs.src(edge))  #source node of a Plasmo Edge
 dst(pgraph::PlasmoGraph,edge::LightGraphs.Edge) = getnode(pgraph,LightGraphs.dst(edge))  #destination node of a Plasmo Edge
 
-
-#in_edges(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.edges[edge] for edge in LightGraphs.in_edges(pgraph.graph,getindex(pgraph,node))]
-#out_edges(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.edges[edge] for edge in LightGraphs.out_edges(pgraph.graph,getindex(pgraph,node))]
-
 in_edges(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.edges[LightGraphs.Edge(in_node,getindex(pgraph,node))] for in_node in LightGraphs.in_neighbors(pgraph.graph,getindex(pgraph,node))]
 out_edges(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.edges[LightGraphs.Edge(getindex(pgraph,node),out_node)] for out_node in LightGraphs.out_neighbors(pgraph.graph,getindex(pgraph,node))]
 
