@@ -1,5 +1,5 @@
 import JuMP: isexpr, constraint_error, quot, getname, buildrefsets,_canonicalize_sense,parseExprToplevel, AffExpr, getloopedcode,addtoexpr_reorder,
-constructconstraint!,ConstraintRef,AbstractConstraint,@constraint,JuMPArray
+constructconstraint!,ConstraintRef,AbstractConstraint,@constraint,JuMPArray,JuMPDict
 
 """
     @linkconstraint(graph,args...)
@@ -14,10 +14,11 @@ macro linkconstraint(graph,args...)
     #generate constraint list and them to node or edge linkdata
     refscode = quote
         cons_refs = Plasmo.@getconstraintlist($(args...))           #returns all of the constraints that would be generated from the expression
-        # println(cons_refs)
-        # println(cons_refs.innerArray)
+
         if isa(cons_refs,JuMP.JuMPArray)
             cons_refs = cons_refs.innerArray
+        elseif isa(cons_refs,JuMP.JuMPDict)
+            cons_refs = collect(values(cons_refs.tupledict))
         end
         Plasmo._addlinkconstraint!($graph,cons_refs)    #add the link constraints to the node or edge and map to graph
     end
