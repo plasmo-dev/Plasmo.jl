@@ -10,7 +10,7 @@ module Plasmo
 
 using Compat, MathProgBase, JuMP
 
-export PlasmoGraph, PlasmoNode, PlasmoEdge, Node, Edge, NodeOrEdge,
+export PlasmoGraph, PlasmoNode, PlasmoEdge, Node, Edge, NodeOrEdge,GraphModel,
 
 #Add dispatch to LightGraphs.jl package functions
 add_vertex!,add_edge!,add_node!,nv,vertices,edges,src,dst,ne,degree,
@@ -64,11 +64,11 @@ if  !isempty(Libdl.find_library("libparpipsnlp"))
 end
 
 #load DSP if the library can be found
-# if !isempty(Libdl.find_library("libDsp"))
-#     include("solvers/plasmoDspInterface.jl")
-#     using .PlasmoDspInterface
-#     export dsp_solve
-# end
+if !isempty(Libdl.find_library("libDsp"))
+    include("solvers/plasmoDspInterface.jl")
+    using .PlasmoDspInterface
+    export dsp_solve
+end
 
 
 end
