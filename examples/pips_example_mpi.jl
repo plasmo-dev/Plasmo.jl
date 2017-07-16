@@ -59,13 +59,19 @@ for j in 1:Ns
     end
     s = s + 1
 end
-#create a link constraint between the subproblems
+#create a link constraint between the subproblems (PIPS-NLP supports this kind of constraint)
 @linkconstraint(graph, (1/Ns)*sum(scenm[s][:prod] for s in owned) == 8)
 
-println("Solving with PIPS-NLP")
+if rank == 0
+    println("Solving with PIPS-NLP")
+end
 pipsnlp_solve(graph,master_node,scen_nodes)
 
-graph.solver = IpoptSolver()
-println()
-println("Solving with Ipopt")
-solve(graph)
+# if rank == 0
+#     graph.solver = IpoptSolver()
+#     println()
+#     println("Solving with Ipopt")
+#     solve(graph)
+# end
+
+MPI.Finalize()
