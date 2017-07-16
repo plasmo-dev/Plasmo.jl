@@ -28,6 +28,7 @@ PlasmoGraph()
 Creates an empty PlasmoGraph
 """
 PlasmoGraph() = PlasmoGraph(DiGraph(),gensym(),0,AbstractGraph[],Dict(:LinkData => GraphLinkData()),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),UnsetSolver())
+const GraphModel = PlasmoGraph
 
 """
 PlasmoGraph(::AbstractGraph)
