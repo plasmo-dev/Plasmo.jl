@@ -2,8 +2,10 @@
 module PlasmoDspInterface
 
 include("DspCInterface.jl")
-
-import .DspCInterface:DspModel,@dsp_ccall,check_problem
+Pkg.installed("MPI") == nothing || using MPI
+#import .DspCInterface:DspModel,@dsp_ccall,check_problem
+#using .DspCInterface
+import .DspCInterface
 import Plasmo
 import JuMP
 
@@ -11,13 +13,14 @@ export dsp_solve
 
 #Build up Dsp Model using structure from Plasmo
 # This function is hooked by JuMP (see block.jl)
-function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,children_nodes::Vector{Plasmo.NodeOrEdge}; suppress_warnings = false, options...)
+function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,children_nodes::Vector{Plasmo.NodeOrEdge};
+                        probabilities = Dict(zip(1:length(children_nodes),fill(1/length(children_nodes),length(children_nodes)))),suppress_warnings = false, options...)
     master = Plasmo.getmodel(master_node)
     submodels = [Plasmo.getmodel(child) for child in children_nodes]
     linkconstraints = Plasmo.getlinkconstraints(graph) #get all of the link constraints in the graph
-    #scen = length(children_nodes)
 
     dspmodel = DspCInterface.DspModel()
+    DspCInterface.freeModel(dspmodel)
     # parse options
     for (optname, optval) in options
         if optname == :param
@@ -35,10 +38,13 @@ function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,chil
 
     nblocks = length(submodels)
     DspCInterface.setBlockIds(dspmodel, nblocks)
-
+    #setBlockIds(dspmodel, nblocks)
+    #println(dspmodel)
     # load the plasmo models to Dsp
-    loadProblem(dspmodel,graph, master, submodels)
-
+    loadProblem(dspmodel,graph, master, submodels,probabilities)
+    # println(DspCInterface.getTotalNumCols(dspmodel))
+    # println(DspCInterface.getTotalNumRows(dspmodel))
+    # println(DspCInterface.getNumCouplingRows(dspmodel))
     # solve
     DspCInterface.solve(dspmodel)
 
@@ -53,7 +59,7 @@ function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,chil
     #this should be the graph objective and column values?
     #TODO
     master.objVal = NaN
-    master.colVal = fill(NaN, Dsp.model.numCols)
+    master.colVal = fill(NaN, dspmodel.numCols)
 
     if stat != :Optimal
         suppress_warnings || warn("Not solved to optimality, status: $stat")
@@ -64,24 +70,26 @@ function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,chil
     end
 
     # Return the solve status
-    stat
+    return stat
+    #return dspmodel
 end
 
-function loadProblem(dsp::DspModel,graph::Plasmo.PlasmoGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool)
-    check_problem(dsp)
+function loadProblem(dsp::DspCInterface.DspModel,graph::Plasmo.PlasmoGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool,probabilities)
+    DspCInterface.check_problem(dsp)
 
     #if haskey(model.ext, :DspBlocks) #if there are children models given.....
     if length(subproblems) > 0
-        loadStochasticProblem(dsp, graph, master,subproblems, dedicatedMaster,probabilities = Dict(zip(1:length(subproblems),fill(1/length(subproblems),length(subproblems)))))
+        loadStochasticProblem(dsp, graph, master,subproblems, dedicatedMaster,probabilities)
+        #loadStochasticProblem(dsp, graph, master,subproblems, dedicatedMaster,probabilities = Dict(zip(1:length(subproblems),fill(1.0,length(subproblems)))))
+
     else #Do I even need to support this?
         warn("No blocks were defined.")
         loadDeterministicProblem(dsp, master)
     end
 end
-loadProblem(dsp::DspModel,graph::Plasmo.PlasmoGraph,master::JuMP.Model, subproblems::Vector{JuMP.Model}) = loadProblem(dsp,graph, master, subproblems, true);
+loadProblem(dsp::DspCInterface.DspModel,graph::Plasmo.PlasmoGraph,master::JuMP.Model, subproblems::Vector{JuMP.Model},probabilites::Dict) = loadProblem(dsp,graph, master, subproblems, true,probabilites);
 
-#TODO
-function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool;probabilities = nothing)
+function loadStochasticProblem(dsp::DspCInterface.DspModel, graph::Plasmo.PlasmoGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool, probabilities::Dict)
     # model was a Dsp JuMP model
     # get DspBlocks
     #blocks = model.ext[:DspBlocks]    #this is a blockstructure with ids and weights
@@ -109,15 +117,15 @@ function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master:
     end
 
     #Need to include linkconstraints on subproblems in dimensions
+    # println()
+    # @show nscen
+    # @show ncols1
+    # @show ncols2
+    # @show nrows1
+    # @show nrows2
 
-    @show nscen
-    @show ncols1
-    @show ncols2
-    @show nrows1
-    @show nrows2
-
-    @dsp_ccall("setNumberOfScenarios", Void, (Ptr{Void}, Cint), dsp.p, convert(Cint, nscen))
-    @dsp_ccall("setDimensions", Void,
+    DspCInterface.@dsp_ccall("setNumberOfScenarios", Void, (Ptr{Void}, Cint), dsp.p, convert(Cint, nscen))
+    DspCInterface.@dsp_ccall("setDimensions", Void,
         (Ptr{Void}, Cint, Cint, Cint, Cint),
         dsp.p, convert(Cint, ncols1), convert(Cint, nrows1), convert(Cint, ncols2), convert(Cint, nrows2))
 
@@ -125,18 +133,19 @@ function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master:
     # this is the master model
     start, index, value, clbd, cubd, ctype, obj, rlbd, rubd = getDataFormat(master)
 
-    @show start
-    @show index
-    @show value
-    @show clbd
-    @show cubd
-    @show ctype
-    @show obj
-    @show rlbd
-    @show rubd
+    # println()
+    # @show start
+    # @show index
+    # @show value
+    # @show clbd
+    # @show cubd
+    # @show ctype
+    # @show obj
+    # @show rlbd
+    # @show rubd
 
 
-    @dsp_ccall("loadFirstStage", Void,
+    DspCInterface.@dsp_ccall("loadFirstStage", Void,
         (Ptr{Void}, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}, Ptr{Cdouble},
             Ptr{Cdouble}, Ptr{UInt8}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}),
             dsp.p, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd)
@@ -151,29 +160,46 @@ function loadStochasticProblem(dsp::DspModel, graph::Plasmo.PlasmoGraph, master:
         linkcons = Plasmo.getlinkconstraints(node)[graph]
         # get model data
         start, index, value, clbd, cubd, ctype, obj, rlbd, rubd = getDataFormat(master,blk,linkcons)
-        @dsp_ccall("loadSecondStage", Void,
+
+
+        # println()
+        # @show start
+        # @show index
+        # @show value
+        # @show clbd
+        # @show cubd
+        # @show ctype
+        # @show obj
+        # @show typeof(obj)
+        # @show rlbd
+        # @show rubd
+        # @show typeof(rlbd)
+
+        #@show probability
+
+        DspCInterface.@dsp_ccall("loadSecondStage", Void,
             (Ptr{Void}, Cint, Cdouble, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}, Ptr{Cdouble},
                 Ptr{Cdouble}, Ptr{UInt8}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}),
             dsp.p, id-1, probability, start, index, value, clbd, cubd, ctype, obj, rlbd, rubd)
     end
-
+    #println(dsp)
 end
 
 #TODO
-function loadDeterministicProblem(dsp::DspModel, model::JuMP.Model)
+function loadDeterministicProblem(dsp::DspCInterface.DspModel, model::JuMP.Model)
     ncols = convert(Cint, model.numCols)
     nrows = convert(Cint, length(model.linconstr))
     start, index, value, clbd, cubd, ctype, obj, rlbd, rubd = getDataFormat(model)
     numels = length(index)
-    @dsp_ccall("loadDeterministic", Void,
+    DspCInterface.@dsp_ccall("loadDeterministic", Void,
         (Ptr{Void}, Ptr{Cint}, Ptr{Cint}, Ptr{Cdouble}, Cint, Cint, Cint,
             Ptr{Cdouble}, Ptr{Cdouble}, Ptr{UInt8}, Ptr{Cdouble}, Ptr{Cdouble}, Ptr{Cdouble}),
             dsp.p, start, index, value, numels, ncols, nrows, clbd, cubd, ctype, obj, rlbd, rubd)
 end
 
 #This is used in getDSPSolution
-function getNumBlockCols(dsp::DspModel, blocks::Dict{Int,JuMP.Model})
-    check_problem(dsp)
+function getNumBlockCols(dsp::DspCInterface.DspModel, blocks::Dict{Int,JuMP.Model})
+    DspCInterface.check_problem(dsp)
     #blocks = m.ext[:DspBlocks].children
     #Might need to be smarter about his
     #blocks = collect(zip(1:length(subproblems),subproblems))
@@ -268,8 +294,9 @@ function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{Uni
 
     linconstr = child.linconstr
     allconstr = [linconstr;linkcons]
-    child_linear_lb = []
-    child_linear_ub = []
+
+    child_linear_lb = Array{Float64}(0)
+    child_linear_ub = Array{Float64}(0)
 
     #rlbd, rubd = JuMP.prepConstrBounds(model)
     for con in allconstr
@@ -291,7 +318,7 @@ function prepChildConstrMatrix(master::JuMP.Model,child::JuMP.Model,linkconstrai
     rind = Int[]
     cind = Int[]
     value = Float64[]
-    linconstr = master.linconstr              #these should be local model constraints
+    linconstr = child.linconstr              #these should be local model constraints
     #linkconstr = getlinkconstraints(node)[graph]#the constraints that connect this model to the parent
     allconstr = [linconstr;linkconstraints]
     for (nrow,con) in enumerate(allconstr)
@@ -340,29 +367,31 @@ end
 function getDspSolution(dspmodel,master,subproblems)
     dspmodel.primVal = DspCInterface.getPrimalBound(dspmodel)
     dspmodel.dualVal = DspCInterface.getDualBound(dspmodel)
-    if Dsp.model.solve_type == :Dual
+    #println(dspmodel.primVal)
+    if dspmodel.solve_type == :Dual
         dspmodel.rowVal = DspCInterface.getDualSolution(dspmodel)
         #Need to get primal solution
     else
         dspmodel.colVal = DspCInterface.getSolution(dspmodel)
+    #    println(dspmodel.colVal)
         if master != nothing
             # parse solution to each block
             #start with the master
             n_start = 1
             n_end = master.numCols
-            master.colVal = Dsp.model.colVal[n_start:n_end]
+            master.colVal = dspmodel.colVal[n_start:n_end]
             n_start += master.numCols
             #if haskey(m.ext, :DspBlocks) == true
             #blocks = m.ext[:DspBlocks].children
-            blocks = collect(zip(1:length(subproblems),subproblems))
-            numBlockCols = DspCInterface.getNumBlockCols(Dsp.model,blocks)
-            for i in 1:Dsp.model.nblocks
+            blocks = Dict(zip(1:length(subproblems),subproblems))
+            numBlockCols = getNumBlockCols(dspmodel,blocks)
+            for i in 1:dspmodel.nblocks
                 n_end += numBlockCols[i]
                 if haskey(blocks, i)
                     # @show b
                     # @show n_start
                     # @show n_end
-                    blocks[i].colVal = Dsp.model.colVal[n_start:n_end]
+                    blocks[i].colVal = dspmodel.colVal[n_start:n_end]
                 end
                 n_start += numBlockCols[i]
             end
@@ -370,12 +399,12 @@ function getDspSolution(dspmodel,master,subproblems)
     end
     #set the graph objective
     if master != nothing
-        master.objVal = Dsp.model.primVal
+        master.objVal = dspmodel.primVal
         # maximization?
-        if m.objSense == :Max
-            m.objVal *= -1
-            Dsp.model.primVal *= -1
-            Dsp.model.dualVal *= -1
+        if master.objSense == :Max
+            master.objVal *= -1
+            dspmodel.primVal *= -1
+            dspmodel.dualVal *= -1
         end
     end
 end

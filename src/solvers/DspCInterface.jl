@@ -141,6 +141,7 @@ function setBlockIds(dsp::DspModel, nblocks::Integer)
     # get block ids with MPI settings
     dsp.block_ids = getBlockIds(dsp)
     #@show dsp.block_ids
+    #@show dsp.block_ids
     # send the block ids to Dsp
     @dsp_ccall("setIntPtrParam", Void, (Ptr{Void}, Ptr{UInt8}, Cint, Ptr{Cint}),
         dsp.p, "ARR_PROC_IDX", convert(Cint, length(dsp.block_ids)), convert(Vector{Cint}, dsp.block_ids - 1))
@@ -267,20 +268,20 @@ end
 function getObjCoef(dsp::DspModel)
     check_problem(dsp)
     num = getTotalNumCols()
-    obj = Array(Cdouble, num)
+    obj = Array{Cdouble}(num)
     @dsp_ccall("getObjCoef", Void, (Ptr{Void}, Ptr{Cdouble}), dsp.p, obj)
     return obj
 end
 
 function getSolution(dsp::DspModel, num::Integer)
-    sol = Array(Cdouble, num)
+    sol = Array{Cdouble}(num)
     @dsp_ccall("getPrimalSolution", Void, (Ptr{Void}, Cint, Ptr{Cdouble}), dsp.p, num, sol)
     return sol
 end
 getSolution(dsp::DspModel) = getSolution(dsp, getTotalNumCols(dsp))
 
 function getDualSolution(dsp::DspModel, num::Integer)
-    sol = Array(Cdouble, num)
+    sol = Array{Cdouble}(num)
     @dsp_ccall("getDualSolution", Void, (Ptr{Void}, Cint, Ptr{Cdouble}), dsp.p, num, sol)
     return sol
 end
