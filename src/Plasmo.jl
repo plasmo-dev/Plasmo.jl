@@ -18,7 +18,7 @@ in_edges,in_degree,in_neighbors,
 out_edges,out_degree,out_neighbors,
 
 #Plasmo graph functions
-add_subgraph!,add_subgraph,
+add_subgraph!,add_subgraph,setsolver,
 
 #Node functions
 create_node,add_node,getsupportingedges,getnodeindex,

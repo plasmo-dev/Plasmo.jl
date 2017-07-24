@@ -8,8 +8,19 @@ is_nodevar(nodeoredge::NodeOrEdge,var::Variable) = getmodel(nodeoredge) == var.m
 #Component Models (A node or edge can have a single model)
 function setmodel!(nodeoredge::NodeOrEdge,m::AbstractModel)
     #update link constraints after setting a model
+    #_updatelinks(m,nodeoredge)
+
     !_assignedtonode(m) || error("the model is already asigned to another node or edge")
     @assert !_assignedtonode(m)  #make sure the model isn't already assigned to a different node
+
+    if hasmodel(nodeoredge)  #if it already had a model, delete all the link constraints corresponding to that model
+        for (graph,constraints) in getlinkconstraints(nodeoredge)
+            local_link_cons = constraints
+            graph_links = getlinkconstraints(graph)
+            filter!(c -> !(c in local_link_cons), graph_links)  #filter out local link constraints
+            nodeoredge.attributes[:LinkData] = NodeLinkData()  #reset the local node or edge link data
+        end
+    end
     nodeoredge.attributes[:model] = m
     m.ext[:node] = nodeoredge
     #set variable names
@@ -19,6 +30,13 @@ function setmodel!(nodeoredge::NodeOrEdge,m::AbstractModel)
 end
 getnode(m::AbstractModel) = m.ext[:node]
 getnode(var::Variable) = var.m.ext[:node]
+
+# TODO  Think of a good way to update links when swapping out models.  Might need to store variable names in NodeLinkData
+# function _updatelinks(m,::AbstractModel,nodeoredge::NodeOrEdge)
+#     link_cons = getlinkconstraints(nodeoredge)
+#     #find variables
+# end
+
 
 _assignedtonode(m::AbstractModel) = haskey(m.ext,:node) #check whether a model is assigned to a node
 _setvarname(nodeoredge::NodeOrEdge,v::Variable) = JuMP.setname(v,string(nodeoredge.label)*"["*getname(v)*"]") #set a variable name when its model gets assigned to a node or edge
@@ -40,6 +58,7 @@ getmodel(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model]
 hasmodel(nodeoredge::NodeOrEdge) = haskey(nodeoredge.attributes,:model)
 getindex(nodeoredge::NodeOrEdge,s::Symbol) = getmodel(nodeoredge)[s]  #get a node or edge variable
 
+#Might make more sense to store all link constraints in one place, and use functions to get the right ones
 getlinkconstraints(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:LinkData].linkconstraintmap
 getlinkconstraints(graph::PlasmoGraph,nodeoredge::NodeOrEdge) = nodeoredge.attributes[:LinkData].linkconstraintmap[graph]
 getlinkconstraints(graph::PlasmoGraph) = graph.attributes[:LinkData].linkconstraints
@@ -90,8 +109,8 @@ function _addlinkconstraint!(graph::PlasmoGraph,con::AbstractConstraint)
 end
 
 function _addlinkconstraint!{T}(graph::PlasmoGraph,cons_refs::Array{AbstractConstraint,T})
-    array_type = typeof(cons_refs)
-    array_type.parameters.length > 1? cons_refs = vec(cons_refs): nothing
+    array_type = typeof(cons_refs)  #get the array type
+    array_type.parameters.length > 1? cons_refs = vec(cons_refs): nothing   #flatten out the constraints into a single vector
     #Check all of the constraints before I add one to the graph
     for con in cons_refs
         vars = con.terms.vars

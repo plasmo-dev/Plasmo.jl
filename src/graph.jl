@@ -52,6 +52,8 @@ end
     Get the index of a subgraph within EACH of its graphs.  Returns 0 if the graph is not a subgraph.
 """
 getindex(graph::PlasmoGraph) = graph.index
+
+setsolver(graph::PlasmoGraph,solver::AbstractMathProgSolver) = graph.solver = solver
 ##############################################################################
 # Nodes
 ##############################################################################
