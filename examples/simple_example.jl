@@ -37,3 +37,4 @@ Plasmo.solve(graph)
 
 println("n1[:x]= ",JuMP.getvalue(n1[:x]))
 println("n2[:x]= ",JuMP.getvalue(n2[:x]))
+println("objective = ", Plasmo.getgraphobjectivevalue(graph))
