@@ -66,9 +66,9 @@ function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,chil
     end
 
     if !(stat == :Infeasible || stat == :Unbounded)
-        getDspSolution(dspmodel,master,submodels)
+        getDspSolution(dspmodel,master,submodels)  #add solution data to master and children models
     end
-
+    Plasmo._setobjectivevalue(graph,dspmodel.primVal)
     # Return the solve status
     return stat
     #return dspmodel

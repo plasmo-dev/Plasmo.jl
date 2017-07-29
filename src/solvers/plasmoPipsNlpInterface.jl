@@ -672,7 +672,7 @@ function pipsnlp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,
         println("Solution time:   ",  toq(), " (s)")
     end
 
-    for (idx,node) in enumerate(modelList)
+    for (idx,node) in enumerate(modelList)  #set solution values for each model
         local_data = getData(node)
         if idx != 1
             coreid = zeros(Int, 1)
@@ -699,6 +699,7 @@ function pipsnlp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,
     status = :Unknown
     if ret == 0
         status = :Solve_Succeeded
+        Plasmo._setobjectivevalue(graph,prob.t_jl_eval_f)
     elseif ret == 1
         status = :Not_Finished
     elseif	ret == 2

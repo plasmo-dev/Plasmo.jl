@@ -59,6 +59,7 @@ end
 dsp_solve(graph,n1,scen_nodes,solve_type = :Benders)  #probabilities are 1/NS by default
 
 @show getvalue(n1[:x])
+@show getgraphobjectivevalue(graph::PlasmoGraph)
 s = 1
 for node in scen_nodes
     println()

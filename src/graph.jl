@@ -56,6 +56,7 @@ getindex(graph::PlasmoGraph) = graph.index
 
 setsolver(graph::PlasmoGraph,solver::AbstractMathProgSolver) = graph.solver = solver
 _setobjectivevalue(graph::PlasmoGraph,num::Number) = graph.objVal = num
+getgraphobjectivevalue(graph::PlasmoGraph) = graph.objVal
 ##############################################################################
 # Nodes
 ##############################################################################

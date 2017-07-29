@@ -67,6 +67,8 @@ if rank == 0
 end
 pipsnlp_solve(graph,master_node,scen_nodes)
 
+@show getgraphobjectivevalue(graph::PlasmoGraph)
+
 # if rank == 0
 #     graph.solver = IpoptSolver()
 #     println()
