@@ -3,6 +3,7 @@ import JuMP:AbstractConstraint,Variable,ConstraintRef
 #Link constraint references for nodes and edges (this is useful for inspecting how a particular node is connected to the rest of the graph)
 type NodeLinkData
     linkconstraintmap::Dict{AbstractPlasmoGraph,Vector{Union{AbstractConstraint,ConstraintRef}}}  #keep track of constraints linking nodes (or edges) to their neighbors
+    #linkvariables::Vector{Variable}
 end
 NodeLinkData() = NodeLinkData(Dict{AbstractPlasmoGraph,Vector{ConstraintRef}}())
 

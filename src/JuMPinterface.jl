@@ -48,13 +48,18 @@ end
 getgraph(m::Model) = haskey(m.ext, :Graph)? m.ext[:Graph] : error("Model is not a graph model")
 getnodes(m::Model) = getnodes(getgraph(m))
 getedges(m::Model) = getedges(getgraph(m))
+
+#TODO
+#Need to account for which graph to get from
 getnode(m::Model,id::Integer) = getnodes(getgraph(m))[id]
-getedge(m::Model,id::Edge) = getedges(getgraph(m))[id]
+getedge(m::Model,id::LightGraphs.Edge) = getedges(getgraph(m))[id]
 #write node constraints, edge constraints, and coupling constraints
 getnodedata(nodeoredge::NodeOrEdge) = getattribute(nodeoredge,:NodeData)
 getnodeobjective(nodeoredge::NodeOrEdge) = hasattribute(nodeoredge,:NodeData)? getattribute(nodeoredge,:NodeData).objective : JuMP.getobjective(getmodel(nodeoredge))
 getnodevariables(nodeoredge::NodeOrEdge) =  hasattribute(nodeoredge,:NodeData)? getattribute(nodeoredge,:NodeData).variablemap : getmodel(nodeoredge).objDict
 getnodeconstraints(nodeoredge::NodeOrEdge) = getattribute(nodeoredge,:NodeData).constraintlist
+
+getindex(nodeoredge::NodeOrEdge,s::Symbol) = hasattribute(nodeoredge,:NodeData)? getattribute(nodeoredge,:NodeData).variablemap[s] : getmodel(nodeoredge)[s]  #get a node or edge variable
 
 #get all of the link constraints from a JuMP model
 function getlinkconstraints(m::JuMP.Model)
@@ -273,7 +278,7 @@ function solve(graph::PlasmoGraph;kwargs...)
     m_flat.solver = graph.solver
     status = JuMP.solve(m_flat,kwargs...)
     if status == :Optimal
-        #Now get our solution data back into the original model
-        setsolution(getgraph(m_flat),graph)
+        setsolution(getgraph(m_flat),graph)           #Now get our solution data back into the original model
+        _setobjectivevalue(graph,JuMP.getobjectivevalue(m_flat))  #Set the graph objective value for easy access
     end
 end
