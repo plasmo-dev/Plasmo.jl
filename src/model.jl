@@ -25,9 +25,9 @@ function setmodel!(nodeoredge::NodeOrEdge,m::AbstractModel)
     nodeoredge.attributes[:model] = m
     m.ext[:node] = nodeoredge
     #set variable names
-    for i = 1:MathProgBase.numvar(m)
-        _setvarname(nodeoredge,Variable(m,i))
-    end
+    # for i = 1:MathProgBase.numvar(m)
+    #     _setvarname(nodeoredge,Variable(m,i))
+    # end
 end
 getnode(m::AbstractModel) = m.ext[:node]
 getnode(var::Variable) = var.m.ext[:node]
@@ -40,7 +40,7 @@ getnode(var::Variable) = var.m.ext[:node]
 
 
 _assignedtonode(m::AbstractModel) = haskey(m.ext,:node) #check whether a model is assigned to a node
-_setvarname(nodeoredge::NodeOrEdge,v::Variable) = JuMP.setname(v,string(nodeoredge.label)*"["*getname(v)*"]") #set a variable name when its model gets assigned to a node or edge
+#_setvarname(nodeoredge::NodeOrEdge,v::Variable) = JuMP.setname(v,string(nodeoredge.label)*"["*getname(v)*"]") #set a variable name when its model gets assigned to a node or edge
 
 #TODO
 #make it possible to reset a model on a node or edge
