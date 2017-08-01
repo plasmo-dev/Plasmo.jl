@@ -197,37 +197,38 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             push!(t,terms)
         end
         reference = @constraint(m, con.lb <= sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.constant <= con.ub)
-        #@constraint(m,reference, con.lb <= sum(t[j][1]*var_map[linearindex(t[j][2])] for j = 1:length(t)) + con.terms.constant <= con.ub)
-        #@constraint(m,reference, )
         push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
     end
     #getattribute(nodeoredge,:NodeData).constraintlist = cons_refs
     #Copy the non-linear constraints to the new model
-    d = JuMP.NLPEvaluator(node_model)         #Get the NLP evaluator object.  Initialize the expression graph
-    MathProgBase.initialize(d,[:ExprGraph])
-    num_cons = MathProgBase.numconstr(node_model)
-    for i = 1:num_cons
-        if !(MathProgBase.isconstrlinear(d,i))    #if it's not a linear constraint
-            expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
-            _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
-            con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
-            push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
+    if JuMP.ProblemTraits(node_model).nlp == true  #If it's a NLP
+        d = JuMP.NLPEvaluator(node_model)         #Get the NLP evaluator object.  Initialize the expression graph
+        MathProgBase.initialize(d,[:ExprGraph])
+        num_cons = MathProgBase.numconstr(node_model)
+        for i = 1:num_cons
+            if !(MathProgBase.isconstrlinear(d,i))    #if it's not a linear constraint
+                expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
+                _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
+                con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
+                push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
+            end
         end
     end
-
     # #If the objective is linear, store it as a node object
     getobjectivesense(node_model) == :Min? sense = 1: sense = -1
-    if MathProgBase.isobjlinear(d)                #get the node model objective.  set it to a node attribute
-        t = []
-        for terms in linearterms(node_model.obj.aff)
-            push!(t,terms)
-        end
-        #t = collect(linearterms(node_model.obj.aff))
-        #Make the objective a minimization
-
-        obj = @objective(m,Min,sense*sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant)
-        getattribute(nodeoredge,:NodeData).objective = m.obj
-    elseif MathProgBase.isobjquadratic(d)
+    # if MathProgBase.isobjlinear(d)                #get the node model objective.  set it to a node attribute
+    #     t = []
+    #     for terms in linearterms(node_model.obj.aff)
+    #         push!(t,terms)
+    #     end
+    #     #t = collect(linearterms(node_model.obj.aff))
+    #     #Make the objective a minimization
+    #
+    #     obj = @objective(m,Min,sense*sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant)
+    #     getattribute(nodeoredge,:NodeData).objective = m.obj
+    #elseif MathProgBase.isobjquadratic(d)
+    nlp = node_model.nlpdata
+    if nlp == nothing  || (nlp !== nothing && nlp.nlobj == nothing)
         #Get the linear terms
         t = []
         for terms in linearterms(node_model.obj.aff)

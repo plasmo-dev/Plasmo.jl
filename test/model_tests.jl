@@ -2,6 +2,8 @@ import JuMP
 import Plasmo
 import Ipopt
 
+
+#Need to create standard optimization models to test against.  Check solution values
 #Create a Graph Model
 graph = Plasmo.GraphModel()
 #graph = Plasmo.getgraph(model)
