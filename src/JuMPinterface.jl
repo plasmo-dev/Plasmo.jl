@@ -1,7 +1,7 @@
 #This file contains all of the constructs to create and manage a JuMP GraphModel.  The idea is that you use PLASMO to create your graph, associate models, and build the
 #flattened model which JuMP can always solve in serial.
 
-import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue
+import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue,getvalue
 import MathProgBase
 
 #typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
@@ -20,10 +20,24 @@ function FlatGraphModel()
     return m
 end
 
+
 #define some setvalue functions for convenience when dealing with JuMP JuMPArray type
 setvalue(jarr1::JuMP.JuMPArray,jarr2::JuMP.JuMPArray) = setvalue(jarr1.innerArray,jarr2.innerArray)
 setvalue(jarr1::JuMP.JuMPArray,jarr2::Array) = setvalue(jarr1.innerArray,jarr2)
 setvalue(jarr1::Array,jarr2::JuMP.JuMPArray) = setvalue(jarr1,jarr2.innerArray)
+
+#define some getvalue and setvalue functions for dealing with JuMPDict objects.
+function setvalue(dict::Dict,jdict::JuMP.JuMPDict)
+    for key in keys(dict)
+        jdict.tupledict[key] = dict[key]
+    end
+end
+
+function setvalue(jdict::JuMP.JuMPDict,dict::Dict)
+    for key in keys(jdict.tupledict)
+        dict[key] = jdict.tupledict[key]
+    end
+end
 
 is_graphmodel(m::Model) = haskey(m.ext,:Graph)? true : false  #check if the model is a graph model
 
@@ -160,27 +174,38 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
         setname(x,new_name)       #rename the variable to the node model variable name plus the node or edge name
         setcategory(x,node_model.colCat[i])                                  #set the variable to the same category
         setvalue(x,node_model.colVal[i])                                     #set the variable to the same value
-        var_map[i] = x                                                       # map the linear index of the node model variable to the new variable
+        var_map[i] = x                                                       #map the linear index of the node model variable to the new variable
         index_map[i] = linearindex(x)
         m.objDict[Symbol(new_name)] = x #Update master model variable dictionary
     end
     #setup the node_map dictionary.  This maps the node model's variable keys to variables in the newly constructed model.
+    #TODO Reconstruct the appropriate JuMP containers
     for key in keys(node_model.objDict)  #this contains both variable and constraint references
         if isa(node_model.objDict[key],Union{JuMP.JuMPArray{Variable},Array{Variable}})     #if the JuMP variable is an array or a JuMPArray
             vars = node_model.objDict[key]
             isa(vars,JuMP.JuMPArray)? vars = vars.innerArray : nothing
-            # if isa(vars,JuMP.JuMPArray)
-            #     vars = vars.innerArray
-            # end
             dims = JuMP.size(vars)
             node_map[key] = Array{JuMP.Variable}(dims)
             for j = 1:length(vars)
                 var = vars[j]
                 node_map[key][j] = var_map[linearindex(var)]
             end
+
+        #reproduce the same mapping in a dictionary
+        elseif isa(node_model.objDict[key],JuMP.JuMPDict)
+            tdict = node_model.objDict[key].tupledict  #get the tupledict
+            d_tmp = Dict()
+            for dkey in keys(tdict)
+                d_tmp[dkey] = var_map[linearindex(tdict[dkey])]
+            end
+            node_map[key] = d_tmp
+
         elseif isa(node_model.objDict[key],Variable) #else it's a single variable
             node_map[key] = var_map[linearindex(node_model.objDict[key])]
             #node_map[key] = var_map[node_model.objDict[key].col]
+
+        else
+            error("Did not recognize the type of a JuMP variable")
         end
     end
 
@@ -260,13 +285,20 @@ function _splicevars!(expr::Expr,var_map::Dict)
 end
 
 #copy the solution from one graph to another where nodes and variables match
+#TODO fix for dictionaries
 function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
     for (index,nodeoredge) in getnodesandedges(graph1)
         nodeoredge2 = getnodeoredge(graph2,index)       #get the corresponding node or edge in graph2
         for (key,var) in getnodevariables(nodeoredge)
-            var2 = nodeoredge2[key]
-            vals = JuMP.getvalue(var)
-            setvalue(var2,vals)  #the dimensions have to line up
+            var2 = nodeoredge2[key]  #should be the original graph node or edge
+            if isa(var,JuMP.JuMPArray) || isa(var,Array) || isa(var,JuMP.Variable)
+                vals = JuMP.getvalue(var)  #get value of the
+                setvalue(var2,vals)  #the dimensions have to line up for arrays
+            elseif isa(var,JuMP.JuMPDict) || isa(var,Dict)
+                setvalue(var,var2)
+            else
+                error("encountered a variable type not recognized")
+            end
         end
     end
 end
