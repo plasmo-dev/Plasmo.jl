@@ -190,7 +190,6 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
                 var = vars[j]
                 node_map[key][j] = var_map[linearindex(var)]
             end
-
         #reproduce the same mapping in a dictionary
         elseif isa(node_model.objDict[key],JuMP.JuMPDict)
             tdict = node_model.objDict[key].tupledict  #get the tupledict
@@ -200,12 +199,12 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             end
             node_map[key] = d_tmp
 
-        elseif isa(node_model.objDict[key],Variable) #else it's a single variable
+        elseif isa(node_model.objDict[key],JuMP.Variable) #else it's a single variable
             node_map[key] = var_map[linearindex(node_model.objDict[key])]
             #node_map[key] = var_map[node_model.objDict[key].col]
 
-        else
-            error("Did not recognize the type of a JuMP variable")
+        # else #objDict also has contraints!
+        #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
         end
     end
 
@@ -285,7 +284,6 @@ function _splicevars!(expr::Expr,var_map::Dict)
 end
 
 #copy the solution from one graph to another where nodes and variables match
-#TODO fix for dictionaries
 function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
     for (index,nodeoredge) in getnodesandedges(graph1)
         nodeoredge2 = getnodeoredge(graph2,index)       #get the corresponding node or edge in graph2
