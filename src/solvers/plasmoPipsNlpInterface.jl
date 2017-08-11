@@ -447,6 +447,11 @@ function pipsnlp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,
         node = modelList[id+1]
         local_data = getData(node)
         local_data.x_sol = copy(x)
+	if id == 0
+            node.objVal = str_eval_f(id, x, nothing)
+        else
+            node.objVal = str_eval_f(id, nothing, x)
+        end
         r = MPI.Comm_rank(comm)
         local_data.coreid = r
     end
@@ -669,7 +674,7 @@ function pipsnlp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,
         println("eval_h  ",  prob.t_jl_eval_h)
         println("str_eval_h ",  prob.t_jl_str_eval_h)
         println("eval_write_solution  ",  prob.t_jl_write_solution)
-        println("Solution time:   ",  toq(), " (s)")
+        println("PIPS-NLP time:   ",  toq(), " (s)")
     end
 
     for (idx,node) in enumerate(modelList)  #set solution values for each model
@@ -698,7 +703,7 @@ function pipsnlp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,
 
     status = :Unknown
     if ret == 0
-        status = :Solve_Succeeded
+        status = :Optimal
         Plasmo._setobjectivevalue(graph,prob.t_jl_eval_f)
     elseif ret == 1
         status = :Not_Finished
