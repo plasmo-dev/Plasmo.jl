@@ -2,7 +2,7 @@ import JuMP
 import Plasmo
 import Ipopt
 
-
+println("Testing Basic Model Functions")
 #Need to create standard optimization models to test against.  Check solution values
 #Create a Graph Model
 graph = Plasmo.GraphModel()

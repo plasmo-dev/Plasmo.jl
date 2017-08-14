@@ -148,6 +148,7 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
     var_map = Dict()              #this dict will map linear index of the node model variables to the new model JuMP variables {node var index => flat model JuMP.Variable}
     node_map = Dict()             #nodemap. {varkey => [var1,var2,...]}
     index_map = Dict()            #{var index in node => var index in flat model}
+
     #add the node model variables to the new model
     for i = 1:num_vars
         x = JuMP.@variable(m)            #create an anonymous variable
@@ -163,7 +164,8 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
         m.objDict[Symbol(new_name)] = x #Update master model variable dictionary
     end
     #setup the node_map dictionary.  This maps the node model's variable keys to variables in the newly constructed model.
-    #TODO Reconstruct the appropriate JuMP containers
+
+    #TODO Reconstruct the appropriate JuMP containers (Need to figure out how to actually construct these)
     for key in keys(node_model.objDict)  #this contains both variable and constraint references
         if isa(node_model.objDict[key],Union{JuMP.JuMPArray{Variable},Array{Variable}})     #if the JuMP variable is an array or a JuMPArray
             vars = node_model.objDict[key]
@@ -191,12 +193,10 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
         #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
         end
     end
-
     getattribute(nodeoredge,:NodeData).variablemap = node_map
     getattribute(nodeoredge,:NodeData).indexmap = index_map
-    #getnodevariables(nodeoredge) = node_map
+
     #copy the linear constraints to the new model
-    #cons_refs = ConstraintRef[]
     for i = 1:length(node_model.linconstr)
         con = node_model.linconstr[i]
         #t = collect(linearterms(con.terms))  #This is broken in julia 0.5
@@ -207,19 +207,46 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
         reference = @constraint(m, con.lb <= sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.constant <= con.ub)
         push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
     end
-    #getattribute(nodeoredge,:NodeData).constraintlist = cons_refs
+
+    #copy the quadratic constraints to the new model
+    for i = 1:length(node_model.quadconstr)
+        con = node_model.quadconstr[i]
+        #collect the linear terms
+        t = []
+        for terms in linearterms(con.terms.aff)
+            push!(t,terms)
+        end
+        qcoeffs =con.terms.qcoeffs
+        qvars1 = con.terms.qvars1
+        qvars2 = con.terms.qvars2
+        #Might be a better way to do this
+        if con.sense == :(==)
+            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant == 0)
+        elseif con.sense == :(<=)
+            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant <= 0)
+        elseif con.sense == :(>=)
+            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant >= 0)
+        end
+
+        push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+    end
+
     #Copy the non-linear constraints to the new model
-    if JuMP.ProblemTraits(node_model).nlp == true  #If it's a NLP
-        d = JuMP.NLPEvaluator(node_model)         #Get the NLP evaluator object.  Initialize the expression graph
+    if JuMP.ProblemTraits(node_model).nlp == true   #If it's a NLP
+        d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
         MathProgBase.initialize(d,[:ExprGraph])
         num_cons = MathProgBase.numconstr(node_model)
-        for i = 1:num_cons
-            if !(MathProgBase.isconstrlinear(d,i))    #if it's not a linear constraint
-                expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
-                _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
-                con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
-                push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
-            end
+        start_index = length(node_model.linconstr) + length(node_model.quadconstr) + 1 # the start index for nonlinear constraints
+        for i = start_index:num_cons
+            #if !(MathProgBase.isconstrlinear(d,i))    #if it's not a linear constraint
+            expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
+            _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
+            con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
+            push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
+            #end
         end
     end
     # #If the objective is linear, store it as a node object
