@@ -20,9 +20,6 @@ function FlatGraphModel()
     return m
 end
 
-
-
-
 is_graphmodel(m::Model) = haskey(m.ext,:Graph)? true : false  #check if the model is a graph model
 
 #Add nodes and edges to graph models.  These are used for model instantiation from a graph
@@ -230,10 +227,10 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
             sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant >= 0)
         end
-
         push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
     end
 
+    getobjectivesense(node_model) == :Min? sense = 1: sense = -1
     #Copy the non-linear constraints to the new model
     if JuMP.ProblemTraits(node_model).nlp == true   #If it's a NLP
         d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
@@ -248,20 +245,27 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
             #end
         end
+        #Also check for nonlinear objective here
+        #TODO Find way to add nonlinear objectives together
+        if node_model.nlpdata.nlobj != nothing
+            warn("Plasmo does not yet support aggregating nonlinear objectives")
+        end
+        #One possible way to go about this
+        # ex1 = MathProgBase.obj_expr(d1)
+        # ex2 = MathProgBase.obj_expr(d2)
+        # newexpr = Expr(:call, :+, copy(ex1), copy(ex2))
+        # JuMP.setNLobjective(m, P.objSense, newexpr)
+
+        #     obj_expr = MathProgBase.obj_expr(d)
+        #     _splicevars!(obj_expr,var_map)
+        #     obj = JuMP.setNLobjective(m,:Min,obj_expr)
+        #     if sense == -1
+        #         JuMP.setobjectivesense(m,)
+        #     end
+        # end
     end
-    # #If the objective is linear, store it as a node object
-    getobjectivesense(node_model) == :Min? sense = 1: sense = -1
-    # if MathProgBase.isobjlinear(d)                #get the node model objective.  set it to a node attribute
-    #     t = []
-    #     for terms in linearterms(node_model.obj.aff)
-    #         push!(t,terms)
-    #     end
-    #     #t = collect(linearterms(node_model.obj.aff))
-    #     #Make the objective a minimization
-    #
-    #     obj = @objective(m,Min,sense*sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant)
-    #     getattribute(nodeoredge,:NodeData).objective = m.obj
-    #elseif MathProgBase.isobjquadratic(d)
+
+    #If the objective is linear
     nlp = node_model.nlpdata
     if nlp == nothing  || (nlp !== nothing && nlp.nlobj == nothing)
         #Get the linear terms
@@ -273,11 +277,11 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
         qcoeffs = node_model.obj.qcoeffs
         qvars1 = node_model.obj.qvars1
         qvars2 = node_model.obj.qvars2
-        obj = @objective(m,Min,sense*(sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) + sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant))
+        obj = @objective(m,Min,sense*(sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+        sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant))
         getattribute(nodeoredge,:NodeData).objective = m.obj
     end
     return m
-    #I don't have the non-linear objective yet, but it shouldn't be any different than the constraints.
 end
 
 #splice variables into a constraint expression
@@ -342,7 +346,6 @@ function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
             var2 = nodeoredge2[key]
             if isa(var,JuMP.JuMPArray) || isa(var,Array)# || isa(var,JuMP.Variable)
                 vals = JuMP.getvalue(var)  #get value of the
-                #println(vals)
                 Plasmo.setarrayvalue(var2,vals)  #the dimensions have to line up for arrays
             elseif isa(var,JuMP.JuMPDict) || isa(var,Dict)
                 Plasmo.setvalue(var,var2)
@@ -352,11 +355,14 @@ function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
                 error("encountered a variable type not recognized")
             end
         end
+        #TODO Also set the node objectives
+        m = getmodel(nodeoredge2)
+        m.objVal = getvalue(m.obj)
     end
 end
 
 function solve(graph::PlasmoGraph;kwargs...)
-    println("Creating flattened graph model...")
+    println("Aggregating Models...")
     m_flat = create_flat_graph_model(graph)
     println("Finished model instantiation")
     m_flat.solver = graph.solver
