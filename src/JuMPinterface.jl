@@ -21,23 +21,7 @@ function FlatGraphModel()
 end
 
 
-#define some setvalue functions for convenience when dealing with JuMP JuMPArray type
-setvalue(jarr1::JuMP.JuMPArray,jarr2::JuMP.JuMPArray) = setvalue(jarr1.innerArray,jarr2.innerArray)
-setvalue(jarr1::JuMP.JuMPArray,jarr2::Array) = setvalue(jarr1.innerArray,jarr2)
-setvalue(jarr1::Array,jarr2::JuMP.JuMPArray) = setvalue(jarr1,jarr2.innerArray)
 
-#define some getvalue and setvalue functions for dealing with JuMPDict objects.
-function setvalue(dict::Dict,jdict::JuMP.JuMPDict)
-    for key in keys(dict)
-        jdict.tupledict[key] = dict[key]
-    end
-end
-
-function setvalue(jdict::JuMP.JuMPDict,dict::Dict)
-    for key in keys(jdict.tupledict)
-        dict[key] = jdict.tupledict[key]
-    end
-end
 
 is_graphmodel(m::Model) = haskey(m.ext,:Graph)? true : false  #check if the model is a graph model
 
@@ -221,8 +205,6 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             push!(t,terms)
         end
         reference = @constraint(m, con.lb <= sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.constant <= con.ub)
-        #@constraint(m,reference, con.lb <= sum(t[j][1]*var_map[linearindex(t[j][2])] for j = 1:length(t)) + con.terms.constant <= con.ub)
-        #@constraint(m,reference, )
         push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
     end
     #getattribute(nodeoredge,:NodeData).constraintlist = cons_refs
@@ -283,17 +265,59 @@ function _splicevars!(expr::Expr,var_map::Dict)
     end
 end
 
+#define some setvalue functions for convenience when dealing with JuMP JuMPArray type
+#dimension of jarr2 must be greater than jarr1
+function setarrayvalue(jarr1::JuMP.JuMPArray,jarr2::JuMP.JuMPArray)# = setvalue(jarr1.innerArray,jarr2.innerArray)
+    for i = 1:length(jarr2.innerArray)
+        JuMP.setvalue(jarr1[i],jarr2[i])
+    end
+end
+
+function setarrayvalue(jarr1::Array,jarr2::Array)# = setvalue(jarr1.innerArray,jarr2.innerArray)
+    for i = 1:length(jarr2)
+        JuMP.setvalue(jarr1[i],jarr2[i])
+    end
+end
+
+function setarrayvalue(jarr1::JuMP.JuMPArray,jarr2::Array) # = setvalue(jarr1.innerArray,jarr2)
+    for i = 1:length(jarr2)
+        JuMP.setvalue(jarr1.innerArray[i],jarr2[i])
+    end
+end
+
+function setarrayvalue(jarr1::Array,jarr2::JuMP.JuMPArray) # = setvalue(jarr1,jarr2.innerArray)
+    for i = 1:length(jarr2)
+        JuMP.setvalue(jarr1[i],jarr2.innerArray[i])
+    end
+end
+
+#define some getvalue and setvalue functions for dealing with JuMPDict objects.
+function setvalue(dict::Dict,jdict::JuMP.JuMPDict)
+    for key in keys(dict)
+        jdict.tupledict[key] = dict[key]
+    end
+end
+
+function setvalue(jdict::JuMP.JuMPDict,dict::Dict)
+    for key in keys(jdict.tupledict)
+        dict[key] = jdict.tupledict[key]
+    end
+end
+
 #copy the solution from one graph to another where nodes and variables match
 function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
     for (index,nodeoredge) in getnodesandedges(graph1)
         nodeoredge2 = getnodeoredge(graph2,index)       #get the corresponding node or edge in graph2
         for (key,var) in getnodevariables(nodeoredge)
-            var2 = nodeoredge2[key]  #should be the original graph node or edge
-            if isa(var,JuMP.JuMPArray) || isa(var,Array) || isa(var,JuMP.Variable)
+            var2 = nodeoredge2[key]
+            if isa(var,JuMP.JuMPArray) || isa(var,Array)# || isa(var,JuMP.Variable)
                 vals = JuMP.getvalue(var)  #get value of the
-                setvalue(var2,vals)  #the dimensions have to line up for arrays
+                #println(vals)
+                Plasmo.setarrayvalue(var2,vals)  #the dimensions have to line up for arrays
             elseif isa(var,JuMP.JuMPDict) || isa(var,Dict)
-                setvalue(var,var2)
+                Plasmo.setvalue(var,var2)
+            elseif isa(var,JuMP.Variable)
+                JuMP.setvalue(var2,JuMP.getvalue(var))
             else
                 error("encountered a variable type not recognized")
             end
