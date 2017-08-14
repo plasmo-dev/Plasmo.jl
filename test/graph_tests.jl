@@ -2,6 +2,7 @@
 using Plasmo
 using LightGraphs
 
+println("Testing Basic Graph Functions")
 #Test PlasmoGraph constructor
 g = PlasmoGraph()
 

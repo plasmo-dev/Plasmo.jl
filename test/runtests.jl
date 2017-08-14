@@ -6,3 +6,7 @@ using Base.Test
 
 #Test basic model functionality
 @test include("model_tests.jl")
+
+
+#Special Test Problems
+@test include("StochPIDTuning_Plasmo.jl")

@@ -1,5 +1,5 @@
 import JuMP: isexpr, constraint_error, quot, getname, buildrefsets,_canonicalize_sense,parseExprToplevel, AffExpr, getloopedcode,addtoexpr_reorder,
-constructconstraint!,ConstraintRef,AbstractConstraint,@constraint,JuMPArray,JuMPDict
+constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict
 
 """
     @linkconstraint(graph,args...)
@@ -31,6 +31,8 @@ macro linkconstraint(graph,args...)
 end
 
 macro NLlinkconstraint(graph,args...) end
+
+macro graphobjective(graph,args...) end
 
 #generate a list of constraints, but don't attach them to the model @Might be the same as JuMP.LinearConstraints
 macro getconstraintlist(args...)

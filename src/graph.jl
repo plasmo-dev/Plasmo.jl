@@ -1,7 +1,7 @@
 import LightGraphs:AbstractGraph,Graph,DiGraph,add_vertex!,add_edge!,nv,ne,vertices,edges,in_neighbors,out_neighbors,in_edges,out_edges,src,dst,degree
 import Base:show,print,string,getindex,copy
 import LightGraphs
-import JuMP:Model,UnsetSolver
+import JuMP:Model,UnsetSolver,setsolver,getobjectivevalue
 import MathProgBase.SolverInterface:AbstractMathProgSolver
 
 ##############################################################################
