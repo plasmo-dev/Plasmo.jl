@@ -371,4 +371,5 @@ function solve(graph::PlasmoGraph;kwargs...)
         setsolution(getgraph(m_flat),graph)           #Now get our solution data back into the original model
         _setobjectivevalue(graph,JuMP.getobjectivevalue(m_flat))  #Set the graph objective value for easy access
     end
+    return status
 end
