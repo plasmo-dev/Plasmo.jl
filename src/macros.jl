@@ -1,5 +1,5 @@
 import JuMP: isexpr, constraint_error, quot, getname, buildrefsets,_canonicalize_sense,parseExprToplevel, AffExpr, getloopedcode,addtoexpr_reorder,
-constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict
+constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict,addkwargs!,coeftype
 
 """
     @linkconstraint(graph,args...)
@@ -57,6 +57,9 @@ macro getconstraintlist(args...)
         end
         x = args[1]
         extra = args[2:end]
+        # x = args[2]
+        # extra = args[3:end]
+
 
         # Two formats:
         #@constraint(m, a*x <= 5)
@@ -65,6 +68,7 @@ macro getconstraintlist(args...)
         # Canonicalize the arguments
         c = length(extra) == 1 ? x        : gensym()  #this is either the index set or a generated variable
         x = length(extra) == 1 ? extra[1] : x         #this is always the constraint expression
+
         anonvar = isexpr(c, :vect) || isexpr(c, :vcat) || length(extra) != 1
         variable = gensym()
         quotvarname = quot(getname(c))
@@ -72,8 +76,7 @@ macro getconstraintlist(args...)
         if isa(x, Symbol)
             constraint_error(args, "Incomplete constraint specification $x. Are you missing a comparison (<=, >=, or ==)?")
         end
-        (x.head == :block) &&
-          constraint_error(args, "Code block passed as constraint. Perhaps you meant to use @constraints instead?")
+        (x.head == :block) && constraint_error(args, "Code block passed as constraint. Perhaps you meant to use @constraints instead?")
          refcall, idxvars, idxsets, idxpairs, condition = buildrefsets(c, variable)
         if isexpr(x, :call)
             if x.args[1] == :in
@@ -93,9 +96,66 @@ macro getconstraintlist(args...)
                 q = zero(AffExpr)
                 $parsecode
                 $(refcall) = $constraintcall
+            end
+        elseif isexpr(x, :comparison)
+            # Ranged row
+            (lsign,lvectorized) = _canonicalize_sense(x.args[2])
+            (rsign,rvectorized) = _canonicalize_sense(x.args[4])
+            if (lsign != :(<=)) || (rsign != :(<=))
+                constraint_error(args, "Only ranged rows of the form lb <= expr <= ub are supported.")
+            end
+            ((vectorized = lvectorized) == rvectorized) || constraint_error("Signs are inconsistently vectorized")
+            addconstr = (lvectorized ? :addVectorizedConstraint : :addconstraint)
+            x_str = string(x)
+            lb_str = string(x.args[1])
+            ub_str = string(x.args[5])
+            newaff, parsecode = parseExprToplevel(x.args[3],:aff)
+
+            newlb, parselb = parseExprToplevel(x.args[1],:lb)
+            newub, parseub = parseExprToplevel(x.args[5],:ub)
+
+            constraintcall = :(constructconstraint!($newaff,$newlb,$newub))
+            addkwargs!(constraintcall, kwargs.args)
+            code = quote
+                aff = zero(AffExpr)
+                $parsecode
+                lb = 0.0
+                $parselb
+                ub = 0.0
+                $parseub
+            end
+            if vectorized
+                code = quote
+                    $code
+                    lbval, ubval = $newlb, $newub
+                end
+            else
+                code = quote
+                    $code
+                    CoefType = coeftype($newaff)
+                    try
+                        lbval = convert(CoefType, $newlb)
+                    catch
+                        constraint_error($args, string("Expected ",$lb_str," to be a ", CoefType, "."))
+                    end
+                    try
+                        ubval = convert(CoefType, $newub)
+                    catch
+                        constraint_error($args, string("Expected ",$ub_str," to be a ", CoefType, "."))
+                    end
+                end
+            end
+            code = quote
+                $code
+                $(refcall) = $constraintcall
+            end
+        else
+            # Unknown
+            constraint_error(args, string("Constraints must be in one of the following forms:\n" *
+                  "       expr1 <= expr2\n" * "       expr1 >= expr2\n" *
+                  "       expr1 == expr2\n" * "       lb <= expr <= ub"))
         end
-        loopedcode = getloopedcode(variable, code, condition, idxvars, idxsets, idxpairs, :AbstractConstraint)  #trying abstract constraint
-    end
+    loopedcode = getloopedcode(variable, code, condition, idxvars, idxsets, idxpairs, :AbstractConstraint)  #trying abstract constraint
     return quote
       $loopedcode
       $escvarname

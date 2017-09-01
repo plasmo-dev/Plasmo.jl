@@ -356,8 +356,10 @@ function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
             end
         end
         #TODO Also set the node objectives
-        m = getmodel(nodeoredge2)
-        m.objVal = getvalue(m.obj)
+        if hasmodel(nodeoredge2)
+            m = getmodel(nodeoredge2)
+            m.objVal = getvalue(m.obj)
+        end
     end
 end
 
