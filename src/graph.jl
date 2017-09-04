@@ -1,7 +1,7 @@
 import LightGraphs:AbstractGraph,Graph,DiGraph,add_vertex!,add_edge!,nv,ne,vertices,edges,in_neighbors,out_neighbors,in_edges,out_edges,src,dst,degree
 import Base:show,print,string,getindex,copy
 import LightGraphs
-import JuMP:Model,UnsetSolver,setsolver,getobjectivevalue
+import JuMP:AbstractModel,Model,UnsetSolver,setsolver,getobjectivevalue,setobjective,AffExpr,Variable
 import MathProgBase.SolverInterface:AbstractMathProgSolver
 
 ##############################################################################
@@ -10,17 +10,18 @@ import MathProgBase.SolverInterface:AbstractMathProgSolver
 #A PlasmoGraph encapsulates a pure graph object wherein nodes and edges are integers and pairs of integers respectively
 "The PlasmoGraph Type.  Contains a reference to a LightGraphs.Graph "
 type PlasmoGraph <: AbstractPlasmoGraph
-    graph::AbstractGraph            #A lightgraph!
+    graph::AbstractGraph                        #The underlying lightgraph
     label::Symbol
-    index::Integer  #The index of this graph within a higher level graph (i.e. its index in another graph's subgraphlist) 0 means it isn't a subgraph
+    index::Integer                              #The index of this graph within a higher level graph (i.e. its index in another graph's subgraphlist) 0 means it isn't a subgraph
     subgraphlist::Vector{AbstractPlasmoGraph}   #How plasmo manages structure
     attributes::Dict{Any,Any}                   #e.g. LinkData; might make primary attributes (like models) into actual fields
     nodes::Dict{Int,AbstractNode}               #Includes nodes in the subgraphs as well
     edges::Dict{LightGraphs.Edge,AbstractEdge}  #Includes edges in the subgraphs as well
     #nodemap::Dict{Symbol,AbstractNode}         #I'm thinking about also including node and edge maps to reference nodes and edges by a symbol
     #edgemap::Dict{Symbol,AbstractNode}
-    solver::AbstractMathProgSolver #for solve(graph)
+    solver::AbstractMathProgSolver              #for solve(graph)
     objVal::Number
+    objective
 end
 
 """
@@ -28,7 +29,7 @@ PlasmoGraph()
 
 Creates an empty PlasmoGraph
 """
-PlasmoGraph() = PlasmoGraph(DiGraph(),gensym(),0,AbstractGraph[],Dict(:LinkData => GraphLinkData()),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),UnsetSolver(),NaN)
+PlasmoGraph() = PlasmoGraph(DiGraph(),gensym(),0,AbstractGraph[],Dict(:LinkData => GraphLinkData()),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),UnsetSolver(),NaN,nothing)
 const GraphModel = PlasmoGraph
 
 """
@@ -37,7 +38,7 @@ PlasmoGraph(::AbstractGraph)
 Creates a PlasmoGraph given a LightGraph object
 """
 function PlasmoGraph(g::AbstractGraph)  #build a graph from a LightGraph
-    pgraph = PlasmoGraph(g,gensym(),0,AbstractGraph[],Dict(:LinkData => GraphLinkData()),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),UnsetSolver(),NaN)
+    pgraph = PlasmoGraph(g,gensym(),0,AbstractGraph[],Dict(:LinkData => GraphLinkData()),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),UnsetSolver(),NaN,nothing)
     for vertex in vertices(g)
         pgraph.nodes[vertex] = PlasmoNode(Dict(pgraph => vertex),Symbol("node"*string(vertex)),Dict())
     end
@@ -57,6 +58,21 @@ getindex(graph::PlasmoGraph) = graph.index
 setsolver(graph::PlasmoGraph,solver::AbstractMathProgSolver) = graph.solver = solver
 _setobjectivevalue(graph::PlasmoGraph,num::Number) = graph.objVal = num
 getgraphobjectivevalue(graph::PlasmoGraph) = graph.objVal
+getobjectivevalue(graph::PlasmoGraph) = graph.objVal
+
+# setobjective(graph::PlasmoGraph, sense::Symbol, x::Variable) = setobjective(graph, sense, convert(AffExpr,x))
+# function setobjective(m::Model, sense::Symbol, a::AffExpr)
+#     if length(graph.obj.qvars1) != 0
+#         # Go through the quadratic path so that we properly clear
+#         # current quadratic terms.
+#         setobjective(graph, sense, convert(QuadExpr,a))
+#     else
+#         setobjectivesense(m, sense)
+#         m.obj = convert(QuadExpr,a)
+#     end
+# end
+
+
 ##############################################################################
 # Nodes
 ##############################################################################
@@ -91,6 +107,7 @@ create_node() = PlasmoNode()
 add_node!(g::PlasmoGraph) = PlasmoNode(g)
 add_vertex!(g::PlasmoGraph) = PlasmoNode(g)
 add_vertex!(g::PlasmoGraph,node::PlasmoNode) = add_node!(g,node)
+
 
 ##############################################################################
 # Edges
@@ -142,6 +159,9 @@ getnodeoredge(g::PlasmoGraph,i::Union{Int,LightGraphs.Edge}) = isa(i,Int)? getno
 
 getnodeindex(g::PlasmoGraph,node::PlasmoNode) = node.index[g]
 getedgeindex(g::PlasmoGraph,edge::PlasmoEdge) = edge.index[g]
+
+copy(node::PlasmoNode) = nothing
+copy(edge::PlasmoEdge) = nothing
 
 """
     getindex(::PlasmoGraph,::NodeOrEdge)

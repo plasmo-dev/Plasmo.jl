@@ -74,6 +74,8 @@ function create_flat_graph_model(graph::PlasmoGraph)
     #copy number of subgraphs (might need recursive function here!)
     _copy_subgraphs!(graph,flat_graph)
     #first copy all nodes, then setup all the subgraphs
+    var_maps = Dict()
+    #COPY NODE MODELS
     for (index,node) in getnodes(graph)
         new_node = add_node!(flat_model,index = index)  #create the node and add a vertex to the top level graph.  We pass the index explicity for this graph
         node_index = getindex(node) #returns dict of {graph => index}
@@ -88,11 +90,12 @@ function create_flat_graph_model(graph::PlasmoGraph)
         end
         if hasmodel(node)
             node_model = getmodel(node)
-            _buildnodemodel!(flat_model,new_node,node_model)
+            m,var_map = _buildnodemodel!(flat_model,new_node,node_model)
+            var_maps[new_node] = var_map
         end
     end
 
-    #copy edges  #edge indices need to work like node indices
+    #COPY EDGE MODLES
     for (index,edge) in getedges(graph)
         pair = getindex(graph,edge)
         new_nodes = getsupportingnodes(flat_graph,pair)
@@ -109,13 +112,13 @@ function create_flat_graph_model(graph::PlasmoGraph)
 
         if hasmodel(edge)
             edge_model = getmodel(edge)
-            _buildnodemodel!(flat_model,new_edge,edge_model)
+            m,var_map = _buildnodemodel!(flat_model,new_edge,edge_model)
+            var_maps[new_edge] = var_map
         end
     end
 
-    #add the linking constraints
+    #LINK CONSTRAINTS
     #inspect the link constraints, and map them to variables within flat model
-    #Check all of the subgraph link constraints as well
     for linkconstraint in get_all_linkconstraints(graph)
         indexmap = Dict() #{node variable => flat variable index} Need index of node variables to flat model variables
         vars = linkconstraint.terms.vars
@@ -133,10 +136,92 @@ function create_flat_graph_model(graph::PlasmoGraph)
         end
         con_reference = @constraint(flat_model, linkconstraint.lb <= sum(t[i][1]*JuMP.Variable(flat_model,indexmap[(t[i][2])]) for i = 1:length(t)) + linkconstraint.terms.constant <= linkconstraint.ub)
     end
+
+    #OBJECTIVE
     #sum the objectives by default
-    @objective(flat_model,Min,sum(getnodeobjective(nodeoredge) for nodeoredge in values(getnodesandedges(flat_graph))))
+    has_nonlinear_obj = false   #check if any nodes have nonlinear objectives
+    for (id,node) in getnodesandedges(graph)
+        node_model = getmodel(node)
+        nlp = node_model.nlpdata
+        if nlp != nothing && nlp.nlobj != nothing
+            has_nonlinear_obj = true
+            break
+        end
+    end
+
+    if has_nonlinear_obj  == false #just sum linear or quadtratic objectives
+        @objective(flat_model,Min,sum(getnodeobjective(nodeoredge) for nodeoredge in values(getnodesandedges(flat_graph))))
+
+    elseif has_nonlinear_obj == true  #build up the objective expression and splice in variables.  Cast all objectives as nonlinear
+        obj = :(0)
+
+        for (id,node) in getnodesandedges(flat_graph)
+            node_model = getmodel(getnode(graph,id))
+            getobjectivesense(node_model) == :Min? sense = 1: sense = -1
+            nlp = node_model.nlpdata
+            if nlp == nothing# || (nlp != nothing && nlp.nlobj == nothing) #cast the problem as nonlinear
+                #copy_model = copy(node_model)
+                d = JuMP.NLPEvaluator(node_model)
+
+                MathProgBase.initialize(d,[:ExprGraph])
+                node_obj = MathProgBase.obj_expr(d)
+                _splicevars!(node_obj,var_maps[node])
+                JuMP.ProblemTraits(node_model).nlp = false
+                node_model.nlpdata = nothing
+            elseif  nlp != nothing# && nlp.nlobj == nothing
+                d = JuMP.NLPEvaluator(node_model)
+                #@objective(copy_model,Min,0)  #have to clear the objective here to get this to work
+                MathProgBase.initialize(d,[:ExprGraph])
+                node_obj = MathProgBase.obj_expr(d)
+                _splicevars!(node_obj,var_maps[node])
+            end
+            #node_obj = getnodeobjective(node)
+            node_obj = Expr(:call,:*,:($sense),node_obj)
+            obj = Expr(:call,:+,obj,node_obj)
+        end
+        #println(obj)
+        JuMP.setNLobjective(flat_model, :Min, obj)
+    end
     return flat_model
 end
+
+
+
+#TODO
+# function setsumgraphobjectives(graph)
+#     has_nonlinear = false
+#     #check if any nodes have nonlinear objectives
+#     for node in getnodesandedges(graph)
+#         node_model = getmodel(node)
+#         traits = JuMP.ProblemTraints(node_model)
+#         if traits.nlp == true
+#             has_nonlinear = true
+#             break
+#         end
+#     end
+#     #if it's all linear or quadtratic
+#     if has_nonlinear  == false
+#         obj = 0
+#         for node in getnodesandedges(graph)
+#             node_model = getmodel(node)
+#             obj += node_model.obj
+#         end
+#         graph.obj = obj  #set the graph objective to the sum of each node
+#     elseif has_nonlinear == true
+#         obj = :()
+#         for node in getnodesandedges(graph)
+#             node_model = getmodel(node)
+#             d = JuMP.NLPEvaluator(node_model)
+#             MathProgBase.initialize(d,[:ExprGraph])
+#             node_obj = MathProgBase.obj_expr(d)
+#             obj = Expr(:call,:+,copy(obj),node_obj)
+#             # ex1 = MathProgBase.obj_expr(d)
+#             # ex2 = MathProgBase.obj_expr(d2)
+#             # newexpr = Expr(:call, :+, copy(ex1), copy(ex2))
+#             # JuMP.setNLobjective(m, P.objSense, newexpr)
+#         end
+#     end
+# end
 
 #Function to build a node model for a flat graph model
 function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
@@ -246,23 +331,9 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             #end
         end
         #Also check for nonlinear objective here
-        #TODO Find way to add nonlinear objectives together
-        if node_model.nlpdata.nlobj != nothing
-            warn("Plasmo does not yet support aggregating nonlinear objectives")
-        end
-        #One possible way to go about this
-        # ex1 = MathProgBase.obj_expr(d1)
-        # ex2 = MathProgBase.obj_expr(d2)
-        # newexpr = Expr(:call, :+, copy(ex1), copy(ex2))
-        # JuMP.setNLobjective(m, P.objSense, newexpr)
-
-        #     obj_expr = MathProgBase.obj_expr(d)
-        #     _splicevars!(obj_expr,var_map)
-        #     obj = JuMP.setNLobjective(m,:Min,obj_expr)
-        #     if sense == -1
-        #         JuMP.setobjectivesense(m,)
-        #     end
-        # end
+        # #TODO Find way to add nonlinear objectives together
+        # if node_model.nlpdata.nlobj != nothing
+        #     warn("Plasmo does not yet support aggregating nonlinear objectives")
     end
 
     #If the objective is linear
@@ -280,8 +351,14 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
         obj = @objective(m,Min,sense*(sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
         sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant))
         getattribute(nodeoredge,:NodeData).objective = m.obj
+    #If the objective is nonlinear
+    elseif nlp != nothing && nlp.nlobj != nothing
+        obj = MathProgBase.obj_expr(d)
+        _splicevars!(obj,var_map)
+        obj = Expr(:call,:*,:($sense),obj)
+        getattribute(nodeoredge,:NodeData).objective = obj
     end
-    return m
+    return m,var_map
 end
 
 #splice variables into a constraint expression

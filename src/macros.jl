@@ -32,7 +32,26 @@ end
 
 macro NLlinkconstraint(graph,args...) end
 
-macro graphobjective(graph,args...) end
+macro graphobjective(graph,args...)
+    graph = esc(graph)
+    if length(args) != 2
+        # Either just an objective sense, or just an expression.
+        error("in @graphobjective: needs three arguments: graph, objective sense (Max or Min) and expression.")
+    end
+    sense, x = args
+    if sense == :Min || sense == :Max
+        sense = Expr(:quote,sense)
+    end
+    newaff, parsecode = parseExprToplevel(x, :q)
+    code = quote
+        q = zero(AffExpr)
+        $parsecode
+        setobjective($graph, $(esc(sense)), $newaff)
+    end
+    return assert_validmodel(m, code)
+end
+
+
 
 #generate a list of constraints, but don't attach them to the model @Might be the same as JuMP.LinearConstraints
 macro getconstraintlist(args...)

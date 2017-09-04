@@ -1,7 +1,7 @@
 using Plasmo
 using JuMP
 using Ipopt
-using MPI
+#using MPI
 
 #MPI.Init()
 graph = Plasmo.PlasmoGraph()
@@ -11,12 +11,12 @@ master_node = add_node(graph,m)
 @constraint(m, 0<=x0[1] + x0[2] <= 100)
 @objective(m, Min, x0[1]^2 + x0[2]^2 + x0[1]*x0[2])
 
-NS = 1
+NS = 2
 child_nodes = Array{Plasmo.NodeOrEdge}(NS)
 for i in 1:NS
    bl = Model()
    @variable(bl, x[1:2], start=1)
-   @objective(bl, Min, x[1]^2 + x[2]^2 + x[1]*x[2])
+   @NLobjective(bl, Min, x[1]^2 + x[2]^2 + x[1]*x[2])
    child_node = add_node(graph,bl)
    child_nodes[i] = child_node
 
@@ -36,3 +36,5 @@ for i in 1:NS
 end
 graph.solver = Ipopt.IpoptSolver()
 Plasmo.solve(graph)
+
+true
