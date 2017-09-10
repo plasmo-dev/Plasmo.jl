@@ -32,7 +32,7 @@ JuMP.@variable(m2,x >= 1)
 JuMP.@variable(m2,0 <= y <= 5)
 JuMP.@variable(m2,z[1:5] >= 0)
 JuMP.@variable(m2,a[vals,grid] >=0 )
-JuMP.@NLconstraint(m2,exp(x)+y <= 7)
+JuMP.@NLconstraint(m2,nlcon,exp(x)+y <= 7)
 JuMP.@objective(m2,Min,x)
 
 m3 = JuMP.Model()
