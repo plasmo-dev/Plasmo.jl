@@ -13,6 +13,8 @@ type NodeData
 end
 NodeData() = NodeData(0,Dict{Symbol,Any}(),ConstraintRef[],Dict{Int,Int}())
 
+type JuMPGraph <: AbstractPlasmoGraph end
+
 type JuMPNode <: AbstractNode
     index::Dict{AbstractPlasmoGraph,Int} #map to an index in each graph containing the node
     label::Symbol
@@ -28,7 +30,7 @@ type JuMPEdge <: AbstractEdge
 end
 
 const JuMPNodeOrEdge = Union{JuMPNode,JuMPEdge}
-
+hasmodel(nodeoredge::JuMPNodeOrEdge) = false
 #Construct a structured model, but roll it all into one JuMP model (this is how we solve with JuMP accessible solvers)
 function FlatGraphModel()
     m = JuMP.Model()

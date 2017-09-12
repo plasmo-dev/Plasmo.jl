@@ -136,5 +136,3 @@ function _addlinkconstraint!{T}(graph::PlasmoGraph,cons_refs::Array{AbstractCons
         _addlinkconstraint!(graph,con)
     end
 end
-
-function getsolution(graph::PlasmoGraph) end
