@@ -49,3 +49,7 @@ Plasmo.solve(graph)
 println("n1[:x]= ",JuMP.getvalue(n1[:x]))
 println("n2[:x]= ",JuMP.getvalue(n2[:x]))
 ```
+
+# Acknowledgements
+This code has been developed by the [Scalable Systems Laboratory](http://zavalab.engr.wisc.edu/) at the University of Wisconsin-Madison.
+The primary developers are Jordan Jalving(@jalving) and Yankai Cao (@YankaiCao), with notable input from the JuMP development community.
