@@ -13,6 +13,24 @@ type NodeData
 end
 NodeData() = NodeData(0,Dict{Symbol,Any}(),ConstraintRef[],Dict{Int,Int}())
 
+type JuMPGraph <: AbstractPlasmoGraph end
+
+type JuMPNode <: AbstractNode
+    index::Dict{AbstractPlasmoGraph,Int} #map to an index in each graph containing the node
+    label::Symbol
+    attributes::Dict{Any,Any}
+    node_data::NodeData
+end
+
+type JuMPEdge <: AbstractEdge
+    index::Dict{AbstractPlasmoGraph,LightGraphs.Edge} #map to an index in each graph containing the node
+    label::Symbol
+    attributes::Dict{Any,Any}
+    node_data::NodeData
+end
+
+const JuMPNodeOrEdge = Union{JuMPNode,JuMPEdge}
+hasmodel(nodeoredge::JuMPNodeOrEdge) = false
 #Construct a structured model, but roll it all into one JuMP model (this is how we solve with JuMP accessible solvers)
 function FlatGraphModel()
     m = JuMP.Model()
@@ -26,15 +44,15 @@ is_graphmodel(m::Model) = haskey(m.ext,:Graph)? true : false  #check if the mode
 function add_node!(m::Model; index = nv(getgraph(m).graph)+1)
     is_graphmodel(m) || error("Can only add nodes to graph models")
     @assert is_graphmodel(m)
-    node = PlasmoNode(Dict{PlasmoGraph,Int}(), Symbol("node"),Dict(:NodeData => NodeData(),:LinkData => NodeLinkData()))
+    node = JuMPNode(Dict{AbstractPlasmoGraph,Int}(), Symbol("node"),Dict(),NodeData())
     add_node!(getgraph(m),node,index = index)
     return node
 end
 
-function add_edge!(m::Model,node1::PlasmoNode,node2::PlasmoNode)
+function add_edge!(m::Model,node1::JuMPNode,node2::JuMPNode)
     is_graphmodel(m) || error("Can only add nodes to graph models")
     @assert is_graphmodel(m)
-    edge = PlasmoEdge(Dict{PlasmoGraph,Edge}(), Symbol("edge"),Dict{Any,Any}(:NodeData => NodeData(),:LinkData => NodeLinkData()))
+    edge = JuMPEdge(Dict{AbstractPlasmoGraph,Edge}(), Symbol("edge"),Dict{Any,Any}(),NodeData())
     add_edge!(getgraph(m),edge,node1,node2)
     return edge
 end
@@ -49,12 +67,19 @@ getedges(m::Model) = getedges(getgraph(m))
 getnode(m::Model,id::Integer) = getnodes(getgraph(m))[id]
 getedge(m::Model,id::LightGraphs.Edge) = getedges(getgraph(m))[id]
 #write node constraints, edge constraints, and coupling constraints
-getnodedata(nodeoredge::NodeOrEdge) = getattribute(nodeoredge,:NodeData)
-getnodeobjective(nodeoredge::NodeOrEdge) = hasattribute(nodeoredge,:NodeData)? getattribute(nodeoredge,:NodeData).objective : JuMP.getobjective(getmodel(nodeoredge))
-getnodevariables(nodeoredge::NodeOrEdge) =  hasattribute(nodeoredge,:NodeData)? getattribute(nodeoredge,:NodeData).variablemap : getmodel(nodeoredge).objDict
-getnodeconstraints(nodeoredge::NodeOrEdge) = getattribute(nodeoredge,:NodeData).constraintlist
+# getnodedata(nodeoredge::NodeOrEdge) = getattribute(nodeoredge,:NodeData)
+getnodedata(nodeoredge::JuMPNodeOrEdge) = nodeoredge.node_data
+getnodeobjective(nodeoredge::JuMPNodeOrEdge) = nodeoredge.node_data.objective
+getnodeobjective(nodeoredge::NodeOrEdge) = JuMP.getobjective(nodeoredge.model)
 
-getindex(nodeoredge::NodeOrEdge,s::Symbol) = hasattribute(nodeoredge,:NodeData)? getattribute(nodeoredge,:NodeData).variablemap[s] : getmodel(nodeoredge)[s]  #get a node or edge variable
+
+getnodevariables(nodeoredge::JuMPNodeOrEdge) =  nodeoredge.node_data.variablemap
+#TODO This is dangerous.  objDict contains constraints
+getnodevariables(nodeoredge::NodeOrEdge) = getmodel(nodeoredge).objDict
+getnodeconstraints(nodeoredge::JuMPNodeOrEdge) = nodeoredge.node_data.constraintlist
+
+getindex(nodeoredge::JuMPNodeOrEdge,s::Symbol) = nodeoredge.node_data.variablemap[s]  #get a node or edge variable
+getindex(nodeoredge::NodeOrEdge,s::Symbol) = getmodel(nodeoredge)[s]
 
 #get all of the link constraints from a JuMP model
 function getlinkconstraints(m::JuMP.Model)
@@ -275,8 +300,10 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
         #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
         end
     end
-    getattribute(nodeoredge,:NodeData).variablemap = node_map
-    getattribute(nodeoredge,:NodeData).indexmap = index_map
+    # getattribute(nodeoredge,:NodeData).variablemap = node_map
+    # getattribute(nodeoredge,:NodeData).indexmap = index_map
+    nodeoredge.node_data.variablemap = node_map
+    nodeoredge.node_data.indexmap = index_map
 
     #copy the linear constraints to the new model
     for i = 1:length(node_model.linconstr)
@@ -287,7 +314,8 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             push!(t,terms)
         end
         reference = @constraint(m, con.lb <= sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.constant <= con.ub)
-        push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+        # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+         push!(nodeoredge.node_data.constraintlist,reference)
     end
 
     #copy the quadratic constraints to the new model
@@ -312,7 +340,8 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
             sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant >= 0)
         end
-        push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+        # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+        push!(nodeoredge.node_data.constraintlist,reference)
     end
 
     getobjectivesense(node_model) == :Min? sense = 1: sense = -1
@@ -327,7 +356,8 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
             expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
             _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
             con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
-            push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
+            # push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
+            push!(nodeoredge.node_data.constraintlist,con)  #Add the nonlinear constraint reference to the node
             #end
         end
         #Also check for nonlinear objective here
@@ -350,13 +380,15 @@ function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
         qvars2 = node_model.obj.qvars2
         obj = @objective(m,Min,sense*(sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
         sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant))
-        getattribute(nodeoredge,:NodeData).objective = m.obj
+        #getattribute(nodeoredge,:NodeData).objective = m.obj
+        nodeoredge.node_data.objective = m.obj
     #If the objective is nonlinear
     elseif nlp != nothing && nlp.nlobj != nothing
         obj = MathProgBase.obj_expr(d)
         _splicevars!(obj,var_map)
         obj = Expr(:call,:*,:($sense),obj)
-        getattribute(nodeoredge,:NodeData).objective = obj
+        nodeoredge.node_data.objective = obj
+        #getattribute(nodeoredge,:NodeData).objective = obj
     end
     return m,var_map
 end
@@ -416,7 +448,7 @@ function setvalue(jdict::JuMP.JuMPDict,dict::Dict)
 end
 
 #copy the solution from one graph to another where nodes and variables match
-function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
+function setsolution(graph1::AbstractPlasmoGraph,graph2::AbstractPlasmoGraph)
     for (index,nodeoredge) in getnodesandedges(graph1)
         nodeoredge2 = getnodeoredge(graph2,index)       #get the corresponding node or edge in graph2
         for (key,var) in getnodevariables(nodeoredge)
@@ -440,9 +472,11 @@ function setsolution(graph1::PlasmoGraph,graph2::PlasmoGraph)
     end
 end
 
+buildserialmodel(graph::PlasmoGraph) = graph.internal_serial_model =  create_flat_graph_model(graph)
 function solve(graph::PlasmoGraph;kwargs...)
     println("Aggregating Models...")
     m_flat = create_flat_graph_model(graph)
+    graph.internal_serial_model = m_flat
     println("Finished model instantiation")
     m_flat.solver = graph.solver
     status = JuMP.solve(m_flat,kwargs...)

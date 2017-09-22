@@ -33,7 +33,8 @@ getnode,getedge,getnodeoredge,getnodesandedges,is_connected,getnodes,getedges,co
 addattribute!,rmattribute!,getattribute,hasattribute,
 
 #Model functions
-setmodel,resetmodel,is_nodevar,getmodel,hasmodel,getlinkconstraints,getgraphobjectivevalue,getobjevtivevalue,
+setmodel,resetmodel,is_nodevar,getmodel,hasmodel,getlinkconstraints,getgraphobjectivevalue,getobjectivevalue,
+buildserialmodel,getinternalgraphmodel,getsolution,
 
 #The JuMP Extension
 FlatGraphModel,create_flat_graph_model,
@@ -54,6 +55,7 @@ include("linkdata.jl")
 include("graph.jl")
 include("model.jl")
 include("JuMPinterface.jl")
+include("solution.jl")
 include("macros.jl")
 
 #load PIPS-NLP if the library can be found

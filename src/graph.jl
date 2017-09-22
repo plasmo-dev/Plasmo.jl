@@ -17,8 +17,10 @@ type PlasmoGraph <: AbstractPlasmoGraph
     attributes::Dict{Any,Any}                   #e.g. LinkData; might make primary attributes (like models) into actual fields
     nodes::Dict{Int,AbstractNode}               #Includes nodes in the subgraphs as well
     edges::Dict{LightGraphs.Edge,AbstractEdge}  #Includes edges in the subgraphs as well
+    link_data::GraphLinkData
     #nodemap::Dict{Symbol,AbstractNode}         #I'm thinking about also including node and edge maps to reference nodes and edges by a symbol
     #edgemap::Dict{Symbol,AbstractNode}
+    internal_serial_model                       #The internal serial model for the graph.  Created by aggregating node models and link constraints in the graph
     solver::AbstractMathProgSolver              #for solve(graph)
     objVal::Number
     objective
@@ -29,7 +31,7 @@ PlasmoGraph()
 
 Creates an empty PlasmoGraph
 """
-PlasmoGraph() = PlasmoGraph(DiGraph(),gensym(),0,AbstractGraph[],Dict(:LinkData => GraphLinkData()),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),UnsetSolver(),NaN,nothing)
+PlasmoGraph() = PlasmoGraph(DiGraph(),gensym(),0,AbstractGraph[],Dict(),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),GraphLinkData(),nothing,UnsetSolver(),NaN,nothing)
 const GraphModel = PlasmoGraph
 
 """
@@ -38,12 +40,12 @@ PlasmoGraph(::AbstractGraph)
 Creates a PlasmoGraph given a LightGraph object
 """
 function PlasmoGraph(g::AbstractGraph)  #build a graph from a LightGraph
-    pgraph = PlasmoGraph(g,gensym(),0,AbstractGraph[],Dict(:LinkData => GraphLinkData()),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),UnsetSolver(),NaN,nothing)
+    pgraph = PlasmoGraph(g,gensym(),0,AbstractGraph[],Dict(),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),GraphLinkData(),nothing,UnsetSolver(),NaN,nothing)
     for vertex in vertices(g)
-        pgraph.nodes[vertex] = PlasmoNode(Dict(pgraph => vertex),Symbol("node"*string(vertex)),Dict())
+        pgraph.nodes[vertex] = PlasmoNode(Dict(pgraph => vertex),Symbol("node"*string(vertex)),Dict(),Model(),NodeLinkData())
     end
     for edge in edges(g)
-        pgraph.edges[edge] = PlasmoEdge(Dict(pgraph => edge),Symbol("edge"*string(edge)),Dict())
+        pgraph.edges[edge] = PlasmoEdge(Dict(pgraph => edge),Symbol("edge"*string(edge)),Dict(),Model(),NodeLinkData())
     end
     return pgraph
 end
@@ -59,6 +61,7 @@ setsolver(graph::PlasmoGraph,solver::AbstractMathProgSolver) = graph.solver = so
 _setobjectivevalue(graph::PlasmoGraph,num::Number) = graph.objVal = num
 getgraphobjectivevalue(graph::PlasmoGraph) = graph.objVal
 getobjectivevalue(graph::PlasmoGraph) = graph.objVal
+getinternalgraphmodel(graph::PlasmoGraph) = graph.internal_serial_model
 
 # setobjective(graph::PlasmoGraph, sense::Symbol, x::Variable) = setobjective(graph, sense, convert(AffExpr,x))
 # function setobjective(m::Model, sense::Symbol, a::AffExpr)
@@ -72,7 +75,6 @@ getobjectivevalue(graph::PlasmoGraph) = graph.objVal
 #     end
 # end
 
-
 ##############################################################################
 # Nodes
 ##############################################################################
@@ -82,21 +84,23 @@ type PlasmoNode <: AbstractNode
     index::Dict{PlasmoGraph,Int} #map to an index in each graph containing the node
     label::Symbol
     attributes::Dict{Any,Any}  #A model is an attribute
+    model::AbstractModel
+    link_data::NodeLinkData
 end
 
 # Node constructors
-PlasmoNode() = PlasmoNode(Dict{PlasmoGraph,Int}(), Symbol("node"),Dict{Any,Any}(:model => Model(),:LinkData => NodeLinkData()))
+PlasmoNode() = PlasmoNode(Dict{PlasmoGraph,Int}(), Symbol("node"),Dict{Any,Any}(),Model(),NodeLinkData())
 function PlasmoNode(g::PlasmoGraph)
     add_vertex!(g.graph)
     i = nv(g.graph)
     label = Symbol("node"*string(i))
-    node = PlasmoNode(Dict(g => i),label,Dict(:model => Model(),:LinkData => NodeLinkData()))
+    node = PlasmoNode(Dict(g => i),label,Dict(),Model(),NodeLinkData())
     g.nodes[i] = node
     return node
 end
 
 #Add an existing node to a graph.  It's possible to pass a user specified index.  This is useful for copying graphs
-function add_node!(g::PlasmoGraph,node::PlasmoNode;index = nv(g.graph)+1)
+function add_node!(g::AbstractPlasmoGraph,node::AbstractNode;index = nv(g.graph)+1)
     add_vertex!(g.graph)
     #i = nv(g.graph)
     node.index[g] = index #sets a dictionary reference
@@ -114,21 +118,23 @@ add_vertex!(g::PlasmoGraph,node::PlasmoNode) = add_node!(g,node)
 ##############################################################################
 #A Plasmo Edge maps to a PlasmoGraph.  It holds an index to its edge in the underlying graph and holds its own attributes
 type PlasmoEdge <: AbstractEdge
-    index::Dict{PlasmoGraph,LightGraphs.Edge}
+    index::Dict{AbstractPlasmoGraph,LightGraphs.Edge}
     label::Symbol
     attributes::Dict
+    model::AbstractModel
+    link_data::NodeLinkData
 end
 #Edge constructors
-PlasmoEdge() = PlasmoEdge(Dict{PlasmoGraph,LightGraphs.Edge}(), Symbol("edge"),Dict{Any,Any}(:model => Model(),:LinkData => NodeLinkData()))
-function PlasmoEdge(g::PlasmoGraph,edge::LightGraphs.Edge)
+PlasmoEdge() = PlasmoEdge(Dict{AbstractPlasmoGraph,LightGraphs.Edge}(), Symbol("edge"),Dict{Any,Any}(),Model(),NodeLinkData())
+function PlasmoEdge(g::AbstractPlasmoGraph,edge::LightGraphs.Edge)
     add_edge!(g.graph,edge)
     label = Symbol("edge"*string(edge))
-    pedge = PlasmoEdge(Dict(g => edge),label,Dict(:model => Model(),:LinkData => NodeLinkData()))
+    pedge = PlasmoEdge(Dict(g => edge),label,Dict(),Model(),NodeLinkData())
     g.edges[edge] = pedge
     return pedge
 end
 
-function add_edge!(g::PlasmoGraph,pedge::PlasmoEdge,src::PlasmoNode,dst::PlasmoNode)
+function add_edge!(g::AbstractPlasmoGraph,pedge::AbstractEdge,src::AbstractNode,dst::AbstractNode)
     edge = LightGraphs.Edge(src.index[g],dst.index[g])
     add_edge!(g.graph,edge)
     label = Symbol("edge"*string(edge))
@@ -136,29 +142,29 @@ function add_edge!(g::PlasmoGraph,pedge::PlasmoEdge,src::PlasmoNode,dst::PlasmoN
     g.edges[edge] = pedge
     return pedge
 end
-add_edge!(g::PlasmoGraph,edge::LightGraphs.Edge) = PlasmoEdge(g,edge)
-add_edge!(g::PlasmoGraph,src::Int,dst::Int) = PlasmoEdge(g,LightGraphs.Edge(src,dst))
-add_edge!(g::PlasmoGraph,src::PlasmoNode,dst::PlasmoNode) = PlasmoEdge(g,LightGraphs.Edge(src.index[g],dst.index[g]))
+add_edge!(g::AbstractPlasmoGraph,edge::LightGraphs.Edge) = PlasmoEdge(g,edge)
+add_edge!(g::AbstractPlasmoGraph,src::Int,dst::Int) = PlasmoEdge(g,LightGraphs.Edge(src,dst))
+add_edge!(g::AbstractPlasmoGraph,src::AbstractNode,dst::AbstractNode) = PlasmoEdge(g,LightGraphs.Edge(src.index[g],dst.index[g]))
 
 
 
 #Setting and getting Graph Properties
-getnodes(g::PlasmoGraph) = g.nodes  #dictionary
-getedges(g::PlasmoGraph) = g.edges  #dictionary
+getnodes(g::AbstractPlasmoGraph) = g.nodes  #dictionary
+getedges(g::AbstractPlasmoGraph) = g.edges  #dictionary
 getsubgraphlist(g::PlasmoGraph) = g.subgraphlist
 getnode(g::PlasmoGraph,i::Int) = g.nodes[i]
 getedge(g::PlasmoGraph,edge::LightGraphs.Edge) = g.edges[edge]
-function getnodesandedges(g::PlasmoGraph)
+function getnodesandedges(g::AbstractPlasmoGraph)
     d = Dict{Union{Int,LightGraphs.Edge},NodeOrEdge}()
     merge!(d,getnodes(g))
     merge!(d,getedges(g))
     return d
 end
-getnodeoredge(g::PlasmoGraph,i::Union{Int,LightGraphs.Edge}) = isa(i,Int)? getnode(g,i): getedge(g,i)
+getnodeoredge(g::AbstractPlasmoGraph,i::Union{Int,LightGraphs.Edge}) = isa(i,Int)? getnode(g,i): getedge(g,i)
 
 
-getnodeindex(g::PlasmoGraph,node::PlasmoNode) = node.index[g]
-getedgeindex(g::PlasmoGraph,edge::PlasmoEdge) = edge.index[g]
+getnodeindex(g::AbstractPlasmoGraph,node::AbstractNode) = node.index[g]
+getedgeindex(g::AbstractPlasmoGraph,edge::AbstractEdge) = edge.index[g]
 
 copy(node::PlasmoNode) = nothing
 copy(edge::PlasmoEdge) = nothing
@@ -167,7 +173,7 @@ copy(edge::PlasmoEdge) = nothing
     getindex(::PlasmoGraph,::NodeOrEdge)
     Get the index of a node or edge within a PlasmoGraph
 """
-getindex(g::PlasmoGraph,nodeoredge::NodeOrEdge) = nodeoredge.index[g]
+getindex(g::AbstractPlasmoGraph,nodeoredge::NodeOrEdge) = nodeoredge.index[g]
 """
     getindex(::PlasmoGraph,::NodeOrEdge)
     Return a dictionary of a node's or edge's index in each of its graphs.
@@ -175,33 +181,33 @@ getindex(g::PlasmoGraph,nodeoredge::NodeOrEdge) = nodeoredge.index[g]
 getindex(nodeoredge::NodeOrEdge) = nodeoredge.index
 
 #Print Functions
-string(graph::PlasmoGraph) = "plasmo graph: "*string(graph.label)*"\n"*string(graph.graph)
-print(io::IO, graph::PlasmoGraph) = print(io, string(graph))
-show(io::IO,graph::PlasmoGraph) = print(io,graph)
+string(graph::AbstractPlasmoGraph) = "plasmo graph: "*string(graph.label)*"\n"*string(graph.graph)
+print(io::IO, graph::AbstractPlasmoGraph) = print(io, string(graph))
+show(io::IO,graph::AbstractPlasmoGraph) = print(io,graph)
 
-string(node::PlasmoNode) = "plasmo node: "*string(node.label)*string(node.index)
-print(io::IO,node::PlasmoNode) = print(io, string(node))
-show(io::IO,node::PlasmoNode) = print(io,node)
+string(node::AbstractNode) = "plasmo node: "*string(node.label)*string(node.index)
+print(io::IO,node::AbstractNode) = print(io, string(node))
+show(io::IO,node::AbstractNode) = print(io,node)
 
-string(edge::PlasmoEdge) = "plasmo edge: "*string(edge.label)
-print(io::IO,edge::PlasmoEdge) = print(io, string(edge))
-show(io::IO,edge::PlasmoEdge) = print(io,edge)
+string(edge::AbstractEdge) = "plasmo edge: "*string(edge.label)
+print(io::IO,edge::AbstractEdge) = print(io, string(edge))
+show(io::IO,edge::AbstractEdge) = print(io,edge)
 
 ##############################################################################
 # Attributes
 ##############################################################################
 #add or remove attributes from graphs, nodes, and edges
-function addattribute!(graph::PlasmoGraph,attribute::Symbol,value)
+function addattribute!(graph::AbstractPlasmoGraph,attribute::Symbol,value)
     graph.attributes[attribute] = value
 end
 function addattribute!(item::NodeOrEdge,attribute::Symbol,value)
     item.attributes[attribute] = value
 end
-function addattribute!(g::PlasmoGraph,i::Int,attribute::Symbol,value)
+function addattribute!(g::AbstractPlasmoGraph,i::Int,attribute::Symbol,value)
     node = g.nodes[i]
     addattribute!(node,attribute,value)
 end
-function addattribute!(g::PlasmoGraph,edge::LightGraphs.Edge,attribute::Symbol,value)
+function addattribute!(g::AbstractPlasmoGraph,edge::LightGraphs.Edge,attribute::Symbol,value)
     pedge = g.edges[edge]
     addattribute!(pedge,attribute,value)
 end
@@ -209,7 +215,7 @@ getattribute(item::NodeOrEdge,attribute::Symbol) = item.attributes[attribute]
 hasattribute(item::NodeOrEdge,attribute::Symbol) = haskey(item.attributes,attribute)
 
 rmattribute!(item::NodeOrEdge,attribute::Symbol) = delete!(item.attributes,attribute)
-rmattribute!(graph::PlasmoGraph,attribute::Symbol) = delete!(graph.attributes,attribute)
+rmattribute!(graph::AbstractPlasmoGraph,attribute::Symbol) = delete!(graph.attributes,attribute)
 
 ##############################################################################
 # Subgraphs
@@ -228,7 +234,7 @@ end
 getsubgraph(graph::PlasmoGraph,index::Int) = graph.subgraphlist[index]
 
 #copy the subgraph structure from one graph to another
-function _copy_subgraphs!(graph1::PlasmoGraph,graph2::PlasmoGraph)
+function _copy_subgraphs!(graph1::AbstractPlasmoGraph,graph2::AbstractPlasmoGraph)
     for i = 1:length(graph1.subgraphlist)
         subgraph = PlasmoGraph()
         add_subgraph!(graph2,subgraph)
@@ -246,34 +252,34 @@ end
 # Topology
 ##############################################################################
 #Topology functions (LightGraphs extensions)
-src(pgraph::PlasmoGraph,edge::PlasmoEdge) = getnode(pgraph,LightGraphs.src(edge.index[pgraph]))  #source node of a Plasmo Edge
-dst(pgraph::PlasmoGraph,edge::PlasmoEdge) = getnode(pgraph,LightGraphs.dst(edge.index[pgraph]))  #destination node of a Plasmo Edge
-src(pgraph::PlasmoGraph,edge::LightGraphs.Edge) = getnode(pgraph,LightGraphs.src(edge))  #source node of a Plasmo Edge
-dst(pgraph::PlasmoGraph,edge::LightGraphs.Edge) = getnode(pgraph,LightGraphs.dst(edge))  #destination node of a Plasmo Edge
+src(pgraph::AbstractPlasmoGraph,edge::AbstractEdge) = getnode(pgraph,LightGraphs.src(edge.index[pgraph]))  #source node of a Plasmo Edge
+dst(pgraph::AbstractPlasmoGraph,edge::AbstractEdge) = getnode(pgraph,LightGraphs.dst(edge.index[pgraph]))  #destination node of a Plasmo Edge
+src(pgraph::AbstractPlasmoGraph,edge::LightGraphs.Edge) = getnode(pgraph,LightGraphs.src(edge))  #source node of a Plasmo Edge
+dst(pgraph::AbstractPlasmoGraph,edge::LightGraphs.Edge) = getnode(pgraph,LightGraphs.dst(edge))  #destination node of a Plasmo Edge
 
-in_edges(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.edges[LightGraphs.Edge(in_node,getindex(pgraph,node))] for in_node in LightGraphs.in_neighbors(pgraph.graph,getindex(pgraph,node))]
-out_edges(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.edges[LightGraphs.Edge(getindex(pgraph,node),out_node)] for out_node in LightGraphs.out_neighbors(pgraph.graph,getindex(pgraph,node))]
+in_edges(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [pgraph.edges[LightGraphs.Edge(in_node,getindex(pgraph,node))] for in_node in LightGraphs.in_neighbors(pgraph.graph,getindex(pgraph,node))]
+out_edges(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [pgraph.edges[LightGraphs.Edge(getindex(pgraph,node),out_node)] for out_node in LightGraphs.out_neighbors(pgraph.graph,getindex(pgraph,node))]
 
-in_neighbors(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.nodes[node] for node in LightGraphs.in_neighbors(pgraph.graph,getindex(pgraph,node))]
-out_neighbors(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.nodes[node] for node in LightGraphs.out_neighbors(pgraph.graph,getindex(pgraph,node))]
-neighbors(pgraph::PlasmoGraph,node::PlasmoNode) = [pgraph.nodes[node] for node in LightGraphs.all_neighbors(pgraph.graph,getindex(pgraph,node))]
+in_neighbors(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [pgraph.nodes[node] for node in LightGraphs.in_neighbors(pgraph.graph,getindex(pgraph,node))]
+out_neighbors(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [pgraph.nodes[node] for node in LightGraphs.out_neighbors(pgraph.graph,getindex(pgraph,node))]
+neighbors(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [pgraph.nodes[node] for node in LightGraphs.all_neighbors(pgraph.graph,getindex(pgraph,node))]
 
 
-getsupportingedges(pgraph::PlasmoGraph,node::PlasmoNode) = [in_edges(pgraph,node);out_edges(pgraph,node)]
+getsupportingedges(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [in_edges(pgraph,node);out_edges(pgraph,node)]
 
-getconnectedfrom(pgraph::PlasmoGraph,edge::PlasmoEdge) = src(pgraph,edge)
-getconnectedto(pgraph::PlasmoGraph,edge::PlasmoEdge) = dst(pgraph,edge)
-getsupportingnodes(pgraph::PlasmoGraph,edge::PlasmoEdge) = tuple(src(pgraph,edge),dst(pgraph,edge))
-getsupportingnodes(pgraph::PlasmoGraph,edge::LightGraphs.Edge) = tuple(src(pgraph,edge),dst(pgraph,edge))
+getconnectedfrom(pgraph::AbstractPlasmoGraph,edge::AbstractEdge) = src(pgraph,edge)
+getconnectedto(pgraph::AbstractPlasmoGraph,edge::AbstractEdge) = dst(pgraph,edge)
+getsupportingnodes(pgraph::AbstractPlasmoGraph,edge::AbstractEdge) = tuple(src(pgraph,edge),dst(pgraph,edge))
+getsupportingnodes(pgraph::AbstractPlasmoGraph,edge::LightGraphs.Edge) = tuple(src(pgraph,edge),dst(pgraph,edge))
 
-degree(pgraph::PlasmoGraph,node::PlasmoNode) = degree(pgraph.graph,node.index[pgraph])
-in_degree(pgraph::PlasmoGraph,node::PlasmoNode) = length(in_neighbors(pgraph::PlasmoGraph,node::PlasmoNode))
-out_degree(pgraph::PlasmoGraph,node::PlasmoNode) = length(out_neighbors(pgraph::PlasmoGraph,node::PlasmoNode))
+degree(pgraph::AbstractPlasmoGraph,node::AbstractNode) = degree(pgraph.graph,node.index[pgraph])
+in_degree(pgraph::AbstractPlasmoGraph,node::AbstractNode) = length(in_neighbors(pgraph,node))
+out_degree(pgraph::AbstractPlasmoGraph,node::AbstractNode) = length(out_neighbors(pgraph,node))
 
-is_connected(graph::PlasmoGraph,n1::PlasmoNode,n2::PlasmoNode)  = n2 in neighbors(graph,n1)
-is_connected(graph::PlasmoGraph,node::PlasmoNode,edge::PlasmoEdge)  = edge in getsupportingedges(graph,node)
-is_connected(graph::PlasmoGraph,edge::PlasmoEdge,node::PlasmoNode)  = edge in getsupportingedges(graph,node)
-is_connected(graph::PlasmoGraph,edge1::PlasmoEdge,edge2::PlasmoEdge)  = !isempty(intersect(getsupportingnodes(graph,edge1),getsupportingnodes(graph,edge2)))
+is_connected(graph::AbstractPlasmoGraph,n1::AbstractNode,n2::AbstractNode)  = n2 in neighbors(graph,n1)
+is_connected(graph::AbstractPlasmoGraph,node::AbstractNode,edge::AbstractEdge)  = edge in getsupportingedges(graph,node)
+is_connected(graph::AbstractPlasmoGraph,edge::AbstractEdge,node::AbstractNode)  = edge in getsupportingedges(graph,node)
+is_connected(graph::AbstractPlasmoGraph,edge1::AbstractEdge,edge2::AbstractEdge)  = !isempty(intersect(getsupportingnodes(graph,edge1),getsupportingnodes(graph,edge2)))
 
 ##########################################
 # Other useful functions
@@ -282,7 +288,7 @@ is_connected(graph::PlasmoGraph,edge1::PlasmoEdge,edge2::PlasmoEdge)  = !isempty
     contains_node(g::PlasmoGraph,n::NodeOrEdge)
     return whether a PlasmoGraph:g, contains the given node or edge: n
 """
-contains_node(graph::PlasmoGraph,nodeoredge::NodeOrEdge) = nodeoredge in [graph.nodes;graph.edges]
+contains_node(graph::AbstractPlasmoGraph,nodeoredge::NodeOrEdge) = nodeoredge in [graph.nodes;graph.edges]
 # typealias Node PlasmoNode
 # typealias Edge PlasmoEdge
 # typealias GraphModel PlasmoGraph
