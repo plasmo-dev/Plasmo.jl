@@ -1,10 +1,10 @@
-using LightGraphs
+import LightGraphs
 
 #Workflow Graph
 type Workflow
-    graph::AbstractGraph  #a lightgraph
-    nodes::Dict{Int,AbstractNode}               #Includes nodes in the subgraphs as well
-    edges::Dict{LightGraphs.Edge,AbstractEdge}  #Includes edges in the subgraphs as well
+    graph::LightGraphs.DiGraph                  #a lightgraph
+    nodes::Dict{Int,AbstractNode}               #includes nodes in the subgraphs as well
+    edges::Dict{Pair,AbstractEdge}              #includes edges in the subgraphs as well
 end
 
 Workflow() =  Workflow(DiGraph(),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}())
@@ -13,19 +13,21 @@ Workflow() =  Workflow(DiGraph(),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,
 type WorkflowNode <: AbstractNode  #A Dispatch node
     index::Dict{PlasmoGraph,Int} #map to an index in each graph containing the node
     label::Symbol
-    attributes::Dict{Any,Any}  #A model is an attribute
+    attributes::Dict{Any,Any}    #A model is an attribute, could be other data, etc...
     input::Input       #input channel
     output::Output     #output channel
     status::Symbol     #possibilities include: ready, complete, error
-    func::Function
-    args::Vector       #run the function with these arguments
+    func::Function     #the actual function to call
+    args               #run the function with these arguments
+    kwargs             #also get keyword arguments
     prepare::Function  #function to clean inputs to pass into func.  Could also be used as a condition check.  If no prepare, the input just goes into the args.
+    result::DeferredFuture #need to figure out how these work
 end
 
 # Node constructors
-WorkflowNode() = WorkflowNode(Dict{WorkflowoGraph,Int}(), Symbol("node"),Dict{Any,Any}(),Model(),NodeLinkData())
-function PlasmoNode(g::PlasmoGraph)
-    add_vertex!(g.graph)
+WorkflowNode() = WorkflowNode(Dict{WorkflowoGraph,Int}(), Symbol("node"),Dict{Any,Any}(),Model(),NodeLinkData(),DeferredFuture())
+function WorkflowNode(workflow::Workflow)
+    add_vertex!(workflow.graph)
     i = nv(g.graph)
     label = Symbol("node"*string(i))
     node = PlasmoNode(Dict(g => i),label,Dict(),Model(),NodeLinkData())
@@ -50,6 +52,9 @@ function add_node(workflow::Workflow)
 end
 
 
+##########################
+# Communication Edges
+#########################
 type CommunicationEdge <: AbstractEdge
     delay::Number
 end
@@ -57,18 +62,20 @@ end
 function add_edge(workflow::Workflow,n1::WorkflowNode,n2::WorkflowNode)
 end
 
-
+####################################
+#Input and Output Structs
+####################################
 type Output
-    node::WorkflowNode
-    edges::Vector{CommunicationEdge}
+    node::WorkflowNode  #workflow node this output refers to
+    edges::Vector{CommunicationEdge}  #outgoing communications
 end
 
 type Input
     node::WorkflowNode
-    edges::Vector{CommunicationEdge}
+    edges::Vector{CommunicationEdge}  #incoming communications
 end
 
-const Input = Output  #These are technically the same thing?
+#const Input = Output  #These are technically the same thing?
 
 #Executors
 #look at dispatcher.jl to figure out a way to do this.  It needs to know to loop around when tasks get reset to their ready state.
