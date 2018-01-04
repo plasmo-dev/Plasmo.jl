@@ -1,23 +1,11 @@
 #Task test: Running an execution loop
 
-
-# mutable struct Workflow
-#     graph::LightGraphs.DiGraph                  #a lightgraph
-#     nodes::Dict{Int,AbstractNode}               #includes nodes in the subgraphs as well
-#     edges::Dict{Pair,AbstractEdge}              #includes edges in the subgraphs as well
-# end
-#
-# Workflow() =  Workflow(DiGraph(),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}())
-#
-
-
 #Assume we have a list of nodes with inputs ready
 
 #Schedule these nodes to run
 
 #When we dispatch these nodes, run a callback that triggers their neighbors.  When neighbors get triggered, we check whether they pass their condition (prepare) functions.
 #If yes, the neighbors get scheduled as well.  We update the visit count for the visited neighbor.
-
 
 mutable struct Input
     data::Vector{Any}  #input for each edge coming in
@@ -152,6 +140,8 @@ set_prepare_function(node2,prepare_node)
 #won't use this for this run
 executor = Executor([node1,node2])
 
+#execute!(executor)
+
 
 nodes = [node1,node2]
 #run a test execution with just 2 nodes
@@ -159,38 +149,38 @@ nodes = [node1,node2]
 visits = Dict(zip(nodes,zeros(length(nodes))))
 max_visits = 10
 
+#Don't need the @async here.  It just starts up a local task and runs through the loop without waiting
+#@async begin
+while true
+    nodes_ready = [node for node in nodes if is_ready(node)]
+    other_nodes = [node for node in nodes if !is_ready(node)]
 
-@async begin
-    while true
-        nodes_ready = [node for node in nodes if is_ready(node)]
-        other_nodes = [node for node in nodes if !is_ready(node)]
+    if isempty(nodes_ready)
+        println("all nodes completed")
+        break
+    end
+    if any(collect(values(visits)) .>= max_visits)
+        println("reached maximum number of visits")
+        break
+    end
 
-        if isempty(nodes_ready)
-            println("all nodes completed")
-            break
-        end
-        if any(collect(values(visits)) .>= max_visits)
-            println("reached maximum number of visits")
-            break
-        end
-
-        for node in nodes_ready
-            cond = dispatch!(node)
-            println(cond)
-            if isa(cond,Task)
-                wait(cond)                  #wait for the result
-                node.output.data = [node.result.result]   #set the node's output to its latest result
-                set_finished(node)
-                visits[node] += 1
-                #set the input of other nodes
-                for other_node in other_nodes
-                    other_node.input.data = node.output.data
-                end
+    for node in nodes_ready
+        cond = dispatch!(node)
+        println(cond)  #this is a task
+        if isa(cond,Task)
+            wait(cond)                  #wait for the result
+            node.output.data = [node.result.result]   #set the node's output to its latest result
+            set_finished(node)
+            visits[node] += 1
+            #set the input of other nodes
+            for other_node in other_nodes
+                other_node.input.data = node.output.data
             end
         end
-        map(set_ready,other_nodes)
     end
+    map(set_ready,other_nodes)
 end
+#end
 
 
 

@@ -10,7 +10,7 @@ module Plasmo
 
 using Compat, MathProgBase, JuMP
 
-export PlasmoGraph, PlasmoNode, PlasmoEdge, Node, Edge, NodeOrEdge,GraphModel,
+export AbstractPlasmoGraph, PlasmoGraph, PlasmoNode, PlasmoEdge, Node, Edge, NodeOrEdge,GraphModel,
 
 #Add dispatch to LightGraphs.jl package functions
 add_vertex!,add_edge!,add_node!,nv,vertices,edges,src,dst,ne,degree,
@@ -41,6 +41,9 @@ FlatGraphModel,create_flat_graph_model,
 getgraph,getnodevariables,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
 solve,setsolution,setvalue,
 
+#Workflows
+Workflow,AsyncExecutor,set_function,set_input_data,set_ready,execute!,getinputdata,getoutputdata,
+
 #macros
 @linkconstraint,@getconstraintlist
 
@@ -57,6 +60,7 @@ include("model.jl")
 include("JuMPinterface.jl")
 include("solution.jl")
 include("macros.jl")
+include("workflow.jl")
 
 #load PIPS-NLP if the library can be found
 if  !isempty(Libdl.find_library("libparpipsnlp"))

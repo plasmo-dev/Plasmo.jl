@@ -152,8 +152,8 @@ add_edge!(g::AbstractPlasmoGraph,src::AbstractNode,dst::AbstractNode) = PlasmoEd
 getnodes(g::AbstractPlasmoGraph) = g.nodes  #dictionary
 getedges(g::AbstractPlasmoGraph) = g.edges  #dictionary
 getsubgraphlist(g::PlasmoGraph) = g.subgraphlist
-getnode(g::PlasmoGraph,i::Int) = g.nodes[i]
-getedge(g::PlasmoGraph,edge::LightGraphs.Edge) = g.edges[edge]
+getnode(g::AbstractPlasmoGraph,i::Int) = g.nodes[i]
+getedge(g::AbstractPlasmoGraph,edge::LightGraphs.Edge) = g.edges[edge]
 function getnodesandedges(g::AbstractPlasmoGraph)
     d = Dict{Union{Int,LightGraphs.Edge},NodeOrEdge}()
     merge!(d,getnodes(g))
