@@ -60,7 +60,7 @@ include("model.jl")
 include("JuMPinterface.jl")
 include("solution.jl")
 include("macros.jl")
-include("workflow.jl")
+#include("workflow.jl")
 
 #load PIPS-NLP if the library can be found
 if  !isempty(Libdl.find_library("libparpipsnlp"))
