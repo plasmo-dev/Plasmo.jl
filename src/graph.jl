@@ -5,7 +5,7 @@ import JuMP:AbstractModel,Model,UnsetSolver,setsolver,getobjectivevalue,setobjec
 import MathProgBase.SolverInterface:AbstractMathProgSolver
 
 ##############################################################################
-# Graphs
+# PlasmoGraph
 ##############################################################################
 #A PlasmoGraph encapsulates a pure graph object wherein nodes and edges are integers and pairs of integers respectively
 "The PlasmoGraph Type.  Contains a reference to a LightGraphs.Graph "
@@ -15,15 +15,17 @@ type PlasmoGraph <: AbstractPlasmoGraph
     index::Integer                              #The index of this graph within a higher level graph (i.e. its index in another graph's subgraphlist) 0 means it isn't a subgraph
     subgraphlist::Vector{AbstractPlasmoGraph}   #How plasmo manages structure
     attributes::Dict{Any,Any}                   #e.g. LinkData; might make primary attributes (like models) into actual fields
-    nodes::Dict{Int,AbstractNode}               #Includes nodes in the subgraphs as well
-    edges::Dict{LightGraphs.Edge,AbstractEdge}  #Includes edges in the subgraphs as well
-    link_data::GraphLinkData
-    #nodemap::Dict{Symbol,AbstractNode}         #I'm thinking about also including node and edge maps to reference nodes and edges by a symbol
-    #edgemap::Dict{Symbol,AbstractNode}
+
+    # nodes::Vector{AbstractNode}               #Includes nodes in the subgraphs as well
+    # edges::Vector{AbstractEdge}               #Includes edges in the subgraphs as well
+
+    nodedict::NodeDict                          #Includes nodes in the subgraphs as well
+    edgedict::EdgeDict                          #Includes edges in the subgraphs as well
+    link_data::GraphLinkData                    #Link constraint information
     internal_serial_model                       #The internal serial model for the graph.  Created by aggregating node models and link constraints in the graph
-    solver::AbstractMathProgSolver              #for solve(graph)
-    objVal::Number
-    objective
+    solver::AbstractMathProgSolver              #Set a mathprogbase compliant solver
+    objVal::Number                              #Objective value
+    objective                                   #Objective object
 end
 
 """
@@ -83,7 +85,7 @@ getinternalgraphmodel(graph::PlasmoGraph) = graph.internal_serial_model
 type PlasmoNode <: AbstractNode
     index::Dict{PlasmoGraph,Int} #map to an index in each graph containing the node
     label::Symbol
-    attributes::Dict{Any,Any}  #A model is an attribute
+    attributes::Dict{Any,Any}   #data,etc...
     model::AbstractModel
     link_data::NodeLinkData
 end

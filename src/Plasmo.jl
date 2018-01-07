@@ -48,13 +48,14 @@ Workflow,AsyncExecutor,set_function,set_input_data,set_ready,execute!,getinputda
 @linkconstraint,@getconstraintlist
 
 @compat abstract type AbstractPlasmoGraph end
-@compat abstract type AbstractNode end
-@compat abstract type AbstractEdge end
+@compat abstract type AbstractPlasmoNode end
+@compat abstract type AbstractPlasmoEdge end
 
 #typealias NodeOrEdge Union{AbstractNode,AbstractEdge}
-const NodeOrEdge = Union{AbstractNode,AbstractEdge}
+const NodeOrEdge = Union{AbstractPlasmoNode,AbstractPlasmoEdge}
 
 include("linkdata.jl")
+include("nodes.jl")
 include("graph.jl")
 include("model.jl")
 include("JuMPinterface.jl")
