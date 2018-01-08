@@ -3,6 +3,15 @@
 import JuMP:AbstractModel,AbstractConstraint,Variable,ConstraintRef
 import MathProgBase
 
+#Graph model functions
+setsolver(graph::PlasmoGraph,solver::AbstractMathProgSolver) = graph.solver = solver
+_setobjectivevalue(graph::PlasmoGraph,num::Number) = graph.objVal = num
+getgraphobjectivevalue(graph::PlasmoGraph) = graph.objVal
+getobjectivevalue(graph::PlasmoGraph) = graph.objVal
+getinternalgraphmodel(graph::PlasmoGraph) = graph.internal_serial_model
+
+
+
 is_nodevar(nodeoredge::NodeOrEdge,var::Variable) = getmodel(nodeoredge) == var.m #checks whether a variable belongs to a node or edge
 
 #Component Models (A node or edge can have a single model)
@@ -110,6 +119,7 @@ function add_edge!(graph::PlasmoGraph,pedge::PlasmoEdge,src::PlasmoNode,dst::Pla
 end
 
 #Store link constraint in the given graph.  Store a reference to the linking constraint on the nodes which it links
+#TODO Create the edges on the graph between the nodes referenced in the link constraint
 function _addlinkconstraint!(graph::PlasmoGraph,con::AbstractConstraint)
     vars = con.terms.vars
     #check that all of the variables belong to the same graph
@@ -136,3 +146,16 @@ function _addlinkconstraint!{T}(graph::PlasmoGraph,cons_refs::Array{AbstractCons
         _addlinkconstraint!(graph,con)
     end
 end
+
+
+# setobjective(graph::PlasmoGraph, sense::Symbol, x::Variable) = setobjective(graph, sense, convert(AffExpr,x))
+# function setobjective(m::Model, sense::Symbol, a::AffExpr)
+#     if length(graph.obj.qvars1) != 0
+#         # Go through the quadratic path so that we properly clear
+#         # current quadratic terms.
+#         setobjective(graph, sense, convert(QuadExpr,a))
+#     else
+#         setobjectivesense(m, sense)
+#         m.obj = convert(QuadExpr,a)
+#     end
+# end

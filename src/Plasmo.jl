@@ -41,8 +41,12 @@ FlatGraphModel,create_flat_graph_model,
 getgraph,getnodevariables,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
 solve,setsolution,setvalue,
 
+
+#Networks
+
+
 #Workflows
-Workflow,AsyncExecutor,set_function,set_input_data,set_ready,execute!,getinputdata,getoutputdata,
+#Workflow,AsyncExecutor,set_function,set_input_data,set_ready,execute!,getinputdata,getoutputdata,
 
 #macros
 @linkconstraint,@getconstraintlist
