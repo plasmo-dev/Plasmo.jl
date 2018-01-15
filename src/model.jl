@@ -136,3 +136,15 @@ function _addlinkconstraint!{T}(graph::PlasmoGraph,cons_refs::Array{AbstractCons
         _addlinkconstraint!(graph,con)
     end
 end
+
+function getnodevariables(nodeoredge::NodeOrEdge)
+    odict  = getmodel(nodeoredge).objDict
+    var_dict = Dict{Any,Any}()
+    for (key,val) in odict
+        #The last check is for nonlinear constraints.  It gets really verbose
+        if !(isa(val,JuMP.ConstraintRef)) && !(isa(val,JuMP.Array{ConstraintRef})) && !(isa(val,JuMP.JuMPArray{ConstraintRef})) && !isa(val,JuMP.JuMPDict) && !isa(val,JuMP.JuMPArray{JuMP.ConstraintRef{JuMP.Model,JuMP.GenericRangeConstraint{JuMP.NonlinearExprData}}})
+            var_dict[key] = val
+        end
+    end
+    return var_dict
+end

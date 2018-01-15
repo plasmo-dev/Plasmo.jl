@@ -74,8 +74,6 @@ getnodeobjective(nodeoredge::NodeOrEdge) = JuMP.getobjective(nodeoredge.model)
 
 
 getnodevariables(nodeoredge::JuMPNodeOrEdge) =  nodeoredge.node_data.variablemap
-#TODO This is dangerous.  objDict contains constraints
-getnodevariables(nodeoredge::NodeOrEdge) = getmodel(nodeoredge).objDict
 getnodeconstraints(nodeoredge::JuMPNodeOrEdge) = nodeoredge.node_data.constraintlist
 
 getindex(nodeoredge::JuMPNodeOrEdge,s::Symbol) = nodeoredge.node_data.variablemap[s]  #get a node or edge variable
@@ -451,7 +449,7 @@ end
 function setsolution(graph1::AbstractPlasmoGraph,graph2::AbstractPlasmoGraph)
     for (index,nodeoredge) in getnodesandedges(graph1)
         nodeoredge2 = getnodeoredge(graph2,index)       #get the corresponding node or edge in graph2
-        for (key,var) in getnodevariables(nodeoredge)
+        for (key,var) in getnodevariables(nodeoredge)   #This works because JuMP nodes have a variable map
             var2 = nodeoredge2[key]
             if isa(var,JuMP.JuMPArray) || isa(var,Array)# || isa(var,JuMP.Variable)
                 vals = JuMP.getvalue(var)  #get value of the

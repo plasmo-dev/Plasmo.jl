@@ -154,6 +154,10 @@ getedges(g::AbstractPlasmoGraph) = g.edges  #dictionary
 getsubgraphlist(g::PlasmoGraph) = g.subgraphlist
 getnode(g::AbstractPlasmoGraph,i::Int) = g.nodes[i]
 getedge(g::AbstractPlasmoGraph,edge::LightGraphs.Edge) = g.edges[edge]
+getedge(g::AbstractPlasmoGraph,pair::Pair) = g.edges[LightGraphs.Edge(pair)]
+getedge(g::AbstractPlasmoGraph,tuple::Tuple) = g.edges[LightGraphs.Edge(tuple)]
+getedge(g::AbstractPlasmoGraph,from::Int,to::Int) = g.edges[LightGraphs.Edge(from,to)]
+
 function getnodesandedges(g::AbstractPlasmoGraph)
     d = Dict{Union{Int,LightGraphs.Edge},NodeOrEdge}()
     merge!(d,getnodes(g))
