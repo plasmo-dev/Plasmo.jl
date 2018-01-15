@@ -59,7 +59,7 @@ solve,setsolution,setvalue,
 const NodeOrEdge = Union{AbstractPlasmoNode,AbstractPlasmoEdge}
 
 include("linkdata.jl")
-include("nodes.jl")
+include("node_edge_containers.jl")
 include("graph.jl")
 include("model.jl")
 include("JuMPinterface.jl")
