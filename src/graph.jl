@@ -268,7 +268,6 @@ in_neighbors(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [pgraph.nodes[nod
 out_neighbors(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [pgraph.nodes[node] for node in LightGraphs.out_neighbors(pgraph.graph,getindex(pgraph,node))]
 neighbors(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [pgraph.nodes[node] for node in LightGraphs.all_neighbors(pgraph.graph,getindex(pgraph,node))]
 
-
 getsupportingedges(pgraph::AbstractPlasmoGraph,node::AbstractNode) = [in_edges(pgraph,node);out_edges(pgraph,node)]
 
 getconnectedfrom(pgraph::AbstractPlasmoGraph,edge::AbstractEdge) = src(pgraph,edge)

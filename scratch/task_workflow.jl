@@ -26,8 +26,8 @@ e2 = add_edge(workflow,node2,node1)
 set_input_data(workflow,node1,1)
 set_ready(node1)
 
-#executor = AsyncExecutor(10)
-executor = ParallelExecutor(10)
+executor = AsyncExecutor(10)
+#executor = ParallelExecutor(10)
 
 execute!(workflow,executor)
 

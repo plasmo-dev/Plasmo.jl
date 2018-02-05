@@ -7,7 +7,7 @@ import Plasmo:AbstractPlasmoGraph,AbstractNode,AbstractEdge,add_node!
 type Workflow <: Plasmo.AbstractPlasmoGraph
     graph::AbstractGraph                        #a lightgraph
     nodes::Dict{Int,AbstractNode}               #includes nodes in the subgraphs as well
-    edges::Dict{LightGraphs.Edge,AbstractEdge}              #includes edges in the subgraphs as well
+    edges::Dict{LightGraphs.Edge,AbstractEdge}  #includes edges in the subgraphs as well
 end
 
 Workflow() =  Workflow(DiGraph(),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}())
@@ -41,7 +41,7 @@ mutable struct WorkflowNode <: AbstractNode  #A Dispatch node
     func::Function     #the actual function to call
     args               #run the function with these arguments
     kwargs             #also get keyword arguments
-    result::Result             #::DeferredFuture #need to figure out how these work
+    result::Result     #::DeferredFuture #need to figure out how these work
 end
 
 getinputdata(node::WorkflowNode) = node.input.data
@@ -84,8 +84,6 @@ getresult(node::WorkflowNode) = node.result.result
 
 #Set all edge input data to the given data
 set_input_data(workflow::Workflow,node::WorkflowNode,data) = node.input.data = Dict(zip(in_edges(workflow,node),[data for i = 1:in_degree(workflow,node)]))
-
-
 set_output_to_result(node::WorkflowNode) = node.output.data =  Dict(zip(out_edges(workflow,node),[getresult(node) for i = 1:in_degree(workflow,node)]))
 
 
