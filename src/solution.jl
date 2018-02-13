@@ -91,6 +91,17 @@ function copy_attributes(ne::NodeOrEdge,snode::Union{SolutionNode,SolutionEdge})
     merge!(snode.attributes,ne.attributes)
 end
 
+function copy_attributes(graph::AbstractPlasmoGraph,sgraph::SolutionGraph)
+    merge!(sgraph.attributes,graph.attributes)
+end
+
+#getindex(snode::Union{SolutionNode,SolutionEdge},s::Symbol) = getmodel(nodeoredge)[s]
+
+function getvalue(snode::Union{SolutionNode,SolutionEdge},s::Symbol)
+    return snode.solution_data.variable_values[s]
+end
+
+
 function getsolution(graph::PlasmoGraph)
     solution_graph = SolutionGraph()
     _copy_subgraphs!(graph,solution_graph)
@@ -128,6 +139,7 @@ function getsolution(graph::PlasmoGraph)
         #nodeoredge2.attributes[:Solution] = SolutionData()
         setsolutiondata(nodeoredge,solution_nodeoredge)
         copy_attributes(nodeoredge,solution_nodeoredge)
+        copy_attributes(graph,solution_graph)
         #nodeoredge2.attributes[:Solution].objVal = getobjectivevalue(nodeoredge)
     end
     return solution_graph
