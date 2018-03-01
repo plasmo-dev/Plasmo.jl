@@ -147,7 +147,7 @@ end
 
 #use a solution graph to initialize a plasmo model graph
 #Works as long as graph and solution_graph have the exact same structure
-function setsolution(graph::PlasmoGraph,solution_graph::SolutionGraph,)
+function setsolution(graph::PlasmoGraph,solution_graph::SolutionGraph)
     for (index,nodeoredge) in getnodesandedges(graph)
         solution_nodeoredge = getnodeoredge(solution_graph,index)       #get the corresponding node or edge in the solution graph
         #now set the graph to its solution
