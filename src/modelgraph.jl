@@ -1,12 +1,65 @@
+using PlasmoGraphBase
+import Base:show,print,string,getindex,copy
+import JuMP:AbstractModel,setsolver,getobjectivevalue,setobjective,AffExpr,Variable
+#import MathProgBase.SolverInterface:AbstractMathProgSolver
+
+##############################################################################
+# ModelGraph
+##############################################################################
+#A PlasmoGraph encapsulates a pure graph object wherein nodes and edges are integers and pairs of integers respectively
+"The ModelGraph Type.  Represents a system of models and the links between them"
+mutable struct ModelGraph <: AbstractModelGraph
+    basegraph::BasePlasmoGraph                   #model structure.  Put constraint references on edges
+    linkmodel::LinkModel
+    serial_model::Nullable{AbstractModel}        #The internal serial model for the graph.  Returned if requested by the solve
+end
+
+getlinkconstraint(model::ModelGraph) = model.linkmodel.linkconstraints
+
+"""
+ModelGraph()
+
+Creates an empty ModelGraph
+"""
+ModelGraph() = ModelGraph(BasePlasmoGraph(LightGraphs.Graph),LinkModel(),Nullable())
+
+##############################################################################
+# Nodes
+##############################################################################
+#Nodes and edges are integers and pairs.  When adding nodes, it creates the plasmo node data structure and also adds the vertex to the underlying lightgraph
+#A Plasmo Node maps to a PlasmoGraph.  It holds an index to its integer in the underlying graph and holds its own attributes.
+mutable struct ModelNode <: AbstractModelNode
+    basenode::BasePlasmoNode
+    model::Nullable{AbstractModel}
+end
+
+#Node constructors
+#empty PlasmoNode
+ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model())
+create_node(graph::ModelGraph) = ModelNode()
+
+##############################################################################
+# Edges
+##############################################################################
+struct LinkingEdge <: AbstractLinkingEdge
+    edge::BasePlasmoEdge
+    numconstr::Int
+end
+LinkingEdge() = LinkingEdge(BasePlasmoEdge(),0)
+create_edge(graph::ModelGraph) = LinkingEdge()
+
+
 #Functions specifically for associating models with nodes and edges in a plasmo graph
 
-import JuMP:AbstractModel,AbstractConstraint,Variable,ConstraintRef
-import MathProgBase
+# import JuMP:AbstractModel,AbstractConstraint,Variable,ConstraintRef
+# import MathProgBase
+#import MathOptInterface
 
 #Graph model functions
-setsolver(graph::PlasmoGraph,solver::AbstractMathProgSolver) = graph.solver = solver
-_setobjectivevalue(graph::PlasmoGraph,num::Number) = graph.objVal = num
-getgraphobjectivevalue(graph::PlasmoGraph) = graph.objVal
+#TODO Figure out how JuMP sets solvers now
+#setsolver(model::PlasmoGraph,solver::AbstractMathProgSolver) = graph.solver = solver
+_setobjectivevalue(graph::ModelGraph,value::Number) = graph.linkmodel.objVal = value
+JuMP.getobjectivevalue(graph::ModelGraph) = graph.objVal
 getobjectivevalue(graph::PlasmoGraph) = graph.objVal
 getinternalgraphmodel(graph::PlasmoGraph) = graph.internal_serial_model
 

@@ -8,59 +8,49 @@
 
 module Plasmo
 
-using Compat, MathProgBase, JuMP
+using Compat
 
-export AbstractPlasmoGraph, PlasmoGraph, PlasmoNode, PlasmoEdge, Node, Edge, NodeOrEdge,GraphModel,
+import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
 
-#Add dispatch to LightGraphs.jl package functions
-add_vertex!,add_edge!,add_node!,nv,vertices,edges,src,dst,ne,degree,
-in_edges,in_degree,in_neighbors,
-out_edges,out_degree,out_neighbors,
+export ModelGraph, ModelNode, LinkingEdge,
 
-#Plasmo graph functions
-add_subgraph!,add_subgraph,setsolver,
-
-#Node functions
-create_node,add_node,getsupportingedges,getnodeindex,
-
-#Edge functions
-add_edge,getconnectedto,getconnectedfrom,getsupportingnodes,getedgeindex,
-
-#Helper functions
-getnode,getedge,getnodeoredge,getnodesandedges,is_connected,getnodes,getedges,contains_node,getsubgraphlist,
-
-#Attributes
-addattribute!,rmattribute!,getattribute,hasattribute,
 
 #Model functions
-setmodel,resetmodel,is_nodevar,getmodel,hasmodel,getlinkconstraints,getgraphobjectivevalue,getobjectivevalue,
-buildserialmodel,getinternalgraphmodel,getsolution,
+setmodel,resetmodel,
+
+is_nodevar,
+
+getmodel,hasmodel,
+
+getlinkconstraints,getobjectivevalue,
+
+buildserialmodel,
+
+getinternalgraphmodel,
+
+
 
 #The JuMP Extension
-FlatGraphModel,create_flat_graph_model,
+FlatModel,create_flat_model,
+#Try to make these work with Base JuMP commands
 getgraph,getnodevariables,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
-solve,setsolution,setvalue,
 
+solve,
 
-#Networks
+#Solution management
+getsolution,
 
-
-#Workflows
-#Workflow,AsyncExecutor,set_function,set_input_data,set_ready,execute!,getinputdata,getoutputdata,
+setsolution,setvalue,
 
 #macros
 @linkconstraint,@getconstraintlist
 
-@compat abstract type AbstractPlasmoGraph end
-@compat abstract type AbstractPlasmoNode end
-@compat abstract type AbstractPlasmoEdge end
+abstract type AbstractModelGraph <: AbstractPlasmoGraph end
+abstract type AbstractModelNode <: AbstractPlasmoNode end
+abstract type AbstractLinkingEdge  <: AbstractPlasmoEdge end
 
-#typealias NodeOrEdge Union{AbstractNode,AbstractEdge}
-const NodeOrEdge = Union{AbstractPlasmoNode,AbstractPlasmoEdge}
-
-include("linkdata.jl")
-include("node_edge_containers.jl")
-include("graph.jl")
+include("linkconstraint.jl")
+include("graphgraph.jl")
 include("model.jl")
 include("JuMPinterface.jl")
 include("solution.jl")
@@ -69,14 +59,14 @@ include("macros.jl")
 
 #load PIPS-NLP if the library can be found
 if  !isempty(Libdl.find_library("libparpipsnlp"))
-    include("solvers/plasmoPipsNlpInterface.jl")
+    include("solver_interfaces/plasmoPipsNlpInterface.jl")
     using .PlasmoPipsNlpInterface
     export pipsnlp_solve
 end
 
 #load DSP if the library can be found
 if !isempty(Libdl.find_library("libDsp"))
-    include("solvers/plasmoDspInterface.jl")
+    include("solver_interfaces/plasmoDspInterface.jl")
     using .PlasmoDspInterface
     export dsp_solve
 end

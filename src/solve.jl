@@ -1,9 +1,9 @@
 #This file contains all of the constructs to create and manage a JuMP GraphModel.  The idea is that you use PLASMO to create your graph, associate models, and build the
 #flattened model which JuMP can always solve in serial.
-
 import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue,getvalue
 import MathProgBase
 
+#Idea: If solving with JuMP: Create the corresponding JuMP model and return the solution
 #typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
 type NodeData
     objective#::GenericExpr                      #Individual objective expression....    #Need the nlp evaluator with the Expr graph to do this?
