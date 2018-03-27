@@ -1,4 +1,4 @@
-import PlasmoGraphBase:add_node!,create_node
+import PlasmoGraphBase:add_node!,add_edge!,create_node
 import Base:show,print,string,getindex,copy
 import JuMP:AbstractModel,setobjective,getobjectivevalue
 import LightGraphs.Graph
@@ -48,12 +48,12 @@ end
 mutable struct ModelNode <: AbstractModelNode
     basenode::BasePlasmoNode
     model::Nullable{AbstractModel}
-    linkconref::Union{Void,ConstraintRef}
+    linkconrefs::Vector{ConstraintRef}
 end
 
 #Node constructors
 #empty PlasmoNode
-ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),nothing)
+ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),ConstraintRef[])
 create_node(graph::ModelGraph) = ModelNode()
 
 getmodel(node::ModelNode) = get(node.model)
@@ -74,6 +74,7 @@ getindex(node::ModelNode,sym::Symbol) = getmodel(node)[sym]
 function setmodel(node::ModelNode,m::AbstractModel)
     #_updatelinks(m,nodeoredge)      #update link constraints after setting a model
     !(_is_assignedtonode(m) && getmodel(node) == m) || error("the model is already asigned to another node")
+    #BREAK LINKS FOR NOW
     #If it already had a model, delete all the link constraints corresponding to that model
     # if hasmodel(node)
     #     for (graph,constraints) in getlinkconstraints(node)
@@ -105,15 +106,32 @@ end
 ##############################################################################
 struct LinkingEdge <: AbstractLinkingEdge
     edge::BasePlasmoEdge
-    linkconref::Union{Void,ConstraintRef}
+    linkconrefs::Vector{ConstraintRef}
 end
 #Edge constructors
 LinkingEdge() = LinkingEdge(BasePlasmoEdge(),nothing)
 create_edge(graph::ModelGraph) = LinkingEdge()
 
-function add_edge!(graph::ModelGraph,ref::ConstraintReference)
-    con = LinearConstraint(ref)
-    nodes =
+function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
+    #TODO Make sure I can go from a constraintreference back to a link constrating
+    con = JuMP.LinearConstraint(ref)
+    vars = con.terms.vars
+    nodes = unique([getnode(var) for var in vars])
+    if length(nodes) == 2
+        edge = add_edge!(graph,nodes[1],nodes[2])
+        push!(edge.linkconrefs,ref)
+        push!(nodes[1].linkconrefs,ref)
+        push!(nodes[2].linkconrefs,ref)
+    elseif length(nodes) > 2
+        edge = add_hyper_edge!(graph,nodes...)
+        push!(edge.linkconrefs,ref)
+        for node in nodes
+            push!(node.linkconrefs,ref)
+        end
+    else
+        throw(error("Attempted to add a link constraint for a single node"))
+    end
+    return edge
 end
 
 # TODO  Think of a good way to update links when swapping out models.  Might need to store variable names in NodeLinkData
@@ -134,31 +152,14 @@ function add_node!(graph::ModelGraph,m::AbstractModel)
 end
 
 #Store link constraint in the given graph.  Store a reference to the linking constraint on the nodes which it links
-#TODO Create the edges on the graph between the nodes referenced in the link constraint
 function addlinkconstraint(graph::ModelGraph,con::AbstractConstraint)
-    # vars = con.terms.vars
-    # #check that all of the variables belong to the same graph
-    # nodes = unique([getnode(var) for var in vars])
-    # all(node->node in getnodes(graph),nodes)? nothing: error("the linkconstraint: $con contains variables that don't belong to the graph: $graph")
-    # if length(nodes) > 2
-    #     push!(graph.linkmodel.hyperconstraints,con)
-    # else
-    #     push!(graph.linkmodel.linkconstraints,con)   #add the link constraint to the graph
-    # end
-
-    #ref = ConstraintRef{LinkModel,LinkConstraint}(graph.linkmodel, length(graph.linkmodel.linkconstraints) + length(graph.linkmodel.hyperconstraints))
-    isa(con,LinearConstraint) || throw(error("Link constraints must be linear.  If you're trying to add quadtratic or nonlinear links, try creating duplicate variables and linking those"))
-    ref = addconstraint(graph.linkmodel,con)
-    link_edge = add_edge!(graph,ref)  #add a linking edge between the node variables
-
-    #Update local node information
-    for node in nodes
-        add_link_reference(graph,node,ref)
-    end
+    isa(con,JuMP.LinearConstraint) || throw(error("Link constraints must be linear.  If you're trying to add quadtratic or nonlinear links, try creating duplicate variables and linking those"))
+    ref = JuMP.addconstraint(graph.linkmodel,con)
+    link_edge = add_edge!(graph,ref)  #adds edge and a contraint reference to all objects involved in the constraint
     return link_edge
 end
 
-#TODO Figure out a good way to use containers here instead of making arrays
+#NOTE Figure out a good way to use containers here instead of making arrays
 function addlinkconstraint{T}(graph::ModelGraph,linkcons::Array{AbstractConstraint,T})
     array_type = typeof(linkcons)  #get the array type
     array_type.parameters.length > 1? linkcons = vec(linkcons): nothing   #flatten out the constraints into a single vector

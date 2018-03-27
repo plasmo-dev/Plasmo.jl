@@ -2,7 +2,7 @@
 #A constraint between JuMP Models
 #Should link constraints be strictly equality?
 mutable struct LinkConstraint <: JuMP.AbstractConstraint
-    expr::JuMP.AffExpr
+    terms::JuMP.AffExpr
     lb::Number
     ub::Number
 end
@@ -49,7 +49,8 @@ function JuMP.addconstraint(model::LinkModel,constr::JuMP.LinearConstraint)
     else
         error("constraint doesn't make sense")
     end
-    ref = ConstraintRef{LinkModel,LinkConstraint}(graph.linkmodel, length(graph.linkmodel.linkconstraints) + length(graph.linkmodel.hyperconstraints))
+
+    ref = ConstraintRef{LinkModel,LinkConstraint}(model, length(linkdata.linkconstraints) + length(linkdata.hyperconstraints))
     return ref
 end
 
