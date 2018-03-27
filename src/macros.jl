@@ -30,8 +30,10 @@ macro linkconstraint(graph,args...)
     end)
 end
 
+#Would need to create link variables to do this
 macro NLlinkconstraint(graph,args...) end
 
+#Should work similar to JuMPs @objective
 macro graphobjective(graph,args...)
     graph = esc(graph)
     if length(args) != 2
@@ -50,7 +52,6 @@ macro graphobjective(graph,args...)
     end
     return assert_validmodel(m, code)
 end
-
 
 
 #generate a list of constraints, but don't attach them to the model @Might be the same as JuMP.LinearConstraints

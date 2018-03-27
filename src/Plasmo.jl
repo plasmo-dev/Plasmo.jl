@@ -10,6 +10,8 @@ module Plasmo
 
 using Compat
 
+using PlasmoGraphBase
+import JuMP
 import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
 
 export ModelGraph, ModelNode, LinkingEdge,
@@ -29,8 +31,7 @@ buildserialmodel,
 getinternalgraphmodel,
 
 
-
-#The JuMP Extension
+#Internal JuMP models (when using JuMP solvers to solve the graph)
 FlatModel,create_flat_model,
 #Try to make these work with Base JuMP commands
 getgraph,getnodevariables,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
@@ -50,26 +51,28 @@ abstract type AbstractModelNode <: AbstractPlasmoNode end
 abstract type AbstractLinkingEdge  <: AbstractPlasmoEdge end
 
 include("linkconstraint.jl")
-include("graphgraph.jl")
-include("model.jl")
-include("JuMPinterface.jl")
-include("solution.jl")
-include("macros.jl")
-#include("workflow.jl")
 
-#load PIPS-NLP if the library can be found
-if  !isempty(Libdl.find_library("libparpipsnlp"))
-    include("solver_interfaces/plasmoPipsNlpInterface.jl")
-    using .PlasmoPipsNlpInterface
-    export pipsnlp_solve
-end
+include("modelgraph.jl")
 
-#load DSP if the library can be found
-if !isempty(Libdl.find_library("libDsp"))
-    include("solver_interfaces/plasmoDspInterface.jl")
-    using .PlasmoDspInterface
-    export dsp_solve
-end
+# include("solve.jl")
+#
+# include("solution.jl")
+#
+# include("macros.jl")
+#
+# #load PIPS-NLP if the library can be found
+# if  !isempty(Libdl.find_library("libparpipsnlp"))
+#     include("solver_interfaces/plasmoPipsNlpInterface.jl")
+#     using .PlasmoPipsNlpInterface
+#     export pipsnlp_solve
+# end
+#
+# #load DSP if the library can be found
+# if !isempty(Libdl.find_library("libDsp"))
+#     include("solver_interfaces/plasmoDspInterface.jl")
+#     using .PlasmoDspInterface
+#     export dsp_solve
+# end
 
 
 end

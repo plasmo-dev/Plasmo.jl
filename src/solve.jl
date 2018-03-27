@@ -1,61 +1,58 @@
 #This file contains all of the constructs to create and manage a JuMP GraphModel.  The idea is that you use PLASMO to create your graph, associate models, and build the
 #flattened model which JuMP can always solve in serial.
-import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue,getvalue
+#import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue,getvalue
 import MathProgBase
+#import MathOptInterface
+
+
 
 #Idea: If solving with JuMP: Create the corresponding JuMP model and return the solution
 #typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
-type NodeData
-    objective#::GenericExpr                      #Individual objective expression....    #Need the nlp evaluator with the Expr graph to do this?
-    variablemap::Dict{Symbol,Any}                #Dictionary of symbols to Model variables
+mutable struct NodeData
+    objective::AffExpr                           #Individual objective expression....    #Need the nlp evaluator with the Expr graph to do this?
+    variablemap::Dict{Symbol,AbstractJuMPScalar} #Dictionary of symbols to Model variables
     constraintlist::Vector{ConstraintRef}        #Vector of model constraints (make this a dictionary too)
     indexmap::Dict{Int,Int}                      #linear index of node variable in flat model to the original index of the component model
 end
-NodeData() = NodeData(0,Dict{Symbol,Any}(),ConstraintRef[],Dict{Int,Int}())
+NodeData() = NodeData(0,Dict{Symbol,AbstractJuMPScalar}(),ConstraintRef[],Dict{Int,Int}())
 
-type JuMPGraph <: AbstractPlasmoGraph end
+abstract type JuMPGraph <: AbstractPlasmoGraph end
 
-type JuMPNode <: AbstractNode
-    index::Dict{AbstractPlasmoGraph,Int} #map to an index in each graph containing the node
-    label::Symbol
-    attributes::Dict{Any,Any}
+type JuMPNode <: AbstractPlasmoNode
+    basenode::BasePlasmoNode
     node_data::NodeData
 end
 
-type JuMPEdge <: AbstractEdge
-    index::Dict{AbstractPlasmoGraph,LightGraphs.Edge} #map to an index in each graph containing the node
-    label::Symbol
-    attributes::Dict{Any,Any}
-    node_data::NodeData
+type JuMPEdge <: AbstractPlasmoEdge
+    baseedge::BasePlasmoEdge
 end
 
-const JuMPNodeOrEdge = Union{JuMPNode,JuMPEdge}
-hasmodel(nodeoredge::JuMPNodeOrEdge) = false
+hasmodel(node::JuMPNode) = throw(error("JuMP nodes are simple references to original ModelNodes.  Did you mean to check a ModelNode?"))
 #Construct a structured model, but roll it all into one JuMP model (this is how we solve with JuMP accessible solvers)
-function FlatGraphModel()
+function JuMPGraphModel()
     m = JuMP.Model()
-    m.ext[:Graph] = Plasmo.PlasmoGraph()
+    m.ext[:Graph] = Plasmo.ModelGraph()
     return m
 end
 
 is_graphmodel(m::Model) = haskey(m.ext,:Graph)? true : false  #check if the model is a graph model
 
-#Add nodes and edges to graph models.  These are used for model instantiation from a graph
-function add_node!(m::Model; index = nv(getgraph(m).graph)+1)
-    is_graphmodel(m) || error("Can only add nodes to graph models")
-    @assert is_graphmodel(m)
-    node = JuMPNode(Dict{AbstractPlasmoGraph,Int}(), Symbol("node"),Dict(),NodeData())
-    add_node!(getgraph(m),node,index = index)
-    return node
-end
-
-function add_edge!(m::Model,node1::JuMPNode,node2::JuMPNode)
-    is_graphmodel(m) || error("Can only add nodes to graph models")
-    @assert is_graphmodel(m)
-    edge = JuMPEdge(Dict{AbstractPlasmoGraph,Edge}(), Symbol("edge"),Dict{Any,Any}(),NodeData())
-    add_edge!(getgraph(m),edge,node1,node2)
-    return edge
-end
+# #Add nodes and edges to graph models.  These are used for model instantiation from a graph
+# function add_node!(m::Model; index = nv(getgraph(m).graph)+1)
+#     is_graphmodel(m) || error("Can only add nodes to graph models")
+#     @assert is_graphmodel(m)
+#     node = JuMPNode(Dict{AbstractPlasmoGraph,Int}(), Symbol("node"),Dict(),NodeData())
+#     add_node!(getgraph(m),node,index = index)
+#     return node
+# end
+#
+# function add_edge!(m::Model,node1::JuMPNode,node2::JuMPNode)
+#     is_graphmodel(m) || error("Can only add nodes to graph models")
+#     @assert is_graphmodel(m)
+#     edge = JuMPEdge(Dict{AbstractPlasmoGraph,Edge}(), Symbol("edge"),Dict{Any,Any}(),NodeData())
+#     add_edge!(getgraph(m),edge,node1,node2)
+#     return edge
+# end
 
 #Define all of the PlasmoGraph functions for a GraphModel
 getgraph(m::Model) = haskey(m.ext, :Graph)? m.ext[:Graph] : error("Model is not a graph model")
@@ -75,7 +72,7 @@ getnodeobjective(nodeoredge::NodeOrEdge) = JuMP.getobjective(nodeoredge.model)
 
 getnodevariables(nodeoredge::JuMPNodeOrEdge) =  nodeoredge.node_data.variablemap
 #TODO This is dangerous.  objDict contains constraints
-getnodevariables(nodeoredge::NodeOrEdge) = getmodel(nodeoredge).objDict
+getnodevariables(node::JuMPNode) = getmodel(nodeoredge).objDict  #could store variable references on nodes
 getnodeconstraints(nodeoredge::JuMPNodeOrEdge) = nodeoredge.node_data.constraintlist
 
 getindex(nodeoredge::JuMPNodeOrEdge,s::Symbol) = nodeoredge.node_data.variablemap[s]  #get a node or edge variable
@@ -93,11 +90,12 @@ function getlinkconstraints(m::JuMP.Model)
 end
 
 #Create a single JuMP model from a plasmo graph
-function create_flat_graph_model(graph::PlasmoGraph)
-    flat_model = FlatGraphModel()
+function create_flat_graph_model(graph::ModelGraph)
+    flat_model = JuMPGraphModel()
     flat_graph = getgraph(flat_model)
     #copy number of subgraphs (might need recursive function here!)
     _copy_subgraphs!(graph,flat_graph)
+    copy!(graph,flat_graph)
     #first copy all nodes, then setup all the subgraphs
     var_maps = Dict()
     #COPY NODE MODELS
@@ -209,8 +207,6 @@ function create_flat_graph_model(graph::PlasmoGraph)
     end
     return flat_model
 end
-
-
 
 #TODO
 # function setsumgraphobjectives(graph)
@@ -472,8 +468,9 @@ function setsolution(graph1::AbstractPlasmoGraph,graph2::AbstractPlasmoGraph)
     end
 end
 
-buildserialmodel(graph::PlasmoGraph) = graph.internal_serial_model =  create_flat_graph_model(graph)
-function solve(graph::PlasmoGraph;kwargs...)
+buildserialmodel(graph::PlasmoGraph) = graph.internal_serial_model = create_flat_graph_model(graph)
+
+function solve(graph::ModelGraph;kwargs...)
     println("Aggregating Models...")
     m_flat = create_flat_graph_model(graph)
     graph.internal_serial_model = m_flat
