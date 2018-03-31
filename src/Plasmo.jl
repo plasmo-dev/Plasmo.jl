@@ -16,6 +16,8 @@ import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, Constr
 
 export ModelGraph, ModelNode, LinkingEdge,
 
+LinkConstraint,
+
 
 #Model functions
 setmodel,resetmodel,

@@ -1,8 +1,8 @@
-import PlasmoGraphBase:add_node!,add_edge!,create_node
+import PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge
 import Base:show,print,string,getindex,copy
 import JuMP:AbstractModel,setobjective,getobjectivevalue
 import LightGraphs.Graph
-#import MathProgBase.SolverInterface:AbstractMathProgSolver
+import MathProgBase.SolverInterface:AbstractMathProgSolver
 
 ##############################################################################
 # ModelGraph
@@ -19,7 +19,9 @@ ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
 
 setobjective(graph::ModelGraph, sense::Symbol, x::JuMP.Variable) = setobjective(graph.linkmodel, sense, convert(AffExpr,x))
 
-getlinkconstraints(model::ModelGraph) = model.linkmodel.linkconstraints
+getlinkconstraints(model::ModelGraph) = model.linkmodel.linkdata.linkconstraints
+
+getsimplelinkconstraints(model::ModelGraph) =
 gethyperconstraints(model::ModelGraph) = model.linkmodel.hyperconstraints
 
 _setobjectivevalue(graph::ModelGraph,value::Number) = graph.linkmodel.objVal = value
@@ -60,6 +62,7 @@ getmodel(node::ModelNode) = get(node.model)
 hasmodel(node::ModelNode) = get(node.model) != nothing? true: false
 
 getlinkconstraints(node::ModelNode) = node.link_data.linkconstraintmap
+
 getlinkconstraints(graph::ModelGraph,node::ModelNode) = nodeoredge.link_data.linkconstraintmap[graph]
 
 is_nodevar(node::ModelNode,var::AbstractJuMPScalar) = getmodel(node) == var.m #checks whether a variable belongs to a node or edge
@@ -105,25 +108,26 @@ end
 # Edges
 ##############################################################################
 struct LinkingEdge <: AbstractLinkingEdge
-    edge::BasePlasmoEdge
+    baseedge::BasePlasmoEdge
     linkconrefs::Vector{ConstraintRef}
 end
 #Edge constructors
-LinkingEdge() = LinkingEdge(BasePlasmoEdge(),nothing)
+LinkingEdge() = LinkingEdge(BasePlasmoEdge(),JuMP.ConstraintRef[])
 create_edge(graph::ModelGraph) = LinkingEdge()
 
 function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
-    #TODO Make sure I can go from a constraintreference back to a link constrating
-    con = JuMP.LinearConstraint(ref)
+    #TODO Make sure I can go from a constraintreference back to a link constraint
+    con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
+
     vars = con.terms.vars
-    nodes = unique([getnode(var) for var in vars])
+    nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
     if length(nodes) == 2
-        edge = add_edge!(graph,nodes[1],nodes[2])
+        edge = add_edge!(graph,nodes[1],nodes[2])  #constraint edge connected to two nodes
         push!(edge.linkconrefs,ref)
         push!(nodes[1].linkconrefs,ref)
         push!(nodes[2].linkconrefs,ref)
     elseif length(nodes) > 2
-        edge = add_hyper_edge!(graph,nodes...)
+        edge = add_hyper_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
         push!(edge.linkconrefs,ref)
         for node in nodes
             push!(node.linkconrefs,ref)

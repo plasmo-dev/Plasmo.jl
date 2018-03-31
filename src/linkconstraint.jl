@@ -8,14 +8,29 @@ mutable struct LinkConstraint <: JuMP.AbstractConstraint
 end
 LinkConstraint(con::JuMP.LinearConstraint) = LinkConstraint(con.terms,con.lb,con.ub)
 
+#Get the Link constraint from a reference
+LinkConstraint(ref::ConstraintRef) = ref.m.linkdata.linkconstraints[ref.idx]
+
 function getnodes(con::LinkConstraint)
+    vars = con.terms.vars
+    nodes = unique([getnode(var) for var in vars])
+    return nodes
 end
 
-mutable struct LinkData
-    linkconstraints::Vector{LinkConstraint}         #links between 2 variables
-    hyperconstraints::Vector{LinkConstraint}        #links between 3 or more variables
+#Could just look up the index
+function getnumnodes(con::LinkConstraint)
+    nodes = getnodes(con)
+    return length(nodes)
 end
-LinkData() = LinkData(Vector{LinkConstraint}(),Vector{LinkConstraint}())
+
+
+mutable struct LinkData
+    linkconstraints::Vector{LinkConstraint}          #all links
+    simple_links::Vector{Int}  #references to the 2 node link constraints
+    hyper_links::Vector{Int}   #references to linkconstraints with 3 or more nodes
+    #hyperconstraints::Vector{LinkConstraint}        #links between 3 or more variables
+end
+LinkData() = LinkData(Vector{LinkConstraint}(),Vector{Int}(),Vector{Int}())
 
 #A link model is a simple struct that stores link data.
 mutable struct LinkModel <: JuMP.AbstractModel   #subtyping here so I can get ConstraintRef
@@ -26,14 +41,10 @@ end
 LinkModel() = LinkModel(LinkData(),0,JuMP.AffExpr())
 
 getlinkdata(model::LinkModel) = model.linkdata
-getlinkconstraints(model::LinkModel) = getlinkdata(model).linkconstraints
-gethyperconstraints(model::LinkModel) = getlinkdata(model).hyperconstraints
 
-function getnumnodes(con::LinkConstraint)
-    vars = con.terms.vars
-    nodes = unique([getnode(var) for var in vars])
-    return length(nodes)
-end
+getsimplelinkconstraints(model::LinkModel) = getlinkdata(model).linkconstraints[getlinkdata(model)[simple_links]]
+gethyperlinkconstraints(model::LinkModel) = getlinkdata(model).linkconstraints[getlinkdata(model)[hyper_links]]
+
 
 is_linkconstr(con::LinkConstraint) = getnumnodes(con) == 2? true : false
 is_hyperconstr(con::LinkConstraint) = getnumnodes(con) > 2? true : false
@@ -42,15 +53,17 @@ function JuMP.addconstraint(model::LinkModel,constr::JuMP.LinearConstraint)
     #Do some error checking here
     linkdata = getlinkdata(model)
     linkconstr = LinkConstraint(constr)
+    push!(linkdata.linkconstraints,linkconstr)
+    ref = ConstraintRef{LinkModel,LinkConstraint}(model, length(linkdata.linkconstraints))
+
     if is_linkconstr(linkconstr )
-        push!(linkdata.linkconstraints,linkconstr)
+        push!(linkdata.simple_links,length(linkdata.linkconstraints))
     elseif is_hyperconstr(linkconstr )
-        push!(linkdata.hyperconstraints,constr)
+        push!(linkdata.hyper_links,length(linkdata.linkconstraints))
     else
         error("constraint doesn't make sense")
     end
 
-    ref = ConstraintRef{LinkModel,LinkConstraint}(model, length(linkdata.linkconstraints) + length(linkdata.hyperconstraints))
     return ref
 end
 
