@@ -1,6 +1,8 @@
 
-#A constraint between JuMP Models
-#Should link constraints be strictly equality?
+import MathProgBase.SolverInterface:AbstractMathProgSolver
+
+#A constraint between JuMP Models (nodes)
+#Should link constraints be strictly equality?  Could always just convert inequality with slacks
 mutable struct LinkConstraint <: JuMP.AbstractConstraint
     terms::JuMP.AffExpr
     lb::Number
@@ -23,7 +25,6 @@ function getnumnodes(con::LinkConstraint)
     return length(nodes)
 end
 
-
 mutable struct LinkData
     linkconstraints::Vector{LinkConstraint}          #all links
     simple_links::Vector{Int}  #references to the 2 node link constraints
@@ -37,14 +38,14 @@ mutable struct LinkModel <: JuMP.AbstractModel   #subtyping here so I can get Co
     linkdata::LinkData  #LinkModel's store indices for each link constraint added
     objval::Number
     objective::JuMP.AffExpr  #Possibly a function of multiple model variables
+    solver::AbstractMathProgSolver
 end
-LinkModel() = LinkModel(LinkData(),0,JuMP.AffExpr())
+LinkModel() = LinkModel(LinkData(),0,JuMP.AffExpr(),JuMP.UnsetSolver())
 
 getlinkdata(model::LinkModel) = model.linkdata
 
 getsimplelinkconstraints(model::LinkModel) = getlinkdata(model).linkconstraints[getlinkdata(model)[simple_links]]
 gethyperlinkconstraints(model::LinkModel) = getlinkdata(model).linkconstraints[getlinkdata(model)[hyper_links]]
-
 
 is_linkconstr(con::LinkConstraint) = getnumnodes(con) == 2? true : false
 is_hyperconstr(con::LinkConstraint) = getnumnodes(con) > 2? true : false

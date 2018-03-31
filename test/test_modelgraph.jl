@@ -23,6 +23,13 @@ lincon = LinearConstraint(AffExpr([n1[:x],n2[:x]],[1,-1],0),0,0)
 
 edge = addlinkconstraint(m,lincon)  #adds a simple edge between n1 and n2
 
+getlinkconstraints(n1)
+
+ref = getlinkconstraint(m,n2)[1]
+
+linkcon = LinkConstraint(ref)
+
+
 
 
 #should add an edge between n1 and n2

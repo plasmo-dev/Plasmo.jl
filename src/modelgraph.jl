@@ -2,7 +2,7 @@ import PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge
 import Base:show,print,string,getindex,copy
 import JuMP:AbstractModel,setobjective,getobjectivevalue
 import LightGraphs.Graph
-import MathProgBase.SolverInterface:AbstractMathProgSolver
+
 
 ##############################################################################
 # ModelGraph
@@ -19,10 +19,9 @@ ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
 
 setobjective(graph::ModelGraph, sense::Symbol, x::JuMP.Variable) = setobjective(graph.linkmodel, sense, convert(AffExpr,x))
 
-getlinkconstraints(model::ModelGraph) = model.linkmodel.linkdata.linkconstraints
-
-getsimplelinkconstraints(model::ModelGraph) =
-gethyperconstraints(model::ModelGraph) = model.linkmodel.hyperconstraints
+getlinkconstraints(model::ModelGraph) = getlinkconstraints(model.linkmodel)
+getsimplelinkconstraints(model::ModelGraph) = getsimplelinkconstraints(model.linkmodel)
+gethyperlinkconstraints(model::ModelGraph) = gethyperlinkconstraint(model.linkmodel)
 
 _setobjectivevalue(graph::ModelGraph,value::Number) = graph.linkmodel.objVal = value
 JuMP.getobjectivevalue(graph::ModelGraph) = graph.linkmodel.objVal
@@ -50,20 +49,21 @@ end
 mutable struct ModelNode <: AbstractModelNode
     basenode::BasePlasmoNode
     model::Nullable{AbstractModel}
-    linkconrefs::Vector{ConstraintRef}
+    #linkconrefs::Vector{ConstraintRef}
+    linkconrefs::Dict{ModelGraph,Vector{ConstraintRef}}
 end
 
 #Node constructors
 #empty PlasmoNode
-ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),ConstraintRef[])
+ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),Dict{ModelGraph,Vector{ConstraintRef}}())
 create_node(graph::ModelGraph) = ModelNode()
 
 getmodel(node::ModelNode) = get(node.model)
 hasmodel(node::ModelNode) = get(node.model) != nothing? true: false
 
-getlinkconstraints(node::ModelNode) = node.link_data.linkconstraintmap
-
-getlinkconstraints(graph::ModelGraph,node::ModelNode) = nodeoredge.link_data.linkconstraintmap[graph]
+#Get all of the link constraints for a node in all of its graphs
+getlinkconstraints(node::ModelNode) = node.linkconrefs
+getlinkconstraints(graph::ModelGraph,node::ModelNode) = node.linkconrefs[graph]
 
 is_nodevar(node::ModelNode,var::AbstractJuMPScalar) = getmodel(node) == var.m #checks whether a variable belongs to a node or edge
 _is_assignedtonode(m::AbstractModel) = haskey(m.ext,:node) #check whether a model is assigned to a node
@@ -104,6 +104,7 @@ end
 
 #TODO
 # removemodel(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
+
 ##############################################################################
 # Edges
 ##############################################################################
@@ -124,13 +125,32 @@ function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
     if length(nodes) == 2
         edge = add_edge!(graph,nodes[1],nodes[2])  #constraint edge connected to two nodes
         push!(edge.linkconrefs,ref)
-        push!(nodes[1].linkconrefs,ref)
-        push!(nodes[2].linkconrefs,ref)
+
+        #Could just create a key when adding a node to a graph
+        if !haskey(nodes[1].linkconrefs,graph)
+            nodes[1].linkconrefs[graph] = [ref]
+        else
+            push!(nodes[1].linkconrefs[graph],ref)
+        end
+
+        if !haskey(nodes[2].linkconrefs,graph)
+            nodes[2].linkconrefs[graph] = [ref]
+        else
+            push!(nodes[2].linkconrefs[graph],ref)
+        end
+
+        # push!(nodes[1].linkconrefs,ref)
+        # push!(nodes[2].linkconrefs,ref)
     elseif length(nodes) > 2
         edge = add_hyper_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
         push!(edge.linkconrefs,ref)
         for node in nodes
-            push!(node.linkconrefs,ref)
+            if !haskey(node.linkconrefs,graph)
+                node.linkconrefs[graph] = [ref]
+            else
+                push!(node.linkconrefs[graph],ref)
+            end
+            #push!(node.linkconrefs[graph],ref)
         end
     else
         throw(error("Attempted to add a link constraint for a single node"))
@@ -180,36 +200,3 @@ function addlinkconstraint{T}(graph::ModelGraph,linkcons::Array{AbstractConstrai
         addlinkconstraint(graph,con)
     end
 end
-
-# function addconstraint(m::Model, c::AbstractConstraint, name::String="")
-#     cindex = MOI.addconstraint!(m.moibackend, moi_function_and_set(c)...)
-#     cref = ConstraintRef(m, cindex)
-#     if !isempty(name)
-#         setname(cref, name)
-#     end
-#     return cref
-# end
-
-# function setobjective(m::Model, sense::Symbol, a::AffExpr)
-#     if length(graph.obj.qvars1) != 0
-#         # Go through the quadratic path so that we properly clear
-#         # current quadratic terms.
-#         setobjective(graph, sense, convert(QuadExpr,a))
-#     else
-#         setobjectivesense(m, sense)
-#         m.obj = convert(QuadExpr,a)
-#     end
-# end
-
-#Add edges and set the model as well
-# function add_edge!(graph::PlasmoGraph,edge::LightGraphs.Edge,m::AbstractModel)
-#     pedge = add_edge!(graph,edge)
-#     setmodel!(pedge,m)
-#     return pedge
-# end
-
-# function add_edge!(graph::PlasmoGraph,pedge::PlasmoEdge,src::PlasmoNode,dst::PlasmoNode,m::AbstractModel)
-#     pedge = add_edge!(graph,pedge,src,dst)
-#     setmodel!(pedge,m)
-#     return pedge
-# end

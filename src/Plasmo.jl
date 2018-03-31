@@ -26,7 +26,9 @@ is_nodevar,
 
 getmodel,hasmodel,
 
-addlinkconstraint, getlinkconstraints,getobjectivevalue,
+addlinkconstraint, getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints,
+
+getobjectivevalue,
 
 buildserialmodel,
 
