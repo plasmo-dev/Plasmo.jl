@@ -21,7 +21,7 @@ setobjective(graph::ModelGraph, sense::Symbol, x::JuMP.Variable) = setobjective(
 
 getlinkconstraints(model::ModelGraph) = getlinkconstraints(model.linkmodel)
 getsimplelinkconstraints(model::ModelGraph) = getsimplelinkconstraints(model.linkmodel)
-gethyperlinkconstraints(model::ModelGraph) = gethyperlinkconstraint(model.linkmodel)
+gethyperlinkconstraints(model::ModelGraph) = gethyperlinkconstraints(model.linkmodel)
 
 _setobjectivevalue(graph::ModelGraph,value::Number) = graph.linkmodel.objVal = value
 JuMP.getobjectivevalue(graph::ModelGraph) = graph.linkmodel.objVal
@@ -142,6 +142,7 @@ function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
         # push!(nodes[1].linkconrefs,ref)
         # push!(nodes[2].linkconrefs,ref)
     elseif length(nodes) > 2
+        #TODO
         edge = add_hyper_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
         push!(edge.linkconrefs,ref)
         for node in nodes
