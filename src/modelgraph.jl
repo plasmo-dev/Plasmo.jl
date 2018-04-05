@@ -15,6 +15,8 @@ mutable struct ModelGraph <: AbstractModelGraph
     serial_model::Nullable{AbstractModel}        #The internal serial model for the graph.  Returned if requested by the solve
 end
 
+#ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
+
 ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
 
 setobjective(graph::ModelGraph, sense::Symbol, x::JuMP.Variable) = setobjective(graph.linkmodel, sense, convert(AffExpr,x))
