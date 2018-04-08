@@ -70,7 +70,8 @@ end
 
 
 #
-#
+# Some JuMPChance examples...
+
 # const CCAffExpr = JuMP.GenericAffExpr{AffExpr,IndepNormal}
 # CCAffExpr() = CCAffExpr(IndepNormal[],AffExpr[],AffExpr())
 # #addlinkconstraint!(graph::ModelGraph,con::ConstraintRef)

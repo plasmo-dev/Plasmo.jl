@@ -4,9 +4,7 @@
 import MathProgBase
 #import MathOptInterface
 
-
-
-#Idea: If solving with JuMP: Create the corresponding JuMP model and return the solution
+#IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution
 #typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
 mutable struct NodeData
     objective::AffExpr                           #Individual objective expression....    #Need the nlp evaluator with the Expr graph to do this?

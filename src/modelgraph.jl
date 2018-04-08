@@ -1,4 +1,4 @@
-import PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge
+import PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge,getnode
 import Base:show,print,string,getindex,copy
 import JuMP:AbstractModel,setobjective,getobjectivevalue
 import LightGraphs.Graph
@@ -15,10 +15,11 @@ mutable struct ModelGraph <: AbstractModelGraph
     serial_model::Nullable{AbstractModel}        #The internal serial model for the graph.  Returned if requested by the solve
 end
 
-#ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
+ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
 
-ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
+#ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
 
+#Write total objective functions for a model graph
 setobjective(graph::ModelGraph, sense::Symbol, x::JuMP.Variable) = setobjective(graph.linkmodel, sense, convert(AffExpr,x))
 
 getlinkconstraints(model::ModelGraph) = getlinkconstraints(model.linkmodel)
@@ -124,40 +125,41 @@ function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
 
     vars = con.terms.vars
     nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
-    if length(nodes) == 2
-        edge = add_edge!(graph,nodes[1],nodes[2])  #constraint edge connected to two nodes
-        push!(edge.linkconrefs,ref)
-
-        #Could just create a key when adding a node to a graph
-        if !haskey(nodes[1].linkconrefs,graph)
-            nodes[1].linkconrefs[graph] = [ref]
-        else
-            push!(nodes[1].linkconrefs[graph],ref)
-        end
-
-        if !haskey(nodes[2].linkconrefs,graph)
-            nodes[2].linkconrefs[graph] = [ref]
-        else
-            push!(nodes[2].linkconrefs[graph],ref)
-        end
+    # if length(nodes) == 2
+    #     edge = add_edge!(graph,nodes[1],nodes[2])  #constraint edge connected to two nodes
+    #     push!(edge.linkconrefs,ref)
+    #
+    #     #Could just create a key when adding a node to a graph
+    #     if !haskey(nodes[1].linkconrefs,graph)
+    #         nodes[1].linkconrefs[graph] = [ref]
+    #     else
+    #         push!(nodes[1].linkconrefs[graph],ref)
+    #     end
+    #
+    #     if !haskey(nodes[2].linkconrefs,graph)
+    #         nodes[2].linkconrefs[graph] = [ref]
+    #     else
+    #         push!(nodes[2].linkconrefs[graph],ref)
+    #     end
 
         # push!(nodes[1].linkconrefs,ref)
         # push!(nodes[2].linkconrefs,ref)
-    elseif length(nodes) > 2
-        #TODO
-        edge = add_hyper_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
-        push!(edge.linkconrefs,ref)
-        for node in nodes
-            if !haskey(node.linkconrefs,graph)
-                node.linkconrefs[graph] = [ref]
-            else
-                push!(node.linkconrefs[graph],ref)
-            end
-            #push!(node.linkconrefs[graph],ref)
+    #elseif length(nodes) > 2
+    #TODO
+    #Add hyper edge
+    edge = add_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
+    push!(edge.linkconrefs,ref)
+    for node in nodes
+        if !haskey(node.linkconrefs,graph)
+            node.linkconrefs[graph] = [ref]
+        else
+            push!(node.linkconrefs[graph],ref)
         end
-    else
-        throw(error("Attempted to add a link constraint for a single node"))
+        #push!(node.linkconrefs[graph],ref)
     end
+    # else
+    #     throw(error("Attempted to add a link constraint for a single node"))
+    # end
     return edge
 end
 
