@@ -16,7 +16,6 @@ mutable struct ModelGraph <: AbstractModelGraph
 end
 
 ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
-
 #ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
 
 #Write total objective functions for a model graph
@@ -43,8 +42,8 @@ function get_all_linkconstraints(graph::ModelGraph)
     return links
 end
 
-#TODO Figure out how JuMP sets solvers now
-#setsolver(model::PlasmoGraph,solver::AbstractMathProgSolver) = graph.solver = solver
+#TODO Figure out how JuMP sets solvers with MOI
+setsolver(model::ModelGraph,solver::AbstractMathProgSolver) = graph.linkmodel.solver = solver
 
 ##############################################################################
 # Nodes
@@ -52,7 +51,6 @@ end
 mutable struct ModelNode <: AbstractModelNode
     basenode::BasePlasmoNode
     model::Nullable{AbstractModel}
-    #linkconrefs::Vector{ConstraintRef}
     linkconrefs::Dict{ModelGraph,Vector{ConstraintRef}}
 end
 
@@ -105,7 +103,9 @@ function resetmodel(node::ModelNode,m::AbstractModel)
     #throw warnings if link constraints break
 end
 
-#TODO
+JuMP.getobjective(node::ModelNode) = getobjective(node.model)
+
+#TODO?
 # removemodel(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
 
 ##############################################################################
@@ -120,9 +120,7 @@ LinkingEdge() = LinkingEdge(BasePlasmoEdge(),JuMP.ConstraintRef[])
 create_edge(graph::ModelGraph) = LinkingEdge()
 
 function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
-    #TODO Make sure I can go from a constraintreference back to a link constraint
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
-
     vars = con.terms.vars
     nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
     # if length(nodes) == 2
@@ -145,8 +143,6 @@ function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
         # push!(nodes[1].linkconrefs,ref)
         # push!(nodes[2].linkconrefs,ref)
     #elseif length(nodes) > 2
-    #TODO
-    #Add hyper edge
     edge = add_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
     push!(edge.linkconrefs,ref)
     for node in nodes
@@ -169,7 +165,7 @@ end
 #     #find variables
 # end
 
-#########################################
+
 ########################################
 #Other add_node! constructors
 #######################################
@@ -180,6 +176,9 @@ function add_node!(graph::ModelGraph,m::AbstractModel)
     return node
 end
 
+########################################
+# Add the link constraints
+########################################
 #Store link constraint in the given graph.  Store a reference to the linking constraint on the nodes which it links
 function addlinkconstraint(graph::ModelGraph,con::AbstractConstraint)
     isa(con,JuMP.LinearConstraint) || throw(error("Link constraints must be linear.  If you're trying to add quadtratic or nonlinear links, try creating duplicate variables and linking those"))
@@ -205,3 +204,9 @@ function addlinkconstraint{T}(graph::ModelGraph,linkcons::Array{AbstractConstrai
         addlinkconstraint(graph,con)
     end
 end
+
+
+# function copy(graph::AbstractModelGraph)
+#     nodes = getnodes(graph)
+#     edges = getedges(graph)
+# end

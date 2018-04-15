@@ -2,48 +2,65 @@
 #flattened model which JuMP can always solve in serial.
 #import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue,getvalue
 import MathProgBase
-#import MathOptInterface
+#import MathOptInterface (soon)
 
-#IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution
+#IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution to the graph
 #typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
-mutable struct NodeData
-    objective::AffExpr                           #Individual objective expression....    #Need the nlp evaluator with the Expr graph to do this?
-    variablemap::Dict{Symbol,AbstractJuMPScalar} #Dictionary of symbols to Model variables
-    constraintlist::Vector{ConstraintRef}        #Vector of model constraints (make this a dictionary too)
-    indexmap::Dict{Int,Int}                      #linear index of node variable in flat model to the original index of the component model
+
+# mutable struct JuMPNodeData
+#     objective::AffExpr                           #Individual objective expression....    #Need the nlp evaluator with the Expr graph to do this?
+#     variablemap::Dict{Symbol,AbstractJuMPScalar} #Dictionary of symbols to JuMP Model variables
+#     constraintlist::Vector{ConstraintRef}        #Vector of model constraints (make this a dictionary too)
+#     #constraint_indices::Vector{Int}
+#     indexmap::Dict{Int,Int}                      #linear index of node variable in flat model to the original index of the component model
+# end
+# NodeData() = NodeData(0,Dict{Symbol,AbstractJuMPScalar}(),ConstraintRef[],Dict{Int,Int}())
+
+#If solving with a MathProgBase compliant solver, convert the model graph to a flattened JuMP Model, solve that, and pass the result back to the ModelGraph
+mutable struct JuMPGraph <: AbstractModelGraph
+    basegraph::BasePlasmoGraph
+    linkconstraints::Vector{ConstraintRef}
 end
-NodeData() = NodeData(0,Dict{Symbol,AbstractJuMPScalar}(),ConstraintRef[],Dict{Int,Int}())
+JuMPGraph() = JuMPGraph(BasePlasmoGraph(HyperGraph))
 
-abstract type JuMPGraph <: AbstractPlasmoGraph end
-
-type JuMPNode <: AbstractPlasmoNode
+mutable struct JuMPNode <: AbstractModelNode
     basenode::BasePlasmoNode
-    node_data::NodeData
+    objective#::AffExpr                           #Individual node objective expression.
+    variablemap::Dict{Symbol,AbstractJuMPScalar}  #Dictionary of symbols to JuMP Model variables.  Might make sense to use JuMP containers here
+    variablelist::Vector{AbstractJuMPScalar}
+    constraintlist::Vector{ConstraintRef}         #Vector of model constraints (make this a dictionary too)
+    #constraint_indices::Vector{Int}
+    indexmap::Dict{Int,Int}                       #linear index of node variable in flat model to the original index of the component model
 end
-
-type JuMPEdge <: AbstractPlasmoEdge
-    baseedge::BasePlasmoEdge
-end
-
+create_node(graph::JuMPGraph) = JuMPNode(BasePlasmoNode(),0,Dict{Symbol,AbstractJuMPScalar}(),ConstraintRef[],Dict{Int,Int}())
 hasmodel(node::JuMPNode) = throw(error("JuMP nodes are simple references to original ModelNodes.  Did you mean to check a ModelNode?"))
+
+#Has constraint references for link constraints
+mutable struct JuMPEdge <: AbstractModelEdge
+    baseedge::BasePlasmoEdge
+    #linkconstraintlist::Vector{Int}  #indices in JuMP model of linkconstraints for this edge
+    linkconstraintlist::Vector{ConstraintRef}  #indices in JuMP model of linkconstraints for this edge
+end
+create_edge(graph::JuMPGraph) = JuMPEdge(BasePlasmoEdge(),ConstraintRef[])
+
 #Construct a structured model, but roll it all into one JuMP model (this is how we solve with JuMP accessible solvers)
 function JuMPGraphModel()
     m = JuMP.Model()
-    m.ext[:Graph] = Plasmo.ModelGraph()
+    m.ext[:Graph] = JuMPGraph()
     return m
 end
+is_graphmodel(m::JuMP.Model) = haskey(m.ext,:Graph)? true : false  #check if the model is a graph model
 
-is_graphmodel(m::Model) = haskey(m.ext,:Graph)? true : false  #check if the model is a graph model
-
+# Should be defined by base type
 # #Add nodes and edges to graph models.  These are used for model instantiation from a graph
-# function add_node!(m::Model; index = nv(getgraph(m).graph)+1)
-#     is_graphmodel(m) || error("Can only add nodes to graph models")
-#     @assert is_graphmodel(m)
-#     node = JuMPNode(Dict{AbstractPlasmoGraph,Int}(), Symbol("node"),Dict(),NodeData())
-#     add_node!(getgraph(m),node,index = index)
-#     return node
-# end
-#
+function add_node!(m::JuMP.Model; index = nv(getgraph(m).graph)+1)
+    is_graphmodel(m) || error("Can only add nodes to graph models")
+    #node = JuMPNode(Dict{AbstractPlasmoGraph,Int}(), Symbol("node"),Dict(),NodeData())
+    node = create_node(getgraph(m))
+    add_node!(getgraph(m),node,index = index)
+    return node
+end
+
 # function add_edge!(m::Model,node1::JuMPNode,node2::JuMPNode)
 #     is_graphmodel(m) || error("Can only add nodes to graph models")
 #     @assert is_graphmodel(m)
@@ -52,54 +69,79 @@ is_graphmodel(m::Model) = haskey(m.ext,:Graph)? true : false  #check if the mode
 #     return edge
 # end
 
-#Define all of the PlasmoGraph functions for a GraphModel
+function add_edge!(m::Model,nodes::JuMPNode...)
+    is_graphmodel(m) || error("Can only add edges to graph models")
+    #edge = create_edge(getgraph(m))
+    add_edge!(getgraph(m),nodes...)
+    return edge
+end
+
+#Define all of the JuMP model extension functions
 getgraph(m::Model) = haskey(m.ext, :Graph)? m.ext[:Graph] : error("Model is not a graph model")
 getnodes(m::Model) = getnodes(getgraph(m))
 getedges(m::Model) = getedges(getgraph(m))
 
 #TODO
-#Need to account for which graph to get from
-getnode(m::Model,id::Integer) = getnodes(getgraph(m))[id]
-getedge(m::Model,id::LightGraphs.Edge) = getedges(getgraph(m))[id]
-#write node constraints, edge constraints, and coupling constraints
-# getnodedata(nodeoredge::NodeOrEdge) = getattribute(nodeoredge,:NodeData)
-getnodedata(nodeoredge::JuMPNodeOrEdge) = nodeoredge.node_data
-getnodeobjective(nodeoredge::JuMPNodeOrEdge) = nodeoredge.node_data.objective
-getnodeobjective(nodeoredge::NodeOrEdge) = JuMP.getobjective(nodeoredge.model)
+#Need to account for which graph to get from (Keep track of the subgraph in the JuMP model)
+getnode(m::Model,sid::Integer,nid::Integer) = getnode(getgraph(m).subgraphlist[sid],nid)
+getedge(m::Model,sid::Integer,eid::LightGraphs.AbstractEdge) = getnode(getgraph(m).subgraphlist[sid],eid)
 
 
-getnodevariables(nodeoredge::JuMPNodeOrEdge) =  nodeoredge.node_data.variablemap
+getnode(m::Model,id::Integer) = getnode(getraph(m),id)  #Grab from the highest level graph if not specified
+getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
+
+
+JuMP.getobjective(node::JuMPNode) = node.objective
+getnodevariables(node::JuMPNode) =  node.variablemap
+
 #TODO This is dangerous.  objDict contains constraints
-getnodevariables(node::JuMPNode) = getmodel(nodeoredge).objDict  #could store variable references on nodes
-getnodeconstraints(nodeoredge::JuMPNodeOrEdge) = nodeoredge.node_data.constraintlist
+getnodevariables(node::JuMPNode) = node.variablelist #getmodel(nodeoredge).objDict  #could store variable references on nodes
+getnodeconstraints(node::JuMPNode) = node.constraintlist
 
-getindex(nodeoredge::JuMPNodeOrEdge,s::Symbol) = nodeoredge.node_data.variablemap[s]  #get a node or edge variable
-getindex(nodeoredge::NodeOrEdge,s::Symbol) = getmodel(nodeoredge)[s]
+#get node variables
+getindex(node::JuMPNode,s::Symbol) = node.variablemap[s]
+
+# getindex(nodeoredge::JuMPNodeOrEdge,s::Symbol) = nodeoredge.node_data.variablemap[s]  #get a node or edge variable
+# getindex(nodeoredge::NodeOrEdge,s::Symbol) = getmodel(nodeoredge)[s]
 
 #get all of the link constraints from a JuMP model
+#Go get the constraint indices that are link constraints
 function getlinkconstraints(m::JuMP.Model)
     is_graphmodel(m) || error("link constraints are only available on graph models")
     @assert is_graphmodel(m)
-    cons = Dict()
-    for nodeoredge in getnodes(getgraph(m))
-        push!(cons,getlinkconstraints(node))
-    end
-    return cons
+    return getgraph(m).linkconstraints
+    # cons = Dict()
+    # for nodeoredge in getnodes(getgraph(m))
+    #     push!(cons,getlinkconstraints(node))
+    # end
+    # return cons
 end
 
 #Create a single JuMP model from a plasmo graph
-function create_flat_graph_model(graph::ModelGraph)
+function create_jump_graph_model(graph::ModelGraph)
     flat_model = JuMPGraphModel()
-    flat_graph = getgraph(flat_model)
+
+    #Copy the basegraph over
+    basegraph = getbasegraph(graph)
+
+    #Copy subgraphs over
+
+    # copy_graph = copy(basegraph)
+    # flat_model.ext[:Graph] = copy_graph
+
+    flat_graph = getgraph(flat_model)  #The hypergraph we will use
     #copy number of subgraphs (might need recursive function here!)
-    _copy_subgraphs!(graph,flat_graph)
-    copy!(graph,flat_graph)
-    #first copy all nodes, then setup all the subgraphs
+    #TODO Just have one copy function
+    # _copy_subgraphs!(graph,flat_graph)
+    # copy!(graph,flat_graph)
+    #
     var_maps = Dict()
     #COPY NODE MODELS
-    for (index,node) in getnodes(graph)
+    for node in getnodes(graph)
+        nodeindex = getindex(graph,node)
+
         new_node = add_node!(flat_model,index = index)  #create the node and add a vertex to the top level graph.  We pass the index explicity for this graph
-        node_index = getindex(node) #returns dict of {graph => index}
+        #node_index = getindex(node) #returns dict of {graph => index}
 
         for igraph in keys(node_index)       #For each subgraph this node is contained in....
             if igraph.index != 0             #if it's not the top level graph
@@ -116,27 +158,28 @@ function create_flat_graph_model(graph::ModelGraph)
         end
     end
 
-    #COPY EDGE MODLES
-    for (index,edge) in getedges(graph)
-        pair = getindex(graph,edge)
-        new_nodes = getsupportingnodes(flat_graph,pair)
-        new_edge = add_edge!(flat_model,new_nodes[1],new_nodes[2])
-        #new_edge.index[flat_graph] = index
-        for igraph in keys(edge.index)
-            if igraph.index != 0
-                index = igraph.index
-                subgraph = flat_graph.subgraphlist[index]
-                pair = getindex(igraph.subgraphlist[index],new_edge)
-                add_edge!(subgraph,pair)
-            end
-        end
-
-        if hasmodel(edge)
-            edge_model = getmodel(edge)
-            m,var_map = _buildnodemodel!(flat_model,new_edge,edge_model)
-            var_maps[new_edge] = var_map
-        end
-    end
+    #NOTE This isn't necessary anymore
+    # #COPY EDGE MODLES
+    # for (index,edge) in getedges(graph)
+    #     pair = getindex(graph,edge)
+    #     new_nodes = getsupportingnodes(flat_graph,pair)
+    #     new_edge = add_edge!(flat_model,new_nodes[1],new_nodes[2])
+    #     #new_edge.index[flat_graph] = index
+    #     for igraph in keys(edge.index)
+    #         if igraph.index != 0
+    #             index = igraph.index
+    #             subgraph = flat_graph.subgraphlist[index]
+    #             pair = getindex(igraph.subgraphlist[index],new_edge)
+    #             add_edge!(subgraph,pair)
+    #         end
+    #     end
+    #
+    #     if hasmodel(edge)
+    #         edge_model = getmodel(edge)
+    #         m,var_map = _buildnodemodel!(flat_model,new_edge,edge_model)
+    #         var_maps[new_edge] = var_map
+    #     end
+    # end
 
     #LINK CONSTRAINTS
     #inspect the link constraints, and map them to variables within flat model
@@ -161,7 +204,7 @@ function create_flat_graph_model(graph::ModelGraph)
     #OBJECTIVE
     #sum the objectives by default
     has_nonlinear_obj = false   #check if any nodes have nonlinear objectives
-    for (id,node) in getnodesandedges(graph)
+    for (id,node) in getnodes(graph)
         node_model = getmodel(node)
         nlp = node_model.nlpdata
         if nlp != nothing && nlp.nlobj != nothing

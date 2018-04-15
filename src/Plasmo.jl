@@ -26,7 +26,8 @@ is_nodevar,
 
 getmodel,hasmodel,
 
-addlinkconstraint, getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints,
+addlinkconstraint, getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints,get_all_linkconstraints,
+getnumnodes,
 
 getobjectivevalue,
 
