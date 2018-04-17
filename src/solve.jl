@@ -7,21 +7,14 @@ import MathProgBase
 #IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution to the graph
 #typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
 
-# mutable struct JuMPNodeData
-#     objective::AffExpr                           #Individual objective expression....    #Need the nlp evaluator with the Expr graph to do this?
-#     variablemap::Dict{Symbol,AbstractJuMPScalar} #Dictionary of symbols to JuMP Model variables
-#     constraintlist::Vector{ConstraintRef}        #Vector of model constraints (make this a dictionary too)
-#     #constraint_indices::Vector{Int}
-#     indexmap::Dict{Int,Int}                      #linear index of node variable in flat model to the original index of the component model
-# end
-# NodeData() = NodeData(0,Dict{Symbol,AbstractJuMPScalar}(),ConstraintRef[],Dict{Int,Int}())
 
 #If solving with a MathProgBase compliant solver, convert the model graph to a flattened JuMP Model, solve that, and pass the result back to the ModelGraph
 mutable struct JuMPGraph <: AbstractModelGraph
     basegraph::BasePlasmoGraph
     linkconstraints::Vector{ConstraintRef}
 end
-JuMPGraph() = JuMPGraph(BasePlasmoGraph(HyperGraph))
+JuMPGraph() = JuMPGraph(BasePlasmoGraph(HyperGraph),ConstraintRef[])
+JuMPGraph(basegraph::BasePlasmoGrpah) = JuMPGraph(basegraph,ConstraintRef[])
 
 mutable struct JuMPNode <: AbstractModelNode
     basenode::BasePlasmoNode
@@ -32,7 +25,7 @@ mutable struct JuMPNode <: AbstractModelNode
     #constraint_indices::Vector{Int}
     indexmap::Dict{Int,Int}                       #linear index of node variable in flat model to the original index of the component model
 end
-create_node(graph::JuMPGraph) = JuMPNode(BasePlasmoNode(),0,Dict{Symbol,AbstractJuMPScalar}(),ConstraintRef[],Dict{Int,Int}())
+create_node(graph::JuMPGraph) = JuMPNode(BasePlasmoNode(),0,Dict{Symbol,AbstractJuMPScalar}(),AbstractJuMPScalar[],ConstraintRef[],Dict{Int,Int}())
 hasmodel(node::JuMPNode) = throw(error("JuMP nodes are simple references to original ModelNodes.  Did you mean to check a ModelNode?"))
 
 #Has constraint references for link constraints
@@ -118,93 +111,53 @@ function getlinkconstraints(m::JuMP.Model)
 end
 
 #Create a single JuMP model from a plasmo graph
-function create_jump_graph_model(graph::ModelGraph)
-    flat_model = JuMPGraphModel()
+function create_jump_graph_model(model_graph::ModelGraph)
+    jump_model = JuMPGraphModel()
 
     #Copy the basegraph over
-    basegraph = getbasegraph(graph)
+    basegraph = getbasegraph(model_graph)
 
     #Copy subgraphs over
+    copy_graph = copy(basegraph)
+    jump_model.ext[:Graph] = JuMPGraph(copy_graph)
+    jump_graph = getgraph(jump_model)  #The hypergraph we will use
 
-    # copy_graph = copy(basegraph)
-    # flat_model.ext[:Graph] = copy_graph
-
-    flat_graph = getgraph(flat_model)  #The hypergraph we will use
-    #copy number of subgraphs (might need recursive function here!)
-    #TODO Just have one copy function
-    # _copy_subgraphs!(graph,flat_graph)
-    # copy!(graph,flat_graph)
-    #
-    var_maps = Dict()
     #COPY NODE MODELS
-    for node in getnodes(graph)
-        nodeindex = getindex(graph,node)
-
-        new_node = add_node!(flat_model,index = index)  #create the node and add a vertex to the top level graph.  We pass the index explicity for this graph
-        #node_index = getindex(node) #returns dict of {graph => index}
-
-        for igraph in keys(node_index)       #For each subgraph this node is contained in....
-            if igraph.index != 0             #if it's not the top level graph
-                graph_index = igraph.index   #the index of this subgraph
-                subgraph = flat_graph.subgraphlist[graph_index]  #the flat_model subgraph
-                add_node!(subgraph,new_node,index = node.index[igraph])
-                #add_node!(subgraph,new_node,index = node.index[igraph.subgraphlist[graph_index]])  #should be index of the node within igraph (the subgraph)
-            end
-        end
-        if hasmodel(node)
-            node_model = getmodel(node)
-            m,var_map = _buildnodemodel!(flat_model,new_node,node_model)
-            var_maps[new_node] = var_map
+    var_maps = Dict()
+    for model_node in getnodes(model_graph)  #for each node in the model graph
+        nodeindex = getindex(model_graph,model_node)
+        jump_node = getnode(copy_graph,nodeindex)
+        if hasmodel(model_node)
+            m,var_map = _buildnodemodel!(jump_model,jump_node,model_node)
+            var_maps[jump_node] = var_map   #
         end
     end
 
-    #NOTE This isn't necessary anymore
-    # #COPY EDGE MODLES
-    # for (index,edge) in getedges(graph)
-    #     pair = getindex(graph,edge)
-    #     new_nodes = getsupportingnodes(flat_graph,pair)
-    #     new_edge = add_edge!(flat_model,new_nodes[1],new_nodes[2])
-    #     #new_edge.index[flat_graph] = index
-    #     for igraph in keys(edge.index)
-    #         if igraph.index != 0
-    #             index = igraph.index
-    #             subgraph = flat_graph.subgraphlist[index]
-    #             pair = getindex(igraph.subgraphlist[index],new_edge)
-    #             add_edge!(subgraph,pair)
-    #         end
-    #     end
-    #
-    #     if hasmodel(edge)
-    #         edge_model = getmodel(edge)
-    #         m,var_map = _buildnodemodel!(flat_model,new_edge,edge_model)
-    #         var_maps[new_edge] = var_map
-    #     end
-    # end
-
     #LINK CONSTRAINTS
     #inspect the link constraints, and map them to variables within flat model
-    for linkconstraint in get_all_linkconstraints(graph)
-        indexmap = Dict() #{node variable => flat variable index} Need index of node variables to flat model variables
+    for linkconstraint in get_all_linkconstraints(model_graph)
+        #linkconstraint = LinkConstraint(link)
+        indexmap = Dict() #{node variable => new jump model variable index} Need index of node variables to flat model variables
         vars = linkconstraint.terms.vars
         for var in vars
-            nodeoredge = getnode(var)
-            var_index = JuMP.linearindex(var)
-            node_index = getindex(graph,nodeoredge)                 #node index in graph.  This could be a problem with edges and subgraphs
-            flat_nodeoredge = getnodeoredge(flat_graph,node_index)  #should be the corresponding node
-            flat_indexmap = getnodedata(flat_nodeoredge).indexmap
-            indexmap[var] = flat_indexmap[var_index]
+            model_node = getnode(var)
+            var_index = JuMP.linearindex(var)                   #index in modelgraph node
+            node_index = getindex(model_graph,model_node)                   #node index in modelgraph
+            jump_node = getnode(jump_graph,node_index)          #the corresponding jumpgraph jumpnode
+            flat_indexmap = jump_node.indexmap
+            indexmap[var] = flat_indexmap[var_index]            #modelnode variable => jumpnode variable index
         end
         t = []
         for terms in linearterms(linkconstraint.terms)
             push!(t,terms)
         end
-        con_reference = @constraint(flat_model, linkconstraint.lb <= sum(t[i][1]*JuMP.Variable(flat_model,indexmap[(t[i][2])]) for i = 1:length(t)) + linkconstraint.terms.constant <= linkconstraint.ub)
+        con_reference = @constraint(jump_model, linkconstraint.lb <= sum(t[i][1]*JuMP.Variable(jump_model,indexmap[(t[i][2])]) for i = 1:length(t)) + linkconstraint.terms.constant <= linkconstraint.ub)
     end
 
     #OBJECTIVE
     #sum the objectives by default
     has_nonlinear_obj = false   #check if any nodes have nonlinear objectives
-    for (id,node) in getnodes(graph)
+    for node in getnodes(model_graph)
         node_model = getmodel(node)
         nlp = node_model.nlpdata
         if nlp != nothing && nlp.nlobj != nothing
@@ -214,7 +167,7 @@ function create_jump_graph_model(graph::ModelGraph)
     end
 
     if has_nonlinear_obj  == false #just sum linear or quadtratic objectives
-        @objective(flat_model,Min,sum(getnodeobjective(nodeoredge) for nodeoredge in values(getnodesandedges(flat_graph))))
+        @objective(jump_model,Min,sum(getnodeobjective(nodeoredge) for nodeoredge in values(getnodesandedges(flat_graph))))
 
     elseif has_nonlinear_obj == true  #build up the objective expression and splice in variables.  Cast all objectives as nonlinear
         obj = :(0)
@@ -244,12 +197,208 @@ function create_jump_graph_model(graph::ModelGraph)
             obj = Expr(:call,:+,obj,node_obj)
         end
         #println(obj)
-        JuMP.setNLobjective(flat_model, :Min, obj)
+        JuMP.setNLobjective(jump_model, :Min, obj)
     end
-    return flat_model
+    return jump_model
+end
+
+#Function to build a node model for a flat graph model
+function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
+    node_model = getmodel(model_node)
+
+    num_vars = MathProgBase.numvar(node_model)
+    var_map = Dict()              #this dict will map linear index of the node model variables to the new model JuMP variables {node var index => flat model JuMP.Variable}
+    node_map = Dict()             #nodemap. {varkey => [var1,var2,...]}
+    index_map = Dict()            #{var index in node => var index in flat model}
+
+    #add the node model variables to the new model
+    for i = 1:num_vars
+        x = JuMP.@variable(m)            #create an anonymous variable
+        setlowerbound(x,node_model.colLower[i])
+        setupperbound(x,node_model.colUpper[i])
+        var_name = string(Variable(node_model,i))
+        new_name = "$(nodeoredge.label)$(nodeoredge.index[getgraph(m)])."*var_name
+        setname(x,new_name)                                                  #rename the variable to the node model variable name plus the node or edge name
+        setcategory(x,node_model.colCat[i])                                  #set the variable to the same category
+        setvalue(x,node_model.colVal[i])                                     #set the variable to the same value
+        var_map[i] = x                                                       #map the linear index of the node model variable to the new variable
+        index_map[i] = linearindex(x)
+
+        m.objDict[Symbol(new_name)] = x #Update master model variable dictionary
+    end
+    #setup the node_map dictionary.  This maps the node model's variable keys to variables in the newly constructed model.
+
+
+    #TODO #Optionally use the objdict on jump nodes to create references
+    #TODO Reconstruct the appropriate JuMP containers (Need to figure out how to actually construct these)
+    for key in keys(node_model.objDict)  #this contains both variable and constraint references
+        if isa(node_model.objDict[key],Union{JuMP.JuMPArray{Variable},Array{Variable}})     #if the JuMP variable is an array or a JuMPArray
+            vars = node_model.objDict[key]
+            isa(vars,JuMP.JuMPArray)? vars = vars.innerArray : nothing
+            dims = JuMP.size(vars)
+            node_map[key] = Array{JuMP.Variable}(dims)
+            for j = 1:length(vars)
+                var = vars[j]
+                node_map[key][j] = var_map[linearindex(var)]
+            end
+        #reproduce the same mapping in a dictionary
+        elseif isa(node_model.objDict[key],JuMP.JuMPDict)
+            tdict = node_model.objDict[key].tupledict  #get the tupledict
+            d_tmp = Dict()
+            for dkey in keys(tdict)
+                d_tmp[dkey] = var_map[linearindex(tdict[dkey])]
+            end
+            node_map[key] = d_tmp
+
+        elseif isa(node_model.objDict[key],JuMP.Variable) #else it's a single variable
+            node_map[key] = var_map[linearindex(node_model.objDict[key])]
+            #node_map[key] = var_map[node_model.objDict[key].col]
+
+        # else #objDict also has contraints!
+        #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
+        end
+    end
+
+    jump_node.variablemap = node_map
+    jump_node.indexmap = index_map
+
+    #COPY LINEAR CONSTRAINTS
+    for i = 1:length(node_model.linconstr)
+        con = node_model.linconstr[i]
+        #t = collect(linearterms(con.terms))  #This is broken in julia 0.5
+        t = []
+        for terms in linearterms(con.terms)
+            push!(t,terms)
+        end
+        reference = @constraint(m, con.lb <= sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.constant <= con.ub)
+        # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+         push!(jump_node.constraintlist,reference)
+    end
+
+    #COPY QUADRATIC CONSTRAINTS
+    for i = 1:length(node_model.quadconstr)
+        con = node_model.quadconstr[i]
+        #collect the linear terms
+        t = []
+        for terms in linearterms(con.terms.aff)
+            push!(t,terms)
+        end
+        qcoeffs =con.terms.qcoeffs
+        qvars1 = con.terms.qvars1
+        qvars2 = con.terms.qvars2
+        #Might be a better way to do this
+        if con.sense == :(==)
+            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant == 0)
+        elseif con.sense == :(<=)
+            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant <= 0)
+        elseif con.sense == :(>=)
+            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant >= 0)
+        end
+        # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
+        push!(jump_node.constraintlist,reference)
+    end
+
+
+
+
+
+    #COPY NONLINEAR CONSTRAINTS
+    if JuMP.ProblemTraits(node_model).nlp == true   #If it's a NLP
+        d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
+        MathProgBase.initialize(d,[:ExprGraph])
+        num_cons = MathProgBase.numconstr(node_model)
+        start_index = length(node_model.linconstr) + length(node_model.quadconstr) + 1 # the start index for nonlinear constraints
+        for i = start_index:num_cons
+            #if !(MathProgBase.isconstrlinear(d,i))    #if it's not a linear constraint
+            expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
+            _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
+            con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
+            # push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
+            push!(nodeoredge.node_data.constraintlist,con)  #Add the nonlinear constraint reference to the node
+            #end
+        end
+        #Also check for nonlinear objective here
+        # #TODO Find way to add nonlinear objectives together
+        # if node_model.nlpdata.nlobj != nothing
+        #     warn("Plasmo does not yet support aggregating nonlinear objectives")
+    end
+
+    #OBJECTIVE FUNCTION
+
+
+    getobjectivesense(node_model) == :Min? sense = 1: sense = -1
+
+    #LINEAR OBJECTIVE
+    nlp = node_model.nlpdata
+    if nlp == nothing  || (nlp !== nothing && nlp.nlobj == nothing)
+        #Get the linear terms
+        t = []
+        for terms in linearterms(node_model.obj.aff)
+            push!(t,terms)
+        end
+        #Get the quadratic terms
+        qcoeffs = node_model.obj.qcoeffs
+        qvars1 = node_model.obj.qvars1
+        qvars2 = node_model.obj.qvars2
+        obj = @objective(m,Min,sense*(sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
+        sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant))
+        jump_node.objective = m.obj
+
+    #NONLINEAR OBJECTIVE
+    elseif nlp != nothing && nlp.nlobj != nothing
+        obj = MathProgBase.obj_expr(d)
+        _splicevars!(obj,var_map)
+        obj = Expr(:call,:*,:($sense),obj)
+        jump_node.objective = m.obj
+    end
+    return m,var_map
+end
+
+#splice variables into a constraint expression
+function _splicevars!(expr::Expr,var_map::Dict)
+    for i = 1:length(expr.args)
+        if typeof(expr.args[i]) == Expr
+            if expr.args[i].head != :ref   #keep calling _splicevars! on the expression until it's a :ref. i.e. :(x[index])
+                _splicevars!(expr.args[i],var_map)
+            else  #it's a variable
+                var_index = expr.args[i].args[2]     #this is the actual index in x[1], x[2], etc...
+                new_var = :($(var_map[var_index]))   #get the JuMP variable from var_map using the index
+                expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
+            end
+        end
+    end
+end
+
+buildserialmodel(graph::ModelGraph) = graph.internal_serial_model = create_jump_graph_model(graph)
+#Create a JuMP model and solve with a MPB compliant solver
+function jump_solve(graph::ModelGraph,kwargs...)
+    println("Aggregating Models...")
+    m_flat = create_flat_graph_model(graph)
+    graph.internal_serial_model = m_flat
+    println("Finished model instantiation")
+    m_flat.solver = graph.solver
+    status = JuMP.solve(m_flat,kwargs...)
+    if status == :Optimal
+        setsolution(getgraph(m_flat),graph)           #Now get our solution data back into the original model
+        _setobjectivevalue(graph,JuMP.getobjectivevalue(m_flat))  #Set the graph objective value for easy access
+    end
+    return status
+end
+
+function solve(graph::ModelGraph; method = :jump,kwargs...)
+    if method == :jump
+        status = jump_solve(graph,kwargs...)
+    else
+        throw(error("Given solve method not supported"))
+    end
+    return status
 end
 
 #TODO
+
 # function setsumgraphobjectives(graph)
 #     has_nonlinear = false
 #     #check if any nodes have nonlinear objectives
@@ -284,166 +433,6 @@ end
 #         end
 #     end
 # end
-
-#Function to build a node model for a flat graph model
-function _buildnodemodel!(m::Model,nodeoredge::NodeOrEdge,node_model::Model)
-    #@assert nodeoredge in [getgraph(m).nodes;getgraph(m).edges]
-    num_vars = MathProgBase.numvar(node_model)
-    var_map = Dict()              #this dict will map linear index of the node model variables to the new model JuMP variables {node var index => flat model JuMP.Variable}
-    node_map = Dict()             #nodemap. {varkey => [var1,var2,...]}
-    index_map = Dict()            #{var index in node => var index in flat model}
-
-    #add the node model variables to the new model
-    for i = 1:num_vars
-        x = JuMP.@variable(m)            #create an anonymous variable
-        setlowerbound(x,node_model.colLower[i])
-        setupperbound(x,node_model.colUpper[i])
-        var_name = string(Variable(node_model,i))
-        new_name = "$(nodeoredge.label)$(nodeoredge.index[getgraph(m)])."*var_name
-        setname(x,new_name)       #rename the variable to the node model variable name plus the node or edge name
-        setcategory(x,node_model.colCat[i])                                  #set the variable to the same category
-        setvalue(x,node_model.colVal[i])                                     #set the variable to the same value
-        var_map[i] = x                                                       #map the linear index of the node model variable to the new variable
-        index_map[i] = linearindex(x)
-        m.objDict[Symbol(new_name)] = x #Update master model variable dictionary
-    end
-    #setup the node_map dictionary.  This maps the node model's variable keys to variables in the newly constructed model.
-
-    #TODO Reconstruct the appropriate JuMP containers (Need to figure out how to actually construct these)
-    for key in keys(node_model.objDict)  #this contains both variable and constraint references
-        if isa(node_model.objDict[key],Union{JuMP.JuMPArray{Variable},Array{Variable}})     #if the JuMP variable is an array or a JuMPArray
-            vars = node_model.objDict[key]
-            isa(vars,JuMP.JuMPArray)? vars = vars.innerArray : nothing
-            dims = JuMP.size(vars)
-            node_map[key] = Array{JuMP.Variable}(dims)
-            for j = 1:length(vars)
-                var = vars[j]
-                node_map[key][j] = var_map[linearindex(var)]
-            end
-        #reproduce the same mapping in a dictionary
-        elseif isa(node_model.objDict[key],JuMP.JuMPDict)
-            tdict = node_model.objDict[key].tupledict  #get the tupledict
-            d_tmp = Dict()
-            for dkey in keys(tdict)
-                d_tmp[dkey] = var_map[linearindex(tdict[dkey])]
-            end
-            node_map[key] = d_tmp
-
-        elseif isa(node_model.objDict[key],JuMP.Variable) #else it's a single variable
-            node_map[key] = var_map[linearindex(node_model.objDict[key])]
-            #node_map[key] = var_map[node_model.objDict[key].col]
-
-        # else #objDict also has contraints!
-        #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
-        end
-    end
-    # getattribute(nodeoredge,:NodeData).variablemap = node_map
-    # getattribute(nodeoredge,:NodeData).indexmap = index_map
-    nodeoredge.node_data.variablemap = node_map
-    nodeoredge.node_data.indexmap = index_map
-
-    #copy the linear constraints to the new model
-    for i = 1:length(node_model.linconstr)
-        con = node_model.linconstr[i]
-        #t = collect(linearterms(con.terms))  #This is broken in julia 0.5
-        t = []
-        for terms in linearterms(con.terms)
-            push!(t,terms)
-        end
-        reference = @constraint(m, con.lb <= sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.constant <= con.ub)
-        # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
-         push!(nodeoredge.node_data.constraintlist,reference)
-    end
-
-    #copy the quadratic constraints to the new model
-    for i = 1:length(node_model.quadconstr)
-        con = node_model.quadconstr[i]
-        #collect the linear terms
-        t = []
-        for terms in linearterms(con.terms.aff)
-            push!(t,terms)
-        end
-        qcoeffs =con.terms.qcoeffs
-        qvars1 = con.terms.qvars1
-        qvars2 = con.terms.qvars2
-        #Might be a better way to do this
-        if con.sense == :(==)
-            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
-            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant == 0)
-        elseif con.sense == :(<=)
-            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
-            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant <= 0)
-        elseif con.sense == :(>=)
-            reference = @constraint(m,sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
-            sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + con.terms.aff.constant >= 0)
-        end
-        # push!(getattribute(nodeoredge,:NodeData).constraintlist,reference)
-        push!(nodeoredge.node_data.constraintlist,reference)
-    end
-
-    getobjectivesense(node_model) == :Min? sense = 1: sense = -1
-    #Copy the non-linear constraints to the new model
-    if JuMP.ProblemTraits(node_model).nlp == true   #If it's a NLP
-        d = JuMP.NLPEvaluator(node_model)           #Get the NLP evaluator object.  Initialize the expression graph
-        MathProgBase.initialize(d,[:ExprGraph])
-        num_cons = MathProgBase.numconstr(node_model)
-        start_index = length(node_model.linconstr) + length(node_model.quadconstr) + 1 # the start index for nonlinear constraints
-        for i = start_index:num_cons
-            #if !(MathProgBase.isconstrlinear(d,i))    #if it's not a linear constraint
-            expr = MathProgBase.constr_expr(d,i)  #this returns a julia expression
-            _splicevars!(expr,var_map)              #splice the variables from var_map into the expression
-            con = JuMP.addNLconstraint(m,expr)    #raw expression input for non-linear constraint
-            # push!(getattribute(nodeoredge,:NodeData).constraintlist,con)  #Add the nonlinear constraint reference to the node
-            push!(nodeoredge.node_data.constraintlist,con)  #Add the nonlinear constraint reference to the node
-            #end
-        end
-        #Also check for nonlinear objective here
-        # #TODO Find way to add nonlinear objectives together
-        # if node_model.nlpdata.nlobj != nothing
-        #     warn("Plasmo does not yet support aggregating nonlinear objectives")
-    end
-
-    #If the objective is linear
-    nlp = node_model.nlpdata
-    if nlp == nothing  || (nlp !== nothing && nlp.nlobj == nothing)
-        #Get the linear terms
-        t = []
-        for terms in linearterms(node_model.obj.aff)
-            push!(t,terms)
-        end
-        #Get the quadratic terms
-        qcoeffs = node_model.obj.qcoeffs
-        qvars1 = node_model.obj.qvars1
-        qvars2 = node_model.obj.qvars2
-        obj = @objective(m,Min,sense*(sum(qcoeffs[i]*var_map[linearindex(qvars1[i])]*var_map[linearindex(qvars2[i])] for i = 1:length(qcoeffs)) +
-        sum(t[i][1]*var_map[linearindex(t[i][2])] for i = 1:length(t)) + node_model.obj.aff.constant))
-        #getattribute(nodeoredge,:NodeData).objective = m.obj
-        nodeoredge.node_data.objective = m.obj
-    #If the objective is nonlinear
-    elseif nlp != nothing && nlp.nlobj != nothing
-        obj = MathProgBase.obj_expr(d)
-        _splicevars!(obj,var_map)
-        obj = Expr(:call,:*,:($sense),obj)
-        nodeoredge.node_data.objective = obj
-        #getattribute(nodeoredge,:NodeData).objective = obj
-    end
-    return m,var_map
-end
-
-#splice variables into a constraint expression
-function _splicevars!(expr::Expr,var_map::Dict)
-    for i = 1:length(expr.args)
-        if typeof(expr.args[i]) == Expr
-            if expr.args[i].head != :ref   #keep calling _splicevars! on the expression until it's a :ref. i.e. :(x[index])
-                _splicevars!(expr.args[i],var_map)
-            else  #it's a variable
-                var_index = expr.args[i].args[2]     #this is the actual index in x[1], x[2], etc...
-                new_var = :($(var_map[var_index]))   #get the JuMP variable from var_map using the index
-                expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
-            end
-        end
-    end
-end
 
 #define some setvalue functions for convenience when dealing with JuMP JuMPArray type
 #dimension of jarr2 must be greater than jarr1
@@ -507,20 +496,4 @@ function setsolution(graph1::AbstractPlasmoGraph,graph2::AbstractPlasmoGraph)
             m.objVal = getvalue(m.obj)
         end
     end
-end
-
-buildserialmodel(graph::PlasmoGraph) = graph.internal_serial_model = create_flat_graph_model(graph)
-
-function solve(graph::ModelGraph;kwargs...)
-    println("Aggregating Models...")
-    m_flat = create_flat_graph_model(graph)
-    graph.internal_serial_model = m_flat
-    println("Finished model instantiation")
-    m_flat.solver = graph.solver
-    status = JuMP.solve(m_flat,kwargs...)
-    if status == :Optimal
-        setsolution(getgraph(m_flat),graph)           #Now get our solution data back into the original model
-        _setobjectivevalue(graph,JuMP.getobjectivevalue(m_flat))  #Set the graph objective value for easy access
-    end
-    return status
 end
