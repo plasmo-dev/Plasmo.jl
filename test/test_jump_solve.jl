@@ -1,6 +1,7 @@
 using Plasmo
 using PlasmoGraphBase
 using JuMP
+using Ipopt
 
 function simple_model()
     m = Model()
@@ -12,6 +13,7 @@ function simple_model()
 end
 
 m = ModelGraph()
+setsolver(m,IpoptSolver())
 
 n1 = add_node!(m)
 n2 = add_node!(m)
@@ -40,19 +42,10 @@ getlinkconstraints(n2)
 ref2 = getlinkconstraints(m,n2)[2]
 linkcon2 = LinkConstraint(ref2)
 
-getsimplelinkconstraints(m)
-gethyperlinkconstraints(m)
-getlinkconstraints(m)
-get_all_linkconstraints(m)
 
-@assert getnumnodes(linkcon2) == 3
-
-@assert ref1.idx == 1
-@assert ref2.idx == 2
-
-@assert hasmodel(n1) == true
-
-m_copy = copy_graph(m)
-
-#should add an edge between n1 and n2
-#@linkconstraint(m,n1[:x] == n2[:x])
+@linkconstraint(m,n2[:x] == n3[:x])
+#m_copy = copy_graph(m,to_graph_type = JuMPGraph)
+#solve(m)
+flat_model = buildjumpmodel!(m)
+setsolver(flat_model,IpoptSolver())
+solve(flat_model)

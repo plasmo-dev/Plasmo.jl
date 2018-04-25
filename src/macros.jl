@@ -9,7 +9,7 @@ macro linkconstraint(graph,args...)
     #Check the inputs are the correct types.  This needs to throw
     checkinputs = quote
         #@assert Plasmo.is_graphmodel($m)
-        @assert isa($graph,Plasmo.PlasmoGraph)
+        @assert isa($graph,Plasmo.ModelGraph)
     end
     #generate constraint list and them to node or edge linkdata
     refscode = quote
@@ -20,7 +20,7 @@ macro linkconstraint(graph,args...)
         elseif isa(cons_refs,JuMP.JuMPDict)
             cons_refs = collect(values(cons_refs.tupledict))
         end
-        Plasmo._addlinkconstraint!($graph,cons_refs)    #add the link constraints to the node or edge and map to graph
+        Plasmo.addlinkconstraint($graph,cons_refs)    #add the link constraints to the node or edge and map to graph
     end
     return esc(quote
         begin

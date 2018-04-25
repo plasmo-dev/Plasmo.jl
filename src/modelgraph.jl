@@ -1,6 +1,6 @@
-import PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge,getnode
+import PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge,getnode,getnodes
 import Base:show,print,string,getindex,copy
-import JuMP:AbstractModel,setobjective,getobjectivevalue
+import JuMP:AbstractModel,setobjective,getobjectivevalue,setsolver
 import LightGraphs.Graph
 
 
@@ -16,6 +16,7 @@ mutable struct ModelGraph <: AbstractModelGraph
 end
 
 ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
+#ModelGraph(lightgraph::LightGraphs.AbstractGraph) = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
 #ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
 
 #Write total objective functions for a model graph
@@ -25,7 +26,7 @@ getlinkconstraints(model::ModelGraph) = getlinkconstraints(model.linkmodel)
 getsimplelinkconstraints(model::ModelGraph) = getsimplelinkconstraints(model.linkmodel)
 gethyperlinkconstraints(model::ModelGraph) = gethyperlinkconstraints(model.linkmodel)
 
-_setobjectivevalue(graph::ModelGraph,value::Number) = graph.linkmodel.objVal = value
+_setobjectivevalue(graph::ModelGraph,value::Number) = graph.linkmodel.objval = value
 JuMP.getobjectivevalue(graph::ModelGraph) = graph.linkmodel.objVal
 
 getinternaljumpmodel(graph::ModelGraph) = graph.serial_model
@@ -43,7 +44,7 @@ function get_all_linkconstraints(graph::ModelGraph)
 end
 
 #TODO Figure out how JuMP sets solvers with MOI
-setsolver(model::ModelGraph,solver::AbstractMathProgSolver) = graph.linkmodel.solver = solver
+setsolver(model::ModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
 
 ##############################################################################
 # Nodes
@@ -196,7 +197,7 @@ function addlinkconstraint{T}(graph::ModelGraph,linkcons::Array{AbstractConstrai
     for con in linkcons
         vars = con.terms.vars
         nodes = unique([getnode(var) for var in vars])
-        all(node->node in values(getnodesandedges(graph)),nodes)? nothing: error("the linkconstraint: $con contains variables that don't belong to the graph: $graph")
+        all(node->node in getnodes(graph),nodes)? nothing: error("the linkconstraint: $con contains variables that don't belong to the graph: $graph")
     end
 
     #Now add the constraints
@@ -205,8 +206,10 @@ function addlinkconstraint{T}(graph::ModelGraph,linkcons::Array{AbstractConstrai
     end
 end
 
-
+#TODO
 # function copy(graph::AbstractModelGraph)
 #     nodes = getnodes(graph)
 #     edges = getedges(graph)
+#     copy_graph(graph)
+#     Fill in other data
 # end
