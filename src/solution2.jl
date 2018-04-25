@@ -44,8 +44,10 @@ function setsolutiondata(node::ModelNode,solution_node::SolutionNode)
         val = getvalue(var)
         push!(solution_node.variable_values,val)
     end
-    #TODO Get constraint duals
-
+    for con in node.constraintlist
+        push!(solution_node.constraint_duals,getdual(con))
+    end
+    solution_node.objval = getobjectivevalue(node)
 end
 
 #TODO Copy attributes
@@ -61,53 +63,22 @@ function getvalue(solution_node::SolutionNode,s::Symbol)
     return solution_node.variable_value_map[s]
 end
 
-
-function getsolution(graph::ModelGraph)
-    # solution_graph = SolutionGraph()
-    # _copy_subgraphs!(graph,solution_graph)
-    #first copy all nodes, then setup all the subgraphs
-    for (index,node) in getnodes(graph)
-        new_node = create_solution_node()
-        add_node!(solution_graph,new_node,index = index)  #create the node and add a vertex to the top level graph.  We pass the index explicity for this graph
-        node_index = getindex(node) #returns dict of {graph => index}
-        for igraph in keys(node_index)       #For each subgraph this node is contained in....
-            if igraph.index != 0             #if it's not the top level graph
-                graph_index = igraph.index   #the index of this subgraph
-                subgraph = solution_graph.subgraphlist[graph_index]  #the flat_model subgraph
-                add_node!(subgraph,new_node,index = node.index[igraph])
-            end
-        end
-    end
-    for (index,edge) in getedges(graph)
-        pair = getindex(graph,edge)
-        new_nodes = getsupportingnodes(solution_graph,pair)
-        new_edge = add_edge!(solution_graph,new_nodes[1],new_nodes[2])
-        #new_edge.index[flat_graph] = index
-        for igraph in keys(edge.index)
-            if igraph.index != 0
-                index = igraph.index
-                subgraph = solution_graph.subgraphlist[index]
-                pair = getindex(igraph.subgraphlist[index],new_edge)
-                add_edge!(subgraph,pair)
-            end
-        end
-    end
-
+function getsolution(model_graph::ModelGraph)
+    solution_graph = copy_graph(model_graph,to_graph_type = SolutionGraph)
     #Get variable values
-    for (index,nodeoredge) in getnodesandedges(graph)
-        solution_nodeoredge = getnodeoredge(solution_graph,index)       #get the corresponding node or edge in graph2
-        #nodeoredge2.attributes[:Solution] = SolutionData()
-        setsolutiondata(nodeoredge,solution_nodeoredge)
-        copy_attributes(nodeoredge,solution_nodeoredge)
-        copy_attributes(graph,solution_graph)
-        #nodeoredge2.attributes[:Solution].objVal = getobjectivevalue(nodeoredge)
+    for node in getnodes(model_graph)
+        index = getindex(model_graph,node)
+        solution_node = getnode(solution_graph,index)       #get the corresponding node or edge in graph2
+        setsolutiondata(node,solution_node)
     end
     return solution_graph
 end
 
 #use a solution graph to initialize a plasmo model graph
 #Works as long as graph and solution_graph have the exact same structure
-function setsolution(graph::ModelGraph,solution_graph::SolutionGraph)
+#TODO dual warm start solution
+function setsolution(model_graph::ModelGraph,solution_graph::SolutionGraph)  #set ModelGraph solution with SolutionGraph solution
+    for node in getnodes(model_graph)
     for (index,nodeoredge) in getnodesandedges(graph)
         solution_nodeoredge = getnodeoredge(solution_graph,index)       #get the corresponding node or edge in the solution graph
         #now set the graph to its solution

@@ -105,7 +105,7 @@ function resetmodel(node::ModelNode,m::AbstractModel)
 end
 
 JuMP.getobjective(node::ModelNode) = getobjective(node.model)
-
+JuMP.getobjectivevalue(node::ModelNode) = getobjectivevalue(node.model)
 #TODO?
 # removemodel(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
 

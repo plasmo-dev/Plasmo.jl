@@ -407,9 +407,13 @@ function setvalue(jdict::JuMP.JuMPDict,dict::Dict)
 end
 
 #copy the solution from one graph to another where nodes and variables match
-function setsolution(graph1::AbstractPlasmoGraph,graph2::AbstractPlasmoGraph)
-    for (index,nodeoredge) in getnodesandedges(graph1)
-        nodeoredge2 = getnodeoredge(graph2,index)       #get the corresponding node or edge in graph2
+function setsolution(graph1::AbstractModelGraph,graph2::AbstractModelGraph)
+    
+    for node in getnodes(graph1)
+        index = getindex(graph1,node)
+    #for (index,nodeoredge) in getnodesandedges(graph1)
+        node2 = getnode(graph2,index)       #get the corresponding node or edge in graph2
+
         for (key,var) in getnodevariables(nodeoredge)
             var2 = nodeoredge2[key]
             if isa(var,JuMP.JuMPArray) || isa(var,Array)# || isa(var,JuMP.Variable)
@@ -423,9 +427,10 @@ function setsolution(graph1::AbstractPlasmoGraph,graph2::AbstractPlasmoGraph)
                 error("encountered a variable type not recognized")
             end
         end
+
         #TODO Also set the node objectives
-        if hasmodel(nodeoredge2)
-            m = getmodel(nodeoredge2)
+        if hasmodel(node2)
+            m = getmodel(node2)
             m.objVal = getvalue(m.obj)
         end
     end
