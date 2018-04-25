@@ -7,17 +7,33 @@
 
 module Plasmo
 
-using Compat
+export
+##################
+# BasePlasmoGraph
+##################
+AbstractPlasmoGraph, AbstractPlasmoNode, AbstractPlasmoEdge,
 
-using PlasmoGraphBase
-import PlasmoGraphBase.getnodes
+HyperGraph, HyperEdge,
 
-import JuMP
-import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
+BasePlasmoGraph, BasePlasmoNode, BasePlasmoEdge,
 
-export ModelGraph, ModelNode, LinkingEdge,
+getlightgraph,getbasegraph,
 
-LinkConstraint,
+getindex, getsubgraphlist, getsubgraph, getindices,getlabel,
+
+getnodes,getedges,add_node,add_edge,add_node!,add_edge!,getnode,getedge,collectnodes,collectedges,
+
+add_subgraph,add_subgraph!,getsubgraph,copy_graph,
+
+in_degree,out_degree,getsupportingnodes,getsupportingedges,getconnectedto,getconnectedfrom,is_connected,
+
+getattribute,setattribute,addattributes!,getattributes,
+
+
+##################
+#Model Graphs
+##################
+ModelGraph, ModelNode, LinkingEdge, LinkConstraint,
 
 #Model functions
 setmodel,setsolver,setmodel!,resetmodel,
@@ -49,37 +65,41 @@ getsolution,
 setsolution,setvalue,
 
 #macros
-@linkconstraint,@getconstraintlist
+@linkconstraint,@getconstraintlist,
 
-abstract type AbstractModelGraph <: AbstractPlasmoGraph end
-abstract type AbstractModelNode <: AbstractPlasmoNode end
-abstract type AbstractLinkingEdge  <: AbstractPlasmoEdge end
+##################
+#Workflows
+##################
+Workflow, DispatchNode, CommunicationEdge,SerialExecutor,
 
-include("linkmodel.jl")
+WorkflowEvent,NodeTriggerEvent,NodeCompleteEvent,EdgeTriggerEvent,CommunicationReceivedEvent,
 
-include("modelgraph.jl")
+add_dispatch_node!,initialize,
 
-include("solve.jl")
-#
-include("solution.jl")
-#
-include("macros.jl")
-#
-#load PIPS-NLP if the library can be found
-if  !isempty(Libdl.find_library("libparpipsnlp"))
-    include("solver_interfaces/plasmoPipsNlpInterface.jl")
-    using .PlasmoPipsNlpInterface
-else
-    pipsnlp_solve(Any...) = throw(error("Could not find a PIPS-NLP installation"))
-end
+#Workflow
+getcurrenttime,getnexttime,getnexteventtime,execute!,getevents,
 
-#load DSP if the library can be found
-if !isempty(Libdl.find_library("libDsp"))
-    include("solver_interfaces/plasmoDspInterface.jl")
-    using .PlasmoDspInterface
-else
-    dsp_solve(Any...) = throw(error("Could not find a DSP installation"))
-end
+#Dispatch Nodes
+set_node_function,set_node_compute_time,set_node_function_arguments,set_node_function_kwargs,
+getresult,setinputs,getlocaltime,
 
+#Communication Edges
+connect!,setdelay,getdelay,
+
+#Node Channels
+getinput,getoutput,getchanneldata_in,getchanneldata_out,getportdata,getnumchannels,getnodeinputdata,getnodeoutputdata,
+set_result_slot_to_output_channel!,
+
+#Events
+gettriggers,addtrigger!,settrigger,trigger!,step,execute
+
+include("PlasmoGraphBase/PlasmoGraphBase.jl")
+using .PlasmoGraphBase
+
+include("PlasmoModels/PlasmoModels.jl")
+using .PlasmoModels
+
+# include("PlasmoWorkflows/PlasmoWorkflows.jl")
+# using .PlasmoWorkflows
 
 end
