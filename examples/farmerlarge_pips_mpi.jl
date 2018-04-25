@@ -46,14 +46,14 @@ d = Uniform(2000,8000)
 sellub[P] = rand(d,NP)
 
 # create PLASMO model and solve with PIPS-NLP
-graph = PlasmoGraph()
+graph = ModelGraph()
 master = Model()
 master_node = add_node(graph,master)
 @variable(master, x[P] >= 0)
 @variable(master, s2 >= 0)
 @constraint(master, cap, (sum(x[j] for j in P) + s2) == 200)
 @objective(master, Min, sum(prcost[j]*x[j] for j in P))
-child_nodes = Array{Plasmo.NodeOrEdge}(NS)
+child_nodes = Array{Plasmo.ModelNode}(NS)
 for i in 1:NS
     bl = Model()
     child_node = add_node(graph,bl)

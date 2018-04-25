@@ -1,115 +1,91 @@
-#A lot of this might become obsolete if JuMP solution containers become a thing
-type SolutionData
-    variable_values::Dict{Symbol,Any}
-    objVal::Number
+mutable struct SolutionGraph <: AbstractPlasmoGraph
+    basegraph::BasePlasmoGraph
+    linkcon_duals::Vector{Number}
+    objval::Number
 end
-SolutionData() = SolutionData(Dict{Symbol,Any}(),NaN)
+SolutionGraph() = SolutionGraph(BasePlasmoGraph(HyperGraph),Number[],0)
 
-type SolutionGraph <: AbstractPlasmoGraph
-    graph::AbstractGraph                        #The underlying lightgraph
-    label::Symbol
-    index::Integer                              #The index of this graph within a higher level graph (i.e. its index in another graph's subgraphlist) 0 means it isn't a subgraph
-    subgraphlist::Vector{AbstractPlasmoGraph}   #How plasmo manages structure
-    attributes::Dict{Any,Any}                   #e.g. LinkData; might make primary attributes (like models) into actual fields
-    nodes::Dict{Int,AbstractNode}               #Includes nodes in the subgraphs as well
-    edges::Dict{LightGraphs.Edge,AbstractEdge}  #Includes edges in the subgraphs as well
-    objVal::Number
+mutable struct SolutionNode <: AbstractModelNode
+    basenode::BasePlasmoNode
+    objval::Number
+    variable_value_map::Dict{Symbol,Any}
+    variable_values::Vector{Number}
+    constraint_duals::Vector{Number}
 end
-SolutionGraph() = SolutionGraph(DiGraph(),gensym(),0,AbstractGraph[],Dict(),Dict{Int,AbstractNode}(),Dict{LightGraphs.Edge,AbstractEdge}(),NaN)
+create_node(graph::SolutionGraph) = SolutionNode(BasePlasmoNode(),0,Dict{Symbol,Number}(),Number[],Number[])
 
-# #Add nodes and edges to graph models.  These are used for model instantiation from a graph
-# function add_node!(m::Model; index = nv(getgraph(m).graph)+1)
-#     is_graphmodel(m) || error("Can only add nodes to graph models")
-#     @assert is_graphmodel(m)
-#     node = JuMPNode(Dict{AbstractPlasmoGraph,Int}(), Symbol("node"),Dict(),NodeData())
-#     add_node!(getgraph(m),node,index = index)
-#     return node
-# end
-#
-# function add_edge!(m::Model,node1::JuMPNode,node2::JuMPNode)
-#     is_graphmodel(m) || error("Can only add nodes to graph models")
-#     @assert is_graphmodel(m)
-#     edge = JuMPEdge(Dict{AbstractPlasmoGraph,Edge}(), Symbol("edge"),Dict{Any,Any}(),NodeData())
-#     add_edge!(getgraph(m),edge,node1,node2)
-#     return edge
-# end
+mutable struct SolutionEdge <: AbstractLinkingEdge
+    baseedge::BasePlasmoEdge
+    linkconduals::Vector{Number}
+end
+SolutionEdge() = SolutionEdge(BasePlasmoEdge(),Number[])
+create_edge(graph::SolutionGraph) = SolutionEdge()
 
-function getsolution(graph::PlasmoGraph)
-    solution_graph = SolutionGraph()
-    _copy_subgraphs!(graph,solution_graph)
-    #first copy all nodes, then setup all the subgraphs
-    for (index,node) in getnodes(graph)
-        new_node = add_node!(solution_graph,index = index)  #create the node and add a vertex to the top level graph.  We pass the index explicity for this graph
-        node_index = getindex(node) #returns dict of {graph => index}
-        for igraph in keys(node_index)       #For each subgraph this node is contained in....
-            if igraph.index != 0             #if it's not the top level graph
-                graph_index = igraph.index   #the index of this subgraph
-                subgraph = solution_graph.subgraphlist[graph_index]  #the flat_model subgraph
-                add_node!(subgraph,new_node,index = node.index[igraph])
-            end
+#copy solution data out of plasmo node or edge
+function setsolutiondata(node::ModelNode,solution_node::SolutionNode)
+    for (key,var) in getnodevariablemap(node)   #This is grabbing constraint references too....
+        if isa(var,Array) || isa(var,Dict)# || isa(var,JuMP.Variable)
+            vals = JuMP.getvalue(var)  #get value of the
+            solution_node.variable_value_map[key] = vals
+        elseif isa(var,JuMP.JuMPArray)
+            vals = JuMP.getvalue(var).innerArray  #get value of the
+            solution_node.variable_value_map[key] = vals
+        elseif isa(var,JuMP.JuMPDict)
+            vals = JuMP.getvalue(var).innerArray  #get value of the
+            solution_node.variable_value_map[key] = vals
+        elseif isa(var,JuMP.Variable)
+            val = JuMP.getvalue(var)
+            solution_node.variable_value_map[key] = val
+        else
+            error("encountered a variable type not recognized")
         end
     end
-    for (index,edge) in getedges(graph)
-        pair = getindex(graph,edge)
-        new_nodes = getsupportingnodes(solution_graph,pair)
-        new_edge = add_edge!(solution_graph,new_nodes[1],new_nodes[2])
-        #new_edge.index[flat_graph] = index
-        for igraph in keys(edge.index)
-            if igraph.index != 0
-                index = igraph.index
-                subgraph = solution_graph.subgraphlist[index]
-                pair = getindex(igraph.subgraphlist[index],new_edge)
-                add_edge!(subgraph,pair)
-            end
-        end
+    for var in getnodevariables(node)
+        val = getvalue(var)
+        push!(solution_node.variable_values,val)
     end
-
-    for (index,nodeoredge) in getnodesandedges(graph)
-        nodeoredge2 = getnodeoredge(solution_graph,index)       #get the corresponding node or edge in graph2
-        nodeoredge2.attributes[:Solution] = SolutionData()
-        for (key,var) in getnodevariables(nodeoredge)
-            if isa(var,Array) || isa(var,Dict)# || isa(var,JuMP.Variable)
-                vals = JuMP.getvalue(var)  #get value of the
-                nodeoredge2.attributes[:Solution].variable_values[key] = vals
-            elseif isa(var,JuMP.JuMPArray)
-                vals = JuMP.getvalue(var).innerArray  #get value of the
-                nodeoredge2.attributes[:Solution].variable_values[key] = vals
-            elseif isa(var,JuMP.JuMPDict)
-                vals = JuMP.getvalue(var).innerArray  #get value of the
-                nodeoredge2.attributes[:Solution].variable_values[key] = vals
-            elseif isa(var,JuMP.Variable)
-                val = JuMP.getvalue(var)
-                nodeoredge2.attributes[:Solution].variable_values[key] = val
-            else
-                error("encountered a variable type not recognized")
-            end
-        end
-        #nodeoredge2.attributes[:Solution].objVal = getobjectivevalue(nodeoredge)
+    for con in node.constraintlist
+        push!(solution_node.constraint_duals,getdual(con))
     end
+    solution_node.objval = getobjectivevalue(node)
 end
 
-function setsolution(graph1::SolutionGraph,graph2::AbstractPlasmoGraph) end
+function getvalue(solution_node::SolutionNode,s::Symbol)
+    return solution_node.variable_value_map[s]
+end
 
-# function setsolution(graph1::AbstractPlasmoGraph,graph2::AbstractPlasmoGraph)
-#     for (index,nodeoredge) in getnodesandedges(graph1)
-#         nodeoredge2 = getnodeoredge(graph2,index)       #get the corresponding node or edge in graph2
-#         for (key,var) in getnodevariables(nodeoredge)
-#             var2 = nodeoredge2[key]
-#             if isa(var,JuMP.JuMPArray) || isa(var,Array)# || isa(var,JuMP.Variable)
-#                 vals = JuMP.getvalue(var)  #get value of the
-#                 Plasmo.setarrayvalue(var2,vals)  #the dimensions have to line up for arrays
-#             elseif isa(var,JuMP.JuMPDict) || isa(var,Dict)
-#                 Plasmo.setvalue(var,var2)
+#Get a solution graph from a model graph
+function getsolution(model_graph::ModelGraph)
+    solution_graph = copy_graph(model_graph,to_graph_type = SolutionGraph)
+    #Get variable values
+    for node in getnodes(model_graph)
+        index = getindex(model_graph,node)
+        solution_node = getnode(solution_graph,index)       #get the corresponding node or edge in graph2
+        setsolutiondata(node,solution_node)
+    end
+    return solution_graph
+end
+
+#use a solution graph to initialize a plasmo model graph
+#Works as long as graph and solution_graph have the exact same structure
+# #TODO dual warm start solution
+# function setsolution(model_graph::ModelGraph,solution_graph::SolutionGraph)  #set ModelGraph solution with SolutionGraph solution
+#     for node in getnodes(model_graph)
+#         index = getindex(model_graph,node)
+#         solution_node = getnode(solution_graph,index)       #get the corresponding node or edge in the solution graph
+#         #now set the graph to its solution
+#         node_model = getmodel(node)
+#         for (key,var) in getnodevariables(node)
+#             vals = solution_node.variable_values[key]
+#             if isa(var,Array) || isa(var,JuMP.JuMPArray)# || isa(var,JuMP.Variable)
+#                 Plasmo.setarrayvalue(var,vals)
+#             elseif isa(var,Dict) || isa(var,JuMP.JuMPDict)
+#                 Plasmo.setvalue(var,vals)
 #             elseif isa(var,JuMP.Variable)
-#                 JuMP.setvalue(var2,JuMP.getvalue(var))
+#                 JuMP.setvalue(var,vals)
 #             else
 #                 error("encountered a variable type not recognized")
 #             end
-#         end
-#         #TODO Also set the node objectives
-#         if hasmodel(nodeoredge2)
-#             m = getmodel(nodeoredge2)
-#             m.objVal = getvalue(m.obj)
 #         end
 #     end
 # end

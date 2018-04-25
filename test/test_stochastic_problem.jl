@@ -4,7 +4,7 @@ using Ipopt
 #using MPI
 
 #MPI.Init()
-graph = Plasmo.PlasmoGraph()
+graph = Plasmo.ModelGraph()
 m = Model()
 master_node = add_node(graph,m)
 @variable(m, x0[1:2], start=1)
@@ -12,7 +12,7 @@ master_node = add_node(graph,m)
 @objective(m, Min, x0[1]^2 + x0[2]^2 + x0[1]*x0[2])
 
 NS = 2
-child_nodes = Array{Plasmo.NodeOrEdge}(NS)
+child_nodes = Array{Plasmo.ModelNode}(NS)
 for i in 1:NS
    bl = Model()
    @variable(bl, x[1:2], start=1)
@@ -34,7 +34,7 @@ for i in 1:NS
    child_nodes[i] = child_node
 
 end
-graph.solver = Ipopt.IpoptSolver()
+setsolver(graph,Ipopt.IpoptSolver())
 Plasmo.solve(graph)
 
 true

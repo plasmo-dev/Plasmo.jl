@@ -79,10 +79,14 @@ getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
 
 
 JuMP.getobjective(node::JuMPNode) = node.objective
+JuMP.getobjectivevalue(node::JuMPNode) = getvalue(node.objective)
+#setobjectivevalue(node::JuMPNode,num::Number) = node.objval = num
 
 getnodevariablemap(node::JuMPNode) = node.variablemap
 getnodevariables(node::JuMPNode) = node.variablelist #getmodel(nodeoredge).objDict  #could store variable references on nodes
+getnodevariable(node::JuMPNode,index::Integer) = node.variablelist[index]
 getnodeconstraints(node::JuMPNode) = node.constraintlist
+num_var(node::JuMPNode) = length(node.variablelist)
 
 #get node variables
 getindex(node::JuMPNode,s::Symbol) = node.variablemap[s]
@@ -96,6 +100,8 @@ function getlinkconstraints(m::JuMP.Model)
 end
 
 #Create a single JuMP model from a plasmo graph
+@deprecate create_flat_graph_model create_jump_graph_model
+
 function create_jump_graph_model(model_graph::ModelGraph)
     jump_model = JuMPGraphModel()
     jump_graph = copy_graph(model_graph,to_graph_type = JuMPGraph)
@@ -203,8 +209,8 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
         setcategory(x,node_model.colCat[i])                                  #set the variable to the same category
         setvalue(x,node_model.colVal[i])                                     #set the variable to the same value
         var_map[i] = x                                                       #map the linear index of the model_node variable to the new variable in the jump_node
-        index_map[i] = linearindex(x)
-        #m.objDict[Symbol(new_name)] = x                                      #Update master model variable dictionary
+        index_map[i] = linearindex(x)                                        #map of jump node variable index to it's actual flat model index
+        m.objDict[Symbol(new_name)] = x                                      #Update master model variable dictionary
         push!(jump_node.variablelist,x)
     end
     #setup the node_map dictionary.  This maps the node model's variable keys to variables in the newly constructed model.
@@ -344,14 +350,12 @@ buildjumpmodel!(graph::ModelGraph) = graph.serial_model = create_jump_graph_mode
 #Create a JuMP model and solve with a MPB compliant solver
 function jump_solve(graph::ModelGraph,kwargs...)
     println("Aggregating Models...")
-    #m_flat = create_flat_graph_model(graph)
-    #graph.internal_serial_model = m_flat
     m_flat = buildjumpmodel!(graph)
     println("Finished model instantiation")
     m_flat.solver = graph.linkmodel.solver
     status = JuMP.solve(m_flat,kwargs...)
     if status == :Optimal
-        #setsolution(getgraph(m_flat),graph)                      #Now get our solution data back into the original ModelGraph
+        setsolution(getgraph(m_flat),graph)                       #Now get our solution data back into the original ModelGraph
         _setobjectivevalue(graph,JuMP.getobjectivevalue(m_flat))  #Set the graph objective value for easy access
     end
     return status
@@ -365,7 +369,6 @@ function JuMP.solve(graph::ModelGraph; method = :jump,kwargs...)
     end
     return status
 end
-
 
 #define some setvalue functions for convenience when dealing with JuMP JuMPArray type
 #dimension of jarr2 must be greater than jarr1
@@ -408,32 +411,16 @@ end
 
 #copy the solution from one graph to another where nodes and variables match
 function setsolution(graph1::AbstractModelGraph,graph2::AbstractModelGraph)
-    
     for node in getnodes(graph1)
         index = getindex(graph1,node)
-    #for (index,nodeoredge) in getnodesandedges(graph1)
         node2 = getnode(graph2,index)       #get the corresponding node or edge in graph2
-
-        for (key,var) in getnodevariables(nodeoredge)
-            var2 = nodeoredge2[key]
-            if isa(var,JuMP.JuMPArray) || isa(var,Array)# || isa(var,JuMP.Variable)
-                vals = JuMP.getvalue(var)  #get value of the
-                Plasmo.setarrayvalue(var2,vals)  #the dimensions have to line up for arrays
-            elseif isa(var,JuMP.JuMPDict) || isa(var,Dict)
-                Plasmo.setvalue(var,var2)
-            elseif isa(var,JuMP.Variable)
-                JuMP.setvalue(var2,JuMP.getvalue(var))
-            else
-                error("encountered a variable type not recognized")
-            end
-        end
-
-        #TODO Also set the node objectives
-        if hasmodel(node2)
-            m = getmodel(node2)
-            m.objVal = getvalue(m.obj)
+        for i = 1:num_var(node)
+            node1_var = getnodevariable(node,i)
+            node2_var = getnodevariable(node2,i)
+            setvalue(node2_var,getvalue(node1_var))
         end
     end
+    #TODO Set dual values
 end
 
 
@@ -470,5 +457,19 @@ end
 #             # newexpr = Expr(:call, :+, copy(ex1), copy(ex2))
 #             # JuMP.setNLobjective(m, P.objSense, newexpr)
 #         end
+#     end
+# end
+
+# for (key,var) in getnodevariablemap(node)
+#     var2 = node2[key]
+#     if isa(var,JuMP.JuMPArray) || isa(var,Array)# || isa(var,JuMP.Variable)
+#         vals = JuMP.getvalue(var)  #get value of the
+#         Plasmo.setarrayvalue(var2,vals)  #the dimensions have to line up for arrays
+#     elseif isa(var,JuMP.JuMPDict) || isa(var,Dict)
+#         Plasmo.setvalue(var,var2)
+#     elseif isa(var,JuMP.Variable)
+#         JuMP.setvalue(var2,JuMP.getvalue(var))
+#     else
+#         error("encountered a variable type not recognized")
 #     end
 # end

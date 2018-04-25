@@ -1,3 +1,0 @@
-using Plasmo
-
-m = ModelGraph()

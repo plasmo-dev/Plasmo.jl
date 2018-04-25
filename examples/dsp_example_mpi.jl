@@ -22,7 +22,7 @@ Yield    = [3.0 3.6 24.0;
 Minreq   = [200 240 0]     # minimum crop requirement
 
 # The Plasmo Graph
-graph = PlasmoGraph()
+graph = ModelGraph()
 
 first_stage = Model()
 
@@ -32,7 +32,7 @@ first_stage = Model()
 
 #add the master model to the graph
 n1 = add_node(graph,first_stage)
-scen_nodes = Array{NodeOrEdge}(NS)
+scen_nodes = Array{ModelNode}(NS)
 for s in 1:NS
     blk = Model()
     node = add_node(graph,blk)

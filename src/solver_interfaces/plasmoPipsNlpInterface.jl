@@ -77,7 +77,7 @@ end
 #     modelList = [getmodel(master); submodels]
 # end
 
-function pipsnlp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,children_nodes::Vector{Plasmo.NodeOrEdge})
+function pipsnlp_solve(graph::Plasmo.ModelGraph,master_node::Plasmo.ModelNode,children_nodes::Vector{Plasmo.ModelNode})
     #need to check that the structure makes sense
 
     submodels = [Plasmo.getmodel(child) for child in children_nodes]

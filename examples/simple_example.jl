@@ -2,8 +2,8 @@ using JuMP
 using Plasmo
 using Ipopt
 
-graph = Plasmo.PlasmoGraph()
-graph.solver = Ipopt.IpoptSolver()
+graph = Plasmo.ModelGraph()
+setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
 n1 = Plasmo.add_node(graph)
@@ -37,4 +37,4 @@ Plasmo.solve(graph)
 
 println("n1[:x]= ",JuMP.getvalue(n1[:x]))
 println("n2[:x]= ",JuMP.getvalue(n2[:x]))
-println("objective = ", Plasmo.getgraphobjectivevalue(graph))
+println("objective = ", Plasmo.getobjectivevalue(graph))

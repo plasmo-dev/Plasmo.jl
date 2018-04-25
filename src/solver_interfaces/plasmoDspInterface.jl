@@ -13,7 +13,7 @@ export dsp_solve
 
 #Build up Dsp Model using structure from Plasmo
 # This function is hooked by JuMP (see block.jl)
-function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,children_nodes::Vector{Plasmo.NodeOrEdge};
+function dsp_solve(graph::Plasmo.ModelGraph,master_node::Plasmo.ModelNode,children_nodes::Vector{Plasmo.ModelNode};
                         probabilities = Dict(zip(1:length(children_nodes),fill(1/length(children_nodes),length(children_nodes)))),suppress_warnings = false, options...)
     master = Plasmo.getmodel(master_node)
     submodels = [Plasmo.getmodel(child) for child in children_nodes]
@@ -74,7 +74,7 @@ function dsp_solve(graph::Plasmo.PlasmoGraph,master_node::Plasmo.NodeOrEdge,chil
     #return dspmodel
 end
 
-function loadProblem(dsp::DspCInterface.DspModel,graph::Plasmo.PlasmoGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool,probabilities)
+function loadProblem(dsp::DspCInterface.DspModel,graph::Plasmo.ModelGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool,probabilities)
     DspCInterface.check_problem(dsp)
 
     #if haskey(model.ext, :DspBlocks) #if there are children models given.....
@@ -87,9 +87,9 @@ function loadProblem(dsp::DspCInterface.DspModel,graph::Plasmo.PlasmoGraph, mast
         loadDeterministicProblem(dsp, master)
     end
 end
-loadProblem(dsp::DspCInterface.DspModel,graph::Plasmo.PlasmoGraph,master::JuMP.Model, subproblems::Vector{JuMP.Model},probabilites::Dict) = loadProblem(dsp,graph, master, subproblems, true,probabilites);
+loadProblem(dsp::DspCInterface.DspModel,graph::Plasmo.ModelGraph,master::JuMP.Model, subproblems::Vector{JuMP.Model},probabilites::Dict) = loadProblem(dsp,graph, master, subproblems, true,probabilites);
 
-function loadStochasticProblem(dsp::DspCInterface.DspModel, graph::Plasmo.PlasmoGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool, probabilities::Dict)
+function loadStochasticProblem(dsp::DspCInterface.DspModel, graph::Plasmo.ModelGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool, probabilities::Dict)
     # model was a Dsp JuMP model
     # get DspBlocks
     #blocks = model.ext[:DspBlocks]    #this is a blockstructure with ids and weights
@@ -265,7 +265,7 @@ function getDataFormat(model::JuMP.Model)
 end
 
 #Get the data format for a child node.  We also need to pass the child's linkconstraints
-function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{Union{JuMP.AbstractConstraint, JuMP.ConstraintRef}})
+function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{Plasmo.LinkConstraint})
     # Column wise sparse matrix
     mat = prepChildConstrMatrix(master,child,linkcons)
     # Tranpose; now I have row-wise sparse matrix
@@ -314,7 +314,7 @@ function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{Uni
     return start, index, value, child.colLower, child.colUpper, ctype, obj, rlbd, rubd
 end
 
-function prepChildConstrMatrix(master::JuMP.Model,child::JuMP.Model,linkconstraints::Vector{Union{JuMP.AbstractConstraint, JuMP.ConstraintRef}})
+function prepChildConstrMatrix(master::JuMP.Model,child::JuMP.Model,linkconstraints::Vector{Plasmo.LinkConstraint})
     rind = Int[]
     cind = Int[]
     value = Float64[]

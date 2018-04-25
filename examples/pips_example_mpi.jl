@@ -1,5 +1,6 @@
 using JuMP
 using Plasmo
+using PlasmoGraphBase
 using MPI
 using Ipopt
 
@@ -26,7 +27,7 @@ ncores = MPI.Comm_size(comm)
 rank = MPI.Comm_rank(comm)
 SPP = round(Int, floor(Ns/ncores))
 
-graph = PlasmoGraph()
+graph = ModelGraph()
 
 #Create the master model
 master = Model()
@@ -37,7 +38,7 @@ master = Model()
 master_node = add_node!(graph,master)
 
 scenm=Array{JuMP.Model}(Ns)
-scen_nodes = Array{NodeOrEdge}(Ns)
+scen_nodes = Array{ModelNode}(Ns)
 owned = []
 s = 1
 #split scenarios between processors
@@ -67,7 +68,7 @@ if rank == 0
 end
 pipsnlp_solve(graph,master_node,scen_nodes)
 
-@show getgraphobjectivevalue(graph::PlasmoGraph)
+@show getobjectivevalue(graph)
 
 # if rank == 0
 #     graph.solver = IpoptSolver()

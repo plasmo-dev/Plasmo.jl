@@ -1,5 +1,6 @@
 using JuMP
 using Plasmo
+using PlasmoGraphBase
 using Ipopt
 
 function nl_model()
@@ -13,17 +14,17 @@ function nl_model()
 end
 
 #the top level graph
-graph = PlasmoGraph()
-graph.solver = Ipopt.IpoptSolver()
+graph = ModelGraph()
+setsolver(graph,Ipopt.IpoptSolver())
 
 #System 1
-graph1 = PlasmoGraph()
+graph1 = ModelGraph()
 n1 = add_node(graph1,nl_model())
 n2 = add_node(graph1,nl_model())
 @linkconstraint(graph1,n1[:x] == n2[:x])  #linkconstraint is local to graph1
 
 #System 2
-graph2 = PlasmoGraph()
+graph2 = ModelGraph()
 n3 = add_node(graph2,nl_model())
 n4 = add_node(graph2,nl_model())
 @linkconstraint(graph2,n3[:x] == n4[:x])

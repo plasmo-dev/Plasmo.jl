@@ -33,7 +33,6 @@ ref1 = getlinkconstraints(m,n2)[1]
 #The actual link constraint
 linkcon1 = LinkConstraint(ref1)
 
-
 lincon2 = LinearConstraint(AffExpr([n1[:x],n2[:x],n3[:x]],[1,-1,1],0),0,0)
 edge2 = addlinkconstraint(m,lincon2)  #adds a hyper edge between all 3 nodes
 getlinkconstraints(n2)
@@ -54,5 +53,4 @@ get_all_linkconstraints(m)
 
 m_copy = copy_graph(m)
 
-#should add an edge between n1 and n2
-#@linkconstraint(m,n1[:x] == n2[:x])
+return true

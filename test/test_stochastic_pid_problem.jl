@@ -77,7 +77,7 @@ xsp[3] =  1.0;
   d[3] = -1.0;
 
 # create two-stage graph moddel
-PID=GraphModel()
+PID = ModelGraph()
 master = Model()
 master_node = add_node(PID,master)
 
@@ -87,7 +87,7 @@ master_node = add_node(PID,master)
 @variable(master,-100<=tauD<=1000)
 
 # create array of children models
-PIDch=Array{NodeOrEdge}(NS)
+PIDch=Array{ModelNode}(NS)
 for s in 1:NS
    # get scenario model
    bl = get_scenario_model(s)
@@ -101,11 +101,11 @@ for s in 1:NS
 end
 
 # solve with Ipopt
-PID.solver = IpoptSolver()
+setsolver(PID,IpoptSolver())
 solve(PID)
 
-@assert getvalue(Kc) == 4.318613077192247
-@assert getvalue(tauI) == 2.247901741841325
-@assert getvalue(tauD) == -3.1008909097547304
+@assert round(getvalue(Kc),4) == 4.3186
+@assert round(getvalue(tauI),4) == 2.2479
+@assert round(getvalue(tauD),4) == -3.1009
 
 true

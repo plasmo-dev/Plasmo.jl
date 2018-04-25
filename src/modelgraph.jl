@@ -1,7 +1,8 @@
 import PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge,getnode,getnodes
 import Base:show,print,string,getindex,copy
-import JuMP:AbstractModel,setobjective,getobjectivevalue,setsolver
+import JuMP:AbstractModel,setobjective,getobjectivevalue,setsolver,getvalue
 import LightGraphs.Graph
+import MathProgBase.numvar
 
 
 ##############################################################################
@@ -16,6 +17,8 @@ mutable struct ModelGraph <: AbstractModelGraph
 end
 
 ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
+@deprecate PlasmoGraph ModelGraph
+@deprecate GraphModel ModelGraph
 #ModelGraph(lightgraph::LightGraphs.AbstractGraph) = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
 #ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
 
@@ -27,9 +30,9 @@ getsimplelinkconstraints(model::ModelGraph) = getsimplelinkconstraints(model.lin
 gethyperlinkconstraints(model::ModelGraph) = gethyperlinkconstraints(model.linkmodel)
 
 _setobjectivevalue(graph::ModelGraph,value::Number) = graph.linkmodel.objval = value
-JuMP.getobjectivevalue(graph::ModelGraph) = graph.linkmodel.objVal
+JuMP.getobjectivevalue(graph::ModelGraph) = graph.linkmodel.objval
 
-getinternaljumpmodel(graph::ModelGraph) = graph.serial_model
+getinternaljumpmodel(graph::ModelGraph) = get(graph.serial_model)
 
 """
     Get every link constraint in the graph, including subgraphs
@@ -54,7 +57,7 @@ mutable struct ModelNode <: AbstractModelNode
     model::Nullable{AbstractModel}
     linkconrefs::Dict{ModelGraph,Vector{ConstraintRef}}
 end
-
+@deprecate NodeOrEdge ModelNode
 #Node constructors
 #empty PlasmoNode
 ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),Dict{ModelGraph,Vector{ConstraintRef}}())
@@ -64,8 +67,30 @@ getmodel(node::ModelNode) = get(node.model)
 hasmodel(node::ModelNode) = get(node.model) != nothing? true: false
 
 #Get all of the link constraints for a node in all of its graphs
-getlinkconstraints(node::ModelNode) = node.linkconrefs
-getlinkconstraints(graph::ModelGraph,node::ModelNode) = node.linkconrefs[graph]
+getlinkreferences(node::ModelNode) = node.linkconrefs
+getlinkreferences(graph::ModelGraph,node::ModelNode) = node.linkconrefs[graph]
+#Link constraints SHOULD be unique to each graph
+function getlinkconstraints(node::ModelNode)
+    links = Dict()
+    for (graph,refs) in node.linkconrefs
+        links[graph] = Vector{LinkConstraint}()
+        for ref in refs
+            push!(links[graph],LinkConstraint(ref))
+        end
+    end
+    return links
+end
+
+function getlinkconstraints(graph::ModelGraph,node::ModelNode)
+    links = []
+    for ref in node.linkconrefs[graph]
+        push!(links,LinkConstraint(ref))
+    end
+    return links
+end
+
+
+
 
 is_nodevar(node::ModelNode,var::AbstractJuMPScalar) = getmodel(node) == var.m #checks whether a variable belongs to a node or edge
 _is_assignedtonode(m::AbstractModel) = haskey(m.ext,:node) #check whether a model is assigned to a node
@@ -73,14 +98,17 @@ _is_assignedtonode(m::AbstractModel) = haskey(m.ext,:node) #check whether a mode
 getnode(m::AbstractModel) = _is_assignedtonode(m)? m.ext[:node] : throw(error("Only node models have associated graph nodes"))
 getnode(var::AbstractJuMPScalar) = var.m.ext[:node]
 
+num_var(node::ModelNode) = MathProgBase.numvar(getmodel(node))
+
 #get variable index on a node
 getindex(node::ModelNode,sym::Symbol) = getmodel(node)[sym]
 
-function setmodel(node::ModelNode,m::AbstractModel)
+function setmodel(node::ModelNode,m::AbstractModel;preserve_links = false)
     #_updatelinks(m,nodeoredge)      #update link constraints after setting a model
     !(_is_assignedtonode(m) && getmodel(node) == m) || error("the model is already asigned to another node")
+    #TODO
     #BREAK LINKS FOR NOW
-    #If it already had a model, delete all the link constraints corresponding to that model
+    # If it already had a model, delete all the link constraints corresponding to that model
     # if hasmodel(node)
     #     for (graph,constraints) in getlinkconstraints(node)
     #         local_link_cons = constraints
@@ -92,6 +120,8 @@ function setmodel(node::ModelNode,m::AbstractModel)
     node.model = m
     m.ext[:node] = node
 end
+const setmodel! = setmodel
+
 
 #TODO
 #set a model with the same variable names and dimensions as the old model on the node.
@@ -106,6 +136,9 @@ end
 
 JuMP.getobjective(node::ModelNode) = getobjective(node.model)
 JuMP.getobjectivevalue(node::ModelNode) = getobjectivevalue(node.model)
+setobjectivevalue(node::ModelNode,num::Number) = getmodel(node).objVal = num
+
+@deprecate getgraphobjectivevalue getobjectivevalue
 #TODO?
 # removemodel(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
 
@@ -124,26 +157,6 @@ function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
     vars = con.terms.vars
     nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
-    # if length(nodes) == 2
-    #     edge = add_edge!(graph,nodes[1],nodes[2])  #constraint edge connected to two nodes
-    #     push!(edge.linkconrefs,ref)
-    #
-    #     #Could just create a key when adding a node to a graph
-    #     if !haskey(nodes[1].linkconrefs,graph)
-    #         nodes[1].linkconrefs[graph] = [ref]
-    #     else
-    #         push!(nodes[1].linkconrefs[graph],ref)
-    #     end
-    #
-    #     if !haskey(nodes[2].linkconrefs,graph)
-    #         nodes[2].linkconrefs[graph] = [ref]
-    #     else
-    #         push!(nodes[2].linkconrefs[graph],ref)
-    #     end
-
-        # push!(nodes[1].linkconrefs,ref)
-        # push!(nodes[2].linkconrefs,ref)
-    #elseif length(nodes) > 2
     edge = add_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
     push!(edge.linkconrefs,ref)
     for node in nodes
@@ -152,11 +165,7 @@ function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
         else
             push!(node.linkconrefs[graph],ref)
         end
-        #push!(node.linkconrefs[graph],ref)
     end
-    # else
-    #     throw(error("Attempted to add a link constraint for a single node"))
-    # end
     return edge
 end
 
@@ -165,7 +174,6 @@ end
 #     link_cons = getlinkconstraints(nodeoredge)
 #     #find variables
 # end
-
 
 ########################################
 #Other add_node! constructors
@@ -213,3 +221,28 @@ end
 #     copy_graph(graph)
 #     Fill in other data
 # end
+getnodevariable(node::ModelNode,index::Integer) = Variable(getmodel(node),index)
+function getnodevariablemap(node::ModelNode)
+    node_map = Dict()
+    node_model = getmodel(node)
+    for key in keys(node_model.objDict)  #this contains both variable and constraint references
+        if isa(node_model.objDict[key],Union{JuMP.JuMPArray{AbstractJuMPScalar},Array{AbstractJuMPScalar}})     #if the JuMP variable is an array or a JuMPArray
+            vars = node_model.objDict[key]
+            node_map[key] = vars
+        #reproduce the same mapping in a dictionary
+        elseif isa(node_model.objDict[key],JuMP.JuMPDict)
+            tdict = node_model.objDict[key].tupledict  #get the tupledict
+            d_tmp = Dict()
+            for dkey in keys(tdict)
+                d_tmp[dkey] = var_map[linearindex(tdict[dkey])]
+            end
+            node_map[key] = d_tmp
+
+        elseif isa(node_model.objDict[key],JuMP.AbstractJuMPScalar) #else it's a single variable
+            node_map[key] = node_model.objDict[key]
+        # else #objDict also has contraints!
+        #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
+        end
+    end
+    return node_map
+end

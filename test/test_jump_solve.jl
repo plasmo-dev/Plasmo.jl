@@ -35,7 +35,6 @@ ref1 = getlinkconstraints(m,n2)[1]
 #The actual link constraint
 linkcon1 = LinkConstraint(ref1)
 
-
 lincon2 = LinearConstraint(AffExpr([n1[:x],n2[:x],n3[:x]],[1,-1,1],0),0,0)
 edge2 = addlinkconstraint(m,lincon2)  #adds a hyper edge between all 3 nodes
 getlinkconstraints(n2)
@@ -44,8 +43,6 @@ linkcon2 = LinkConstraint(ref2)
 
 
 @linkconstraint(m,n2[:x] == n3[:x])
-#m_copy = copy_graph(m,to_graph_type = JuMPGraph)
-#solve(m)
-flat_model = buildjumpmodel!(m)
-setsolver(flat_model,IpoptSolver())
-solve(flat_model)
+solve(m)
+
+return true
