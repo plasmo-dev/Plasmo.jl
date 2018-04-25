@@ -79,12 +79,12 @@ end
 #TODO dual warm start solution
 function setsolution(model_graph::ModelGraph,solution_graph::SolutionGraph)  #set ModelGraph solution with SolutionGraph solution
     for node in getnodes(model_graph)
-    for (index,nodeoredge) in getnodesandedges(graph)
-        solution_nodeoredge = getnodeoredge(solution_graph,index)       #get the corresponding node or edge in the solution graph
+        index = getindex(model_graph,node)
+        solution_node = getnode(solution_graph,index)       #get the corresponding node or edge in the solution graph
         #now set the graph to its solution
-        nmodel = getmodel(nodeoredge)
-        for (key,var) in getnodevariables(nodeoredge)
-            vals = solution_nodeoredge.solution_data.variable_values[key]
+        node_model = getmodel(node)
+        for (key,var) in getnodevariables(node)
+            vals = solution_node.variable_values[key]
             if isa(var,Array) || isa(var,JuMP.JuMPArray)# || isa(var,JuMP.Variable)
                 Plasmo.setarrayvalue(var,vals)
             elseif isa(var,Dict) || isa(var,JuMP.JuMPDict)
