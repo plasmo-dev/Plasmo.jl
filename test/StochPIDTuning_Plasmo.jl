@@ -104,8 +104,8 @@ end
 PID.solver = IpoptSolver()
 solve(PID)
 
-@assert getvalue(Kc) == 4.318613077192247
-@assert getvalue(tauI) == 2.247901741841325
-@assert getvalue(tauD) == -3.1008909097547304
+@assert round(getvalue(Kc),4) == 4.3186
+@assert round(getvalue(tauI),4) == 2.2479
+@assert round(getvalue(tauD),4) == -3.1009
 
 true
