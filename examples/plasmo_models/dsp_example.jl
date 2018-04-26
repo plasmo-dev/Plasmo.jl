@@ -2,7 +2,6 @@
 
 using JuMP
 using Plasmo
-using PlasmoGraphBase
 #using Cbc
 
 NS = 3;                        # number of scenarios

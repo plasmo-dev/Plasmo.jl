@@ -1,5 +1,4 @@
-using Plasmo
-
+using Base.Test
 #Test basic model functionality
 println("Testing Basic Model Functions")
 @test include("model_tests.jl")

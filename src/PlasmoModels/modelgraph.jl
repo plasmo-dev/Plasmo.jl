@@ -1,4 +1,4 @@
-import PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge,getnode,getnodes
+import ..PlasmoGraphBase:add_node!,add_edge!,create_node,create_edge,getnode,getnodes
 import Base:show,print,string,getindex,copy
 import JuMP:AbstractModel,setobjective,getobjectivevalue,setsolver,getvalue
 import LightGraphs.Graph

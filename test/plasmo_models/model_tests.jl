@@ -1,5 +1,7 @@
 import JuMP
+
 import Plasmo
+
 import Ipopt
 
 #Need to create standard optimization models to test against.  Check solution values
@@ -7,7 +9,7 @@ import Ipopt
 graph = Plasmo.ModelGraph()
 #graph = Plasmo.getgraph(model)
 
-setsolver(graph,Ipopt.IpoptSolver())
+Plasmo.setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
 n1 = Plasmo.add_node!(graph)

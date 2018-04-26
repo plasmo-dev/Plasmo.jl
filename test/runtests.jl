@@ -1,3 +1,3 @@
-include("plasmo_graph_base/runtests.jl")
+#include("plasmo_graph_base/runtests.jl")
 
-#include("plasmo_models/runtests.jl")
+include("plasmo_models/runtests.jl")

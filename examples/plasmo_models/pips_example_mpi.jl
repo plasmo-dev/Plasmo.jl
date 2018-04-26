@@ -1,6 +1,5 @@
 using JuMP
 using Plasmo
-using PlasmoGraphBase
 using MPI
 using Ipopt
 

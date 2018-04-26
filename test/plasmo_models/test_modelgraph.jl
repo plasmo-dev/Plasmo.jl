@@ -1,5 +1,5 @@
-using Plasmo
-using PlasmoGraphBase
+using Plasmo.PlasmoGraphBase
+using Plasmo.PlasmoModels
 using JuMP
 
 function simple_model()
@@ -28,7 +28,7 @@ edge1 = addlinkconstraint(m,lincon1)  #adds a simple edge between n1 and n2
 getlinkconstraints(n1)
 
 #First link constraint reference on node 2
-ref1 = getlinkconstraints(m,n2)[1]
+ref1 = getlinkreferences(m,n2)[1]
 
 #The actual link constraint
 linkcon1 = LinkConstraint(ref1)
@@ -36,7 +36,7 @@ linkcon1 = LinkConstraint(ref1)
 lincon2 = LinearConstraint(AffExpr([n1[:x],n2[:x],n3[:x]],[1,-1,1],0),0,0)
 edge2 = addlinkconstraint(m,lincon2)  #adds a hyper edge between all 3 nodes
 getlinkconstraints(n2)
-ref2 = getlinkconstraints(m,n2)[2]
+ref2 = getlinkreferences(m,n2)[2]
 linkcon2 = LinkConstraint(ref2)
 
 getsimplelinkconstraints(m)

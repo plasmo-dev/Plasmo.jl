@@ -92,12 +92,12 @@ src(basegraph::BasePlasmoGraph,edge::LightGraphs.AbstractEdge) = getnode(basegra
 dst(basegraph::BasePlasmoGraph,edge::LightGraphs.AbstractEdge) = getnode(basegraph,LightGraphs.dst(edge))  #destination node of a Plasmo Edge
 
 #New stuff
-in_edges(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getedge(basegraph,in_node,getindex(basegraph,node)) for in_node in LightGraphs.in_neighbors(getlightgraph(basegraph),getindex(basegraph,node))]
-out_edges(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getedge(basegraph,getindex(basegraph,node),out_node) for out_node in LightGraphs.out_neighbors(getlightgraph(basegraph),getindex(basegraph,node))]
+in_edges(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getedge(basegraph,in_node,getindex(basegraph,node)) for in_node in LightGraphs.inneighbors(getlightgraph(basegraph),getindex(basegraph,node))]
+out_edges(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getedge(basegraph,getindex(basegraph,node),out_node) for out_node in LightGraphs.outneighbors(getlightgraph(basegraph),getindex(basegraph,node))]
 
 
-in_neighbors(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getnode(basegraph,node_index) for node_index in LightGraphs.in_neighbors(getlightgraph(basegraph),getindex(basegraph,node))]
-out_neighbors(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getnode(basegraph,node_index) for node_index in LightGraphs.out_neighbors(getlightgraph(basegraph),getindex(basegraph,node))]
+in_neighbors(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getnode(basegraph,node_index) for node_index in LightGraphs.inneighbors(getlightgraph(basegraph),getindex(basegraph,node))]
+out_neighbors(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getnode(basegraph,node_index) for node_index in LightGraphs.outneighbors(getlightgraph(basegraph),getindex(basegraph,node))]
 neighbors(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getnode(basegraph,node_index) for node_index in LightGraphs.all_neighbors(getlightgraph(basegraph),getindex(basegraph,node))]
 
 #NOTE Make this function more general
