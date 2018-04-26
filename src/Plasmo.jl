@@ -33,6 +33,11 @@ getattribute,setattribute,addattributes!,getattributes,
 ##################
 #Model Graphs
 ##################
+
+#Deprecations
+PlasmoGraph,getgraphobjectivevalue,GraphModel,NodeOrEdge,create_flat_graph_model,
+
+#ModelGraph
 ModelGraph, ModelNode, LinkingEdge, LinkConstraint,
 
 #Model functions

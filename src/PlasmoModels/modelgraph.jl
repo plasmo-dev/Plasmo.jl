@@ -89,9 +89,6 @@ function getlinkconstraints(graph::ModelGraph,node::ModelNode)
     return links
 end
 
-
-
-
 is_nodevar(node::ModelNode,var::AbstractJuMPScalar) = getmodel(node) == var.m #checks whether a variable belongs to a node or edge
 _is_assignedtonode(m::AbstractModel) = haskey(m.ext,:node) #check whether a model is assigned to a node
 
