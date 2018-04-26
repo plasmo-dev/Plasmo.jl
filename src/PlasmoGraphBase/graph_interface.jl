@@ -181,9 +181,11 @@ function addattributes!(node::AbstractPlasmoNode,dict::Dict)
     merge!(basenode.attributes,dict)
 end
 
-
+getattribute(graph::AbstractPlasmoGraph,attribute::Symbol) = getbasegraph(graph).attributes[attribute]
 getattribute(node::AbstractPlasmoNode,attribute::Symbol) = getbasenode(node).attributes[attribute]
 hasattribute(node::AbstractPlasmoNode,attribute::Symbol) = haskey(getbasenode(node).attributes,attribute)
+
+getattributes(graph::AbstractPlasmoGraph) = getbasegraph(graph).attributes
 getattributes(node::AbstractPlasmoNode) = getbasenode(node).attributes
 
 rmattribute!(node::AbstractPlasmoNode,attribute::Symbol) = delete!(getbasenode(node).attributes,attribute)
