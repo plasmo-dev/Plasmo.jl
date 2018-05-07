@@ -11,17 +11,16 @@ getlabel(attribute::Attribute) = attribute.label
 getlocalvalue(attribute::Attribute) = attribute.local_value
 getglobalvalue(attribute::Attribute) = attribute.global_value
 
-
 #A discrete node gets scheduled on edge triggering
-mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
+struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     basenode::BasePlasmoNode
     attributes::Vector{Attribute}
-    priority::Int
+    priority::Int                               #custom node priority when running at same time as another node
     local_time::Float64                         #The node's local clock.  Gets synchronized with the workflow clock on triggers
     compute_time::Float64                       #The time the node takes to complete its task.
     node_task::DispatchFunction                 #the actual function (task) to call
     state_manager::StateManager
-    #initial_signal
+    initial_signal::Union{Void,Signal}
 end
 function DispatchNode()
     basenode = BasePlasmoNode()
@@ -33,19 +32,37 @@ function DispatchNode()
     state_manager = StateManger()
     setstates(state_manager,[:idle,:scheduled,:computing,:synchronizing,:error,:inactive])
     setstate(state_manager,:idle)
-    addtransition(state_manager,(:idle,:schedule),:scheduled)
+
+    addtransition!(state_manager,State(:idle),Signal(:schedule),State(:scheduled), action = schedule_node)
+    addtransition!(state_manager,:idle,Signal(:execute),:computing, action = run_node_task, target = state_manager)
+    for edge in out_edges()
+
     return DispatchNode(basenode,attributes,0,local_time,compute_time,node_task,state_manager)
 end
-
-
-
 create_node(graph::Workflow) = DispatchNode()
+
+
+#dispatch function to schedule a node
+function schedule_node(node::DispatchNode,delay::Number)
+    queue(Signal("execute"),getcurrenttime(workflow) + delay)
+
+    return signal
+end
+
+function run_node_task(node::DispatchNode)
+    return node.node_task()
+end
 
 function add_dispatch_node!(workflow::Workflow)
     node = add_node!(workflow)
     return node
 end
 
+function add_continuous_node!(workflow::Workflow)
+    node = add_node!(workflow)
+    #set up the StateManager
+    return node
+end
 
 ###########################
 # Node Triggers

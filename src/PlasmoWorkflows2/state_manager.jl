@@ -1,35 +1,47 @@
 abstract type AbstractSignal end
+abstract type AbstractStateManager end
+
+struct State
+    label::Symbol
+end
+State() = State(:null)
+State(label::Symbol) = State(label)
 
 #Signal can be an input or output
 struct Signal <: AbstractSignal
     label::Symbol
-    targets#::StateManager
     value::Any  #Attribute, or other value
 end
 Signal() = Signal(:empty,nothing)
 
-const State = Symbol
-const Transition = Tuple{State,Signal,State}
-const SignalTarget = Union{AbstractDispatchNode,AbstractCommunicationEdge}
+const SignalTarget = AbstractStateManager
 
-struct StateManager
+struct Transition
+    previous_state::State
+    input_signal::Signal
+    new_state::State
+    action::DispatchFunction
+    signal_targets::Vector{SignalTarget}
+    #signal_times
+end
+Transition() =  Transition(State(),Signal(),State(),DispatchFunction(),SignalTarget[])
+
+struct StateManager <: AbstractStateManager
     states::Vector{State}            #possible states
     current_state::State             #current state
     signals::Vector{AbstractSignal}  #signal the manager recognizes
-    transition_map::Dict{Tuple{State,Signal},State}             #Allowable transitions for this state manager
-    transition_functions::Dict{Transition,DispatchFunction}     #Returns a signal.  This will run the associated function
-    signal_broadcast_map::Dict{Transition,Vector{Union{DispatchNode,CommunicationEdge}}}   #Transition (Output) Map of output signals to targets
+    transition_map::Dict{Tuple{State,Signal},Transition}             #Allowable transitions for this state manager
+    #transitions::Vector{Transition}
+    #signal_broadcast_map::Dict{Transition,Vector{SignalTarget}}   #Transition (Output) Map of output signals to targets
 end
 #Constructor
-function StateManager()
-    states = State[]
-    current_state = nothing
-    signals = Signal[]
-    transition_map = Dict{Tuple{State,Signal},State}()
-    transition_functions::Dict{Transition,DispatchFunction}
-    signal_broadcast_map = Dict{Transition,Vector{Union{DispatchNode,CommunicationEdge}}}()
-    return StateManager(states,current_state,signals,transition_map,transition_functions,signal_broadcast_map)
-end
+StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,Signal},State}(),Dict{Transition,Vector{SignalTarget}}())
+
+getsignals(SM::StateManager) = SM.signals
+getstates(SM::StateManager) = SM.states
+gettransitions(SM::StateManager) = collect(values(SM.transition_map))
+getcurrentstate(SM::StateManager) = SM.current_state
+gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
 
 function setstate(SM::StateManager,state::State)
     @assert state in SM.states
@@ -41,13 +53,14 @@ function setstates(SM::StateManager,states::Vector{State})
     SM.states = states
 end
 
+function addtransition!(SM::StateManager,state1::State,signal::Signal,state2::State;action = DispatchFunction(),targets = SignalTarget[])
+    transition = Transition(state1,signal,state2,action,targets)
+    SM.transtion_map[tuple(state1,signal)] = transition
+end
 
-
-
-getsignals(SM::StateManager) = SM.signals
-getstates(SM::StateManager) = SM.states
-getcurrentstate(SM::StateManager) = SM.current_state
-gettransitionfunc(SM::StateManager,transition::Transition) = SM.transition_functions[transition]
+function addbroadcasttarget!(trans::Transition,target::SignalTarget)
+    push!(trans.signal_targets,target)
+end
 
 #Receive a signal and run the corresponding transition function.  Return a new signal.
 function evaluate_signal(SM::StateManager,signal::Signal)
@@ -58,20 +71,19 @@ function evaluate_signal(SM::StateManager,signal::Signal)
     if !(tuple(current_state,signal) in keys(SM.transition_map))
         return nothing
     end
-    new_state = SM.transition_map[tuple(current_state,signal)]
-    transition = tuple(current_state,signal,new_state)
+    transition = SM.transition_map[current_state,signal]
+    new_state = transition.new_state
     setstate(SM,new_state)
-    dfunc = gettransitionfunc(SM,transition)         #e.g. run_task or communicate
-
-    run!(dfunc,SM.signal_broadcast_map[transition])
+    return run_transition!(transition)
 end
 
+# #Signals get sent to a coordinator
+# function run_transition!(transition::Transition)
+#     signals = transition.action()
+#     queue(signals)
+# end
+#const State = Symbol
+#const Transition = Tuple{State,Signal,State}
 
 #@enum state idle = 1 scheduled = 2 computing = 3 synchronizing = 4 error = 5 inactive = 6 active = 7
 #Previous State, signal, new state
-# struct Transition
-#     previous_state::State
-#     input_signal::Signal
-#     new_state::State
-# end
-# Transition() =  Transition(:empty,Signal(),:empty)

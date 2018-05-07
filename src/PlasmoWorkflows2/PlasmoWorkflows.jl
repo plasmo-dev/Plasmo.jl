@@ -36,6 +36,10 @@ abstract type AbstractCommunicationEdge  <: AbstractPlasmoEdge end
 
 abstract type AbstractEvent end
 
+
+
+#abstract type AbstractSignalTarget <: Union{AbstractDispatchNode,AbstractCommunicationEdge} end
+
 # #Events can be: Event, Condition, Delay, Communicate, etc...
 # abstract type AbstractWorkflowEvent <: AbstractEvent end   #General Events
 # abstract type AbstractNodeEvent <: AbstractEvent end       #Events triggered by nodes

@@ -89,3 +89,9 @@ function initialize(workflow::Workflow)
         schedule(workflow,event)  #this
     end
 end
+
+#Signals get sent to a coordinator
+function run_transition!(transition::Transition)
+    signals = transition.action()
+    queue(signals)
+end

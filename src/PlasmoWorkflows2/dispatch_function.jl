@@ -1,4 +1,4 @@
-mutable struct DispatchFunction
+struct DispatchFunction
     func::Function                   #the function to call
     args::Vector{Any}                #the function args
     kwargs::Dict{Any,Any}
