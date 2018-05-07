@@ -35,7 +35,9 @@ abstract type AbstractDispatchNode <: AbstractPlasmoNode end
 abstract type AbstractCommunicationEdge  <: AbstractPlasmoEdge end
 
 abstract type AbstractEvent end
-
+abstract type AbstractSignal end
+abstract type AbstractStateManager end
+abstract type AbstractSignalCoordinator end
 
 
 #abstract type AbstractSignalTarget <: Union{AbstractDispatchNode,AbstractCommunicationEdge} end

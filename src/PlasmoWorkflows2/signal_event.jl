@@ -10,10 +10,9 @@ set_error(event::AbstractEvent) = event.status = error
 gettime(event::AbstractEvent) = event.time
 getlocaltime(event::AbstractEvent) = 0
 getpriority(event::AbstractEvent) = event.priority
+
 #######################################
-#######################################
-# Workflow Events
-#######################################
+# Signal Events
 #######################################
 #Workflow Events are standard events that anything can schedule
 mutable struct SignalEvent <: AbstractEvent
@@ -34,7 +33,7 @@ function call!(workflow::Workflow,signal_event::AbstractEvent)
 end
 
 #Schedule a signal to occur
-function schedule(workflow::Workflow,signal_event::AbstractEvent)
+function schedule(coordinator::AbstractCoordinator,signal_event::AbstractEvent)
     id = length(workflow.queue) + 1
     priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(event),getlocaltime(event),id)
     DataStructures.enqueue!(workflow.queue,signal_event,priority_value)

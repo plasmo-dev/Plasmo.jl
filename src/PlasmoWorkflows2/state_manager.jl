@@ -1,5 +1,4 @@
-abstract type AbstractSignal end
-abstract type AbstractStateManager end
+
 
 struct State
     label::Symbol
@@ -22,7 +21,7 @@ struct Transition
     new_state::State
     action::DispatchFunction
     signal_targets::Vector{SignalTarget}
-    #signal_times
+    #signal_delays
 end
 Transition() =  Transition(State(),Signal(),State(),DispatchFunction(),SignalTarget[])
 
@@ -62,21 +61,16 @@ function addbroadcasttarget!(trans::Transition,target::SignalTarget)
     push!(trans.signal_targets,target)
 end
 
-#Receive a signal and run the corresponding transition function.  Return a new signal.
-function evaluate_signal(SM::StateManager,signal::Signal)
+function runtransition!(SM::StateManager,transition::Transition)
     current_state = getstate(SM)
-    if !(signal in getsignals(SM))
+    if current_state == transition.previous_state
+        new_state = transition.new_state
+        setstate(SM,new_state)
+        return run!(transition.action())  #return signals
+    else
         return nothing
     end
-    if !(tuple(current_state,signal) in keys(SM.transition_map))
-        return nothing
-    end
-    transition = SM.transition_map[current_state,signal]
-    new_state = transition.new_state
-    setstate(SM,new_state)
-    return run_transition!(transition)
 end
-
 # #Signals get sent to a coordinator
 # function run_transition!(transition::Transition)
 #     signals = transition.action()
