@@ -1,5 +1,5 @@
 #A workflow node attribute.  Has local and global values to manage time synchronization
-struct Attribute
+mutable struct Attribute
     label::Symbol
     local_value::Any
     global_value::Any
@@ -11,27 +11,37 @@ getlabel(attribute::Attribute) = attribute.label
 getlocalvalue(attribute::Attribute) = attribute.local_value
 getglobalvalue(attribute::Attribute) = attribute.global_value
 
-#Manager Actions (return or queue signals)
-function schedule_node(node::DispatchNode,delay::Number)
-    queue(Signal(:execute),node,getcurrenttime(workflow) + delay)
-    return Signal(:scheduled)
+function gettransitionactions()
+    return schedule_node,run_node_task
+end
+
+#Define Transition Actions for a Workflow
+function schedule_node(workflow::Workflow,node::DispatchNode)
+    delay = 0
+    delayed_signal = Signal(:execute)
+    signal_now = Signal(:scheduled)
+    return Vector(Pair(signal_now,now(workflow),Pair(delayed_signal,delay))
 end
 
 #The Manager will broadcast the signal to the queue
 function run_node_task(workflow::Workflow,node::DispatchNode)
     try
-        node.node_task()
-        return Signal(:complete)
+        run!(node.node_task)  #run the computation task
+        setattribute(node,:result,node.node_task.result)
+        return Vector(Pair(Signal(:complete),now(workflow)))
     catch
-        return Signal(:error)
+        return Vector(Pair(Signal(:error),now(workflow)))
     end
 end
 
-function synchronize_node(node::DispatchNode,delay::Number)
+function synchronize_node(workflow::Workflow,node::DispatchNode)
+    #Update node global attributes
+    compute_time = getcomputetime(node)
     for attribute in getattributes(node)
         queue(Signal(:update_attribute,attribute))
     end
     queue(Signal(:synchronized))
+end
 
 #A discrete node gets scheduled on edge triggering
 struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
@@ -44,7 +54,7 @@ struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     state_manager::StateManager
     initial_signal::Union{Void,Signal}
 end
-#Constructor
+#Constructor -- Probably need an inner constructor
 function DispatchNode()
     basenode = BasePlasmoNode()
     attributes = [Attribute(:result)]
@@ -56,11 +66,17 @@ function DispatchNode()
     state_manager = StateManger()
     setstates(state_manager,[:idle,:scheduled,:computing,:synchronizing,:error,:inactive])
     setstate(state_manager,:idle)
+    return DispatchNode(basenode,attributes,0,local_time,compute_time,node_task,state_manager)
+end
+create_node(graph::Workflow) = DispatchNode()
 
-    addtransition!(state_manager,State(:idle),Signal(:schedule),State(:scheduled), action = schedule_node)
-    addtransition!(state_manager,State(:idle),Signal(:execute),State(:computing), action = run_node_task)
-    addtransition!(state_manager,State(:computing),Signal(:complete),State(:synchronizing), action = synchronize)
-    #addtransition!(state_manager,State(:synchronizing),Signal(:update_attribute),State(:synchronizing), action = update_attribute)
+#Dispatch node transitions
+function add_dispatch_node!(workflow::Workflow)
+    node = add_node!(workflow)
+    state_manager = node.state_manager
+    addtransition!(state_manager,State(:idle),Signal(:schedule),State(:scheduled), action = TransitionAction(schedule_node,workflow,node))
+    addtransition!(state_manager,State(:idle),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,workflow,node)
+    addtransition!(state_manager,State(:computing),Signal(:complete),State(:synchronizing), action = TransitionAction(synchronize_node,workflow,node))
     addtransition!(state_manager,State(:synchronizing),Signal(:synchronized),State(:idle))#, action = synchronized)
 
     for state in [State(:idle),State(:computing),State(:synchronizing)]
@@ -68,24 +84,17 @@ function DispatchNode()
         addtransition!(state_manager,state,Signal(:disable),State(:inactive))
     end
 
-    return DispatchNode(basenode,attributes,0,local_time,compute_time,node_task,state_manager)
-end
-create_node(graph::Workflow) = DispatchNode()
-
-
-function add_dispatch_node!(workflow::Workflow)
-    node = add_node!(workflow)
     return node
 end
 
+#Continuous node transitions
 function add_continuous_node!(workflow::Workflow)
     node = add_node!(workflow)
-    #set up the StateManager functions
-
 
     return node
 end
 
+#Add an attribute.  Update node transitions.
 function addattribute!(node::DispatchNode,label::Symbol,attribute::Any)  #e.g. a model
     attribute = Attribute(label,attribute,attribute)
     push!(node.attributes,attribute)
@@ -97,14 +106,13 @@ end
 ###########################
 getsignals(node::DispatchNode) = getsignals(node.state_manager)
 addsignal!(node::DispatchNode,event::DataType) = push!(node.triggers,event)
-settrigger(node::DispatchNode,event::DataType) = node.triggers = [event]
 
-#Trigger (schedule) by responding to an event that sends it a trigger
-function send_trigger!(workflow::Workflow,event::AbstractEvent,node::DispatchNode)
-    if typeof(event) in gettriggers(node)
-        trigger!(workflow,node,getcurrenttime(workflow))
-    end
-end
+# #Trigger (schedule) by responding to an event that sends it a trigger
+# function send_trigger!(workflow::Workflow,event::AbstractEvent,node::DispatchNode)
+#     if typeof(event) in gettriggers(node)
+#         trigger!(workflow,node,getcurrenttime(workflow))
+#     end
+# end
 
 getlocaltime(node::AbstractDispatchNode) = node.local_time
 ##########################

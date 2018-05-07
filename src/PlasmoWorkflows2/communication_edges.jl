@@ -1,4 +1,4 @@
-struct Channel
+mutable struct Channel
     from_attribute::Attribute
     to_attribute::Attribute
     delay::Float64          # communication delay

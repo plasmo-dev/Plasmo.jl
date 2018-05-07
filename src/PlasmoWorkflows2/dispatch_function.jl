@@ -1,3 +1,4 @@
+#Node Task
 struct DispatchFunction
     func::Function                   #the function to call
     args::Vector{Any}                #the function args
@@ -13,5 +14,10 @@ struct TransitionAction
     func::Function                   #the function to call
     args::Vector{Any}                #the function args
     kwargs::Dict{Any,Any}
-    result::AbstractSignal           #the result after calling the event
+    result:: Vector{Pair{Float64,Signal}}           #the result after calling the event
 end
+function run!(action::TransitionAction)
+end
+
+
+#registeraction(workflow::Workflow)

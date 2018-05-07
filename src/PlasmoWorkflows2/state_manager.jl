@@ -1,5 +1,3 @@
-
-
 struct State
     label::Symbol
 end
@@ -21,7 +19,6 @@ struct Transition
     new_state::State
     action::DispatchFunction
     signal_targets::Vector{SignalTarget}
-    #signal_delays
 end
 Transition() =  Transition(State(),Signal(),State(),DispatchFunction(),SignalTarget[])
 
