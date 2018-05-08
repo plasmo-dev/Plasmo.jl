@@ -39,15 +39,3 @@ function schedule(coordinator::AbstractCoordinator,signal_event::AbstractEvent)
     DataStructures.enqueue!(workflow.queue,signal_event,priority_value)
     signal_event.status = scheduled
 end
-
-# #Trigger edges
-# function trigger!(workflow::Workflow,edge::AbstractCommunicationEdge,time::Float64)
-#     edge_event = EdgeTriggerEvent(edge,time)
-#     schedule(workflow,edge_event)  #schedule edge communication at a given time
-# end
-#
-# #Trigger nodes
-# function trigger!(workflow::Workflow,node::AbstractDispatchNode,time::Float64)
-#     node_event = NodeTriggerEvent(node,time)
-#     schedule(workflow,node_event)
-# end

@@ -17,10 +17,10 @@ struct Transition
     previous_state::State
     input_signal::Signal
     new_state::State
-    action::DispatchFunction
+    action::TransitionAction
     signal_targets::Vector{SignalTarget}
 end
-Transition() =  Transition(State(),Signal(),State(),DispatchFunction(),SignalTarget[])
+Transition() =  Transition(State(),Signal(),State(),TransitionAction(),SignalTarget[])
 
 struct StateManager <: AbstractStateManager
     states::Vector{State}            #possible states

@@ -51,8 +51,8 @@ function initialize(workflow::Workflow)
     end
 end
 
-#Signals get sent to a coordinator
-function run_transition!(transition::Transition)
-    signals = transition.action()
-    queue(signals)
-end
+# #Signals get sent to a coordinator
+# function run_transition!(transition::Transition)
+#     signals = transition.action()
+#     queue(signals)
+# end
