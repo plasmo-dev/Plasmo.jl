@@ -1,25 +1,8 @@
-#A workflow node attribute.  Has local and global values to manage time synchronization
-mutable struct Attribute
-    label::Symbol
-    local_value::Any
-    global_value::Any
-end
-Attribute() = Attribute(gensym(),nothing,nothing)
-Attribute(object::Any) = Attribute(gensym(),object,object)
-
-getlabel(attribute::Attribute) = attribute.label
-getlocalvalue(attribute::Attribute) = attribute.local_value
-getglobalvalue(attribute::Attribute) = attribute.global_value
-
-function gettransitionactions()
-    return schedule_node,run_node_task
-end
-
 #A discrete node gets scheduled on edge triggering
-struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
+mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     basenode::BasePlasmoNode
     attributes::Vector{Attribute}
-    priority::Int                               #custom node priority when running at same time as another node
+    priority::Int                               #Priority of signals this node produces
     local_time::Float64                         #The node's local clock.  Gets synchronized with the workflow clock on triggers
     compute_time::Float64                       #The time the node takes to complete its task.
     node_task::DispatchFunction                 #the actual function (task) to call
@@ -65,12 +48,13 @@ function add_continuous_node!(workflow::Workflow)
 end
 
 #Add an attribute.  Update node transitions for when attributes are added.
-function addattribute!(workflow::Workflow,node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[]
+function addattribute!(workflow::Workflow,node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[])
     attribute = Attribute(label,attribute,attribute)
     push!(node.attributes,attribute)
-
     addtransition!(node.state_manager,State(:synchronizing),Signal(:update_attribute,attribute),State(:synchronizing), action = TransitionAction(update_attribute,workflow,attribute),targets = update_notify_targets)
 end
+
+
 
 ###########################
 # Node Triggers
@@ -100,19 +84,18 @@ set_node_compute_time(node::AbstractDispatchNode,time::Float64) = node.compute_t
 ########################################
 #Connect Nodes with Communication Edges
 ########################################
-function connect!(workflow::Workflow,dnode1::DispatchNode,dnode2::DispatchNode;delay = 0,communication_frequency = 0)
+function connect!(workflow::Workflow,dnode1::DispatchNode,dnode2::DispatchNode;delay = 0,communication_frequency = nothing)
     #is_connected(workflow,dnode1,dnode2) && throw("communication edge already exists between these nodes")
 
     #Default connection behavior
     comm_edge = add_edge!(workflow,dnode1,dnode2)
     setdelay(comm_edge,delay)
-    if communication_frequency > 0
-        set_trigger_frequency(comm_edge,communication_frequency)
-        settrigger(comm_edge,EdgeTriggerEvent)
+    if communication_frequency != nothing
+        # Add state manager functions to the edge manager
+        # set_trigger_frequency(comm_edge,communication_frequency)
+        # settrigger(comm_edge,EdgeTriggerEvent)
     end
-
-    # set_channel_to_edge!(dnode1.output,comm_edge,output_channel)
-    # set_channel_to_edge!(dnode2.input,comm_edge,input_channel)
+    addtransition!(state_manager,State(:idle),Signal(:comm_received),State(:idle),action = TransitionAction(receive_attribute,workflow),targets = [node.state_manager])
 
     return comm_edge
 end

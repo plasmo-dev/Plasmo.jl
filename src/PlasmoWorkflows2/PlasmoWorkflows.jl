@@ -68,4 +68,9 @@ include("dispatch_nodes.jl")
 #the event priority queue and the executors which manage it
 include("executor.jl")
 
+function gettransitionactions()
+    return schedule_node,run_node_task
+end
+
+
 end # module

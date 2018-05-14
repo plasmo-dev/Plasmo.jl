@@ -1,14 +1,7 @@
-# function isless(a::EventKey, b::EventKey) :: Bool
-#   (a.time < b.time) || (a.time == b.time && a.priority > b.priority) || (a.time == b.time && a.priority == b.priority && a.id < b.id)
-# end
-
-# schedule(node_event) => add to queue
-# pop from queue => call!(workflow,node_event)
 struct StopWorkflow <: Exception
   value :: Any
 end
 StopWorkflow() = StopWorkflow(nothing)
-
 stop_workflow(ev::AbstractEvent) = throw(StopWorkflow(value(ev)))
 
 ##########################

@@ -39,7 +39,7 @@ end
 SignalCoordinator() = SignalCoordinator(0,SignalEvent[],DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue}())
 
 #A state manager receives a signal and runs the corresponding transition function which returns new signals
-function evaluate_signal(coordinator::SignalCoordinator,signal::Signal,SM::StateManager)
+function evaluate_signal!(coordinator::SignalCoordinator,signal::Signal,SM::StateManager)
     if !(signal in getsignals(SM)) #Check if the signal isn't recognized
         return nothing
     end
@@ -75,3 +75,11 @@ function getnexteventtime(workflow::Workflow)
     return next_time
 end
 getevents(workflow::Workflow) = workflow.signal_events
+
+#Schedule a signal to occur
+function schedule(coordinator::AbstractCoordinator,signal_event::AbstractEvent)
+    id = length(workflow.queue) + 1
+    priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(event),getlocaltime(event),id)
+    DataStructures.enqueue!(workflow.queue,signal_event,priority_value)
+    signal_event.status = scheduled
+end

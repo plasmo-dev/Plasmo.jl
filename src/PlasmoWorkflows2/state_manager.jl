@@ -7,8 +7,9 @@ State(label::Symbol) = State(label)
 #Signal can be an input or output
 struct Signal <: AbstractSignal
     label::Symbol
-    value::Any  #Attribute, or other value
+    value::Any  #Attribute, or other value, or even an Array
 end
+Signal(sym::Symbol) = Signal(sym,nothing)
 Signal() = Signal(:empty,nothing)
 
 const SignalTarget = AbstractStateManager
@@ -27,8 +28,6 @@ struct StateManager <: AbstractStateManager
     current_state::State             #current state
     signals::Vector{AbstractSignal}  #signal the manager recognizes
     transition_map::Dict{Tuple{State,Signal},Transition}             #Allowable transitions for this state manager
-    #transitions::Vector{Transition}
-    #signal_broadcast_map::Dict{Transition,Vector{SignalTarget}}   #Transition (Output) Map of output signals to targets
 end
 #Constructor
 StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,Signal},State}(),Dict{Transition,Vector{SignalTarget}}())
@@ -63,7 +62,7 @@ function runtransition!(SM::StateManager,transition::Transition)
     if current_state == transition.previous_state
         new_state = transition.new_state
         setstate(SM,new_state)
-        return run!(transition.action())  #return signals
+        return run!(transition.action(transition.signal))  #returns signals
     else
         return nothing
     end

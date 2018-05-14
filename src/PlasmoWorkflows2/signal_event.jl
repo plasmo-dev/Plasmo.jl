@@ -31,11 +31,3 @@ function call!(workflow::Workflow,signal_event::AbstractEvent)
     workflow_event.status = complete
     return result
 end
-
-#Schedule a signal to occur
-function schedule(coordinator::AbstractCoordinator,signal_event::AbstractEvent)
-    id = length(workflow.queue) + 1
-    priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(event),getlocaltime(event),id)
-    DataStructures.enqueue!(workflow.queue,signal_event,priority_value)
-    signal_event.status = scheduled
-end
