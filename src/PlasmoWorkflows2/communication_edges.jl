@@ -54,7 +54,7 @@ function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2:
     #run communication when given :communicate signal
     addtransition!(state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,workflow,edge), targets = [edge.state_manager])
 
-    return edge
+    return channel
 end
 
 function add_continuous_edge!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;delay = 0.0)
@@ -66,7 +66,7 @@ function add_continuous_edge!(workflow::Workflow,attribute1::Attribute,attribute
     #run communication when given :communicate signal
     addtransition!(state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,workflow,edge),targets = [edge.state_manager])
 
-    return edge
+    return channel
 end
 
 #set_trigger_frequency(edge::AbstractCommunicationEdge,frequency::Number) = edge.frequency = Float64(frequency)

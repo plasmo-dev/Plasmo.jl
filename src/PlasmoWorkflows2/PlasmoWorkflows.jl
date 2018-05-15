@@ -40,37 +40,41 @@ abstract type AbstractStateManager end
 abstract type AbstractSignalCoordinator end
 
 
-#abstract type AbstractSignalTarget <: Union{AbstractDispatchNode,AbstractCommunicationEdge} end
-
 # #Events can be: Event, Condition, Delay, Communicate, etc...
 # abstract type AbstractWorkflowEvent <: AbstractEvent end   #General Events
 # abstract type AbstractNodeEvent <: AbstractEvent end       #Events triggered by nodes
 # abstract type AbstractEdgeEvent <: AbstractEvent end
 
-#the workflow graph
+#State Manager and Coordination
+include("state_manager/signal_event.jl")
+include("state_manager/state_manager.jl")
+include("state_manager/signal_coordinator.jl")
+
+#Workflow Graph
+
+#Node Tasks
 include("dispatch_function.jl")
 
-#the workflow graph
+#Node and Edge Transition Actions
+include("actions.jl")
+
+#The workflow Graph
 include("workflow_graph.jl")
 
-#input and output channels for nodes
-#include("data_channels.jl")
+#Workflow Attributes
+include("attribute.jl")
 
-#Workflow events, node triggers, and edge triggers
-include("signal_event.jl")
-
-#edges for communication between nodes
+#Edges for communication between nodes
 include("communication_edges.jl")
 
-#discrete and continuous dispatch nodes
+#Discrete and continuous dispatch nodes
 include("dispatch_nodes.jl")
 
-#the event priority queue and the executors which manage it
+#Workflow execution
 include("executor.jl")
 
-function gettransitionactions()
-    return schedule_node,run_node_task
-end
-
+# function gettransitionactions()
+#     return schedule_node,run_node_task
+# end
 
 end # module

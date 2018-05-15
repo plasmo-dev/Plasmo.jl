@@ -26,8 +26,9 @@ end
 SignalEvent(time::Float64,signal::Signal,target::SignalTarget) = SignalEvent(time,signal,target,0,Nullable(Any),1)  #idle by default
 
 #Call a workflow event (run its functions with its arguments)
-function call!(workflow::Workflow,signal_event::AbstractEvent)
-    result = evaluate_signal!(signal_event.signal,signal_event.target)  #call the node dispatch function
-    workflow_event.status = complete
+function call!(coordinator::SignalCoordinator,signal_event::AbstractEvent)
+    result = evaluate_signal!(coordinator,signal_event.signal,signal_event.target)  #call the node dispatch function
+    signal_event.result = result
+    signal_event.status = complete
     return result
 end

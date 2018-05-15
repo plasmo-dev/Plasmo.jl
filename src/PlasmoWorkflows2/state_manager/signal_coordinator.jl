@@ -47,7 +47,8 @@ function evaluate_signal!(coordinator::SignalCoordinator,signal::Signal,SM::Stat
         return nothing
     end
     transition = SM.transition_map[current_state,signal]
-    signals,delays = run_transition!(transition)    #run the transition action.  This may return new signals with delays to go into the coordinator queue
+    signals,delays = run_transition!(transition,signal)    #run the transition action.  This may return new signals with delays to go into the coordinator queue
+    #signals,delays = run_transition!(transition,signal)
     #Now queue output signals if there are any
     for (signal,delay) in zip(signals,delays)
         for target in transition.targets
