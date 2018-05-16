@@ -11,7 +11,7 @@ end
 #Order:
 #0. Time -- Lower times come first
 #1. Priority: All equal by default, can change accordingly
-#2. Local Time: Use local time as a tie-breaker if events happen at the same time (e.g. instantaneous sampling).  Priority goes to node or edge that hasn't been pushed to the current time
+#NOTE Might remove this and just use priority. 2. Local Time: Use local time as a tie-breaker if events happen at the same time (e.g. instantaneous sampling).  Priority goes to node or edge that hasn't been pushed to the current time
 #3. ID: all dispatch functions are unique.  Use this as a tie-breaker for serial processing
 function isless(val1::EventPriorityValue,val2::EventPriorityValue) :: Bool
     #check times.  sooner time comes first
@@ -58,8 +58,8 @@ function evaluate_signal!(coordinator::SignalCoordinator,signal::Signal,SM::Stat
     end
 end
 
-function getnexttime(workflow::Workflow)
-    queue = workflow.queue
+function getnexttime(coordinator::SignalCoordinator)
+    queue = coordinator.queue
     times = unique(sort([val.time for val in values(queue)]))
     if length(times) == 1
         next_time = times[1]
@@ -69,18 +69,18 @@ function getnexttime(workflow::Workflow)
     return next_time
 end
 
-function getnexteventtime(workflow::Workflow)
-    queue = workflow.queue
+function getnexteventtime(coordinator::SignalCoordinator)
+    queue = coordinator.queue
     times = unique(sort([val.time for val in values(queue)]))
     next_time = times[1]
     return next_time
 end
-getevents(workflow::Workflow) = workflow.signal_events
+getevents(coordinator::SignalCoordinator) = coordinator.signal_events
 
 #Schedule a signal to occur
-function schedule(coordinator::AbstractCoordinator,signal_event::AbstractEvent)
-    id = length(workflow.queue) + 1
-    priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(event),getlocaltime(event),id)
-    DataStructures.enqueue!(workflow.queue,signal_event,priority_value)
+function schedule(coordinator::AbstractSignalCoordinator,signal_event::AbstractEvent)
+    id = length(coordinator.queue) + 1
+    priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(signal_event),getlocaltime(signal_event),id)
+    DataStructures.enqueue!(coordinator.queue,signal_event,priority_value)
     signal_event.status = scheduled
 end

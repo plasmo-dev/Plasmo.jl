@@ -67,7 +67,7 @@ end
 workflow = Workflow()
 
 #Add the node for the ode simulation
-ode_node = add_continuous_node!(workflow,input_channels = (:u1,:u2,:d),output_channels = (:x))   #dispatch node that will retrigger on synchronization
+ode_node = add_continuous_node!(workflow)   #dispatch node that will reschedule on synchronization
 addattributes!(ode_node,Dict(:x0 => 0,:x_history => Vector{Pair}()),:u1 => 0, :u2 => 0, :d => 0, :x => 0)
 set_node_task(ode_node,run_ode_simulation)
 set_node_task_arguments(ode_node,[workflow,ode_node])               #also see: set_node_function_kwarg
@@ -79,14 +79,16 @@ addattributes!(pid_node1,Dict(:y => 0, :y => 0,:K=>15,:tauI=>1,:tauD=>0.01,:erro
 set_node_task(pid_node1,calc_pid_controller)
 set_node_task_arguments(pid_node1,[workflow,pid_node1])
 
-e1 = connect!(workflow,ode_node[:x],pid_node1[:y],communication_frequency = 0.01)  #run again after comm_sent
+e1 = connect!(workflow,ode_node[:x],pid_node1[:y],continuous = true,delay = 0,schedule_delay = 0.01)  #run again after comm_sent
 #e1 = connect!(workflow,ode_node[:x],pid_node1[:y],communicate_on = Signal(:comm_sent))
 #set_initial_signal(ode_node,Signal(:communicate),0)
 
-e2 = connect!(workflow,pid_node1[:u],ode_node[:u1])  #this is the default
+e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false,delay = 0.02, schedule_delay = 0)  #this is the default
 
 #execute the workflow
-executor = SerialExecutor(20)  #creates a termination event at time 100
+executor = SerialExecutor(20)  #creates a termination event at time 20
+
+
 execute!(workflow,executor)  #This will intialize the workflow
 
 

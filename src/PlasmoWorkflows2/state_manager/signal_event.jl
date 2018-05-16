@@ -1,3 +1,4 @@
+
 #Nodes contain Dispatch Functions which get scheduled in a priority queue
 @enum event_status idle = 1 scheduled = 2 complete = 3 error = 4
 
@@ -17,16 +18,16 @@ getpriority(event::AbstractEvent) = event.priority
 #Workflow Events are standard events that anything can schedule
 mutable struct SignalEvent <: AbstractEvent
     time::Float64          #the event schedule time
-    signal::Signal
+    signal::AbstractSignal
     target::SignalTarget
     priority::Int
     result::Any            #the result after evaluating the signal
     status::event_status   #the event status
 end
-SignalEvent(time::Float64,signal::Signal,target::SignalTarget) = SignalEvent(time,signal,target,0,Nullable(Any),1)  #idle by default
+SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget) = SignalEvent(time,signal,target,0,Nullable(Any),1)  #idle by default
 
 #Call a workflow event (run its functions with its arguments)
-function call!(coordinator::SignalCoordinator,signal_event::AbstractEvent)
+function call!(coordinator::AbstractSignalCoordinator,signal_event::AbstractEvent)
     result = evaluate_signal!(coordinator,signal_event.signal,signal_event.target)  #call the node dispatch function
     signal_event.result = result
     signal_event.status = complete

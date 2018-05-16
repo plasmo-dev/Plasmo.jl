@@ -1,17 +1,19 @@
 module PlasmoWorkflows
 
-using ..PlasmoGraphBase
+include("../PlasmoGraphBase/PlasmoGraphBase.jl")
+
+using .PlasmoGraphBase
 
 import PlasmoGraphBase:create_node,create_edge,add_edge!
 import LightGraphs.DiGraph
 import DataStructures
 import Base:isless,step
 
-export Workflow, DispatchNode, CommunicationEdge,SerialExecutor,
+export StateManager,SignalCoordinator,SignalEvent,
 
-WorkflowEvent,NodeTriggerEvent,NodeCompleteEvent,EdgeTriggerEvent,CommunicationReceivedEvent,
+Workflow, DispatchNode, CommunicationEdge, SerialExecutor,
 
-add_dispatch_node!,initialize,
+add_dispatch_node!,add_continuous_node!,initialize,
 
 #Workflow
 getcurrenttime,getnexttime,getnexteventtime,execute!,getevents,
@@ -39,7 +41,7 @@ abstract type AbstractSignal end
 abstract type AbstractStateManager end
 abstract type AbstractSignalCoordinator end
 
-
+const SignalTarget = AbstractStateManager
 # #Events can be: Event, Condition, Delay, Communicate, etc...
 # abstract type AbstractWorkflowEvent <: AbstractEvent end   #General Events
 # abstract type AbstractNodeEvent <: AbstractEvent end       #Events triggered by nodes
@@ -52,26 +54,26 @@ include("state_manager/signal_coordinator.jl")
 
 #Workflow Graph
 
-#Node Tasks
-include("dispatch_function.jl")
-
-#Node and Edge Transition Actions
-include("actions.jl")
-
-#The workflow Graph
-include("workflow_graph.jl")
-
-#Workflow Attributes
-include("attribute.jl")
-
-#Edges for communication between nodes
-include("communication_edges.jl")
-
-#Discrete and continuous dispatch nodes
-include("dispatch_nodes.jl")
-
-#Workflow execution
-include("executor.jl")
+# #Node Tasks
+# include("dispatch_function.jl")
+#
+# #Node and Edge Transition Actions
+# include("actions.jl")
+#
+# #The workflow Graph
+# include("workflow_graph.jl")
+#
+# #Workflow Attributes
+# include("attribute.jl")
+#
+# #Edges for communication between nodes
+# include("communication_edges.jl")
+#
+# #Discrete and continuous dispatch nodes
+# include("dispatch_nodes.jl")
+#
+# #Workflow execution
+# include("executor.jl")
 
 # function gettransitionactions()
 #     return schedule_node,run_node_task

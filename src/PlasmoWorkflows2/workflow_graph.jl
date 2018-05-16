@@ -51,6 +51,7 @@ function initialize(workflow::Workflow)
     end
 end
 
+call!(workflow::Workflow,signal_event::SignalEvent) = call!(workflow.signal_coordinator,signal_event)
 # #Signals get sent to a coordinator
 # function run_transition!(transition::Transition)
 #     signals = transition.action()

@@ -2,12 +2,12 @@ struct State
     label::Symbol
 end
 State() = State(:null)
-State(label::Symbol) = State(label)
+#State(label::Symbol) = State(label)
 
 #Signal for mapping behaviors
 struct Signal <: AbstractSignal
     label::Symbol
-    value::Any  #Attribute, or other value, or even an Array
+    value::Any  #Attribute, or other value to compare on
 end
 Signal(sym::Symbol) = Signal(sym,nothing,nothing)
 Signal() = Signal(:empty,nothing,nothing)
@@ -24,7 +24,7 @@ getlabel(signal::AbstractSignal) = signal.label
 getvalue(signal::AbstractSignal) = signal.value
 getdata(signal::AbstractSignal) = nothing
 getdata(signal::DataSignal) = signal.data
-const SignalTarget = AbstractStateManager
+
 
 #############################################
 # Transition Action
@@ -57,7 +57,7 @@ mutable struct Transition
     input_signal::Signal
     new_state::State
     action::TransitionAction
-    signal_targets::Vector{SignalTarget}
+    output_signal_targets::Vector{SignalTarget}
 end
 Transition() =  Transition(State(),Signal(),State(),TransitionAction(),SignalTarget[])
 
