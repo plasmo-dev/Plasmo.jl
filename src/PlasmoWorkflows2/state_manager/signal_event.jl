@@ -26,7 +26,8 @@ mutable struct SignalEvent <: AbstractEvent
 end
 SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget) = SignalEvent(time,signal,target,0,Nullable(Any),1)  #idle by default
 
-#Call a workflow event (run its functions with its arguments)
+
+#Call a signal event (run its functions with its arguments)
 function call!(coordinator::AbstractSignalCoordinator,signal_event::AbstractEvent)
     result = evaluate_signal!(coordinator,signal_event.signal,signal_event.target)  #call the node dispatch function
     signal_event.result = result

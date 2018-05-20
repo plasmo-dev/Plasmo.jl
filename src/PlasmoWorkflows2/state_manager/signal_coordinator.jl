@@ -31,29 +31,33 @@ function isless(val1::EventPriorityValue,val2::EventPriorityValue) :: Bool
     end
 end
 
-struct SignalCoordinator <: AbstractSignalCoordinator
+mutable struct SignalCoordinator <: AbstractSignalCoordinator
     time::Float64
     signal_events::Vector{AbstractEvent}
     queue::DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue} #the event queue
 end
 SignalCoordinator() = SignalCoordinator(0,SignalEvent[],DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue}())
+now(coordinator::SignalCoordinator) = coordinator.time
+getqueue(coordinator::SignalCoordinator) = coordinator.queue
 
 #A state manager receives a signal and runs the corresponding transition function which returns new signals
-function evaluate_signal!(coordinator::SignalCoordinator,signal::Signal,SM::StateManager)
+function evaluate_signal!(coordinator::SignalCoordinator,signal::AbstractSignal,SM::StateManager)
     if !(signal in getsignals(SM)) #Check if the signal isn't recognized
         return nothing
     end
-    if !(tuple(current_state,signal) in keys(SM.transition_map))  #Check if there's no transition from the current state
+    if !(tuple(SM.current_state,signal) in keys(SM.transition_map))  #Check if there's no transition from the current state
         return nothing
     end
-    transition = SM.transition_map[current_state,signal]
-    signals,delays = run_transition!(transition,signal)    #run the transition action.  This may return new signals with delays to go into the coordinator queue
+    transition = SM.transition_map[SM.current_state,signal]
+    signal_pairs = runtransition!(SM,transition,signal)    #run the transition action.  Returns vector of signal delay pairs
     #signals,delays = run_transition!(transition,signal)
     #Now queue output signals if there are any
-    for (signal,delay) in zip(signals,delays)
-        for target in transition.targets
+    for signal_pair in signal_pairs
+        for target in transition.output_signal_targets
+            signal = signal_pair.first
+            delay = signal_pair.second
             signal_event = SignalEvent(now(coordinator) + delay,signal,target)
-            schedule(coordinator,signal_event)
+            schedulesignal(coordinator,signal_event)
         end
     end
 end
@@ -78,9 +82,14 @@ end
 getevents(coordinator::SignalCoordinator) = coordinator.signal_events
 
 #Schedule a signal to occur
-function schedule(coordinator::AbstractSignalCoordinator,signal_event::AbstractEvent)
+function schedulesignal(coordinator::SignalCoordinator,signal_event::AbstractEvent)
     id = length(coordinator.queue) + 1
     priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(signal_event),getlocaltime(signal_event),id)
     DataStructures.enqueue!(coordinator.queue,signal_event,priority_value)
     signal_event.status = scheduled
+end
+
+function schedulesignal(coordinator::SignalCoordinator,signal::AbstractSignal,target::SignalTarget,time::Number)
+    signal_event = SignalEvent(Float64(time),signal,target)
+    schedulesignal(coordinator,signal_event)
 end

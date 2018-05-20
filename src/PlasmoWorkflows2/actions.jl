@@ -7,11 +7,11 @@
 # Node Actions
 #################################
 #Schedule a node to run given a delay
-function schedule_node(signal::AbstractSignal,workflow::Workflow,node::DispatchNode)
+function schedule_node(signal::AbstractSignal,node::DispatchNode)
     delay = getscheduledelay(node)
     signal_now = Signal(:scheduled)
     delayed_signal = Signal(:execute)
-    return Vector(Pair(signal_now,now(workflow),Pair(delayed_signal,delay))
+    return Vector(Pair(signal_now,0,Pair(delayed_signal,delay))
 end
 
 #Run a node task

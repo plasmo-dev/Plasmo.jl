@@ -9,8 +9,8 @@ struct Signal <: AbstractSignal
     label::Symbol
     value::Any  #Attribute, or other value to compare on
 end
-Signal(sym::Symbol) = Signal(sym,nothing,nothing)
-Signal() = Signal(:empty,nothing,nothing)
+Signal(sym::Symbol) = Signal(sym,nothing)
+Signal() = Signal(:empty,nothing)
 
 #A signal carrying information
 mutable struct DataSignal <: AbstractSignal
@@ -35,13 +35,16 @@ mutable struct TransitionAction
     kwargs::Dict{Any,Any}                           #possible kwargs
     result::Vector{Pair{Signal,Float64}}            #action returns a signal and delay
 end
-
 TransitionAction() = TransitionAction(() -> [Pair(Signal(:nothing),0)],[],Dict(),Vector{Pair{Signal,Float64}}())
-#NOTE May not use this run function
-function run!(action::TransitionAction)
-    action.result = action.func(action.args...,action.kwargs...)
-    return action.result  #will be a vector of signals and times
-end
+TransitionAction(func::Function) = TransitionAction(func,[],Dict(),Vector{Pair{Signal,Float64}}())
+TransitionAction(func::Function,args::Vector) = TransitionAction(func,args,Dict(),Vector{Pair{Signal,Float64}}())
+
+
+# #NOTE May not use this run function
+# function run!(action::TransitionAction)
+#     action.result = action.func(action.args...,action.kwargs...)
+#     return action.result  #will be a vector of signals and times
+# end
 
 #NOTE Makes more sense to pass the triggering signal to the transition action
 function run!(action::TransitionAction,triggering_signal::AbstractSignal)  #Transition action and signal that triggered it
@@ -69,21 +72,30 @@ mutable struct StateManager <: AbstractStateManager
     current_state::State             #current state
     signals::Vector{AbstractSignal}  #signal the manager recognizes
     transition_map::Dict{Tuple{State,Signal},Transition}             #Allowable transitions for this state manager
+    initial_signal::Union{Void,Signal}
 end
 
 #Constructor
-StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,Signal},State}(),Dict{Transition,Vector{SignalTarget}}())
+StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,Signal},Transition}(),nothing)
 
 getsignals(SM::StateManager) = SM.signals
+getinitialsignal(SM::StateManager) = SM.initial_signal
 getstates(SM::StateManager) = SM.states
 gettransitions(SM::StateManager) = collect(values(SM.transition_map))
 getcurrentstate(SM::StateManager) = SM.current_state
 gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
 
+addsignal!(SM::StateManager,signal::Signal) = push!(SM.signals,signal)
+addsignal!(SM::StateManager,signal::Symbol) = push!(SM.signals,Signal(signal))
+addstate!(SM::StateManager,state::State) = push!(SM.states,state)
+addstate!(SM::StateManager,state::Symbol) = push!(SM.states,State(state))
+
 function setstate(SM::StateManager,state::State)
     @assert state in SM.states
     SM.current_state = state
 end
+
+setstate(SM::StateManager,state::Symbol) = setstate(SM,State(state))
 
 function setstates(SM::StateManager,states::Vector{State})
     @assert SM.current_state in states
@@ -92,19 +104,27 @@ end
 
 function addtransition!(SM::StateManager,state1::State,signal::Signal,state2::State;action = TransitionAction(),targets = SignalTarget[])
     transition = Transition(state1,signal,state2,action,targets)
-    SM.transtion_map[tuple(state1,signal)] = transition
+    SM.transition_map[tuple(state1,signal)] = transition
+    return transition
 end
 
+function addtransition!(SM::StateManager,transition::Transition)
+    SM.transition_map[tuple(transition.starting_state,transition.input_signal)] = transition
+    return transition
+end
+
+
 function addbroadcasttarget!(transition::Transition,target::SignalTarget)
-    push!(transition.signal_targets,target)
+    push!(transition.output_signal_targets,target)
 end
 
 function runtransition!(SM::StateManager,transition::Transition,triggering_signal::AbstractSignal)
-    current_state = getstate(SM)
+    current_state = getcurrentstate(SM)
     if current_state == transition.starting_state
         new_state = transition.new_state
         setstate(SM,new_state)
-        return run!(transition.action,triggering_signal)  #returns signals
+        result = run!(transition.action,triggering_signal)
+        return result  #returns signals
     else
         #NOTE Return something more helpful
         return nothing

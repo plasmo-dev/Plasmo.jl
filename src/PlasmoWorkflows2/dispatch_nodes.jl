@@ -7,7 +7,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     compute_time::Float64                       #The time the node takes to complete its task.
     node_task::DispatchFunction                 #the actual function (task) to call
     state_manager::StateManager
-    initial_signal::Union{Void,Signal}
+    #initial_signal::Union{Void,Signal}
 end
 
 #Constructor -- Maybe need an inner constructor
@@ -62,6 +62,7 @@ end
 function addattribute!(workflow::Workflow,node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[])
     workflow_attribute = Attribute(node,label,attribute,attribute)
     push!(node.attributes,workflow_attribute)
+    #Add a transition action for when the attribute gets updated.
     addtransition!(node.state_manager,State(:synchronizing),Signal(:update_attribute,attribute),State(:synchronizing), action = TransitionAction(update_attribute, workflow, workflow_attribute),targets = update_notify_targets)
 end
 
@@ -71,7 +72,7 @@ end
 getsignals(node::DispatchNode) = getsignals(node.state_manager)
 getlocaltime(node::AbstractDispatchNode) = node.local_time
 getresult(node::AbstractDispatchNode) = getresult(node.dispatch_function)
-
+getinitialsignal(node::AbstractDispatchNode) = getinitialsignal(node.state_manager)
 
 ##########################
 #Node Task

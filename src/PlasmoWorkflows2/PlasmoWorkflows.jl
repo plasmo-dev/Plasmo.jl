@@ -7,12 +7,25 @@ using .PlasmoGraphBase
 import PlasmoGraphBase:create_node,create_edge,add_edge!
 import LightGraphs.DiGraph
 import DataStructures
-import Base:isless,step
+import Base:isless,step,==
 
-export StateManager,SignalCoordinator,SignalEvent,
+#State manager functions
+export AbstractSignal,AbstractEvent,SerialExecutor,
 
-Workflow, DispatchNode, CommunicationEdge, SerialExecutor,
+StateManager,SignalCoordinator,SignalEvent,
 
+State,Signal,Transition,TransitionAction,
+
+addstate!,addsignal!,addtransition!,addbroadcasttarget!,
+
+setstate,schedulesignal,step,
+
+
+#WORKFLOWS
+
+Workflow, DispatchNode, CommunicationEdge,
+
+#Workflow functions
 add_dispatch_node!,add_continuous_node!,initialize,
 
 #Workflow
@@ -51,6 +64,7 @@ const SignalTarget = AbstractStateManager
 include("state_manager/signal_event.jl")
 include("state_manager/state_manager.jl")
 include("state_manager/signal_coordinator.jl")
+include("state_manager/signal_executor.jl")
 
 #Workflow Graph
 

@@ -45,16 +45,16 @@ end
 #run the next item in the schedule
 #pop the next item off the queue and add it to Julia's scheduler to run it
 function step(workflow::Workflow,executor::AbstractExecutor)
-    isempty(workflow.queue) && throw("Queue is empty")
+    isempty(getqueue(workflow)) && throw("Queue is empty")
     #isempty(workflow.queue) && error("Queue is empty")
     #look at what's coming next
     (signal_event, priority_key) = DataStructures.peek(workflow.queue)
 
     #Dequeue the event function
-    DataStructures.dequeue!(workflow.queue)
+    DataStructures.dequeue!(getqueue(workflow))
 
     #Set the workflow time to the current event's time
-    workflow.time = priority_key.time
+    workflow.coordinator.time = priority_key.time
 
     #for now, make this block until I figure out how to parallelize
     #task =  run!(executor,workflow,event)  #Different dispatch calls do different things.  Might not want to pass the entire workflow
