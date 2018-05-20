@@ -49,7 +49,6 @@ addsignal!(manager2,:turned_on)
 t4 = addtransition!(manager2,State(:active),Signal(:turn_off),State(:inactive),action = TransitionAction(turn_off,[0]))
 t5 = addtransition!(manager2,State(:active),Signal(:turn_on), State(:active), action = TransitionAction(already_on))
 t6 = addtransition!(manager2,State(:inactive),Signal(:turn_on),State(:active), action = TransitionAction(turn_on,[1]))
-
 t7 = addtransition!(manager2,State(:active),Signal(:turned_on),State(:unknown))
 
 #Add a broadcast target to transition 2
@@ -62,7 +61,8 @@ schedulesignal(coordinator,Signal(:turn_on),manager1,4)
 
 step(coordinator)
 step(coordinator)
-
+step(coordinator)
+step(coordinator)
 #some syntax ideas
 #@action(t1,turn_on)
 #@transition(manager1, on turn_off => off, action = turn_on, action_arg = 1, output_targets = [manager1])

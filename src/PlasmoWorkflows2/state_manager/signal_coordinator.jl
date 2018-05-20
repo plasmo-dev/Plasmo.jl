@@ -43,9 +43,11 @@ getqueue(coordinator::SignalCoordinator) = coordinator.queue
 #A state manager receives a signal and runs the corresponding transition function which returns new signals
 function evaluate_signal!(coordinator::SignalCoordinator,signal::AbstractSignal,SM::StateManager)
     if !(signal in getsignals(SM)) #Check if the signal isn't recognized
+        warn("signal $signal not recognized by target $SM")
         return nothing
     end
     if !(tuple(SM.current_state,signal) in keys(SM.transition_map))  #Check if there's no transition from the current state
+        warn("no transition for $current_state + $signal on $SM")
         return nothing
     end
     transition = SM.transition_map[SM.current_state,signal]
