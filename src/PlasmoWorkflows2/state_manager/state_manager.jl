@@ -35,7 +35,7 @@ mutable struct TransitionAction
     kwargs::Dict{Any,Any}                           #possible kwargs
     result::Vector{Pair{Signal,Float64}}            #action returns a signal and delay
 end
-TransitionAction() = TransitionAction(() -> [Pair(Signal(:nothing),0)],[],Dict(),Vector{Pair{Signal,Float64}}())
+TransitionAction() = TransitionAction((signal::AbstractSignal) -> [Pair(Signal(:nothing),0)],[],Dict(),Vector{Pair{Signal,Float64}}())
 TransitionAction(func::Function) = TransitionAction(func,[],Dict(),Vector{Pair{Signal,Float64}}())
 TransitionAction(func::Function,args::Vector) = TransitionAction(func,args,Dict(),Vector{Pair{Signal,Float64}}())
 

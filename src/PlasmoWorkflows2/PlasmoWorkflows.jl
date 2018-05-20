@@ -7,7 +7,7 @@ using .PlasmoGraphBase
 import PlasmoGraphBase:create_node,create_edge,add_edge!
 import LightGraphs.DiGraph
 import DataStructures
-import Base:isless,step,==
+import Base:isless,step,==,show,print,string
 
 #State manager functions
 export AbstractSignal,AbstractEvent,SerialExecutor,
@@ -65,7 +65,7 @@ include("state_manager/signal_event.jl")
 include("state_manager/state_manager.jl")
 include("state_manager/signal_coordinator.jl")
 include("state_manager/signal_executor.jl")
-
+include("state_manager/signal_print.jl")
 #Workflow Graph
 
 # #Node Tasks
