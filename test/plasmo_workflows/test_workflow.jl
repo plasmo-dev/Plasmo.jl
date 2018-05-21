@@ -33,7 +33,7 @@ addattribute!(w2,:x)
 channel1 = connect!(workflow,w1[:result],w2[:x],comm_delay = 1)
 getdelay(channel1)
 
-# setinitialsignal(w1,Signal(:execute))
+setinitialsignal(w1,Signal(:execute))
 #
 # # @assert getconnectedto(workflow,channel1) == w2
 # # @assert getconnectedfrom(workflow,channel1) == w1

@@ -95,6 +95,7 @@ getlocaltime(node::AbstractDispatchNode) = node.local_time
 getresult(node::AbstractDispatchNode) = getresult(node.dispatch_function)
 getinitialsignal(node::AbstractDispatchNode) = getinitialsignal(node.state_manager)
 setinitialsignal(node::AbstractDispatchNode,signal::AbstractSignal) = setinitialsignal(node.state_manager,signal)
+getstatemanager(node::AbstractDispatchNode) = node.state_manager
 
 getattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
 getindex(node::DispatchNode,sym::Symbol) = getattribute(node,sym)
@@ -115,15 +116,15 @@ function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute
     #is_connected(workflow,dnode1,dnode2) && throw("communication edge already exists between these nodes")
     #Default connection behavior
     if continuous == false
-        comm_channel = add_dispatch_edge!(workflow,attribute1,attribute2,comm_delay,schedule_delay)
+        comm_channel = add_dispatch_edge!(workflow,attribute1,attribute2,comm_delay = comm_delay,schedule_delay = schedule_delay)
     else
-        comm_channel = add_continuous_edge!(workflow,attribute1,attribute2,comm_delay,schedule_delay)
+        comm_channel = add_continuous_edge!(workflow,attribute1,attribute2,comm_delay = comm_delay,schedule_delay = schedule_delay)
     end
 
     receive_node = getnode(attribute2)
     state_manager = getstatemanager(receive_node)
     #Transition: idle + comm_reeived ==> idle, action = received_attribute
-    addtransition!(state_manager,State(:idle),Signal(:comm_received),State(:idle),action = TransitionAction(received_attribute,[attribute]),targets = [receive_node.state_manager])
+    addtransition!(state_manager,State(:idle),Signal(:comm_received,attribute1),State(:idle),action = TransitionAction(received_attribute,[attribute1]),targets = [receive_node.state_manager])
 
     return comm_channel
 end
