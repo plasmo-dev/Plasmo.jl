@@ -16,7 +16,7 @@ mutable struct SimpleExecutor <: AbstractExecutor
     final_time::Number
 end
 SimpleExecutor() = SimpleExecutor(0)
-SimpleExecutor(time) = SimpleExecutor(time)
+#SimpleExecutor(time) = SimpleExecutor(time)
 
 #This is the main execution method for an executor
 function execute!(coordinator::SignalCoordinator,executor::AbstractExecutor)  #this should be on the graph really

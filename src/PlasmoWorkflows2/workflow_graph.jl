@@ -6,6 +6,7 @@ end
 Workflow() =  Workflow(BasePlasmoGraph(DiGraph),SignalCoordinator())
 getcoordinator(workflow::AbstractWorkflow) = workflow.coordinator
 getcurrenttime(workflow::AbstractWorkflow) = getcurrenttime(getcoordinator(workflow))
+now(workflow::AbstractWorkflow) = now(getcoordinator(workflow))
 
 function getnexttime(workflow::Workflow)
     queue = workflow.queue
@@ -34,20 +35,20 @@ function initialize(workflow::Workflow)
     #schedule initial node signals
     for node in getnodes(workflow)
         for (signal,time) in getinitialsignals(node)
-            schedule(workflow,SignalEvent(time,signal,node))
+            schedulesignal(workflow,SignalEvent(time,signal,node))
         end
     end
 
     #Schedule initial edge signals
     for edge in getedges(workflow)
         for (signal,time) in getinitialsignals(edge)
-            schedule(workflow,SignalEvent(time,signal,edge))
+            schedulesignal(workflow,SignalEvent(time,signal,edge))
         end
     end
 
     #schedule any workflow events
     for event in getevents(workflow)
-        schedule(workflow,event)  #this
+        schedulesignal(workflow,event)
     end
 end
 

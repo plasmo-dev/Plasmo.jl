@@ -58,6 +58,7 @@ addbroadcasttarget!(t3,manager2)  #output signal from t2 will hit manager 1
 schedulesignal(coordinator,Signal(:turn_off),manager1,0)
 schedulesignal(coordinator,Signal(:turn_on),manager2,3)
 schedulesignal(coordinator,Signal(:turn_on),manager1,4)
+schedulesignal(coordinator,Signal(:turn_on),manager2,4)
 
 step(coordinator)
 step(coordinator)

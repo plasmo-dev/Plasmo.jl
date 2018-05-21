@@ -1,4 +1,4 @@
-mutable struct Channel
+mutable struct Channel <: AbstractChannel
     state_manager::StateManager
     from_attribute::Attribute
     to_attribute::Attribute
@@ -9,7 +9,6 @@ mutable struct Channel
 end
 Channel(from_attribute::Attribute,to_attribute::Attribute) = Channel(StateManager(),from_attribute,to_attribute,0.0,0)
 Channel(from_attribute::Attribute,to_attribute::Attribute,delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,0.0,0)
-getdelay(channel::Channel) = channel.delay
 
 ##########################
 # Communication Edges
@@ -38,8 +37,8 @@ getdelay(channel::Channel) = channel.delay
 isactive(channel::Channel) = channel.state_manager.state == State(:active)
 getsignals(channel::Channel) = getsignals(channel.state_manager)
 
-function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute)
-    push!(edge.channels,Channel(from_attribute,to_attribute))
+function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;delay = 0)
+    push!(edge.channels,Channel(from_attribute,to_attribute,delay))
 end
 
 setdelay(edge::AbstractCommunicationEdge,channel::Int,delay::Float64) = edge.channels[channel].delay = delay

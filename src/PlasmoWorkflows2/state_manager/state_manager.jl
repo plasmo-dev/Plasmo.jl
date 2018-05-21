@@ -102,6 +102,12 @@ function setstates(SM::StateManager,states::Vector{State})
     SM.states = states
 end
 
+function setstates(SM::StateManager,states::Vector{Symbol})
+    states = [State(state) for state in states]
+    @assert SM.current_state in states
+    SM.states = states
+end
+
 function addtransition!(SM::StateManager,state1::State,signal::Signal,state2::State;action = TransitionAction(),targets = SignalTarget[])
     transition = Transition(state1,signal,state2,action,targets)
     SM.transition_map[tuple(state1,signal)] = transition

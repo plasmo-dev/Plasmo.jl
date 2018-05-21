@@ -7,7 +7,7 @@ using .PlasmoGraphBase
 import PlasmoGraphBase:create_node,create_edge,add_edge!
 import LightGraphs.DiGraph
 import DataStructures
-import Base:isless,step,==,show,print,string
+import Base:isless,step,==,show,print,string,getindex
 
 #State manager functions
 export AbstractSignal,AbstractEvent,SerialExecutor,
@@ -26,7 +26,15 @@ setstate,schedulesignal,step,
 Workflow, DispatchNode, CommunicationEdge,
 
 #Workflow functions
-add_dispatch_node!,add_continuous_node!,initialize,
+
+initialize,
+
+
+add_dispatch_node!,add_continuous_node!,
+
+set_node_task,set_node_task_arguments,set_node_compute_time,
+
+addattribute!,getattribute,
 
 #Workflow
 getcurrenttime,getnexttime,getnexteventtime,execute!,getevents,
@@ -48,6 +56,7 @@ gettriggers,addtrigger!,settrigger,trigger!,step,execute
 abstract type AbstractWorkflow <: AbstractPlasmoGraph end
 abstract type AbstractDispatchNode <: AbstractPlasmoNode end
 abstract type AbstractCommunicationEdge  <: AbstractPlasmoEdge end
+abstract type AbstractChannel  end
 
 abstract type AbstractEvent end
 abstract type AbstractSignal end
@@ -66,28 +75,29 @@ include("state_manager/state_manager.jl")
 include("state_manager/signal_coordinator.jl")
 include("state_manager/signal_executor.jl")
 include("state_manager/signal_print.jl")
+
 #Workflow Graph
 
-# #Node Tasks
-# include("dispatch_function.jl")
+#Node Tasks
+include("dispatch_function.jl")
+
+#Workflow Attributes
+include("attribute.jl")
+
+#Node and Edge Transition Actions
+include("actions.jl")
+
+#The workflow Graph
+include("workflow_graph.jl")
 #
-# #Node and Edge Transition Actions
-# include("actions.jl")
+#Edges for communication between nodes
+include("communication_edges.jl")
 #
-# #The workflow Graph
-# include("workflow_graph.jl")
-#
-# #Workflow Attributes
-# include("attribute.jl")
-#
-# #Edges for communication between nodes
-# include("communication_edges.jl")
-#
-# #Discrete and continuous dispatch nodes
-# include("dispatch_nodes.jl")
+#Discrete and continuous dispatch nodes
+include("dispatch_nodes.jl")
 #
 # #Workflow execution
-# include("executor.jl")
+include("workflow_executor.jl")
 
 # function gettransitionactions()
 #     return schedule_node,run_node_task
