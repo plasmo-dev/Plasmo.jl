@@ -18,7 +18,7 @@ end
 function run_node_task(signal::AbstractSignal,node::AbstractDispatchNode)
     try
         run!(node.node_task)  #run the computation task
-        setattribute(node,:result,node.node_task.result)
+        setattribute(node,:result,get(node.node_task.result))
         return [Pair(Signal(:complete),0)]
     catch #which error?
         return [Pair(Signal(:error),0)]
@@ -29,8 +29,8 @@ end
 function synchronize_node(signal::AbstractSignal,node::AbstractDispatchNode)
     compute_time = getcomputetime(node)
     return_signals = Vector{Pair{Signal,Float64}}()
-    for attribute in getattributes(node)
-        push!(return_signals,Pair(Signal(:update_attribute,attribute),compute_time))
+    for (key,attribute) in getattributes(node)
+        push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
     end
     push!(return_signals,Pair(Signal(:synchronized),compute_time))
     return return_signals
@@ -49,14 +49,14 @@ end
 function communicate(signal::AbstractSignal,channel::AbstractChannel)
     from_attribute = channel.from_attribute
     to_attribute= channel.to_attribute
-    return_signals = Vector{Pair{Signal,Float64}}()
+    return_signals = Vector{Pair{AbstractSignal,Float64}}()
 
     comm_sent_signal = Pair(Signal(:comm_sent,from_attribute),0)
     push!(return_signals,comm_sent_signal)
 
     comm_received_signal = Pair(DataSignal(:comm_received,to_attribute,getglobalvalue(from_attribute)),channel.delay)
     push!(return_signals,comm_received_signal)
-
+    #println(return_signals)
     return return_signals
 end
 

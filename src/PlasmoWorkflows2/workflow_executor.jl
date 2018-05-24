@@ -18,9 +18,10 @@ end
 
 #run the next item in the schedule
 #pop the next item off the queue and add it to Julia's scheduler to run it
-function step(workflow::Workflow,executor::AbstractExecutor)
-    step(workflow.coordinator,executor)
-end
+
+step(workflow::Workflow,executor::AbstractExecutor) = step(workflow.coordinator,executor)
+step(workflow::Workflow) = step(workflow.coordinator)
+
 
 function run!(executor::SerialExecutor,workflow::Workflow,signal_event::AbstractEvent)
     #task = @schedule call!(workflow,event)

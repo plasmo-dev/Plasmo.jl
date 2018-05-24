@@ -17,7 +17,7 @@ getlocalvalue(attribute::Attribute) = attribute.local_values
 getglobalvalue(attribute::Attribute) = attribute.global_value
 
 function string(attribute::Attribute)
-    string(attribute.node)*" "*string(attribute.label)
+    string(attribute.label)
 end
 print(io::IO, attribute::Attribute) = print(io, string(attribute))
 show(io::IO, attribute::Attribute) = print(io,attribute)

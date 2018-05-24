@@ -33,7 +33,7 @@ mutable struct TransitionAction
     func::Function                                  #the function to call
     args::Vector{Any}                               #the function args
     kwargs::Dict{Any,Any}                           #possible kwargs
-    result::Vector{Pair{Signal,Float64}}            #action returns a signal and delay
+    result::Vector{Pair{AbstractSignal,Float64}}            #action returns a signal and delay
 end
 TransitionAction() = TransitionAction((signal::AbstractSignal) -> [Pair(Signal(:nothing),0)],[],Dict(),Vector{Pair{Signal,Float64}}())
 TransitionAction(func::Function) = TransitionAction(func,[],Dict(),Vector{Pair{Signal,Float64}}())
@@ -82,13 +82,14 @@ getsignals(SM::StateManager) = SM.signals
 getinitialsignal(SM::StateManager) = SM.initial_signal
 getstates(SM::StateManager) = SM.states
 gettransitions(SM::StateManager) = collect(values(SM.transition_map))
+gettransition(SM::StateManager,state::State,signal::Signal) = SM.transition_map[tuple(state,signal)]
 getcurrentstate(SM::StateManager) = SM.current_state
 gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
 
-addsignal!(SM::StateManager,signal::Signal) = push!(SM.signals,signal)
-addsignal!(SM::StateManager,signal::Symbol) = push!(SM.signals,Signal(signal))
-addstate!(SM::StateManager,state::State) = push!(SM.states,state)
-addstate!(SM::StateManager,state::Symbol) = push!(SM.states,State(state))
+addsignal!(SM::StateManager,signal::Signal) = signal in SM.signals? nothing : push!(SM.signals,signal)
+addsignal!(SM::StateManager,signal::Symbol) = addsignal!(SM,Signal(signal))
+addstate!(SM::StateManager,state::State) = state in SM.states? nothing : push!(SM.states,state)
+addstate!(SM::StateManager,state::Symbol) = addstate!(SM,State(state))
 
 function setstate(SM::StateManager,state::State)
     @assert state in SM.states
@@ -108,13 +109,21 @@ function setstates(SM::StateManager,states::Vector{Symbol})
     SM.states = states
 end
 
+function setinitialsignal(SM::StateManager,signal::Signal)
+    SM.initial_signal = signal
+end
+
 function addtransition!(SM::StateManager,state1::State,signal::Signal,state2::State;action = TransitionAction(),targets = SignalTarget[])
     transition = Transition(state1,signal,state2,action,targets)
-    SM.transition_map[tuple(state1,signal)] = transition
+    addtransition!(SM,transition)
+    #SM.transition_map[tuple(state1,signal)] = transition
     return transition
 end
 
 function addtransition!(SM::StateManager,transition::Transition)
+    addsignal!(SM,transition.input_signal)
+    addstate!(SM,transition.starting_state)
+    addstate!(SM,transition.new_state)
     SM.transition_map[tuple(transition.starting_state,transition.input_signal)] = transition
     return transition
 end

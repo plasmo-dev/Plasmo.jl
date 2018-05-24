@@ -5,6 +5,7 @@ mutable struct Workflow <: AbstractWorkflow
 end
 Workflow() =  Workflow(BasePlasmoGraph(DiGraph),SignalCoordinator())
 getcoordinator(workflow::AbstractWorkflow) = workflow.coordinator
+getqueue(workflow::AbstractWorkflow) = getqueue(workflow.coordinator)
 getcurrenttime(workflow::AbstractWorkflow) = getcurrenttime(getcoordinator(workflow))
 now(workflow::AbstractWorkflow) = now(getcoordinator(workflow))
 
@@ -34,27 +35,33 @@ getevents(workflow::Workflow) = workflow.signal_events
 function initialize(workflow::Workflow)
     #schedule initial node signals
     for node in getnodes(workflow)
-        for (signal,time) in getinitialsignals(node)
-            schedulesignal(workflow,SignalEvent(time,signal,node))
+        #for signal in getinitialsignal(node)
+        signal = getinitialsignal(node)
+        if signal != nothing
+            schedulesignal(workflow,SignalEvent(0.0,signal,getstatemanager(node)))
         end
+        #end
     end
 
     #Schedule initial edge signals
     for edge in getedges(workflow)
-        for (signal,time) in getinitialsignals(edge)
-            schedulesignal(workflow,SignalEvent(time,signal,edge))
+        for channel in getchannels(edge)
+            #for signal in getinitialsignal(edge)
+            signal = getinitialsignal(channel)
+            if signal != nothing
+                schedulesignal(workflow,SignalEvent(0.0,signal,getstatemanager(channel)))
+            end
         end
     end
 
-    #schedule any workflow events
-    for event in getevents(workflow)
-        schedulesignal(workflow,event)
-    end
+    # #schedule any workflow events
+    # for event in getevents(workflow)
+    #     schedulesignal(workflow,event)
+    # end
 end
 
 call!(workflow::Workflow,signal_event::SignalEvent) = call!(workflow.signal_coordinator,signal_event)
-# #Signals get sent to a coordinator
-# function run_transition!(transition::Transition)
-#     signals = transition.action()
-#     queue(signals)
-# end
+
+function schedulesignal(workflow::Workflow,signal_event::AbstractEvent)
+    schedulesignal(workflow.coordinator,signal_event)
+end

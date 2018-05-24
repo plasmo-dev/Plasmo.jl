@@ -31,14 +31,26 @@ PlasmoGraphBase.create_edge(graph::Workflow) = CommunicationEdge()   #PlasmoGrap
 # getdelay(edge::AbstractCommunicationEdge,channel::Int) = edge.channels[channel].delay
 # isactive(edge::AbstractCommunicationEdge) = edge.state == State(:active)
 
+getchannels(edge::AbstractCommunicationEdge) = edge.channels
 #getsignals(edge::AbstractCommunicationEdge) = getsignals(edge.state_manager)
 getdelay(edge::AbstractCommunicationEdge,channel::Int) = edge.channels[channel].delay
 getdelay(channel::Channel) = channel.delay
 isactive(channel::Channel) = channel.state_manager.state == State(:active)
 getsignals(channel::Channel) = getsignals(channel.state_manager)
+getinitialsignal(channel::AbstractChannel) = getinitialsignal(channel.state_manager)
+setinitialsignal(channel::AbstractChannel,signal::AbstractSignal) = setinitialsignal(channel.state_manager,signal)
+setinitialsignal(channel::AbstractChannel,signal::Symbol) = setinitialsignal(channel.state_manager,Signal(signal))
+getstatemanager(channel::AbstractChannel) = channel.state_manager
+
+
+getstates(channel::AbstractChannel) = getstates(channel.state_manager)
+gettransitions(channel::AbstractChannel) = gettransitions(channel.state_manager)
+getcurrentstate(channel::AbstractChannel) = getcurrentstate(channel.state_manager)
 
 function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0)
     channel = Channel(from_attribute,to_attribute,comm_delay,schedule_delay)
+    setstates(channel.state_manager,[:null,:active,:inactive,:error])
+    setstate(channel.state_manager,:active)
     push!(edge.channels,channel)
     return channel
 end

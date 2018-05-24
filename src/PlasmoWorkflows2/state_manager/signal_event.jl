@@ -25,7 +25,7 @@ mutable struct SignalEvent <: AbstractEvent
     status::event_status   #the event status
 end
 SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget) = SignalEvent(time,signal,target,0,Nullable(Any),1)  #idle by default
-
+SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget,priority::Int64) = SignalEvent(time,signal,target,priority,Nullable(Any),1) 
 
 #Call a signal event (run its functions with its arguments)
 function call!(coordinator::AbstractSignalCoordinator,signal_event::AbstractEvent)
