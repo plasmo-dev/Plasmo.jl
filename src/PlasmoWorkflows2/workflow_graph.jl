@@ -60,7 +60,7 @@ function initialize(workflow::Workflow)
     # end
 end
 
-call!(workflow::Workflow,signal_event::SignalEvent) = call!(workflow.signal_coordinator,signal_event)
+call!(workflow::Workflow,signal_event::SignalEvent) = call!(workflow.coordinator,signal_event)
 
 function schedulesignal(workflow::Workflow,signal_event::AbstractEvent)
     schedulesignal(workflow.coordinator,signal_event)

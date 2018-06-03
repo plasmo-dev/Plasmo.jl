@@ -6,6 +6,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     priority::Int                               #Priority of signals this node produces
     local_time::Float64                         #The node's local clock.  Gets synchronized with the workflow clock on triggers
     compute_time::Float64                       #The time the node takes to complete its task.
+    schedule_delay::Float64
     node_task::DispatchFunction                 #the actual function (task) to call
     state_manager::StateManager
 
@@ -16,6 +17,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
         node.attributes = Dict(:result => result_attribute)
         node.local_time = 0
         node.compute_time = 0
+        node.schedule_delay = 0
         node.node_task = DispatchFunction()
         node.state_manager = StateManager()
         setstates(node.state_manager,[:null,:idle,:scheduled,:computing,:synchronizing,:error,:inactive])
@@ -30,6 +32,7 @@ function add_dispatch_node!(workflow::Workflow)
     node = add_node!(workflow)
     state_manager = node.state_manager
     addtransition!(state_manager,State(:idle),Signal(:schedule),State(:scheduled), action = TransitionAction(schedule_node,[node]))  #no target for produced signal (so it won't schedule)
+    addtransition!(state_manager,State(:scheduled),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[node]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
     addtransition!(state_manager,State(:idle),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[node]),targets = [node.state_manager])
     addtransition!(state_manager,State(:computing),Signal(:complete),State(:synchronizing), action = TransitionAction(synchronize_node,[node]), targets = [node.state_manager])
     addtransition!(state_manager,State(:synchronizing),Signal(:synchronized),State(:idle))  #Node is complete
@@ -50,6 +53,7 @@ function add_continuous_node!(workflow::Workflow)
     node = add_node!(workflow)
     state_manager = node.state_manager
     addtransition!(state_manager,State(:idle),Signal(:schedule),State(:scheduled), action = TransitionAction(schedule_node,[node]))  #no target for produced signal (so it won't schedule)
+    addtransition!(state_manager,State(:scheduled),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[node]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
     addtransition!(state_manager,State(:idle),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[node]),targets = [node.state_manager])
     addtransition!(state_manager,State(:computing),Signal(:complete),State(:synchronizing), action = TransitionAction(synchronize_node,[node]), targets = [node.state_manager])
     addtransition!(state_manager,State(:synchronizing),Signal(:synchronized),State(:scheduled), action = TransitionAction(schedule_node,[node]))  #Node reschedules
@@ -70,13 +74,16 @@ function addattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_n
     workflow_attribute = Attribute(node,label,attribute,attribute)
     node.attributes[label] = workflow_attribute
     #Attributes can be updated when a node is in a synchronizing state
-    addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
+    addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
+    addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
+
 end
 
 function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets = SignalTarget[])
     workflow_attribute = Attribute(node,label)
     node.attributes[label] = workflow_attribute
     addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
+    addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
 end
 
 ###########################
@@ -85,6 +92,7 @@ end
 getlocaltime(node::AbstractDispatchNode) = node.local_time
 getresult(node::AbstractDispatchNode) = getresult(node.dispatch_function)
 getcomputetime(node::AbstractDispatchNode) = node.compute_time
+getscheduledelay(node::AbstractDispatchNode) = node.schedule_delay
 
 #Node State Manager
 getsignals(node::DispatchNode) = getsignals(node.state_manager)

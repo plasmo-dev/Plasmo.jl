@@ -19,6 +19,9 @@ mutable struct DataSignal <: AbstractSignal
     data::Any               #Data the signal may carry.  Can be passed to transition actions.
 end
 
+#NOTE Just use a convert method here?
+Signal(signal::DataSignal) = Signal(signal.label,signal.value)  #Convert data signal to a signal
+
 ==(signal1::AbstractSignal,signal2::AbstractSignal) = (signal1.label == signal2.label && signal1.value == signal2.value)
 getlabel(signal::AbstractSignal) = signal.label
 getvalue(signal::AbstractSignal) = signal.value
@@ -57,7 +60,7 @@ end
 #############################################
 mutable struct Transition
     starting_state::State
-    input_signal::Signal
+    input_signal::AbstractSignal
     new_state::State
     action::TransitionAction
     output_signal_targets::Vector{SignalTarget}
@@ -71,22 +74,22 @@ mutable struct StateManager <: AbstractStateManager
     states::Vector{State}            #possible states
     current_state::State             #current state
     signals::Vector{AbstractSignal}  #signal the manager recognizes
-    transition_map::Dict{Tuple{State,Signal},Transition}             #Allowable transitions for this state manager
-    initial_signal::Union{Void,Signal}
+    transition_map::Dict{Tuple{State,AbstractSignal},Transition}             #Allowable transitions for this state manager
+    initial_signal::Union{Void,AbstractSignal}
 end
 
 #Constructor
-StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,Signal},Transition}(),nothing)
+StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,AbstractSignal},Transition}(),nothing)
 
 getsignals(SM::StateManager) = SM.signals
 getinitialsignal(SM::StateManager) = SM.initial_signal
 getstates(SM::StateManager) = SM.states
 gettransitions(SM::StateManager) = collect(values(SM.transition_map))
-gettransition(SM::StateManager,state::State,signal::Signal) = SM.transition_map[tuple(state,signal)]
+gettransition(SM::StateManager,state::State,signal::AbstractSignal) = SM.transition_map[tuple(state,signal)]
 getcurrentstate(SM::StateManager) = SM.current_state
 gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
 
-addsignal!(SM::StateManager,signal::Signal) = signal in SM.signals? nothing : push!(SM.signals,signal)
+addsignal!(SM::StateManager,signal::AbstractSignal) = signal in SM.signals? nothing : push!(SM.signals,signal)
 addsignal!(SM::StateManager,signal::Symbol) = addsignal!(SM,Signal(signal))
 addstate!(SM::StateManager,state::State) = state in SM.states? nothing : push!(SM.states,state)
 addstate!(SM::StateManager,state::Symbol) = addstate!(SM,State(state))
@@ -109,11 +112,11 @@ function setstates(SM::StateManager,states::Vector{Symbol})
     SM.states = states
 end
 
-function setinitialsignal(SM::StateManager,signal::Signal)
+function setinitialsignal(SM::StateManager,signal::AbstractSignal)
     SM.initial_signal = signal
 end
 
-function addtransition!(SM::StateManager,state1::State,signal::Signal,state2::State;action = TransitionAction(),targets = SignalTarget[])
+function addtransition!(SM::StateManager,state1::State,signal::AbstractSignal,state2::State;action = TransitionAction(),targets = SignalTarget[])
     transition = Transition(state1,signal,state2,action,targets)
     addtransition!(SM,transition)
     #SM.transition_map[tuple(state1,signal)] = transition

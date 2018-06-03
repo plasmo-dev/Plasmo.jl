@@ -16,13 +16,13 @@ end
 
 #Run a node task
 function run_node_task(signal::AbstractSignal,node::AbstractDispatchNode)
-    try
+    #try
         run!(node.node_task)  #run the computation task
         setattribute(node,:result,get(node.node_task.result))
         return [Pair(Signal(:complete),0)]
-    catch #which error?
+    #catch #which error?
         return [Pair(Signal(:error),0)]
-    end
+    #end
 end
 
 #Schedule synchronization

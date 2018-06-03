@@ -62,10 +62,12 @@ function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2:
     edge = add_edge!(workflow,getnode(attribute1),getnode(attribute2))
     channel = addchannel!(edge,attribute1,attribute2,comm_delay = Float64(comm_delay),schedule_delay = Float64(schedule_delay))
     state_manager = channel.state_manager
+
+    destination_node = getnode(attribute2)
     #run communication when attribute updates
-    addtransition!(state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active), action = TransitionAction(communicate,[channel]), targets = [channel.state_manager])
+    addtransition!(state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active), action = TransitionAction(communicate,[channel]), targets = [destination_node.state_manager])
     #run communication when given :communicate signal
-    addtransition!(state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[channel]), targets = [channel.state_manager])
+    addtransition!(state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[channel]), targets = [destination_node.state_manager])
 
     return channel
 end

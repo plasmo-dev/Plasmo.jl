@@ -38,7 +38,7 @@ set_node_task,set_node_task_arguments,set_node_compute_time,
 addattribute!,getattribute,getattributes,
 
 #Workflow
-getcurrenttime,getnexttime,getnexteventtime,initialize,execute,getqueue,
+getcurrenttime,getnexttime,getnexteventtime,initialize,execute!,getqueue,
 
 #Dispatch Nodes
 set_node_function,set_node_compute_time,set_node_function_arguments,set_node_function_kwargs,

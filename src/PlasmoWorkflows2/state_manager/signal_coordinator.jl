@@ -38,6 +38,7 @@ mutable struct SignalCoordinator <: AbstractSignalCoordinator
 end
 SignalCoordinator() = SignalCoordinator(0,SignalEvent[],DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue}())
 now(coordinator::SignalCoordinator) = coordinator.time
+getcurrenttime(coordinator::SignalCoordinator) = now(coordinator)
 getqueue(coordinator::SignalCoordinator) = coordinator.queue
 
 #A state manager receives a signal and runs the corresponding transition function which returns new signals
@@ -46,11 +47,15 @@ function evaluate_signal!(coordinator::SignalCoordinator,signal::AbstractSignal,
         warn("signal $signal not recognized by target $SM")
         return nothing
     end
-    if !(tuple(SM.current_state,signal) in keys(SM.transition_map))  #Check if there's no transition from the current state
-        warn("no transition for $current_state + $signal on $SM")
+
+    #NOTE Need to deal with data signals here
+    check_signal = Signal(signal)
+    if !(tuple(SM.current_state,check_signal) in keys(SM.transition_map))  #Check if there's no transition from the current state
+        warn("no transition for $(SM.current_state) + $signal on $SM")
         return nothing
     end
-    transition = SM.transition_map[SM.current_state,signal]
+
+    transition = SM.transition_map[SM.current_state,check_signal]
     signal_pairs = runtransition!(SM,transition,signal)    #run the transition action.  Returns vector of signal delay pairs
     #signals,delays = run_transition!(transition,signal)
     #Now queue output signals if there are any

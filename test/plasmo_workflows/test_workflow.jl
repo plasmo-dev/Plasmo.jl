@@ -5,11 +5,11 @@ using PlasmoWorkflows
 
 function simple_func1(x::String)
     println(x)
-    return x
+    return 5
 end
 
 function simple_func2(workflow::Workflow,node::DispatchNode)
-    println("Running simple_func2 @ t = $(getcurrenttime(workflow))")
+    println("Running simple_func2 at t = $(getcurrenttime(workflow))")
     println(node[:x])
     return true
 end
@@ -34,16 +34,16 @@ getdelay(channel1)
 
 setinitialsignal(w1,Signal(:execute))
 
-initialize(workflow)
+#initialize(workflow)
 
+# step(workflow)
+# step(workflow)
+# step(workflow)
+# step(workflow)
+# step(workflow)
+# step(workflow)
+# step(workflow)
+# step(workflow)
+# step(workflow)
 
-
-#execute(workflow)
-#
-# # @assert getconnectedto(workflow,channel1) == w2
-# # @assert getconnectedfrom(workflow,channel1) == w1
-# # trigger!(workflow,w1,0.0)  #Trigger a node at time zero
-#
-# executor = SerialExecutor()
-# intialize(workflow)
-# step(workflow,executor)
+execute!(workflow)

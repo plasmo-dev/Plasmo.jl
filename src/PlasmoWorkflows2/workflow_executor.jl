@@ -5,7 +5,7 @@ mutable struct SerialExecutor <: AbstractExecutor
     visits::Dict{AbstractDispatchNode,Int}  #number of times each node has been computed
     final_time::Number
 end
-SerialExecutor() = SerialExecutor(Dict{AbstractDispatchNode,Int}(),0)
+SerialExecutor() = SerialExecutor(Dict{AbstractDispatchNode,Int}(),100)
 SerialExecutor(time) = SerialExecutor(Dict{AbstractDispatchNode,Int}(),time)
 
 #This is the main execution method for an executor
@@ -16,6 +16,8 @@ function execute!(workflow::Workflow,executor::AbstractExecutor)  #this should b
     execute!(workflow.coordinator,executor)
 end
 
+execute!(workflow::Workflow) = execute!(workflow,SerialExecutor())
+
 #run the next item in the schedule
 #pop the next item off the queue and add it to Julia's scheduler to run it
 
@@ -23,8 +25,8 @@ step(workflow::Workflow,executor::AbstractExecutor) = step(workflow.coordinator,
 step(workflow::Workflow) = step(workflow.coordinator)
 
 
-function run!(executor::SerialExecutor,workflow::Workflow,signal_event::AbstractEvent)
+function run!(executor::SerialExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent)
     #task = @schedule call!(workflow,event)
-    task = run!(workflow.coordinator,signal_event)
+    task = run!(coordinator,signal_event)
     return task
 end
