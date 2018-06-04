@@ -2,7 +2,8 @@ struct StopWorkflow <: Exception
   value :: Any
 end
 StopWorkflow() = StopWorkflow(nothing)
-stop_workflow(ev::AbstractEvent) = throw(StopWorkflow(value(ev)))
+stop_workflow(event::AbstractEvent) = throw(StopWorkflow(value(event)))
+
 
 ##########################
 # Executors
@@ -28,7 +29,7 @@ function execute!(coordinator::SignalCoordinator,executor::AbstractExecutor)  #t
             end
         catch err
             if isa(err,StopWorkflow)
-                println("coordinator complete")
+                println("execution complete")
                 break
             else
                 println("found error")
@@ -40,7 +41,7 @@ end
 
 
 function step(coordinator::SignalCoordinator)
-    isempty(getqueue(coordinator)) && throw("Queue is empty")
+    isempty(getqueue(coordinator)) && throw(StopWorkflow("Queue is Empty"))
     (signal_event, priority_key) = DataStructures.peek(coordinator.queue)
     #Dequeue the event function
     DataStructures.dequeue!(getqueue(coordinator))
@@ -50,7 +51,7 @@ end
 
 #run the next item in the schedule with the given executor
 function step(coordinator::SignalCoordinator,executor::AbstractExecutor)
-    isempty(getqueue(coordinator)) && throw("Queue is empty")
+    isempty(getqueue(coordinator)) && throw(StopWorkflow("Queue is Empty"))
     #isempty(workflow.queue) && error("Queue is empty")
     #look at what's coming next
     (signal_event, priority_key) = DataStructures.peek(coordinator.queue)

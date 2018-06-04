@@ -1,65 +1,103 @@
 module PlasmoWorkflows
 
-using ..PlasmoGraphBase
+include("../PlasmoGraphBase/PlasmoGraphBase.jl")
 
-import PlasmoGraphBase:create_node,create_edge,add_edge!
+using .PlasmoGraphBase
+
+import PlasmoGraphBase:create_node,create_edge,add_edge!,getattribute,getattributes
 import LightGraphs.DiGraph
 import DataStructures
-import Base:isless,step
+import Base:isless,step,==,show,print,string,getindex
 
-export Workflow, DispatchNode, CommunicationEdge,SerialExecutor,
+#State manager functions
+export AbstractSignal,AbstractEvent,SerialExecutor,
 
-WorkflowEvent,NodeTriggerEvent,NodeCompleteEvent,EdgeTriggerEvent,CommunicationReceivedEvent,
+StateManager,SignalCoordinator,SignalEvent,
 
-add_dispatch_node!,initialize,
+State,Signal,DataSignal,Transition,TransitionAction,
+
+addstate!,addsignal!,addtransition!,addbroadcasttarget!,
+
+setstate,schedulesignal,step,
+
+getsignals,getstates,getinitialsignal,getcurrentstate,gettransitionfunction,gettransitions,gettransition,
+
+
+#WORKFLOWS
+
+Workflow, DispatchNode, CommunicationEdge,
+
+#Workflow functions
+
+initialize,
+
+add_dispatch_node!,add_continuous_node!,
+
+set_node_task,set_node_task_arguments,set_node_compute_time,
+
+#Attributes
+addattribute!,getattribute,getattributes,
+getlocalvalue,getglobalvalue,
 
 #Workflow
-getcurrenttime,getnexttime,getnexteventtime,execute!,getevents,
+getcurrenttime,getnexttime,getnexteventtime,initialize,execute!,getqueue,
 
 #Dispatch Nodes
 set_node_function,set_node_compute_time,set_node_function_arguments,set_node_function_kwargs,
-getresult,setinputs,getlocaltime,
+getresult,setinputs,getlocaltime,setinitialsignal,
 
 #Communication Edges
-connect!,setdelay,getdelay,
+connect!,setdelay,getdelay
 
-#Node Channels
-getinput,getoutput,getchanneldata_in,getchanneldata_out,getportdata,getnumchannels,getnodeinputdata,getnodeoutputdata,
-set_result_slot_to_output_channel!,
-
-#Events
-gettriggers,addtrigger!,settrigger,trigger!,step,execute
 
 abstract type AbstractWorkflow <: AbstractPlasmoGraph end
 abstract type AbstractDispatchNode <: AbstractPlasmoNode end
 abstract type AbstractCommunicationEdge  <: AbstractPlasmoEdge end
+abstract type AbstractChannel  end
 
 abstract type AbstractEvent end
+abstract type AbstractSignal end
+abstract type AbstractStateManager end
+abstract type AbstractSignalCoordinator end
 
-#Events can be: Event, Condition, Delay, Communicate, etc...
-abstract type AbstractWorkflowEvent <: AbstractEvent end   #General Events
-abstract type AbstractNodeEvent <: AbstractEvent end       #Events triggered by nodes
-abstract type AbstractEdgeEvent <: AbstractEvent end
+const SignalTarget = AbstractStateManager
+# #Events can be: Event, Condition, Delay, Communicate, etc...
+# abstract type AbstractWorkflowEvent <: AbstractEvent end   #General Events
+# abstract type AbstractNodeEvent <: AbstractEvent end       #Events triggered by nodes
+# abstract type AbstractEdgeEvent <: AbstractEvent end
 
-#the workflow graph
+#State Manager and Coordination
+include("state_manager/signal_event.jl")
+include("state_manager/state_manager.jl")
+include("state_manager/signal_coordinator.jl")
+include("state_manager/signal_executor.jl")
+include("state_manager/signal_print.jl")
+
+#Workflow Graph
+
+#Node Tasks
 include("dispatch_function.jl")
 
-#the workflow graph
+#Workflow Attributes
+include("attribute.jl")
+
+#Node and Edge Transition Actions
+include("actions.jl")
+
+#The workflow Graph
 include("workflow_graph.jl")
-
-#input and output channels for nodes
-include("data_channels.jl")
-
-#Workflow events, node triggers, and edge triggers
-include("dispatch_events.jl")
-
-#edges for communication between nodes
+#
+#Edges for communication between nodes
 include("communication_edges.jl")
-
-#discrete and continuous dispatch nodes
+#
+#Discrete and continuous dispatch nodes
 include("dispatch_nodes.jl")
+#
+# #Workflow execution
+include("workflow_executor.jl")
 
-#the event priority queue and the executors which manage it
-include("executor.jl")
+# function gettransitionactions()
+#     return schedule_node,run_node_task
+# end
 
 end # module

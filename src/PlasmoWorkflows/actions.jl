@@ -67,9 +67,9 @@ end
 
 #Action for receiving an attribute
 #function receive_attribute(attribute::Attribute,value::Any)
-function received_attribute(signal::DataSignal,attribute::Attribute)
+function update_attribute(signal::DataSignal,attribute::Attribute)
     value = getdata(signal)
     attribute.local_value = value
     attribute.global_value = value
-    return [Pair(Signal(:attribute_received,attribute),0)]
+    return [Pair(Signal(:attribute_updated,attribute),0)]
 end

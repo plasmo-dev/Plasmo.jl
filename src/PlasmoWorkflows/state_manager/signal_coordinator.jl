@@ -33,10 +33,10 @@ end
 
 mutable struct SignalCoordinator <: AbstractSignalCoordinator
     time::Float64
-    signal_events::Vector{AbstractEvent}
+    #signal_events::Vector{AbstractEvent}  #TODO  Add predefined signals to a workflow.  Could also just schedule signals to happen
     queue::DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue} #the event queue
 end
-SignalCoordinator() = SignalCoordinator(0,SignalEvent[],DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue}())
+SignalCoordinator() = SignalCoordinator(0,DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue}())
 now(coordinator::SignalCoordinator) = coordinator.time
 getcurrenttime(coordinator::SignalCoordinator) = now(coordinator)
 getqueue(coordinator::SignalCoordinator) = coordinator.queue
