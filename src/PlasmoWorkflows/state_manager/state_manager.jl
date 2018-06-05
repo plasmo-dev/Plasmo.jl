@@ -3,6 +3,8 @@ struct State
 end
 State() = State(:null)
 #State(label::Symbol) = State(label)
+#TODO Define an ANY state
+==(state1::State,state2::State) = (state1.label == state2.label || state1.label == :Any || state2.label == :Any)
 
 #Signal for mapping behaviors
 struct Signal <: AbstractSignal
@@ -67,6 +69,8 @@ mutable struct Transition
 end
 Transition() =  Transition(State(),Signal(),State(),TransitionAction(),SignalTarget[])
 
+gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
+settransitionaction(transition::Transition,action::TransitionAction) = transition.action = action
 #############################################
 # State Manager
 #############################################
@@ -76,10 +80,11 @@ mutable struct StateManager <: AbstractStateManager
     signals::Vector{AbstractSignal}  #signal the manager recognizes
     transition_map::Dict{Tuple{State,AbstractSignal},Transition}             #Allowable transitions for this state manager
     initial_signal::Union{Void,AbstractSignal}
+    suppressed_signals::Vector{AbstractSignal}
 end
 
 #Constructor
-StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,AbstractSignal},Transition}(),nothing)
+StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,AbstractSignal},Transition}(),nothing,Signal[])
 
 getsignals(SM::StateManager) = SM.signals
 getinitialsignal(SM::StateManager) = SM.initial_signal
@@ -87,12 +92,13 @@ getstates(SM::StateManager) = SM.states
 gettransitions(SM::StateManager) = collect(values(SM.transition_map))
 gettransition(SM::StateManager,state::State,signal::AbstractSignal) = SM.transition_map[tuple(state,signal)]
 getcurrentstate(SM::StateManager) = SM.current_state
-gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
+
 
 addsignal!(SM::StateManager,signal::AbstractSignal) = signal in SM.signals? nothing : push!(SM.signals,signal)
 addsignal!(SM::StateManager,signal::Symbol) = addsignal!(SM,Signal(signal))
 addstate!(SM::StateManager,state::State) = state in SM.states? nothing : push!(SM.states,state)
 addstate!(SM::StateManager,state::Symbol) = addstate!(SM,State(state))
+suppresssignal!(SM::StateManager,signal::Signal) = push!(SM.suppressed_signals,signal)
 
 function setstate(SM::StateManager,state::State)
     @assert state in SM.states

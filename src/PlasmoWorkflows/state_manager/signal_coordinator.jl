@@ -33,7 +33,6 @@ end
 
 mutable struct SignalCoordinator <: AbstractSignalCoordinator
     time::Float64
-    #signal_events::Vector{AbstractEvent}  #TODO  Add predefined signals to a workflow.  Could also just schedule signals to happen
     queue::DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue} #the event queue
 end
 SignalCoordinator() = SignalCoordinator(0,DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue}())
@@ -43,14 +42,19 @@ getqueue(coordinator::SignalCoordinator) = coordinator.queue
 
 #A state manager receives a signal and runs the corresponding transition function which returns new signals
 function evaluate_signal!(coordinator::SignalCoordinator,signal::AbstractSignal,SM::StateManager)
+    #sig.label in [s.label for s in sm1.suppressed_signals]
+    if (signal in SM.suppressed_signals)
+        #println(signal)
+        return nothing
+    end
+
     if !(signal in getsignals(SM)) #Check if the signal isn't recognized
         warn("signal $signal not recognized by target $SM")
         return nothing
     end
+    check_signal = Signal(signal)   #NOTE Need to deal with data signals here
 
-    #NOTE Need to deal with data signals here
-    check_signal = Signal(signal)
-    if !(tuple(SM.current_state,check_signal) in keys(SM.transition_map))  #Check if there's no transition from the current state
+    if !(tuple(SM.current_state,check_signal) in keys(SM.transition_map))  #Or if it's not suppressed
         warn("no transition for $(SM.current_state) + $signal on $SM")
         return nothing
     end

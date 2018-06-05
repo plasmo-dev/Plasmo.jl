@@ -28,26 +28,9 @@ set_node_task_arguments(w2,[workflow,w2])
 addattribute!(w2,:x)
 
 #Connect result from w1 to attribute x in w2.  It takes 1 unit of time to communicate.
-channel1 = connect!(workflow,w1[:result],w2[:x],comm_delay = 1)
+channel1 = connect!(workflow,w1[:result],w2[:x],comm_delay = 0.5)
 #getdelay(channel1)
 
 setinitialsignal(w1,Signal(:execute))
 
-schedulesignal(workflow,DataSignal(:update_attribute,w2[:x],10),w2,6)
-
-#TEST STEP BY STEP
-# initialize(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-
 execute!(workflow)
-
-@assert getglobalvalue(w1[:result]) == 5
-@assert getglobalvalue(w2[:x]) == 10

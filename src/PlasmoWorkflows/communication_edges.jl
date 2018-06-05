@@ -58,31 +58,38 @@ end
 setdelay(edge::AbstractCommunicationEdge,channel::Int,delay::Float64) = edge.channels[channel].delay = delay
 
 #dispatch edge communicates when it receives attribute updates
-function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;comm_delay = 0,schedule_delay = 0)
+function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;send_attribute_updates = true, comm_delay = 0,continuous = false, schedule_delay = 0)
     edge = add_edge!(workflow,getnode(attribute1),getnode(attribute2))
     channel = addchannel!(edge,attribute1,attribute2,comm_delay = Float64(comm_delay),schedule_delay = Float64(schedule_delay))
-    state_manager = channel.state_manager
 
     destination_node = getnode(attribute2)
-    #run communication when attribute updates
-    addtransition!(state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active), action = TransitionAction(communicate,[channel]), targets = [destination_node.state_manager])
+    suppresssignal!(destination_node.state_manager,Signal(:comm_sent,attribute1))
+
+    if send_attribute_updates == true
+        addtransition!(channel.state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active),action = TransitionAction(communicate,[channel]), targets = [destination_node.state_manager])
+    end
+
+    if continuous == true
+        addtransition!(channel.state_manager,State(:active), Signal(:comm_sent), State(:active), action = TransitionAction(schedule_communicate,[channel]),targets = [edge.state_manager])
+    end
+
     #run communication when given :communicate signal
-    addtransition!(state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[channel]), targets = [destination_node.state_manager])
+    addtransition!(channel.state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[channel]), targets = [destination_node.state_manager])
 
     return channel
 end
 
-function add_continuous_edge!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;delay = 0.0)
-    edge = add_edge!(workflow,getnode(attribute1),getnode(attribute2))
-    channel = add_channel!(edge,attribute1,attribute2,delay)
-    state_manager = channel.state_manager
-    #run communication at a frequency
-    addtransition!(state_manager,State(:active), Signal(:comm_sent), State(:active), action = TransitionAction(schedule_communicate,workflow,edge),targets = [edge.state_manager])
-    #run communication when given :communicate signal
-    addtransition!(state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,workflow,edge),targets = [edge.state_manager])
-
-    return channel
-end
+# function add_continuous_edge!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;delay = 0.0)
+#     edge = add_edge!(workflow,getnode(attribute1),getnode(attribute2))
+#     channel = add_channel!(edge,attribute1,attribute2,delay)
+#     state_manager = channel.state_manager
+#     #run communication at a frequency
+#     addtransition!(state_manager,State(:active), Signal(:comm_sent), State(:active), action = TransitionAction(schedule_communicate,workflow,edge),targets = [edge.state_manager])
+#     #run communication when given :communicate signal
+#     addtransition!(state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,workflow,edge),targets = [edge.state_manager])
+#
+#     return channel
+# end
 
 #set_trigger_frequency(edge::AbstractCommunicationEdge,frequency::Number) = edge.frequency = Float64(frequency)
 

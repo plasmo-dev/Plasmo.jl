@@ -29,16 +29,15 @@ function execute!(coordinator::SignalCoordinator,executor::AbstractExecutor)  #t
             end
         catch err
             if isa(err,StopWorkflow)
-                println("execution complete")
+                println("Execution complete")
                 break
             else
-                println("found error")
+                println("Found error")
                 rethrow(err)
             end
         end
     end
 end
-
 
 function step(coordinator::SignalCoordinator)
     isempty(getqueue(coordinator)) && throw(StopWorkflow("Queue is Empty"))
@@ -67,8 +66,6 @@ function step(coordinator::SignalCoordinator,executor::AbstractExecutor)
     task = run!(executor,coordinator,signal_event)
     #wait(task)  #maybe drop this
  end
-
-
 
 function run!(executor::SimpleExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent)
     #task = @schedule call!(workflow,event)

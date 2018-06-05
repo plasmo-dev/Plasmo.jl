@@ -28,13 +28,14 @@ end
 PlasmoGraphBase.create_node(graph::Workflow) = DispatchNode()
 
 #Dispatch node runs when it gets communication updates
-function add_dispatch_node!(workflow::Workflow)
+function add_dispatch_node!(workflow::Workflow;continuous = false)
     node = add_node!(workflow)
     state_manager = node.state_manager
     addtransition!(state_manager,State(:idle),Signal(:schedule),State(:scheduled), action = TransitionAction(schedule_node,[node]))  #no target for produced signal (so it won't schedule)
     addtransition!(state_manager,State(:scheduled),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[node]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
     addtransition!(state_manager,State(:idle),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[node]),targets = [node.state_manager])
     addtransition!(state_manager,State(:computing),Signal(:complete),State(:synchronizing), action = TransitionAction(synchronize_node,[node]), targets = [node.state_manager])
+
     addtransition!(state_manager,State(:synchronizing),Signal(:synchronized),State(:idle))  #Node is complete
     #result attribute update
     result_attribute = getattribute(node,:result)
@@ -45,27 +46,17 @@ function add_dispatch_node!(workflow::Workflow)
         addtransition!(state_manager,state,Signal(:error),State(:error))
         addtransition!(state_manager,state,Signal(:disable),State(:inactive))
     end
-    return node
-end
 
-#Continuous node transitions
-function add_continuous_node!(workflow::Workflow)
-    node = add_node!(workflow)
-    state_manager = node.state_manager
-    addtransition!(state_manager,State(:idle),Signal(:schedule),State(:scheduled), action = TransitionAction(schedule_node,[node]))  #no target for produced signal (so it won't schedule)
-    addtransition!(state_manager,State(:scheduled),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[node]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
-    addtransition!(state_manager,State(:idle),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[node]),targets = [node.state_manager])
-    addtransition!(state_manager,State(:computing),Signal(:complete),State(:synchronizing), action = TransitionAction(synchronize_node,[node]), targets = [node.state_manager])
-    addtransition!(state_manager,State(:synchronizing),Signal(:synchronized),State(:scheduled), action = TransitionAction(schedule_node,[node]))  #Node reschedules
-
-    result_attribute = getattribute(node,:result)
-    addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,result_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [result_attribute]))
-
-
-    for state in [State(:idle),State(:computing),State(:synchronizing)]
-        addtransition!(state_manager,state,Signal(:error),State(:error))
-        addtransition!(state_manager,state,Signal(:disable),State(:inactive))
+    if continuous == true
+        #NOTE Check the node compute time
+        transition = gettransition(state_manager,State(:synchronizing),Signal(:synchronized))
+        settransitionaction(transition,TransitionAction(schedule_node,[node]))
+        addbroadcasttarget!(transition,state_manager)
     end
+
+    #Set suppressed signals by default
+    suppresssignal!(state_manager,Signal(:scheduled))
+
     return node
 end
 
@@ -77,7 +68,7 @@ function addattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_n
     addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
     addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
-
+    #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
 end
 
 function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets = SignalTarget[])
@@ -86,7 +77,7 @@ function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets =
     addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
     addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
-
+    #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
 end
 
 ###########################
@@ -147,7 +138,7 @@ function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute
 
     #Add receiving node transition
     #Transition: idle + comm_reeived ==> idle, action = received_attribute
-    addtransition!(state_manager,State(:idle),Signal(:comm_received,attribute2),State(:idle),action = TransitionAction(update_attribute,[attribute2]),targets = [receive_node.state_manager])
+    addtransition!(state_manager,State(:idle),Signal(:comm_received,attribute2),State(:idle),action = TransitionAction(receive_attribute,[attribute2]),targets = [receive_node.state_manager])
 
 
     return comm_channel

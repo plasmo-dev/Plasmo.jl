@@ -67,11 +67,11 @@ end
 workflow = Workflow()
 
 #Add the node for the ode simulation
-ode_node = add_continuous_node!(workflow)   #dispatch node that will reschedule on synchronization
+ode_node = add_dispatch_node!(workflow,continuous = true, schedule_delay = 0)   #dispatch node that will reschedule on synchronization
 addattributes!(ode_node,Dict(:x0 => 0,:x_history => Vector{Pair}()),:u1 => 0, :u2 => 0, :d => 0, :x => 0)
 set_node_task(ode_node,run_ode_simulation)
-set_node_task_arguments(ode_node,[workflow,ode_node])               #also see: set_node_function_kwarg
-set_initial_signal(ode_node,Signal(:execute),0)
+set_node_task_arguments(ode_node,[workflow,ode_node])
+set_initial_signal(ode_node,Signal(:execute))
 
 #Add the node to do PID calculation
 pid_node1 = add_dispatch_node!(workflow)
@@ -79,29 +79,24 @@ addattributes!(pid_node1,Dict(:y => 0, :y => 0,:K=>15,:tauI=>1,:tauD=>0.01,:erro
 set_node_task(pid_node1,calc_pid_controller)
 set_node_task_arguments(pid_node1,[workflow,pid_node1])
 
-e1 = connect!(workflow,ode_node[:x],pid_node1[:y],continuous = true,delay = 0,schedule_delay = 0.01)  #run again after comm_sent
-#e1 = connect!(workflow,ode_node[:x],pid_node1[:y],communicate_on = Signal(:comm_sent))
-#set_initial_signal(ode_node,Signal(:communicate),0)
-
-e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false,delay = 0.02, schedule_delay = 0)  #this is the default
+e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true, delay = 0, schedule_delay = 0.01)  #run again after comm_sent
+e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false, delay = 0.02)  #this is the default
 
 #execute the workflow
 executor = SerialExecutor(20)  #creates a termination event at time 20
-
-
 execute!(workflow,executor)  #This will intialize the workflow
 
 
-#Plot results
-u_history = getattribute(pid_node1,:u2_history)
-x_history = getattribute(ode_node,:x_history)
-
-u_times = [u.first for u in u_history]
-u_actions = [u.second for u in u_history]
-
-x_times = [x.first for x in x_history]
-x_state = [x.second for x in x_history]
-
-plt = plot()
-plot!(plt,x_times,x_state,linewidth = 2)
-plot!(plt,u_times,u_actions,linewidth = 2)
+# #Plot results
+# u_history = getattribute(pid_node1,:u2_history)
+# x_history = getattribute(ode_node,:x_history)
+#
+# u_times = [u.first for u in u_history]
+# u_actions = [u.second for u in u_history]
+#
+# x_times = [x.first for x in x_history]
+# x_state = [x.second for x in x_history]
+#
+# plt = plot()
+# plot!(plt,x_times,x_state,linewidth = 2)
+# plot!(plt,u_times,u_actions,linewidth = 2)

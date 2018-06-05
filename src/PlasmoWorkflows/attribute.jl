@@ -9,6 +9,8 @@ Attribute(node::AbstractDispatchNode) = Attribute(node,gensym(),nothing,nothing)
 Attribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing)
 Attribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node,label,object,object)
 
+# ==(attribute1::Attribute,attribute2::Attribute) = (attribute1.node == attribute2.node && attribute1.label == attribute2.label)
+
 #Attribute(node::AbstractDispatchNode,object::Any) = Attribute(node,gensym(),object,object)
 
 getnode(attribute::Attribute) = attribute.node
