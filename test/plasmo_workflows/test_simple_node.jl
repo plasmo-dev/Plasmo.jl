@@ -1,5 +1,5 @@
-include("../../src/PlasmoWorkflows/PlasmoWorkflows.jl")
-using PlasmoWorkflows
+#include("../../src/PlasmoWorkflows/PlasmoWorkflows.jl")
+using Plasmo.PlasmoWorkflows
 
 function simple_func1(x::String)
     println("Running simple_func1 with string: $x")

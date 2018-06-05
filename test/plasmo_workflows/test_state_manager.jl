@@ -1,6 +1,5 @@
-include("../../src/PlasmoWorkflows2/PlasmoWorkflows.jl")
-
-using PlasmoWorkflows
+#include("../../src/PlasmoWorkflows2/PlasmoWorkflows.jl")
+using Plasmo.PlasmoWorkflows
 
 #some actions
 function turn_on(signal::AbstractSignal,delay::Number)

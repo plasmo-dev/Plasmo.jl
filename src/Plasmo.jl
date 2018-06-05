@@ -75,28 +75,44 @@ setsolution,setvalue,
 ##################
 #Workflows
 ##################
-Workflow, DispatchNode, CommunicationEdge,SerialExecutor,
+AbstractSignal,AbstractEvent,SerialExecutor,
 
-WorkflowEvent,NodeTriggerEvent,NodeCompleteEvent,EdgeTriggerEvent,CommunicationReceivedEvent,
+StateManager,SignalCoordinator,SignalEvent,
 
-add_dispatch_node!,initialize,
+State,Signal,DataSignal,Transition,TransitionAction,
+
+addstate!,addsignal!,addtransition!,addbroadcasttarget!,
+
+setstate,schedulesignal,step,
+
+getsignals,getstates,getinitialsignal,getcurrentstate,gettransitionfunction,gettransitions,gettransition,
+
+
+#WORKFLOWS
+
+Workflow, DispatchNode, CommunicationEdge,
+
+#Workflow functions
+
+initialize,
+
+add_dispatch_node!,add_continuous_node!,
+
+set_node_task,set_node_task_arguments,set_node_compute_time,
+
+#Attributes
+addattribute!,getattribute,getattributes,
+getlocalvalue,getglobalvalue,
 
 #Workflow
-getcurrenttime,getnexttime,getnexteventtime,execute!,getevents,
+getcurrenttime,getnexttime,getnexteventtime,initialize,execute!,getqueue,
 
 #Dispatch Nodes
 set_node_function,set_node_compute_time,set_node_function_arguments,set_node_function_kwargs,
-getresult,setinputs,getlocaltime,
+getresult,setinputs,getlocaltime,setinitialsignal,
 
 #Communication Edges
-connect!,setdelay,getdelay,
-
-#Node Channels
-getinput,getoutput,getchanneldata_in,getchanneldata_out,getportdata,getnumchannels,getnodeinputdata,getnodeoutputdata,
-set_result_slot_to_output_channel!,
-
-#Events
-gettriggers,addtrigger!,settrigger,trigger!,step,execute
+connect!,setdelay,getdelay
 
 include("PlasmoGraphBase/PlasmoGraphBase.jl")
 using .PlasmoGraphBase
@@ -104,7 +120,7 @@ using .PlasmoGraphBase
 include("PlasmoModels/PlasmoModels.jl")
 using .PlasmoModels
 
-# include("PlasmoWorkflows/PlasmoWorkflows.jl")
-# using .PlasmoWorkflows
+include("PlasmoWorkflows/PlasmoWorkflows.jl")
+using .PlasmoWorkflows
 
 end
