@@ -4,7 +4,7 @@
 struct EventPriorityValue
     time::Float64
     priority::Int          #priority
-    local_time::Float64
+    #local_time::Float64
     id::Int                 #each key should be unique
 end
 #smaller value means higher priority
@@ -18,13 +18,13 @@ function isless(val1::EventPriorityValue,val2::EventPriorityValue) :: Bool
     if val1.time < val2.time
         return true
     #if equal times, but different priorities
-    elseif val1.time == val2.time && val1.priority > val2.priority
+    elseif val1.time == val2.time && val1.priority < val2.priority
         return true
     #if time and types are equal, use priority
-    elseif val1.time == val2.time &&  val1.priority  == val2.priority && val1.local_time < val2.local_time
-        return true
+    # elseif val1.time == val2.time &&  val1.priority  == val2.priority# && val1.local_time < val2.local_time
+    #     return true
     #if everything is equal, use id numbers
-    elseif val1.time == val2.time && val1.priority == val2.priority && val1.local_time == val2.local_time && val1.id < val2.id
+    elseif val1.time == val2.time && val1.priority == val2.priority && val1.id < val2.id
         return true
     else
         return false
@@ -95,7 +95,7 @@ getevents(coordinator::SignalCoordinator) = coordinator.signal_events
 #Schedule a signal to occur
 function schedulesignal(coordinator::SignalCoordinator,signal_event::AbstractEvent)
     id = length(coordinator.queue) + 1
-    priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(signal_event),getlocaltime(signal_event),id)
+    priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(signal_event),id)
     DataStructures.enqueue!(coordinator.queue,signal_event,priority_value)
     signal_event.status = scheduled
 end

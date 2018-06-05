@@ -12,24 +12,28 @@ function run_ode_simulation(workflow::Workflow,node::DispatchNode)
     t_next = Float64(getnexteventtime(workflow))  #look it up on the queue
     tspan = (t_start,t_next)
 
-    u1 = Float64(getinput(node,:u1))   #the first input
-    x0 = Float64(getattribute(node,:x0))  #get local node state
+    u1 = getvalue(getattribute(node,:u1))
+    x0 = getvalue(getattribute(node,:x0))
 
     #A linear ode
     f(x,t,p) = a*x + b1*u1
     prob = ODEProblem(f,x0,tspan)
-    sol = solve(prob,Tsit5(),reltol=1e-8,abstol=1e-8)
+    sol = DifferentialEquations.solve(prob,Tsit5(),reltol=1e-8,abstol=1e-8)
     x = sol.u[end]  #the final output (i.e. x(t_next))
 
     setattribute(node,:x0,x)  #sets the local value for next run
-    push!(getattribute(node,:x_history),Pair(t_next,x))
+
+    #NOTE Might make sense to have non-connected attributes just be data
+    x_history = getvalue(getattribute(node,:x_history))
+
+    push!(x_history,Pair(t_next,x))
     set_node_compute_time(node,round(t_next - t_start , 5))
-    return x  #goes to result
+    return true  #goes to result
 end
 
 #Calculate a PID control law
 function calc_pid_controller(workflow::Workflow,node::DispatchNode)
-    y = getinput(node,:y)  #expecting a single value
+    y = getattribute(node,:y)  #expecting a single value
     yset = getattribute(node,:yset)
     current_time = getcurrenttime(workflow)
     if current_time > 10
@@ -41,9 +45,9 @@ function calc_pid_controller(workflow::Workflow,node::DispatchNode)
     T = length(error_history)
     setattribute(node,:error_history,error_history)
 
-    K = getattribute(node,:K)
-    tauI = getattribute(node,:tauI)
-    tauD = getattribute(node,:tauD)
+    K = getvalue(getattribute(node,:K))
+    tauI = getvalue(getattribute(node,:tauI))
+    tauD = getvalue(getattribute(node,:tauD))
 
     #If there's no error_history
     if length(error_history) >= 2
@@ -60,31 +64,33 @@ function calc_pid_controller(workflow::Workflow,node::DispatchNode)
     end
     #getattribute(node,:u2_history)[current_time] = u
     push!(getattribute(node,:u2_history),Pair(current_time,u))
-    return u
+    return true
 end
 
 #Create the workflow
 workflow = Workflow()
 
 #Add the node for the ode simulation
-ode_node = add_dispatch_node!(workflow,continuous = true, schedule_delay = 0)   #dispatch node that will reschedule on synchronization
-addattributes!(ode_node,Dict(:x0 => 0,:x_history => Vector{Pair}()),:u1 => 0, :u2 => 0, :d => 0, :x => 0)
+ode_node = add_dispatch_node!(workflow, continuous = true, schedule_delay = 0)   #dispatch node that will reschedule on synchronization
+addattributes!(ode_node,Dict(:x0 => 0.0,:x_history => Vector{Pair}(),:u1 => 0.0, :u2 => 0.0, :d => 0.0, :x => 0.0))
 set_node_task(ode_node,run_ode_simulation)
 set_node_task_arguments(ode_node,[workflow,ode_node])
-set_initial_signal(ode_node,Signal(:execute))
+#setinitialsignal(ode_node,Signal(:execute))
+
+schedulesignal(workflow,Signal(:execute),ode_node,0)
 
 #Add the node to do PID calculation
 pid_node1 = add_dispatch_node!(workflow)
-addattributes!(pid_node1,Dict(:y => 0, :y => 0,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:yset => 2,:u2_history => Vector{Pair}()))
+addattributes!(pid_node1,Dict(:u => 0, :y => 0,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:yset => 2,:u2_history => Vector{Pair}()))
 set_node_task(pid_node1,calc_pid_controller)
 set_node_task_arguments(pid_node1,[workflow,pid_node1])
 
-e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true, delay = 0, schedule_delay = 0.01)  #run again after comm_sent
-e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false, delay = 0.02)  #this is the default
+e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true,  comm_delay = 0, schedule_delay = 0.01, start_time = 0.01)
+e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false, comm_delay = 0.02,send_attribute_updates = true)
 
 #execute the workflow
 executor = SerialExecutor(20)  #creates a termination event at time 20
-execute!(workflow,executor)  #This will intialize the workflow
+#execute!(workflow,executor)  #This will intialize the workflow
 
 
 # #Plot results

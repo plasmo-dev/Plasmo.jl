@@ -51,3 +51,5 @@ execute!(workflow)
 
 @assert getglobalvalue(w1[:result]) == 5
 @assert getglobalvalue(w2[:x]) == 10
+
+true

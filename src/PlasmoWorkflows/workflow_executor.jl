@@ -1,6 +1,10 @@
 ###########################
 #Serial executor just schedules tasks in the priority queue
 ###########################
+#Signal Priorities
+
+
+
 mutable struct SerialExecutor <: AbstractExecutor
     visits::Dict{AbstractDispatchNode,Int}  #number of times each node has been computed
     final_time::Number

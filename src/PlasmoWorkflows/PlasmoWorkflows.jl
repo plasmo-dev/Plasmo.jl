@@ -1,10 +1,9 @@
 module PlasmoWorkflows
 
-include("../PlasmoGraphBase/PlasmoGraphBase.jl")
+#include("../PlasmoGraphBase/PlasmoGraphBase.jl")
+using ..PlasmoGraphBase
+import PlasmoGraphBase:create_node,create_edge,add_edge!,addattributes!#,getattribute,getattributes,
 
-using .PlasmoGraphBase
-
-import PlasmoGraphBase:create_node,create_edge,add_edge!,getattribute,getattributes
 import LightGraphs.DiGraph
 import DataStructures
 import Base:isless,step,==,show,print,string,getindex
@@ -36,8 +35,13 @@ add_dispatch_node!,add_continuous_node!,
 set_node_task,set_node_task_arguments,set_node_compute_time,
 
 #Attributes
-addattribute!,getattribute,getattributes,
-getlocalvalue,getglobalvalue,
+addattribute!,
+
+getattribute,
+
+getattributes,
+
+getlocalvalue,getglobalvalue,getvalue,
 
 #Workflow
 getcurrenttime,getnexttime,getnexteventtime,initialize,execute!,getqueue,

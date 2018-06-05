@@ -29,8 +29,12 @@ end
 function synchronize_node(signal::AbstractSignal,node::AbstractDispatchNode)
     compute_time = getcomputetime(node)
     return_signals = Vector{Pair{Signal,Float64}}()
+
+    #for (key,attribute) in getattributes(node)
     for (key,attribute) in getattributes(node)
-        push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
+        if isoutconnected(attribute)
+            push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
+        end
     end
     push!(return_signals,Pair(Signal(:synchronized),compute_time))
     return return_signals

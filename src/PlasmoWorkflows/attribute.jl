@@ -2,12 +2,14 @@
 mutable struct Attribute
     node::AbstractDispatchNode
     label::Symbol
-    local_value::Any
+    local_value::Any   #local to the node
     global_value::Any
+    out_channels::Vector{AbstractChannel}
+    in_channels::Vector{AbstractChannel}
 end
-Attribute(node::AbstractDispatchNode) = Attribute(node,gensym(),nothing,nothing)
-Attribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing)
-Attribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node,label,object,object)
+Attribute(node::AbstractDispatchNode) = Attribute(node,gensym(),nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+Attribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+Attribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node,label,object,object,Vector{AbstractChannel}(),Vector{AbstractChannel}())
 
 # ==(attribute1::Attribute,attribute2::Attribute) = (attribute1.node == attribute2.node && attribute1.label == attribute2.label)
 
@@ -15,8 +17,12 @@ Attribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node
 
 getnode(attribute::Attribute) = attribute.node
 getlabel(attribute::Attribute) = attribute.label
-getlocalvalue(attribute::Attribute) = attribute.local_values
+getlocalvalue(attribute::Attribute) = attribute.local_value
 getglobalvalue(attribute::Attribute) = attribute.global_value
+getvalue(attribute::Attribute) = getlocalvalue(attribute)
+
+isoutconnected(attribute::Attribute) = length(attribute.out_channels) > 0
+isinconnected(attribute::Attribute) = length(attribute.in_channels) > 0
 
 function string(attribute::Attribute)
     string(attribute.label)

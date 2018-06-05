@@ -33,3 +33,5 @@ channel1 = connect!(workflow,w1[:result],w2[:x],comm_delay = 2)
 setinitialsignal(w1,Signal(:execute))
 
 execute!(workflow)
+
+true

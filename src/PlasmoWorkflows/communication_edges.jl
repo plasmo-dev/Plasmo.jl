@@ -42,7 +42,6 @@ setinitialsignal(channel::AbstractChannel,signal::AbstractSignal) = setinitialsi
 setinitialsignal(channel::AbstractChannel,signal::Symbol) = setinitialsignal(channel.state_manager,Signal(signal))
 getstatemanager(channel::AbstractChannel) = channel.state_manager
 
-
 getstates(channel::AbstractChannel) = getstates(channel.state_manager)
 gettransitions(channel::AbstractChannel) = gettransitions(channel.state_manager)
 getcurrentstate(channel::AbstractChannel) = getcurrentstate(channel.state_manager)
@@ -58,7 +57,7 @@ end
 setdelay(edge::AbstractCommunicationEdge,channel::Int,delay::Float64) = edge.channels[channel].delay = delay
 
 #dispatch edge communicates when it receives attribute updates
-function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;send_attribute_updates = true, comm_delay = 0,continuous = false, schedule_delay = 0)
+function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;send_attribute_updates = true, comm_delay = 0,continuous = false, schedule_delay = 0,start_time = 0)
     edge = add_edge!(workflow,getnode(attribute1),getnode(attribute2))
     channel = addchannel!(edge,attribute1,attribute2,comm_delay = Float64(comm_delay),schedule_delay = Float64(schedule_delay))
 
@@ -70,7 +69,8 @@ function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2:
     end
 
     if continuous == true
-        addtransition!(channel.state_manager,State(:active), Signal(:comm_sent), State(:active), action = TransitionAction(schedule_communicate,[channel]),targets = [edge.state_manager])
+        addtransition!(channel.state_manager,State(:active), Signal(:comm_sent), State(:active), action = TransitionAction(schedule_communicate,[channel]),targets = [channel.state_manager])
+        schedulesignal(workflow,Signal(:communicate),channel,start_time)
     end
 
     #run communication when given :communicate signal

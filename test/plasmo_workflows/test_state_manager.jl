@@ -63,6 +63,8 @@ step(coordinator)
 step(coordinator)
 step(coordinator)
 step(coordinator)
+
+true
 #some syntax ideas
 #@action(t1,turn_on)
 #@transition(manager1, on turn_off => off, action = turn_on, action_arg = 1, output_targets = [manager1])

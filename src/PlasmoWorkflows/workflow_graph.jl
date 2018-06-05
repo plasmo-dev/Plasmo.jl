@@ -21,7 +21,7 @@ function getnexttime(workflow::Workflow)
 end
 
 function getnexteventtime(workflow::Workflow)
-    queue = workflow.queue
+    queue = getqueue(workflow)
     times = unique(sort([val.time for val in values(queue)]))
     next_time = times[1]
     return next_time
@@ -62,11 +62,22 @@ end
 
 call!(workflow::Workflow,signal_event::SignalEvent) = call!(workflow.coordinator,signal_event)
 
+signal_priority_map = Dict(:synchronize_attribute => 0, :scheduled => 0,:synchronized => 1,:comm_sent => 1,:attribute_updated => 2, :communicate => 2,:comm_received => 2,:execute => 3)
+
+function setpriority(signalEvent::AbstractEvent,signal::Signal)
+    if signal.label in keys(signal_priority_map)
+        signalEvent.priority = signal_priority_map[signal.label]
+    else
+        signalEvent.priority = 0
+    end
+end
+
 function schedulesignal(workflow::Workflow,signal_event::AbstractEvent)
     schedulesignal(workflow.coordinator,signal_event)
 end
 
-function schedulesignal(workflow::Workflow,signal::AbstractSignal,target::Union{AbstractDispatchNode,AbstractCommunicationEdge},time::Number)
+function schedulesignal(workflow::Workflow,signal::AbstractSignal,target::Union{AbstractDispatchNode,AbstractChannel},time::Number)
     signal_event = SignalEvent(Float64(time),signal,getstatemanager(target))
+    setpriority(signal_event,signal)
     schedulesignal(workflow,signal_event)
 end
