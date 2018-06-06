@@ -67,7 +67,7 @@ end
 
 function schedule_communicate(signal::AbstractSignal,channel::AbstractChannel)
     delayed_signal = Signal(:communicate)
-    return [Pair(delayed_signal,channel.comm_delay)]
+    return [Pair(delayed_signal,channel.schedule_delay)]
 end
 
 #Action for receiving an attribute

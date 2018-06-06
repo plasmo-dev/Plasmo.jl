@@ -37,7 +37,7 @@ set_node_task,set_node_task_arguments,set_node_compute_time,
 #Attributes
 addattribute!,
 
-getattribute,
+getattribute,setattribute,
 
 getattributes,
 

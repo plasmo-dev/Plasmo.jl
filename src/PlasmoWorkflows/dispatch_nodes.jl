@@ -54,6 +54,10 @@ function add_dispatch_node!(workflow::Workflow;continuous = false, schedule_dela
         transition = gettransition(state_manager,State(:synchronizing),Signal(:synchronized))
         settransitionaction(transition,TransitionAction(schedule_node,[node]))
         addbroadcasttarget!(transition,state_manager)
+
+        #Don't respond to comm_received
+
+
     end
 
     #Set suppressed signals by default
@@ -63,33 +67,41 @@ function add_dispatch_node!(workflow::Workflow;continuous = false, schedule_dela
 end
 
 #Add an attribute.  Update node transitions for when attributes are added.
-function addattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[])
+function addattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[],execute_on_receive = true)
     workflow_attribute = Attribute(node,label,attribute)
     node.attributes[label] = workflow_attribute
     #Attributes can be updated when a node is in a synchronizing state
     addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
-    addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
+
+    #If true, schedule the node's task when it receives an attribute
+    if execute_on_receive == true
+        addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
+    else
+        suppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
+    end
+    #Update an attribute manually
     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
 end
+addattribute!(node::DispatchNode,label::Symbol;update_notify_targets = SignalTarget[]) = addattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
 
-function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets = SignalTarget[])
-    workflow_attribute = Attribute(node,label)
-    node.attributes[label] = workflow_attribute
-    addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
-    addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
-    addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
-    #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
-end
+# function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets = SignalTarget[])
+#     workflow_attribute = Attribute(node,label)
+#     node.attributes[label] = workflow_attribute
+#     addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
+#     addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
+#     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
+#     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
+# end
 
-function PlasmoGraphBase.addattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any})
+function PlasmoGraphBase.addattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
     for (key,value) in att_dict
-        addattribute!(node,key,value)
+        addattribute!(node,key,value,execute_on_receive = execute_on_receive)
     end
 end
 PlasmoGraphBase.getattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
 PlasmoGraphBase.getattributes(node::DispatchNode) = node.attributes
-setattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
+PlasmoGraphBase.setattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
 
 # function getconnectedattributes(node::DispatchNode)
 #     for
@@ -147,9 +159,10 @@ function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute
 
 
     #broadcast source node transition to the channel
-    transition_update = gettransition(source_node,State(:synchronizing),Signal(:synchronize_attribute,attribute1))  #This should return a comm_received signal
-    addbroadcasttarget!(transition_update,comm_channel.state_manager)
-
+    if send_attribute_updates == true
+        transition_update = gettransition(source_node,State(:synchronizing),Signal(:synchronize_attribute,attribute1))  #This should return a comm_received signal
+        addbroadcasttarget!(transition_update,comm_channel.state_manager)
+    end
     #Add receiving node transition
     #Transition: idle + comm_reeived ==> idle, action = received_attribute
     addtransition!(state_manager,State(:idle),Signal(:comm_received,attribute2),State(:idle),action = TransitionAction(receive_attribute,[attribute2]),targets = [receive_node.state_manager])

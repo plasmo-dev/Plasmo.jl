@@ -19,13 +19,15 @@ SimpleExecutor() = SimpleExecutor(0)
 #SimpleExecutor(time) = SimpleExecutor(time)
 
 #This is the main execution method for an executor
-function execute!(coordinator::SignalCoordinator,executor::AbstractExecutor)  #this should be on the graph really
+function execute!(coordinator::SignalCoordinator,executor::AbstractExecutor;priority_map = Dict())  #this should be on the graph really
     while true
         try
-            step(coordinator,executor)             #step through the priority queue
+            step(coordinator,executor,priority_map = priority_map)             #step through the priority queue
             if coordinator.time >= executor.final_time && coordinator.time != 0
                 throw(StopWorkflow())
             end
+            #TODO Check termination conditions
+
         catch err
             if isa(err,StopWorkflow)
                 println("Execution complete")

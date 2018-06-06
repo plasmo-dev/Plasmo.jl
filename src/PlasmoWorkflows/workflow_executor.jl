@@ -6,7 +6,7 @@ mutable struct SerialExecutor <: AbstractExecutor
     visits::Dict{AbstractDispatchNode,Int}  #number of times each node has been computed
     final_time::Number
 end
-SerialExecutor() = SerialExecutor(Dict{AbstractDispatchNode,Int}(),100)
+SerialExecutor() = SerialExecutor(Dict{AbstractDispatchNode,Int}(),20)
 SerialExecutor(time) = SerialExecutor(Dict{AbstractDispatchNode,Int}(),time)
 
 #This is the main execution method for an executor
@@ -14,7 +14,7 @@ function execute!(workflow::Workflow,executor::AbstractExecutor)  #this should b
     # nodes = collectnodes(workflow)                           #get all the nodes
     # executor.visits = Dict(zip(nodes,zeros(length(nodes))))  #set up a map of each node to how many times it has been visited
     initialize(workflow)
-    execute!(workflow.coordinator,executor)
+    execute!(workflow.coordinator,executor,priority_map = workflow_priority_map)
 end
 
 execute!(workflow::Workflow) = execute!(workflow,SerialExecutor())
@@ -25,8 +25,8 @@ execute!(workflow::Workflow) = execute!(workflow,SerialExecutor())
 step(workflow::Workflow,executor::AbstractExecutor) = step(workflow.coordinator,executor,priority_map = workflow_priority_map)
 step(workflow::Workflow) = step(workflow.coordinator,priority_map = workflow_priority_map)
 
-function run!(executor::SerialExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent)
+function run!(executor::SerialExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent;priority_map = workflow_priority_map)
     #task = @schedule call!(workflow,event)
-    task = run!(coordinator,signal_event,priority_map = workflow_priority_map)
+    task = run!(coordinator,signal_event,priority_map = priority_map)
     return task
 end

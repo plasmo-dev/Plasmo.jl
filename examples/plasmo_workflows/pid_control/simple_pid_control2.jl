@@ -2,6 +2,7 @@
 using DifferentialEquations
 using Plasmo
 using Plots
+pyplot()
 
 #A function which solves an ode given a workflow and dispatch node
 #This is a bit convuluted.  Continuous Functions will probably be a special kind of event
@@ -23,11 +24,12 @@ function run_ode_simulation(workflow::Workflow,node::DispatchNode)
     x = sol.u[end]  #the final output (i.e. x(t_next))
 
     setattribute(node,:x0,x)  #sets the local value for next run
-
+    setattribute(node,:x,x)
     #NOTE Might make sense to have non-connected attributes just be data
     x_history = getvalue(getattribute(node,:x_history))
-
     push!(x_history,Pair(t_next,x))
+    setattribute(node,:x_history,x_history)
+
     set_node_compute_time(node,round(t_next - t_start , 5))
     return true  #goes to result
 end
@@ -52,6 +54,7 @@ function calc_pid_controller(workflow::Workflow,node::DispatchNode)
     current_error = yset - y
 
     push!(error_history,Pair(current_time,current_error))
+
     T = length(error_history)
     setattribute(node,:error_history,error_history)
 
@@ -68,7 +71,9 @@ function calc_pid_controller(workflow::Workflow,node::DispatchNode)
     if u < -10
         u = -10
     end
-    #getattribute(node,:u2_history)[current_time] = u
+    setattribute(node,:u,u)
+    # println(u)
+    # println(getvalue(getattribute(node,:u)))
     push!(u_history,Pair(current_time,u))
     return true
 end
@@ -78,7 +83,7 @@ workflow = Workflow()
 
 #Add the node for the ode simulation
 ode_node = add_dispatch_node!(workflow, continuous = true, schedule_delay = 0)   #dispatch node that will reschedule on synchronization
-addattributes!(ode_node,Dict(:x0 => 0.0,:x_history => Vector{Pair}(),:u1 => 0.0, :u2 => 0.0, :d => 0.0, :x => 0.0))
+addattributes!(ode_node,Dict(:x0 => 0.0,:x_history => Vector{Pair}(),:u1 => 0.0, :u2 => 0.0, :d => 0.0, :x => 0.0),execute_on_receive = false)
 set_node_task(ode_node,run_ode_simulation)
 set_node_task_arguments(ode_node,[workflow,ode_node])
 #setinitialsignal(ode_node,Signal(:execute))
@@ -91,24 +96,27 @@ addattributes!(pid_node1,Dict(:u => 0, :y => 0,:yset => 2,:K=>15,:tauI=>1,:tauD=
 set_node_task(pid_node1,calc_pid_controller)
 set_node_task_arguments(pid_node1,[workflow,pid_node1])
 
-e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true, send_attribute_updates = false, comm_delay = 0, schedule_delay = 0.01, start_time = 0.01)
-e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false, comm_delay = 0.02,send_attribute_updates = true)
+#e1 will continuously send x --> y (every 0.01 time units)
+e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true, send_attribute_updates = false, comm_delay = 0, schedule_delay = 0.1, start_time = 0.01)
+
+#e2 will send u --> u1 when u is updated
+e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false, comm_delay = 0.01, send_attribute_updates = true)
 
 #execute the workflow
 executor = SerialExecutor(20)  #creates a termination event at time 20
-#execute!(workflow,executor)  #This will intialize the workflow
+execute!(workflow,executor)  #This will intialize the workflow
 
 
 # #Plot results
-# u_history = getattribute(pid_node1,:u2_history)
-# x_history = getattribute(ode_node,:x_history)
-#
-# u_times = [u.first for u in u_history]
-# u_actions = [u.second for u in u_history]
-#
-# x_times = [x.first for x in x_history]
-# x_state = [x.second for x in x_history]
-#
-# plt = plot()
-# plot!(plt,x_times,x_state,linewidth = 2)
-# plot!(plt,u_times,u_actions,linewidth = 2)
+u_history = getvalue(getattribute(pid_node1,:u_history))
+x_history = getvalue(getattribute(ode_node,:x_history))
+
+u_times = [u.first for u in u_history]
+u_actions = [u.second for u in u_history]
+
+x_times = [x.first for x in x_history]
+x_state = [x.second for x in x_history]
+
+plt = plot()
+plot!(plt,x_times,x_state,linewidth = 2)
+plot!(plt,u_times,u_actions,linewidth = 2)
