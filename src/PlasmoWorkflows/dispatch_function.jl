@@ -1,6 +1,4 @@
-#
 # Node Task
-#
 mutable struct DispatchFunction
     func::Function                   #the function to call
     args::Vector{Any}                #the function args

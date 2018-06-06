@@ -15,10 +15,11 @@ function schedule_node(signal::AbstractSignal,node::AbstractDispatchNode)
 end
 
 #Run a node task
-function run_node_task(signal::AbstractSignal,node::AbstractDispatchNode)
+function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode)
     #try
         run!(node.node_task)  #run the computation task
         setattribute(node,:result,get(node.node_task.result))
+        node.state_manager.local_time = now(workflow) + node.compute_time
         return [Pair(Signal(:complete),0)]
     #catch #which error?
         return [Pair(Signal(:error),0)]

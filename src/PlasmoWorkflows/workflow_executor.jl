@@ -2,9 +2,6 @@
 #Serial executor just schedules tasks in the priority queue
 ###########################
 #Signal Priorities
-
-
-
 mutable struct SerialExecutor <: AbstractExecutor
     visits::Dict{AbstractDispatchNode,Int}  #number of times each node has been computed
     final_time::Number
@@ -25,12 +22,11 @@ execute!(workflow::Workflow) = execute!(workflow,SerialExecutor())
 #run the next item in the schedule
 #pop the next item off the queue and add it to Julia's scheduler to run it
 
-step(workflow::Workflow,executor::AbstractExecutor) = step(workflow.coordinator,executor)
-step(workflow::Workflow) = step(workflow.coordinator)
-
+step(workflow::Workflow,executor::AbstractExecutor) = step(workflow.coordinator,executor,priority_map = workflow_priority_map)
+step(workflow::Workflow) = step(workflow.coordinator,priority_map = workflow_priority_map)
 
 function run!(executor::SerialExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent)
     #task = @schedule call!(workflow,event)
-    task = run!(coordinator,signal_event)
+    task = run!(coordinator,signal_event,priority_map = workflow_priority_map)
     return task
 end

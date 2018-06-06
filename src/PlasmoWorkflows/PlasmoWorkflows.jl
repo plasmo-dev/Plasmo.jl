@@ -59,6 +59,7 @@ abstract type AbstractDispatchNode <: AbstractPlasmoNode end
 abstract type AbstractCommunicationEdge  <: AbstractPlasmoEdge end
 abstract type AbstractChannel  end
 
+
 abstract type AbstractEvent end
 abstract type AbstractSignal end
 abstract type AbstractStateManager end

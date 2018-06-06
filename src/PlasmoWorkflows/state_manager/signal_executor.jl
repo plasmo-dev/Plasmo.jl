@@ -4,7 +4,6 @@ end
 StopWorkflow() = StopWorkflow(nothing)
 stop_workflow(event::AbstractEvent) = throw(StopWorkflow(value(event)))
 
-
 ##########################
 # Executors
 ##########################
@@ -39,17 +38,17 @@ function execute!(coordinator::SignalCoordinator,executor::AbstractExecutor)  #t
     end
 end
 
-function step(coordinator::SignalCoordinator)
+function step(coordinator::SignalCoordinator;priority_map = Dict())
     isempty(getqueue(coordinator)) && throw(StopWorkflow("Queue is Empty"))
     (signal_event, priority_key) = DataStructures.peek(coordinator.queue)
     #Dequeue the event function
     DataStructures.dequeue!(getqueue(coordinator))
     coordinator.time = priority_key.time
-    task = run!(coordinator,signal_event)
+    task = run!(coordinator,signal_event,priority_map = priority_map)
 end
 
 #run the next item in the schedule with the given executor
-function step(coordinator::SignalCoordinator,executor::AbstractExecutor)
+function step(coordinator::SignalCoordinator,executor::AbstractExecutor;priority_map = Dict())
     isempty(getqueue(coordinator)) && throw(StopWorkflow("Queue is Empty"))
     #isempty(workflow.queue) && error("Queue is empty")
     #look at what's coming next
@@ -62,18 +61,19 @@ function step(coordinator::SignalCoordinator,executor::AbstractExecutor)
     coordinator.time = priority_key.time
 
     #for now, make this block until I figure out how to parallelize
-    #task =  run!(executor,workflow,event)  #Different dispatch calls do different things.  Might not want to pass the entire workflow
-    task = run!(executor,coordinator,signal_event)
+    task = run!(executor,coordinator,signal_event,priority_map = priority_map)
+
+
     #wait(task)  #maybe drop this
  end
 
-function run!(executor::SimpleExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent)
+function run!(executor::SimpleExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent;priority_map = Dict())
     #task = @schedule call!(workflow,event)
-    task = call!(coordinator,signal_event)
+    task = call!(coordinator,signal_event,priority_map = priority_map)
     return task
 end
 
-function run!(coordinator::SignalCoordinator,signal_event::AbstractEvent)
-    task = call!(coordinator,signal_event)
+function run!(coordinator::SignalCoordinator,signal_event::AbstractEvent;priority_map = Dict())
+    task = call!(coordinator,signal_event,priority_map = priority_map)
     return task
 end

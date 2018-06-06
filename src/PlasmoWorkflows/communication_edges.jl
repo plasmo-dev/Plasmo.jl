@@ -45,6 +45,7 @@ getstatemanager(channel::AbstractChannel) = channel.state_manager
 getstates(channel::AbstractChannel) = getstates(channel.state_manager)
 gettransitions(channel::AbstractChannel) = gettransitions(channel.state_manager)
 getcurrentstate(channel::AbstractChannel) = getcurrentstate(channel.state_manager)
+getlocaltime(channel::AbstractChannel) = channel.state_manager.local_time
 
 function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0)
     channel = Channel(from_attribute,to_attribute,comm_delay,schedule_delay)
@@ -74,7 +75,7 @@ function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2:
     end
 
     #run communication when given :communicate signal
-    addtransition!(channel.state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[channel]), targets = [destination_node.state_manager])
+    addtransition!(channel.state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[channel]), targets = [channel.state_manager,destination_node.state_manager])
 
     return channel
 end

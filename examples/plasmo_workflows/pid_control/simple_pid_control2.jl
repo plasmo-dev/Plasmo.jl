@@ -8,6 +8,7 @@ using Plots
 #A ContinuousNode could be a convenience for managing this special kind of dispatch
 function run_ode_simulation(workflow::Workflow,node::DispatchNode)
     a = 1.01; b1 = 1.0;
+    #NOTE Possibly make this a custom kind of node behavior
     t_start = Float64(getcurrenttime(workflow))   #the node's current time
     t_next = Float64(getnexteventtime(workflow))  #look it up on the queue
     tspan = (t_start,t_next)
@@ -33,21 +34,26 @@ end
 
 #Calculate a PID control law
 function calc_pid_controller(workflow::Workflow,node::DispatchNode)
-    y = getattribute(node,:y)  #expecting a single value
-    yset = getattribute(node,:yset)
-    current_time = getcurrenttime(workflow)
-    if current_time > 10
-        setattribute(node,:yset,1)
-    end
-    current_error = yset - y
-    error_history = getattribute(node,:error_history)  #need error history for integral term
-    push!(error_history,Pair(current_time,current_error))
-    T = length(error_history)
-    setattribute(node,:error_history,error_history)
 
+    y = getvalue(getattribute(node,:y))  #expecting a single value
+    yset = getvalue(getattribute(node,:yset))
     K = getvalue(getattribute(node,:K))
     tauI = getvalue(getattribute(node,:tauI))
     tauD = getvalue(getattribute(node,:tauD))
+    error_history = getvalue(getattribute(node,:error_history))  #need error history for integral term
+    u_history = getvalue(getattribute(node,:u_history))
+
+    current_time = getcurrenttime(workflow)
+
+    if current_time > 10
+        setattribute(node,:yset,1)
+    end
+
+    current_error = yset - y
+
+    push!(error_history,Pair(current_time,current_error))
+    T = length(error_history)
+    setattribute(node,:error_history,error_history)
 
     #If there's no error_history
     if length(error_history) >= 2
@@ -63,7 +69,7 @@ function calc_pid_controller(workflow::Workflow,node::DispatchNode)
         u = -10
     end
     #getattribute(node,:u2_history)[current_time] = u
-    push!(getattribute(node,:u2_history),Pair(current_time,u))
+    push!(u_history,Pair(current_time,u))
     return true
 end
 
@@ -81,11 +87,11 @@ schedulesignal(workflow,Signal(:execute),ode_node,0)
 
 #Add the node to do PID calculation
 pid_node1 = add_dispatch_node!(workflow)
-addattributes!(pid_node1,Dict(:u => 0, :y => 0,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:yset => 2,:u2_history => Vector{Pair}()))
+addattributes!(pid_node1,Dict(:u => 0, :y => 0,:yset => 2,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:u_history => Vector{Pair}()))
 set_node_task(pid_node1,calc_pid_controller)
 set_node_task_arguments(pid_node1,[workflow,pid_node1])
 
-e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true,  comm_delay = 0, schedule_delay = 0.01, start_time = 0.01)
+e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true, send_attribute_updates = false, comm_delay = 0, schedule_delay = 0.01, start_time = 0.01)
 e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false, comm_delay = 0.02,send_attribute_updates = true)
 
 #execute the workflow

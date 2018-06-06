@@ -81,10 +81,11 @@ mutable struct StateManager <: AbstractStateManager
     transition_map::Dict{Tuple{State,AbstractSignal},Transition}             #Allowable transitions for this state manager
     initial_signal::Union{Void,AbstractSignal}
     suppressed_signals::Vector{AbstractSignal}
+    local_time::Number
 end
 
 #Constructor
-StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,AbstractSignal},Transition}(),nothing,Signal[])
+StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,AbstractSignal},Transition}(),nothing,Signal[],0)
 
 getsignals(SM::StateManager) = SM.signals
 getinitialsignal(SM::StateManager) = SM.initial_signal
@@ -92,7 +93,7 @@ getstates(SM::StateManager) = SM.states
 gettransitions(SM::StateManager) = collect(values(SM.transition_map))
 gettransition(SM::StateManager,state::State,signal::AbstractSignal) = SM.transition_map[tuple(state,signal)]
 getcurrentstate(SM::StateManager) = SM.current_state
-
+getlocaltime(SM::StateManager) = SM.local_time
 
 addsignal!(SM::StateManager,signal::AbstractSignal) = signal in SM.signals? nothing : push!(SM.signals,signal)
 addsignal!(SM::StateManager,signal::Symbol) = addsignal!(SM,Signal(signal))

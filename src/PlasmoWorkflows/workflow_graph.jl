@@ -53,31 +53,12 @@ function initialize(workflow::Workflow)
             end
         end
     end
-
-    # #schedule any workflow events
-    # for event in getevents(workflow)
-    #     schedulesignal(workflow,event)
-    # end
 end
 
 call!(workflow::Workflow,signal_event::SignalEvent) = call!(workflow.coordinator,signal_event)
 
-signal_priority_map = Dict(:synchronize_attribute => 0, :scheduled => 0,:synchronized => 1,:comm_sent => 1,:attribute_updated => 2, :communicate => 2,:comm_received => 2,:execute => 3)
-
-function setpriority(signalEvent::AbstractEvent,signal::Signal)
-    if signal.label in keys(signal_priority_map)
-        signalEvent.priority = signal_priority_map[signal.label]
-    else
-        signalEvent.priority = 0
-    end
-end
-
-function schedulesignal(workflow::Workflow,signal_event::AbstractEvent)
-    schedulesignal(workflow.coordinator,signal_event)
-end
+workflow_priority_map = Dict(:synchronize_attribute => 0, :scheduled => 0,:synchronized => 1,:comm_sent => 1,:attribute_updated => 2, :communicate => 3,:comm_received => 2,:execute => 4)
 
 function schedulesignal(workflow::Workflow,signal::AbstractSignal,target::Union{AbstractDispatchNode,AbstractChannel},time::Number)
-    signal_event = SignalEvent(Float64(time),signal,getstatemanager(target))
-    setpriority(signal_event,signal)
-    schedulesignal(workflow,signal_event)
+    schedulesignal(workflow.coordinator,signal,getstatemanager(target),time,local_time = getlocaltime(target),priority_map = workflow_priority_map)
 end
