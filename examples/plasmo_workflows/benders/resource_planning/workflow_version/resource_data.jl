@@ -151,11 +151,11 @@ for s in S
     end
 end
 
-scenarios = Dict()
+scenarios = []
 for s in S
     facility_cost = Dict()
     facility_demand = Dict()
-    scenarios[s] = Dict(:costs => facility_cost,:demands => facility_demand)
+    push!(scenarios,Dict(:costs => facility_cost,:demands => facility_demand))
     for f in F
         facility_demand[f] = demscens[(s,f)]
         facility_cost[f] = costscens[(s,f)]
