@@ -1,5 +1,3 @@
-# CS219: Homework - 1: Problem 8
-# Jordan Jalving & Ranjeet Kumar
 using JuMP
 using Gurobi
 ################################################################################################################################33
@@ -59,7 +57,7 @@ m_master.solver = GurobiSolver(OutputFlag = 0)
 @variable(m_master, first_stage_cost)   # Cost of unmet target in scenario k
 @variable(m_master, theta >=0)          # Start cuts
 
-@constraint(m_master, state_budget, sum(cost[a]*x[a] for a in baseArcs) + sum(h[i]*z[i] for i in B) <= budget) # State Budget constraint
+@constraint(m_master, state_budget, sum(costscens[a]*x[a] for a in baseArcs) + sum(h[i]*z[i] for i in B) <= budget) # State Budget constraint
 
 @constraint(m_master, balance_first_stage_bases[j in B], w[j] == init[j] + z[j]
             + sum(x[a] for a in filter(arc->arc[2]==j, baseArcs))
@@ -110,8 +108,8 @@ while cutfound
     end
 
     if (theta_mpt - upper_bound < -0.000001)
-        @constraint(m_master, benders, theta >= 1/length(S)*sum(w[j]*dual_BalanceSecondStageOnBases[j,k] for j in B,k in S)
-                                    + 1/length(S)*sum(demscens[k,f]*dual_DemandTargets[f,k] for f in F, k in S) ) #Benders cuts
+        @constraint(m_master, benders, theta >= 1/length(S)*sum(w[j]*dual_BalanceSecondStageOnBases[j,k] for j in B,k in S) +
+        1/length(S)*sum(demscens[k,f]*dual_DemandTargets[f,k] for f in F, k in S) ) #Benders cuts
         cutfound = true;
         ncuts = ncuts + 1;
     end

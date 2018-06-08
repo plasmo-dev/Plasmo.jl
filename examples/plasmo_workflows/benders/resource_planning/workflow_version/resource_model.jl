@@ -1,3 +1,4 @@
+using JuMP
 #Master problem
 function create_master()
     m_master = Model()
@@ -21,7 +22,7 @@ function create_master()
 end
 
 #Function to solve scenario subproblem for a given k and new_capacities; returns the dual variables and optimal objective
-function create_scenario_subproblem(new_w,demand,cost)
+function create_scenario_subproblem(new_w,demands,costs)
     #new_w is the solution i.e. the amount of resources available at each base
     #Create the scenario subproblem k
     m_scenario = Model()
@@ -33,11 +34,11 @@ function create_scenario_subproblem(new_w,demand,cost)
     @variable(m_scenario, y[closeArcs] >= 0) # Transfer of resources from bases to close districts under scenario k
     @variable(m_scenario, unmet_target_cost) # Cost of unmet target in scenario k
 
-    @constraint(m_scenario, balance_second_stage_bases[j in B],q[j] + sum(y[a] for a in filter(arc->arc[1]==j, closeArcs)) == new_w[j]) # balance on base j after second stage transfers under scenario k
+    @constraint(m_scenario, second_stage_balance[j in B],q[j] + sum(y[a] for a in filter(arc->arc[1]==j, closeArcs)) == new_w[j]) # balance on base j after second stage transfers under scenario k
 
-    @constraint(m_scenario, demand_target[f in F],sum(y[a] for a in filter(arc->arc[2]==f, closeArcs)) + u[f] >= demscens[k,f]) # demand target for each district in all scenarios
+    @constraint(m_scenario, demand_target[f in F],sum(y[a] for a in filter(arc->arc[2]==f, closeArcs)) + u[f] >= demands[f]) # demand target for each district in all scenarios
 
-    @constraint(m_scenario, cost_unmet_target, unmet_target_cost == sum(costscens[k,f]*u[f] for f in F)) #unmet demand
+    @constraint(m_scenario, cost_unmet_target, unmet_target_cost == sum(costs[f]*u[f] for f in F)) #unmet demand
 
     @objective(m_scenario, Min, unmet_target_cost)
 end
