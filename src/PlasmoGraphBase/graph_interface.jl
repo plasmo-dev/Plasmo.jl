@@ -161,7 +161,7 @@ is_connected(basegraph::AbstractPlasmoGraph,edge1::AbstractPlasmoEdge,edge2::Abs
 ##############################################################################
 # Attributes
 ##############################################################################
-#add or remove attributes from graphs, nodes, and edges
+#add or remove attributes from graphs and nodes
 function setattribute(graph::AbstractPlasmoGraph,attribute::Symbol,value)
     basegraph = getbasegraph(graph)
     basegraph.attributes[attribute] = value

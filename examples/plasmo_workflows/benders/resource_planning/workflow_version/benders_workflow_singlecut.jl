@@ -1,6 +1,6 @@
 using JuMP
 using Gurobi
-using Plasmo.Workflows
+using Plasmo.PlasmoWorkflows
 
 # Benders Single Cut
 # NOTE: All scenarios must complete to generate a cut (potential bottleneck)
@@ -124,15 +124,15 @@ end
 
 #Create the workflow
 workflow = Workflow()
-set_terminate(workflow,check_terminate)
+#set_terminate(workflow,check_terminate)
 master_node = add_dispatch_node!(workflow)
-addattribute!(master_node,:model,create_master()) #the master model
-addattribute!(master_node,:scenarios_sent,0)      #how many scenarios have been sent
-addattribute!(master_node,:scenarios_complete,0)  #how many scenarios have been completed
-addattribute!(master_node,:scenarios,scenarios)   #set of scenarios
-addattribute!(master_node,:scenario_map,Dict())   #map dual attributes to scenario attributes
-master_duals = addattribute!(master_node,:dual_attributes,[])
-addattribute!(master_node,:dual_updates,[])
+addworkflowattribute!(master_node,:model,create_master()) #the master model
+setattribute(master_node,:scenarios_sent,0)      #how many scenarios have been sent
+setattribute(master_node,:scenarios_complete,0)  #how many scenarios have been completed
+setattribute(master_node,:scenarios,scenarios)   #set of scenarios
+setattribute(master_node,:scenario_map,Dict())   #map dual attributes to scenario attributes
+master_duals = setattribute(master_node,:dual_attributes,[])
+setattribute(master_node,:dual_updates,[])
 
 #solution attribute gets communicated
 addworkflowattribute!(master_node,:solution)  #master node's current solution to pass to sub nodes
@@ -169,19 +169,3 @@ for i = 1:n_subnodes
     setcommunicateorder(workflow,c3,c2)  #c3 will communicate before c2 if they trigger at the same time
 
 end
-
-# Syntax ideas
-# Action puts node in (:computing action) state
-# node1 = add_dispatch_node!(workflow)
-# node2 = add_dispatch_node!(workflow)  #The node can be spawned
-# addaction!(node2,func,args...)  #What signal triggers this action?
-# @attribute node2 x
-# @attribute node2 y
-# @action node2 (attribute_received,x) begin
-#    println(x)
-#    return true  #action result gets set to true
-# end
-# @connect channel1 node1[:x] => node2[:x] continuous start = 0 , schedule_delay = 0.1
-# OR
-# @connect channel1 node1[:x] => node2[:x] action = (send_scenarios , y) continuous start = 0 , schedule_delay = 0.1
-# @action node2 (attribute_received,x) (send_scenarios, y)

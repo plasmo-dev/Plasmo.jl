@@ -35,11 +35,11 @@ add_dispatch_node!,add_continuous_node!,
 set_node_task,set_node_task_arguments,set_node_compute_time,
 
 #Attributes
-addattribute!,
+addworkflowattribute!,
 
-getattribute,setattribute,
+getworkflowattribute,setworkflowattribute,
 
-getattributes,
+getworkflowattributes,
 
 getlocalvalue,getglobalvalue,getvalue,
 

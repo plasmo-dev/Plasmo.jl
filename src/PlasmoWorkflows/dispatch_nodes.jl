@@ -40,7 +40,7 @@ function add_dispatch_node!(workflow::Workflow;continuous = false, schedule_dela
 
     addtransition!(state_manager,State(:synchronizing),Signal(:synchronized),State(:idle))  #Node is complete
     #result attribute update
-    result_attribute = getattribute(node,:result)
+    result_attribute = getworkflowattribute(node,:result)
     addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,result_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [result_attribute]))
 
 
@@ -67,7 +67,7 @@ function add_dispatch_node!(workflow::Workflow;continuous = false, schedule_dela
 end
 
 #Add an attribute.  Update node transitions for when attributes are added.
-function addattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[],execute_on_receive = true)
+function addworkflowattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[],execute_on_receive = true)
     workflow_attribute = Attribute(node,label,attribute)
     node.attributes[label] = workflow_attribute
     #Attributes can be updated when a node is in a synchronizing state
@@ -83,7 +83,7 @@ function addattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_n
     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
 end
-addattribute!(node::DispatchNode,label::Symbol;update_notify_targets = SignalTarget[]) = addattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
+addworkflowattribute!(node::DispatchNode,label::Symbol;update_notify_targets = SignalTarget[]) = addattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
 
 # function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets = SignalTarget[])
 #     workflow_attribute = Attribute(node,label)
@@ -94,14 +94,14 @@ addattribute!(node::DispatchNode,label::Symbol;update_notify_targets = SignalTar
 #     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
 # end
 
-function PlasmoGraphBase.addattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
+function addworkflowattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
     for (key,value) in att_dict
         addattribute!(node,key,value,execute_on_receive = execute_on_receive)
     end
 end
-PlasmoGraphBase.getattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
-PlasmoGraphBase.getattributes(node::DispatchNode) = node.attributes
-PlasmoGraphBase.setattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
+getworkflowattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
+getworkflowattributes(node::DispatchNode) = node.attributes
+setworkflowattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
 
 # function getconnectedattributes(node::DispatchNode)
 #     for
