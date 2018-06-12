@@ -30,7 +30,7 @@ end
 function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node_task::NodeTask)
     node = getnode(node_task)
     run!(node_task)
-    updateattribute(node,:result,get(node_task.result))
+    updateattribute(node,Attribute(:result,node_task),get(node_task.result))
     node.state_manager.local_time = now(workflow) + node_task.compute_time
     return [Pair(Signal(:complete),0)]
 #catch #which error?

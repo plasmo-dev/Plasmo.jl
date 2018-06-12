@@ -107,15 +107,15 @@ workflow = Workflow()
 #set_terminate(workflow,check_terminate)
 master_node = add_dispatch_node!(workflow)
 setattribute(master_node,:model,create_master()) #the master model
-setattribute(master_node,:scenarios_out,0)      #how many scenarios have been sent
-setattribute(master_node,:scenarios,scenarios)   #set of scenarios
+setattribute(master_node,:scenarios_out,0)       #how many scenarios have been sent
+setattribute(master_node,:scenarios,scenarios)   #set of scenarios to dish out
 
 master_duals = setattribute(master_node,:dual_attributes,[])  #Array of the dual attributes to receive
 setattribute(master_node,:dual_updates,[])                    #Array of all dual updates received
 
 #solution attribute gets communicated
 @attribute(master_node,solution)  #master node's current solution to pass to sub nodes
-@nodetask(master_node, run_master, args = master_node) #triggered_by = ....   #Give attribute updates that will trigger the action.  Sets up transition.
+@nodetask(master_node, run_master(master_node)) #triggered_by = ....   #Give attribute updates that will trigger the action.  Sets up transition.
 schedulesignal(workflow,(:execute,master_node[:run_master]),0.0)  #figures out the target from the action
 
 #Assume we have 3 processors to do subproblems
@@ -127,21 +127,27 @@ for i = 1:n_subnodes
     @attribute(sub_node, scenario)
     @attribute(sub_node, sub_result)
     #Receiving an update to the scenario will trigger this action
-    subnode_action = @action(subnode, solve_subproblem, args = subnode, triggered_by = scenario, schedule_delay = 0)  #Signal = (execute run_subproblem)
-
+    subnode_action = @nodetask(subnode, solve_subproblem(subnode), triggered_by = scenario)  #Signal = (execute run_subproblem)
 
     #Add attributes to master for each subnode
     scenario = @attribute(master_node)    #scenario channel on master
-    master_sub = @attribute(master_node) #dual channel on master
-    @nodetask(master_node, update_duals,args = (workflow,master_node,master_sub,scenario), triggered_by = master_sub)
-    #@action(master_node,update_duals(workflow,master_node,master_sub,scenario),triggered_by = master_sub)
+    master_sub = @attribute(master_node)  #dual channel on master
+
+    #Create a different node task for each subnode update
+    @nodetask(master_node, update_duals(workflow,master_node,master_sub,scenario), triggered_by = master_sub)  #Creates transition on master_node.  Triggered by receiving the master_sub attribute
+
+    #Alternative syntax -- Preferred
+    #@nodetask(master_node,update_duals(workflow,master_node,master_sub,scenario),triggered_by = master_sub)
+
     push!(master_duals,master_sub)         #Keep an array of all the dual attributes on the master
 
     #Connect the master attribute to the subnode attribute.  If the master attribute updates, it will send the result after synchronization
-    c1 = @connect(workflow, master_node[:solution] => sub_node[:solution], comm_delay = 0)  #no action
+    c1 = @connect(workflow, master_node[:solution] => sub_node[:solution], comm_delay = 0)  #no action taken
     c2 = @connect(workflow, scenario => sub_node[:scenario], comm_delay = 0)                #action = solve_subproblem
-    @connect(workflow, sub_node[:sub_result] => master_sub, comm_delay = 0)                           #action = update_duals
+    @connect(workflow, sub_node[:sub_result] => master_sub, comm_delay = 0)                 #action = update_duals
 
-    #Maintain a priority mapping
+    #@connect(workflow, sub_node[:sub_result] => master_sub, triggers = update_duals())
+
+    #Maintain a priority mapping (This is a fairly standard practice)
     setpriority(workflow,c1,c2)  #A solution will communicate before a scenario if they happen at the same time
 end
