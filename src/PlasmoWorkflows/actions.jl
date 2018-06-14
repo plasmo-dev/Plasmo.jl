@@ -27,14 +27,13 @@ function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::A
 end
 
 #NOTE New idea: Nodes can have multiple tasks
-function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node_task::NodeTask)
-    node = getnode(node_task)
+function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode,node_task::NodeTask)
     run!(node_task)
     updateattribute(node,Attribute(:result,node_task),get(node_task.result))
     node.state_manager.local_time = now(workflow) + node_task.compute_time
-    return [Pair(Signal(:complete),0)]
+    return [Pair(Signal(:complete,node_task),0)]
 #catch #which error?
-    return [Pair(Signal(:error),0)]
+    return [Pair(Signal(:error,node_task),0)]
 #end
 end
 
