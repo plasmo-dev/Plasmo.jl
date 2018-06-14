@@ -21,6 +21,8 @@ getlocalvalue(attribute::Attribute) = attribute.local_value
 getglobalvalue(attribute::Attribute) = attribute.global_value
 getvalue(attribute::Attribute) = getlocalvalue(attribute)
 
+updateattribute(attribute::Attribute,value::Any) = attribute.local_value = value
+
 isoutconnected(attribute::Attribute) = length(attribute.out_channels) > 0
 isinconnected(attribute::Attribute) = length(attribute.in_channels) > 0
 

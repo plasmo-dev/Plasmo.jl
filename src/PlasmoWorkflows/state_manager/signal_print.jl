@@ -8,7 +8,7 @@ print(io::IO, signal::AbstractSignal) = print(io, string(signal))
 show(io::IO, signal::AbstractSignal) = print(io,signal)
 
 function string(state::State)
-    string(state.label)
+    string(state.label)*" "*string(state.value)
 end
 print(io::IO, state::State) = print(io, string(state))
 show(io::IO, state::State) = print(io,state)

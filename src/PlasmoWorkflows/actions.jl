@@ -30,7 +30,7 @@ end
 function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode,node_task::NodeTask)
     run!(node_task)
     result_attribute = getworkflowattribute(node,getlabel(node_task))
-    updateattribute(node,result_attribute,get(node_task.result))        #updates local value
+    updateattribute(result_attribute,get(node_task.result))        #updates local value
     node.state_manager.local_time = now(workflow) + node_task.compute_time
     return [Pair(Signal(:complete,node_task),0)]
 #catch #which error?
@@ -45,7 +45,7 @@ function synchronize_node_task(signal::AbstractSignal,node::AbstractDispatchNode
 
     #for (key,attribute) in getattributes(node)
     #TODO attribute update detection
-    for (key,attribute) in getworkflowattributes(node)
+    for (key,attribute) in node.attributes
         if isoutconnected(attribute)
             push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
         end

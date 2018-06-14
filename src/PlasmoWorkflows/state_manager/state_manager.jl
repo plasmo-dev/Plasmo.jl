@@ -3,6 +3,7 @@ struct State
     value::Any
 end
 State() = State(:null,nothing)
+State(label::Symbol) = State(label,nothing)
 #State(label::Symbol) = State(label)
 #TODO Define an ANY state
 ==(state1::State,state2::State) = ((state1.label == state2.label && state1.value == state2.value) || state1.label == :Any || state2.label == :Any)
@@ -111,6 +112,11 @@ end
 setstate(SM::StateManager,state::Symbol) = setstate(SM,State(state))
 
 function addstates!(SM::StateManager,states::Vector{State})
+    append!(SM.states,states)
+end
+
+function addstates!(SM::StateManager,states::Vector{Symbol})
+    states = [State(state) for state in states]
     append!(SM.states,states)
 end
 

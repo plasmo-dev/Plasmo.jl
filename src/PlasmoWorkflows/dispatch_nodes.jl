@@ -10,6 +10,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     state_manager::StateManager
     #last_result::Nullable{Any}  Hard to implement this.  Not sure if it's useful
     action_triggers::Dict{Attribute,NodeTask}
+    task_results::Dict{NodeTask,Attribute}
 
     function DispatchNode()
         node = new()
@@ -21,6 +22,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
         node.node_tasks = Dict{Symbol,NodeTask}()
         node.state_manager = StateManager()
         node.action_triggers = Dict{Attribute,NodeTask}()
+        node.task_results = Dict{NodeTask,Attribute}()
         #setstates(node.state_manager,[:null,:idle,:scheduled,:computing,:synchronizing,:error,:inactive])
         addstates!(node.state_manager,[:null,:idle,:error,:inactive])
         setstate(node.state_manager,:idle)
@@ -41,17 +43,23 @@ function add_dispatch_node!(workflow::Workflow)#;continuous = false)
     return node
 end
 
-function addnodetask!(node::DispatchNode,node_task::NodeTask;continuous = false,triggered_by_attributes = Vector{Attribute}())
+function addnodetask!(workflow::Workflow,node::DispatchNode,label::Symbol,func::Function;args = (),kwargs = Dict(),compute_time = 0.0,schedule_delay = 0.0,continuous = false,triggered_by_attributes = Vector{Attribute}())
+    node_task = NodeTask(label,func,args = args,kwargs = kwargs,compute_time = compute_time,schedule_delay = schedule_delay)
+    addnodetask!(workflow,node,node_task,continuous = continuous,triggered_by_attributes = triggered_by_attributes)
+    return node_task
+end
+
+function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;continuous = false,triggered_by_attributes = Vector{Attribute}())
     state_manager = getstatemanager(node)
 
     #Add task states
-    addstates(node.state_manager,[(:scheduled,node_task),(:computing,node_task),(:synchronizing,node_task)])
+    addstates!(node.state_manager,[State(:scheduled,node_task),State(:computing,node_task),State(:synchronizing,node_task)])
 
     #Set suppressed signals by default
     suppresssignal!(state_manager,Signal(:scheduled,node_task))
 
     #Add the node transitions for this task
-    addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:scheduled,node_task), action = TransitionAction(schedule_node,[node_task]))  #no target for produced signal (so it won't schedule)
+    addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]))  #no target for produced signal (so it won't schedule)
     addtransition!(state_manager,State(:scheduled,node_task),Signal(:execute,node_task),State(:computing,node_task),
     action = TransitionAction(run_node_task,[workflow,node,node_task]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
     addtransition!(state_manager,State(:idle),Signal(:execute,node_task),State(:computing,node_task),
@@ -61,11 +69,12 @@ function addnodetask!(node::DispatchNode,node_task::NodeTask;continuous = false,
     addtransition!(state_manager,State(:synchronizing,node_task),Signal(:synchronized,node_task),State(:idle))  #Node is complete
 
     #Create a task result attribute
-    result_attribute = addworkflowattribute!(node,Symbol(string(node_task.label)*"result"))
+    result_attribute = addworkflowattribute!(node,Symbol(string(node_task.label)))
+    node.task_results[node_task] = result_attribute
 
     #Add attribute transition for this task
     for workflow_attribute in getworkflowattributes(node)
-        addtransition!(node.state_manager,State(:synchronizing,nodetask),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing,node_task), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
+        addtransition!(node.state_manager,State(:synchronizing,node_task),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing,node_task), action = TransitionAction(synchronize_attribute, [workflow_attribute]))#targets = update_notify_targets)
     end
 
     #Add optional continuous behavior
@@ -86,6 +95,9 @@ function addnodetask!(node::DispatchNode,node_task::NodeTask;continuous = false,
         unsuppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
         addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node,[node_task]),targets = [node.state_manager])
     end
+
+    node.node_tasks[getlabel(node_task)] = node_task
+
 end
 
 #Make a node task run continuously based on its schedule delay
@@ -101,8 +113,8 @@ function addworkflowattribute!(node::DispatchNode,label::Symbol,attribute::Any; 
     node.attributes[label] = workflow_attribute
 
     #Attribute can be updated when a node is in a synchronizing state for any task
-    for nodetask in getnodetasks(node)
-        addtransition!(node.state_manager,State(:synchronizing,nodetask),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing,node_task), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
+    for node_task in getnodetasks(node)
+        addtransition!(node.state_manager,State(:synchronizing,node_task),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing,node_task), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
     end
 
     #TODO Signal Suppression
@@ -120,9 +132,9 @@ function addworkflowattribute!(node::DispatchNode,label::Symbol,attribute::Any; 
     #Update an attribute manually from the idle state
     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
+    return workflow_attribute
 end
 addworkflowattribute!(node::DispatchNode,label::Symbol;update_notify_targets = SignalTarget[]) = addworkflowattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
-
 # function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets = SignalTarget[])
 #     workflow_attribute = Attribute(node,label)
 #     node.attributes[label] = workflow_attribute
@@ -131,15 +143,22 @@ addworkflowattribute!(node::DispatchNode,label::Symbol;update_notify_targets = S
 #     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
 #     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
 # end
-
 function addworkflowattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
     for (key,value) in att_dict
         addattribute!(node,key,value,execute_on_receive = execute_on_receive)
     end
 end
 getworkflowattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
-getworkflowattributes(node::DispatchNode) = node.attributes
+getworkflowattributes(node::DispatchNode) = values(node.attributes)
 setworkflowattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
+
+
+
+getnodetasks(node::DispatchNode) = values(node.node_tasks)
+getnodetask(node::DispatchNode,label::Symbol) = node.node_tasks[label]
+
+getnoderesult(node::DispatchNode,node_task::NodeTask) = node.task_results[node_task]
+getnoderesult(node::DispatchNode,label::Symbol) = node.task_results[getnodetask(node,label)]
 
 ###########################
 # Node functions
@@ -192,7 +211,7 @@ function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute
 
     #Default connection behavior
     comm_channel = add_dispatch_edge!(workflow,attribute1,attribute2,comm_delay = comm_delay,continuous = continuous,
-    schedule_delay = schedule_delay,start_time = start_time,trigger_task = trigger_task)
+    schedule_delay = schedule_delay,start_time = start_time)
 
     source_node = getnode(attribute1)
     receive_node = getnode(attribute2)

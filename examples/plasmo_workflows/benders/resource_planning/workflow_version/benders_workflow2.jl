@@ -41,10 +41,8 @@ function update_duals(workflow::Workflow,node::DispatchNode,sub_result::Attribut
             node[:scenarios_out] += 1
         end
     end
-
     #Actions can have pre-defined labels
     #setnodecomputetime(node,(:update_dual,sub_result),1.0)
-
     return true
 end
 

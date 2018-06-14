@@ -34,6 +34,8 @@ add_dispatch_node!,add_continuous_node!,
 
 set_node_task,set_node_task_arguments,set_node_compute_time,
 
+addnodetask!,getnodetask,getnodetasks,
+
 #Attributes
 addworkflowattribute!,
 
@@ -41,14 +43,14 @@ getworkflowattribute,setworkflowattribute,
 
 getworkflowattributes,
 
-getlocalvalue,getglobalvalue,getvalue,
+getlocalvalue,getglobalvalue,getvalue,getnoderesult,
 
 #Workflow
 getcurrenttime,getnexttime,getnexteventtime,initialize,execute!,getqueue,
 
 #Dispatch Nodes
 set_node_function,set_node_compute_time,set_node_function_arguments,set_node_function_kwargs,
-getresult,setinputs,getlocaltime,setinitialsignal,
+getresult,setinputs,getlocaltime,setinitialsignal,getlabel,
 
 #Communication Edges
 connect!,setdelay,getdelay
@@ -81,7 +83,7 @@ include("state_manager/signal_print.jl")
 #Workflow Graph
 
 #Node Tasks
-include("dispatch_function.jl")
+include("node_task.jl")
 
 #Workflow Attributes
 include("attribute.jl")
