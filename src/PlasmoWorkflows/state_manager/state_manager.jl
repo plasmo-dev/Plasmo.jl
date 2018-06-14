@@ -101,6 +101,7 @@ addsignal!(SM::StateManager,signal::Symbol) = addsignal!(SM,Signal(signal))
 addstate!(SM::StateManager,state::State) = state in SM.states? nothing : push!(SM.states,state)
 addstate!(SM::StateManager,state::Symbol) = addstate!(SM,State(state))
 suppresssignal!(SM::StateManager,signal::Signal) = push!(SM.suppressed_signals,signal)
+unsuppresssignal!(SM::StateManager,signal::Signal) = filter!(x -> x != signal,SM.suppressed_signals)
 
 function setstate(SM::StateManager,state::State)
     @assert state in SM.states
@@ -108,6 +109,10 @@ function setstate(SM::StateManager,state::State)
 end
 
 setstate(SM::StateManager,state::Symbol) = setstate(SM,State(state))
+
+function addstates!(SM::StateManager,states::Vector{State})
+    append!(SM.states,states)
+end
 
 function setstates(SM::StateManager,states::Vector{State})
     @assert SM.current_state in states

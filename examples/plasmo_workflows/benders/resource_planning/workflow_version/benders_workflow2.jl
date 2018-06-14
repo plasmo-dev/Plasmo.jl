@@ -34,7 +34,6 @@ function update_duals(workflow::Workflow,node::DispatchNode,sub_result::Attribut
         #scheduleexecute(workflow,getnodetask(node,:solve_master),0.0)
         node[:dual_updates] = []
         node[:objective_updates] = []
-
     else #Need to send out a new scenario
         scenarios_out = node[:scenarios_out]
         if scenarious_out < length(scenarios)
@@ -145,7 +144,7 @@ for i = 1:n_subnodes
     master_sub = @attribute(master_node)  #dual channel on master
 
     #Create a different node task for each subnode update
-    @nodetask(master_node, update_duals(workflow,master_node,master_sub,scenario), triggered_by = master_sub)  #Creates transition on master_node.  Triggered by receiving the master_sub attribute
+    @nodetask(master_node, update_duals(workflow,master_node,master_sub,scenario), triggered_by_attributes = [master_sub])  #Creates transition on master_node.  Triggered by receiving the master_sub attribute
 
     push!(master_duals,master_sub)        #Keep an array of all the dual attributes on the master
 

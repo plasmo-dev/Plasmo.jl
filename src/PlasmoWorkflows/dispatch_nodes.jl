@@ -1,29 +1,28 @@
 #A discrete node gets scheduled on edge triggering
 mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     basenode::BasePlasmoNode
-    #attributes::Vector{Attribute}
     attributes::Dict{Symbol,Attribute}
     priority::Int                               #Priority of signals this node produces
-    local_time::Float64                         #The node's local clock.  Gets synchronized with the workflow clock on triggers
+    # local_time::Float64  #Moved to StateManager                         #The node's local clock.  Gets synchronized with the workflow clock on triggers
     # compute_time::Float64                       #The time the node takes to complete its task.
     # schedule_delay::Float64
     node_tasks::Dict{Symbol,NodeTask}              #the actual function (tasks) to call
     state_manager::StateManager
-    last_result::Nullable{Any}
+    #last_result::Nullable{Any}  Hard to implement this.  Not sure if it's useful
+    action_triggers::Dict{Attribute,NodeTask}
 
     function DispatchNode()
         node = new()
         node.basenode = BasePlasmoNode()
         #result_attribute = Attribute(node,:result)
         node.attributes = Dict{Symbol,Attribute}()
-        node.last_result = nothing
-        node.local_time = 0
-        #node.compute_time = 0
-        #node.schedule_delay = 0
+        #node.last_result = nothing
+        #node.local_time = 0
         node.node_tasks = Dict{Symbol,NodeTask}()
         node.state_manager = StateManager()
+        node.action_triggers = Dict{Attribute,NodeTask}()
         #setstates(node.state_manager,[:null,:idle,:scheduled,:computing,:synchronizing,:error,:inactive])
-        addstates(node.state_manager,[:null,:idle,:error,:inactive])
+        addstates!(node.state_manager,[:null,:idle,:error,:inactive])
         setstate(node.state_manager,:idle)
         return node
     end
@@ -31,79 +30,68 @@ end
 PlasmoGraphBase.create_node(graph::Workflow) = DispatchNode()
 
 #Dispatch node runs when it gets communication updates
-function add_dispatch_node!(workflow::Workflow;continuous = false)
+function add_dispatch_node!(workflow::Workflow)#;continuous = false)
     node = add_node!(workflow)
-    #node.schedule_delay = schedule_delay
     state_manager = node.state_manager
-
     addtransition!(state_manager,State(:idle),Signal(:error),State(:error))
     addtransition!(state_manager,State(:idle),Signal(:disable),State(:inactive))
-    # addtransition!(state_manager,State(:idle),Signal(:schedule),State(:scheduled), action = TransitionAction(schedule_node,[node]))  #no target for produced signal (so it won't schedule)
-    # addtransition!(state_manager,State(:scheduled),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[workflow,node]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
-    # addtransition!(state_manager,State(:idle),Signal(:execute),State(:computing), action = TransitionAction(run_node_task,[workflow,node]),targets = [node.state_manager])
-    # addtransition!(state_manager,State(:computing),Signal(:complete),State(:synchronizing), action = TransitionAction(synchronize_node,[node]), targets = [node.state_manager])
-
-    #Node has a synchronizing state
-    # addtransition!(state_manager,State(:synchronizing),Signal(:synchronized),State(:idle))  #Node is complete
-
-    # result_attribute = getworkflowattribute(node,:result)
-    # addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,result_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [result_attribute]))
-
-
-    # for state in [State(:idle),State(:computing),State(:synchronizing)]
-    #     addtransition!(state_manager,state,Signal(:error),State(:error))
-    #     addtransition!(state_manager,state,Signal(:disable),State(:inactive))
-    # end
-
-    # if continuous == true
-    #     #NOTE Check the node compute time
-    #     transition = gettransition(state_manager,State(:synchronizing),Signal(:synchronized))
-    #     settransitionaction(transition,TransitionAction(schedule_node,[node]))
-    #     addbroadcasttarget!(transition,state_manager)
-    #
-    #     #Don't respond to comm_received
-    #
-    # end
 
     #Set suppressed signals by default
-    #suppresssignal!(state_manager,Signal(:scheduled))
-
+    suppresssignal!(state_manager,Signal(:scheduled,:Any))
     return node
 end
 
-function addnodetask!(node::DispatchNode,node_task::NodeTask;continuous = false)
+function addnodetask!(node::DispatchNode,node_task::NodeTask;continuous = false,triggered_by_attributes = Vector{Attribute}())
     state_manager = getstatemanager(node)
+
+    #Add task states
     addstates(node.state_manager,[(:scheduled,node_task),(:computing,node_task),(:synchronizing,node_task)])
+
+    #Set suppressed signals by default
+    suppresssignal!(state_manager,Signal(:scheduled,node_task))
+
     #Add the node transitions for this task
     addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:scheduled,node_task), action = TransitionAction(schedule_node,[node_task]))  #no target for produced signal (so it won't schedule)
-    addtransition!(state_manager,State(:scheduled,node_task),Signal(:execute,node_task),State(:computing,node_task), action = TransitionAction(run_node_task,[workflow,node,node_task]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
-    addtransition!(state_manager,State(:idle),Signal(:execute,node_task),State(:computing,node_task), action = TransitionAction(run_node_task,[workflow,node]),targets = [node.state_manager])
-    addtransition!(state_manager,State(:computing,node_task),Signal(:complete,node_task),State(:synchronizing), action = TransitionAction(synchronize_node,[node]), targets = [node.state_manager])
+    addtransition!(state_manager,State(:scheduled,node_task),Signal(:execute,node_task),State(:computing,node_task),
+    action = TransitionAction(run_node_task,[workflow,node,node_task]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
+    addtransition!(state_manager,State(:idle),Signal(:execute,node_task),State(:computing,node_task),
+    action = TransitionAction(run_node_task,[workflow,node,node_task]),targets = [node.state_manager])
+    addtransition!(state_manager,State(:computing,node_task),Signal(:complete,node_task),State(:synchronizing,node_task),
+    action = TransitionAction(synchronize_node_task,[node,node_task]), targets = [node.state_manager])
     addtransition!(state_manager,State(:synchronizing,node_task),Signal(:synchronized,node_task),State(:idle))  #Node is complete
 
+    #Create a task result attribute
     result_attribute = addworkflowattribute!(node,Symbol(string(node_task.label)*"result"))
 
+    #Add attribute transition for this task
     for workflow_attribute in getworkflowattributes(node)
         addtransition!(node.state_manager,State(:synchronizing,nodetask),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing,node_task), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
     end
-    #addtransition!(node.state_manager,State(:synchronizing,node_task),Signal(:synchronize_attribute,result_attribute),State(:synchronizing,node_task), action = TransitionAction(synchronize_attribute, [result_attribute]))
 
-    #Add continuous behavior
+    #Add optional continuous behavior
     if continuous == true
-        #NOTE Check the node compute time
+        #NOTE Check the node compute time.  Don't remember why I wrote this....
         make_continuous!(node,node_task)
     end
 
-    #Add Error and Disable for these states
+    #Add Error and Disable pathways for these task states
     for state in [State(:scheduled,node_task),State(:computing,node_task),State(:synchronizing,node_task)]
         addtransition!(state_manager,state,Signal(:error),State(:error))
         addtransition!(state_manager,state,Signal(:disable),State(:inactive))
     end
+
+    #Execute this node_task if triggered_by_attribute is received
+    for workflow_attribute in triggered_by_attributes
+        node.action_triggers[workflow_attribute] = node_task
+        unsuppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
+        addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node,[node_task]),targets = [node.state_manager])
+    end
 end
 
+#Make a node task run continuously based on its schedule delay
 function make_continuous!(node::DispatchNode,node_task::NodeTask)
     transition = gettransition(node.state_manager,State(:synchronizing,node_task),Signal(:synchronized,node_task))
-    settransitionaction(transition,TransitionAction(schedule_node,[node,node_task]))
+    settransitionaction(transition,TransitionAction(schedule_node,[node_task]))
     addbroadcasttarget!(transition,node.state_manager)
 end
 
@@ -111,16 +99,24 @@ end
 function addworkflowattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[])#,execute_on_receive = true)
     workflow_attribute = Attribute(node,label,attribute)
     node.attributes[label] = workflow_attribute
-    #Attributes can be updated when a node is in a synchronizing state
+
+    #Attribute can be updated when a node is in a synchronizing state for any task
     for nodetask in getnodetasks(node)
         addtransition!(node.state_manager,State(:synchronizing,nodetask),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing,node_task), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
     end
+
+    #TODO Signal Suppression
+    #Ignore received attributes that don't trigger actions.  Suppress by default.
+    suppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
+
+    #NOTE Old way of setting up attribute triggers
     #If true, schedule the node's task when it receives an attribute
     # if execute_on_receive == true
     #     addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
     # else
     #     suppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
     # end
+
     #Update an attribute manually from the idle state
     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
@@ -144,9 +140,6 @@ end
 getworkflowattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
 getworkflowattributes(node::DispatchNode) = node.attributes
 setworkflowattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
-
-# function getconnectedattributes(node::DispatchNode)
-#     for
 
 ###########################
 # Node functions
@@ -172,7 +165,15 @@ gettransitions(node::AbstractDispatchNode) = gettransitions(node.state_manager)
 getcurrentstate(node::AbstractDispatchNode) = getcurrentstate(node.state_manager)
 
 
-getindex(node::DispatchNode,sym::Symbol) = getattribute(node,sym)
+function getindex(node::DispatchNode,sym::Symbol)
+    if sym in keys(node.attributes)
+        return getworkflowattribute(node,sym)
+    elseif sym in keys(node.basenode.attributes)
+        return getattribute(node,sym)
+    else
+        error("node does not have attribute $sym")
+    end
+end
 
 ##########################
 #Node Task
@@ -186,21 +187,21 @@ set_node_compute_time(node::AbstractDispatchNode,time::Float64) = node.compute_t
 ########################################
 #Connect Nodes with Communication Edges
 ########################################
-function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;comm_delay = 0,schedule_delay = 0,continuous = false,send_attribute_updates = true,start_time = 0)
+function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;send_attribute_updates = true,comm_delay = 0,schedule_delay = 0,continuous = false,start_time = 0)
     #is_connected(workflow,dnode1,dnode2) && throw("communication edge already exists between these nodes")
+
     #Default connection behavior
-    comm_channel = add_dispatch_edge!(workflow,attribute1,attribute2,comm_delay = comm_delay,continuous = continuous, schedule_delay = schedule_delay,send_attribute_updates = send_attribute_updates,
-    start_time = start_time)
+    comm_channel = add_dispatch_edge!(workflow,attribute1,attribute2,comm_delay = comm_delay,continuous = continuous,
+    schedule_delay = schedule_delay,start_time = start_time,trigger_task = trigger_task)
 
     source_node = getnode(attribute1)
     receive_node = getnode(attribute2)
     state_manager = getstatemanager(receive_node)
 
-
-    #broadcast source node transition to the channel
+    #broadcast source node attribute update to the channel
     if send_attribute_updates == true
         for node_task in getnodetasks(source_node)
-            transition_update = gettransition(source_node,State(:synchronizing,node_task),Signal(:synchronize_attribute,attribute1))  #This should return a comm_received signal
+            transition_update = gettransition(source_node,State(:synchronizing,node_task),Signal(:synchronize_attribute,attribute1))  #returns attribute_updated signal
             addbroadcasttarget!(transition_update,comm_channel.state_manager)
         end
     end

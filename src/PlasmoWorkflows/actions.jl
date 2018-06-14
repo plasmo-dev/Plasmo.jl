@@ -7,29 +7,30 @@
 # Node Actions
 #################################
 #Schedule a node to run given a delay
-function schedule_node(signal::AbstractSignal,node::AbstractDispatchNode)
-    delay = getscheduledelay(node)
-    signal_now = Signal(:scheduled)
-    delayed_signal = Signal(:execute)
+function schedule_node_task(signal::AbstractSignal,node_task::NodeTask)
+    delay = getscheduledelay(node_task)
+    signal_now = Signal(:scheduled,node_task)
+    delayed_signal = Signal(:execute,node_task)
     return [Pair(signal_now,0),Pair(delayed_signal,delay)]
 end
 
 #Run a node task
-function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode)
-    #try
-        run!(node.node_task)  #run the computation task
-        setattribute(node,:result,get(node.node_task.result))
-        node.state_manager.local_time = now(workflow) + node.compute_time
-        return [Pair(Signal(:complete),0)]
-    #catch #which error?
-        return [Pair(Signal(:error),0)]
-    #end
-end
+# function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode)
+#     #try
+#         run!(node.node_task)  #run the computation task
+#         setattribute(node,:result,get(node.node_task.result))
+#         node.state_manager.local_time = now(workflow) + node.compute_time
+#         return [Pair(Signal(:complete),0)]
+#     #catch #which error?
+#         return [Pair(Signal(:error),0)]
+#     #end
+# end
 
 #NOTE New idea: Nodes can have multiple tasks
 function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode,node_task::NodeTask)
     run!(node_task)
-    updateattribute(node,Attribute(:result,node_task),get(node_task.result))
+    result_attribute = getworkflowattribute(node,getlabel(node_task))
+    updateattribute(node,result_attribute,get(node_task.result))        #updates local value
     node.state_manager.local_time = now(workflow) + node_task.compute_time
     return [Pair(Signal(:complete,node_task),0)]
 #catch #which error?
@@ -37,18 +38,19 @@ function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::A
 #end
 end
 
-#Schedule synchronization
-function synchronize_node(signal::AbstractSignal,node::AbstractDispatchNode)
-    compute_time = getcomputetime(node)
+#Schedule synchronization after a specific task
+function synchronize_node_task(signal::AbstractSignal,node::AbstractDispatchNode,node_task::NodeTask)
+    compute_time = getcomputetime(node_task)
     return_signals = Vector{Pair{Signal,Float64}}()
 
     #for (key,attribute) in getattributes(node)
-    for (key,attribute) in getattributes(node)
+    #TODO attribute update detection
+    for (key,attribute) in getworkflowattributes(node)
         if isoutconnected(attribute)
             push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
         end
     end
-    push!(return_signals,Pair(Signal(:synchronized),compute_time))
+    push!(return_signals,Pair(Signal(:synchronized,node_task),compute_time))
     return return_signals
 end
 
