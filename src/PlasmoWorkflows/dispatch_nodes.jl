@@ -103,7 +103,7 @@ end
 #Make a node task run continuously based on its schedule delay
 function make_continuous!(node::DispatchNode,node_task::NodeTask)
     transition = gettransition(node.state_manager,State(:synchronizing,node_task),Signal(:synchronized,node_task))
-    settransitionaction(transition,TransitionAction(schedule_node,[node_task]))
+    settransitionaction(transition,TransitionAction(schedule_node_task,[node_task]))
     addbroadcasttarget!(transition,node.state_manager)
 end
 
@@ -147,7 +147,7 @@ addworkflowattribute!(node::DispatchNode,label::Symbol;update_notify_targets = S
 
 function addworkflowattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
     for (key,value) in att_dict
-        addattribute!(node,key,value,execute_on_receive = execute_on_receive)
+        addworkflowattribute!(node,key,value,execute_on_receive = execute_on_receive)
     end
 end
 
@@ -234,6 +234,9 @@ function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute
             addbroadcasttarget!(transition_update,comm_channel.state_manager)
         end
     end
+
+    
+
     #Add receiving node transition
     #Transition: idle + comm_reeived ==> idle, action = received_attribute
     addtransition!(state_manager,State(:idle),Signal(:comm_received,attribute2),State(:idle),action = TransitionAction(receive_attribute,[attribute2]),targets = [receive_node.state_manager])

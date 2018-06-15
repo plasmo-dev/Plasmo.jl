@@ -1,19 +1,20 @@
 #Simple control example with multiple channels, sampling rates, and delays
 using DifferentialEquations
-using Plasmo
+using Plasmo.PlasmoWorkflows
 using Plots
 pyplot()
 
 #A function which solves an ode given a workflow and dispatch node
 function run_ode_simulation(workflow::Workflow,node::DispatchNode)
     a = 1.01; b1 = 1.0;
+
     #NOTE Possibly make this a custom kind of node behavior
     t_start = Float64(getcurrenttime(workflow))   #the node's current time
     t_next = Float64(getnexteventtime(workflow))  #look it up on the queue
     tspan = (t_start,t_next)
 
-    u1 = getvalue(getattribute(node,:u1))
-    x0 = getvalue(getattribute(node,:x0))
+    u1 = getvalue(getworkflowattribute(node,:u1))
+    x0 = node[:x0]
 
     #A linear ode
     f(x,t,p) = a*x + b1*u1
@@ -22,26 +23,26 @@ function run_ode_simulation(workflow::Workflow,node::DispatchNode)
     x = sol.u[end]  #the final output (i.e. x(t_next))
 
     setattribute(node,:x0,x)  #sets the local value for next run
-    setattribute(node,:x,x)
+    updateattribute(node[:x],x)
     #NOTE Might make sense to have non-connected attributes just be data
-    x_history = getvalue(getattribute(node,:x_history))
+    x_history = node[:x_history]
     push!(x_history,Pair(t_next,x))
     setattribute(node,:x_history,x_history)
 
-    set_node_compute_time(node,round(t_next - t_start , 5))
+    setcomputetime(getnodetask(node,:run_simulation),round(t_next - t_start , 5))
     return true  #goes to result
 end
 
 #Calculate a PID control law
 function calc_pid_controller(workflow::Workflow,node::DispatchNode)
 
-    y = getvalue(getattribute(node,:y))  #expecting a single value
-    yset = getvalue(getattribute(node,:yset))
-    K = getvalue(getattribute(node,:K))
-    tauI = getvalue(getattribute(node,:tauI))
-    tauD = getvalue(getattribute(node,:tauD))
-    error_history = getvalue(getattribute(node,:error_history))  #need error history for integral term
-    u_history = getvalue(getattribute(node,:u_history))
+    y = getvalue(getworkflowattribute(node,:y))  #expecting a single value
+    yset = node[:yset]
+    K = node[:K]
+    tauI = node[:tauI]
+    tauD = node[:tauD]
+    error_history = node[:error_history]  #need error history for integral term
+    u_history = node[:u_history]
 
     current_time = getcurrenttime(workflow)
 
@@ -69,9 +70,7 @@ function calc_pid_controller(workflow::Workflow,node::DispatchNode)
     if u < -10
         u = -10
     end
-    setattribute(node,:u,u)
-    # println(u)
-    # println(getvalue(getattribute(node,:u)))
+    updateattribute(node[:u],u)
     push!(u_history,Pair(current_time,u))
     return true
 end
@@ -80,19 +79,20 @@ end
 workflow = Workflow()
 
 #Add the node for the ode simulation
-ode_node = add_dispatch_node!(workflow, continuous = true, schedule_delay = 0)   #dispatch node that will reschedule on synchronization
-addattributes!(ode_node,Dict(:x0 => 0.0,:x_history => Vector{Pair}(),:u1 => 0.0, :u2 => 0.0, :d => 0.0, :x => 0.0),execute_on_receive = false)
-set_node_task(ode_node,run_ode_simulation)
-set_node_task_arguments(ode_node,[workflow,ode_node])
-#setinitialsignal(ode_node,Signal(:execute))
-
-schedulesignal(workflow,Signal(:execute),ode_node,0)
+ode_node = add_dispatch_node!(workflow)#, continuous = true, schedule_delay = 0)   #dispatch node that will reschedule on synchronization
+addworkflowattribute!(ode_node,:x,0.0)
+addworkflowattribute!(ode_node,:u1,0.0)
+addattributes!(ode_node,Dict(:x0 => 0.0,:x_history => Vector{Pair}(),:u1 => 0.0, :x => 0.0))
+task = addnodetask!(workflow,ode_node,:run_simulation,run_ode_simulation,args = [workflow,ode_node],continuous = true, schedule_delay = 0.0)
+schedulesignal(workflow,Signal(:execute,task),ode_node,0)
 
 #Add the node to do PID calculation
 pid_node1 = add_dispatch_node!(workflow)
-addattributes!(pid_node1,Dict(:u => 0, :y => 0,:yset => 2,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:u_history => Vector{Pair}()))
-set_node_task(pid_node1,calc_pid_controller)
-set_node_task_arguments(pid_node1,[workflow,pid_node1])
+addworkflowattribute!(pid_node1,:u,0)
+addworkflowattribute!(pid_node1,:y,0)
+addattributes!(pid_node1,Dict(:yset => 2,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:u_history => Vector{Pair}()))
+addnodetask!(workflow,pid_node1,:control_law,calc_pid_controller,args = [workflow,pid_node1],triggered_by_attributes = [pid_node1[:y]])
+
 
 #e1 will continuously send x --> y (every 0.01 time units)
 e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true, send_attribute_updates = false, comm_delay = 0, schedule_delay = 0.1, start_time = 0.01)
@@ -102,12 +102,12 @@ e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false, comm_dela
 
 #execute the workflow
 executor = SerialExecutor(20)  #creates a termination event at time 20
-execute!(workflow,executor)  #This will intialize the workflow
-
-
+# execute!(workflow,executor)  #This will intialize the workflow
+#
+#
 # #Plot results
-u_history = getvalue(getattribute(pid_node1,:u_history))
-x_history = getvalue(getattribute(ode_node,:x_history))
+u_history = pid_node1[:u_history]
+x_history = ode_node[:x_history]
 
 u_times = [u.first for u in u_history]
 u_actions = [u.second for u in u_history]

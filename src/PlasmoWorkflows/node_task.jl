@@ -10,7 +10,6 @@ mutable struct NodeTask
 end
 NodeTask() = NodeTask(Symbol("nodetask"*string(gensym())),() -> nothing,[],Dict(),nothing,0.0,0.0)
 NodeTask(func::Function) =  NodeTask(Symbol("nodetask"*string(gensym())),func,[],Dict(),nothing,0.0,0.0)
-#NodeTask(label::Symbol,func::Funtion) = NodeTask(label,func,[],Dict(),nothing,0.0,0.0)
 
 function NodeTask(label::Symbol,func::Function;args = [],kwargs = Dict(),compute_time = 0.0,schedule_delay = 0.0)
     node_task = NodeTask(label,func,args,kwargs,nothing,compute_time,schedule_delay)

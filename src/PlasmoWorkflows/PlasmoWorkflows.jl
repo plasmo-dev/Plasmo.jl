@@ -34,7 +34,7 @@ add_dispatch_node!,add_continuous_node!,
 
 set_node_task,set_node_task_arguments,set_node_compute_time,
 
-addnodetask!,getnodetask,getnodetasks,
+addnodetask!,getnodetask,getnodetasks,setcomputetime,
 
 #Attributes
 addworkflowattribute!,
@@ -44,6 +44,8 @@ getworkflowattribute,setworkflowattribute,
 getworkflowattributes,
 
 getlocalvalue,getglobalvalue,getvalue,getnoderesult,
+
+updateattribute,
 
 #Workflow
 getcurrenttime,getnexttime,getnexteventtime,initialize,execute!,getqueue,
