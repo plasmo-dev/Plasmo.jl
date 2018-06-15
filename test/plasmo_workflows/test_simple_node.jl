@@ -23,13 +23,14 @@ task1 = addnodetask!(workflow,w1,:run_w1,simple_func1,args = ["hello from $w1"],
 
 #Add the second workflow node
 w2 = add_dispatch_node!(workflow)
-addnodetask!(workflow,w2,:run_w2,simple_func2,args = [workflow,w2])
+node_task = addnodetask!(workflow,w2,:run_w2,simple_func2,args = [workflow,w2])
 # set_node_task(w2,simple_func2)
 # set_node_task_arguments(w2,[workflow,w2])
 addworkflowattribute!(w2,:x)
+addtrigger!(w2,node_task,w2[:x])
 
 #Connect result from w1 to attribute x in w2.  It takes 1 unit of time to communicate.
-result = getnoderesult(w2,:run_w2)
+result = getnoderesult(w1,:run_w1)
 channel1 = connect!(workflow,result,w2[:x],comm_delay = 1)
 #getdelay(channel1)
 #setinitialsignal(w1,Signal(:execute))

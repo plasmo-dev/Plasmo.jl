@@ -50,7 +50,7 @@ getcurrenttime,getnexttime,getnexteventtime,initialize,execute!,getqueue,
 
 #Dispatch Nodes
 set_node_function,set_node_compute_time,set_node_function_arguments,set_node_function_kwargs,
-getresult,setinputs,getlocaltime,setinitialsignal,getlabel,
+getresult,setinputs,getlocaltime,setinitialsignal,getlabel,addtrigger!,
 
 #Communication Edges
 connect!,setdelay,getdelay

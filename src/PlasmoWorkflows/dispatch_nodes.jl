@@ -93,7 +93,7 @@ function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;
     for workflow_attribute in triggered_by_attributes
         node.action_triggers[workflow_attribute] = node_task
         unsuppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
-        addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node,[node_task]),targets = [node.state_manager])
+        addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
     end
 
     node.node_tasks[getlabel(node_task)] = node_task
@@ -135,6 +135,7 @@ function addworkflowattribute!(node::DispatchNode,label::Symbol,attribute::Any; 
     return workflow_attribute
 end
 addworkflowattribute!(node::DispatchNode,label::Symbol;update_notify_targets = SignalTarget[]) = addworkflowattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
+
 # function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets = SignalTarget[])
 #     workflow_attribute = Attribute(node,label)
 #     node.attributes[label] = workflow_attribute
@@ -143,11 +144,20 @@ addworkflowattribute!(node::DispatchNode,label::Symbol;update_notify_targets = S
 #     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
 #     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
 # end
+
 function addworkflowattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
     for (key,value) in att_dict
         addattribute!(node,key,value,execute_on_receive = execute_on_receive)
     end
 end
+
+function addtrigger!(node::DispatchNode,node_task::NodeTask,workflow_attribute::Attribute)
+    node.action_triggers[workflow_attribute] = node_task
+    unsuppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
+    addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
+end
+
+
 getworkflowattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
 getworkflowattributes(node::DispatchNode) = values(node.attributes)
 setworkflowattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
@@ -197,11 +207,11 @@ end
 ##########################
 #Node Task
 ##########################
-set_node_task(node::AbstractDispatchNode,func::Function) = node.node_task = DispatchFunction(func)
-set_node_task_arguments(node::AbstractDispatchNode,args::Vector{Any}) = node.node_task.args = args
-set_node_task_arguments(node::AbstractDispatchNode,arg::Any) = node.node_task.args = [arg]
-set_node_task_kwargs(node::AbstractDispatchNode,kwargs::Dict{Any,Any}) = node.node_task.kwargs = kwargs
-set_node_compute_time(node::AbstractDispatchNode,time::Float64) = node.compute_time = time
+# set_node_task(node::AbstractDispatchNode,func::Function) = node.node_task = DispatchFunction(func)
+# set_node_task_arguments(node::AbstractDispatchNode,args::Vector{Any}) = node.node_task.args = args
+# set_node_task_arguments(node::AbstractDispatchNode,arg::Any) = node.node_task.args = [arg]
+# set_node_task_kwargs(node::AbstractDispatchNode,kwargs::Dict{Any,Any}) = node.node_task.kwargs = kwargs
+# set_node_compute_time(node::AbstractDispatchNode,time::Float64) = node.compute_time = time
 
 ########################################
 #Connect Nodes with Communication Edges
