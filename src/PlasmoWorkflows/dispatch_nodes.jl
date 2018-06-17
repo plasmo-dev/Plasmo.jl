@@ -11,6 +11,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     #last_result::Nullable{Any}  Hard to implement this.  Not sure if it's useful
     action_triggers::Dict{Attribute,NodeTask}
     task_results::Dict{NodeTask,Attribute}
+    updated_attributes::Vector{Attribute}
 
     function DispatchNode()
         node = new()
@@ -23,6 +24,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
         node.state_manager = StateManager()
         node.action_triggers = Dict{Attribute,NodeTask}()
         node.task_results = Dict{NodeTask,Attribute}()
+        node.updated_attributes = Attribute[]
         #setstates(node.state_manager,[:null,:idle,:scheduled,:computing,:synchronizing,:error,:inactive])
         addstates!(node.state_manager,[:null,:idle,:error,:inactive])
         setstate(node.state_manager,:idle)
@@ -94,6 +96,10 @@ function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;
         node.action_triggers[workflow_attribute] = node_task
         unsuppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
         addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
+
+        #Allow trigger attributes to be received/updated in the scheduled state
+        addtransition!(node.state_manager,State(:scheduled,node_task),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task))
+
     end
 
     node.node_tasks[getlabel(node_task)] = node_task
@@ -235,11 +241,23 @@ function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute
         end
     end
 
-    
+
 
     #Add receiving node transition
     #Transition: idle + comm_reeived ==> idle, action = received_attribute
     addtransition!(state_manager,State(:idle),Signal(:comm_received,attribute2),State(:idle),action = TransitionAction(receive_attribute,[attribute2]),targets = [receive_node.state_manager])
+
+    #Receive an update while the node is still scheduled
+    for node_task in getnodetasks(receive_node)
+        #Allow attributes to be received while in the scheduled state
+        addtransition!(state_manager,State(:scheduled,node_task),Signal(:comm_received,attribute2),State(:scheduled,node_task),action = TransitionAction(receive_attribute,[attribute2]),targets = [receive_node.state_manager])
+
+        #Schedule more executions when another attribute gets updated
+        addtransition!(state_manager,State(:scheduled,node_task),Signal(:attribute_received,attribute2),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [receive_node.state_manager])
+
+    end
+
+
 
     push!(attribute1.out_channels,comm_channel)
     push!(attribute2.in_channels,comm_channel)

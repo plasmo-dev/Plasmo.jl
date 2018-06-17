@@ -57,7 +57,9 @@ end
 
 call!(workflow::Workflow,signal_event::SignalEvent) = call!(workflow.coordinator,signal_event)
 
-workflow_priority_map = Dict(:synchronize_attribute => 0, :scheduled => 0,:synchronized => 1,:comm_sent => 1,:attribute_updated => 2,:comm_received => 2, :communicate => 3,:execute => 4)
+
+workflow_priority_map = Dict(:synchronize_attribute => 0, :scheduled => 0,:synchronized => 1,:attribute_updated => 2,:comm_sent => 3,:comm_received => 4,:attribute_received => 5, :communicate => 5,:execute => 6)
+
 
 function schedulesignal(workflow::Workflow,signal::AbstractSignal,target::Union{AbstractDispatchNode,AbstractChannel},time::Number)
     schedulesignal(workflow.coordinator,signal,getstatemanager(target),time,local_time = getlocaltime(target),priority_map = workflow_priority_map)

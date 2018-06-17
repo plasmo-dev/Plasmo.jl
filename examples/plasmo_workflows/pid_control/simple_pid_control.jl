@@ -1,6 +1,7 @@
 #Simple control example with multiple channels, sampling rates, and delays
 using DifferentialEquations
 using Plasmo.PlasmoWorkflows
+using Plasmo.PlasmoGraphBase
 using Plots
 pyplot()
 
@@ -95,14 +96,14 @@ addnodetask!(workflow,pid_node1,:control_law,calc_pid_controller,args = [workflo
 
 
 #e1 will continuously send x --> y (every 0.01 time units)
-e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true, send_attribute_updates = false, comm_delay = 0, schedule_delay = 0.1, start_time = 0.01)
+e1 = connect!(workflow,ode_node[:x],pid_node1[:y], continuous = true, send_attribute_updates = false, comm_delay = 0, schedule_delay = 0.01, start_time = 0.01)
 
 #e2 will send u --> u1 when u is updated
 e2 = connect!(workflow,pid_node1[:u],ode_node[:u1],continuous = false, comm_delay = 0.01, send_attribute_updates = true)
 
 #execute the workflow
 executor = SerialExecutor(20)  #creates a termination event at time 20
-# execute!(workflow,executor)  #This will intialize the workflow
+execute!(workflow,executor)  #This will intialize the workflow
 #
 #
 # #Plot results

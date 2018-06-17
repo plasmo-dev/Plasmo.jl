@@ -45,11 +45,19 @@ function synchronize_node_task(signal::AbstractSignal,node::AbstractDispatchNode
 
     #for (key,attribute) in getattributes(node)
     #TODO attribute update detection
-    for (key,attribute) in node.attributes
+    for attribute in node.updated_attributes
         if isoutconnected(attribute)
             push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
         end
     end
+    node.updated_attributes = Attribute[]
+
+    # for (key,attribute) in node.attributes
+    #     if isoutconnected(attribute)
+    #         push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
+    #     end
+    # end
+
     push!(return_signals,Pair(Signal(:synchronized,node_task),compute_time))
     return return_signals
 end

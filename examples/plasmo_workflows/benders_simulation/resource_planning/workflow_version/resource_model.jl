@@ -41,4 +41,6 @@ function create_scenario_subproblem(new_w,demands,costs)
     @constraint(m_scenario, cost_unmet_target, unmet_target_cost == sum(costs[f]*u[f] for f in F)) #unmet demand
 
     @objective(m_scenario, Min, unmet_target_cost)
+
+    return m_scenario
 end

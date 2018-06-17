@@ -24,7 +24,7 @@ getsignals,getstates,getinitialsignal,getcurrentstate,gettransitionfunction,gett
 
 #WORKFLOWS
 
-Workflow, DispatchNode, CommunicationEdge,
+Workflow, DispatchNode, CommunicationEdge,Attribute,
 
 #Workflow functions
 

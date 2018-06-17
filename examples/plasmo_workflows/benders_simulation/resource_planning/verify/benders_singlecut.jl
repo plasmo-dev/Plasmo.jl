@@ -66,6 +66,7 @@ m_master.solver = GurobiSolver(OutputFlag = 0)
 @objective(m_master, Min, theta)
 
 ##################################################################################################################
+tic()
 
 dual_DemandTarget = Dict()
 #Now starting the Benders iterations
@@ -122,3 +123,4 @@ while cutfound
         break;
     end
 end
+println(toc())
