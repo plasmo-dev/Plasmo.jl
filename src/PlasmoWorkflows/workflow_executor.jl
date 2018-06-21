@@ -6,7 +6,7 @@ mutable struct SerialExecutor <: AbstractExecutor
     visits::Dict{AbstractDispatchNode,Int}  #number of times each node has been computed
     final_time::Number
 end
-SerialExecutor() = SerialExecutor(Dict{AbstractDispatchNode,Int}(),100)
+SerialExecutor() = SerialExecutor(Dict{AbstractDispatchNode,Int}(),200)
 SerialExecutor(time) = SerialExecutor(Dict{AbstractDispatchNode,Int}(),time)
 
 #This is the main execution method for an executor

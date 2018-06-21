@@ -2,8 +2,9 @@ using JuMP
 using Gurobi
 using Plasmo.PlasmoWorkflows
 
-# Benders Single Cut
-# NOTE: All scenarios must complete to generate a cut (potential bottleneck)
+#NOTE: This is an old version of the benders simulation before I realized that dispatch nodes need to have multiple tasks
+#NOTE: This example will not work.
+
 
 #Import problem data
 #TODO Modify for workflow
