@@ -23,14 +23,21 @@ function execute!(coordinator::SignalCoordinator,executor::AbstractExecutor;prio
     while true
         try
             step(coordinator,executor,priority_map = priority_map)             #step through the priority queue
+
+            # if isa(result,StopWorkflow())
+            #     throw(result)
+            # end
+
             if coordinator.time >= executor.final_time && coordinator.time != 0
                 throw(StopWorkflow())
             end
+
             #TODO Check termination conditions
 
         catch err
             if isa(err,StopWorkflow)
-                println("Execution complete")
+                println(err)
+                println("Execution complete: ",err.value)
                 break
             else
                 println("Found error")

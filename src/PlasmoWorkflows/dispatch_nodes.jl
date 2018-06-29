@@ -55,17 +55,22 @@ function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;
     state_manager = getstatemanager(node)
 
     #Add task states
-    addstates!(node.state_manager,[State(:scheduled,node_task),State(:computing,node_task),State(:synchronizing,node_task)])
-
+    #addstates!(node.state_manager,[State(:scheduled,node_task),State(:computing,node_task),State(:synchronizing,node_task)])
+    addstates!(node.state_manager,[State(:computing,node_task),State(:synchronizing,node_task)])
     #Set suppressed signals by default
     suppresssignal!(state_manager,Signal(:scheduled,node_task))
 
     #Add the node transitions for this task
-    addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]))  #no target for produced signal (so it won't schedule)
-    addtransition!(state_manager,State(:scheduled,node_task),Signal(:execute,node_task),State(:computing,node_task),
-    action = TransitionAction(run_node_task,[workflow,node,node_task]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
+    #addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]))  #no target for produced signal (so it won't schedule)
+    addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:idle), action = TransitionAction(schedule_node_task,[node_task]))  #no target for produced signal (so it won't schedule)
+
+
+    # addtransition!(state_manager,State(:scheduled,node_task),Signal(:execute,node_task),State(:computing,node_task),
+    # action = TransitionAction(run_node_task,[workflow,node,node_task]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
+
     addtransition!(state_manager,State(:idle),Signal(:execute,node_task),State(:computing,node_task),
     action = TransitionAction(run_node_task,[workflow,node,node_task]),targets = [node.state_manager])
+
     addtransition!(state_manager,State(:computing,node_task),Signal(:complete,node_task),State(:synchronizing,node_task),
     action = TransitionAction(synchronize_node_task,[node,node_task]), targets = [node.state_manager])
     addtransition!(state_manager,State(:synchronizing,node_task),Signal(:synchronized,node_task),State(:idle))  #Node is complete
@@ -86,7 +91,8 @@ function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;
     end
 
     #Add Error and Disable pathways for these task states
-    for state in [State(:scheduled,node_task),State(:computing,node_task),State(:synchronizing,node_task)]
+    # for state in [State(:scheduled,node_task),State(:computing,node_task),State(:synchronizing,node_task)]
+    for state in [State(:computing,node_task),State(:synchronizing,node_task)]
         addtransition!(state_manager,state,Signal(:error),State(:error))
         addtransition!(state_manager,state,Signal(:disable),State(:inactive))
     end
@@ -95,10 +101,11 @@ function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;
     for workflow_attribute in triggered_by_attributes
         node.action_triggers[workflow_attribute] = node_task
         unsuppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
-        addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
+        #addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
+        addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:idle), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
 
         #Allow trigger attributes to be received/updated in the scheduled state
-        addtransition!(node.state_manager,State(:scheduled,node_task),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task))
+        #addtransition!(node.state_manager,State(:scheduled,node_task),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task))
 
     end
 
@@ -160,7 +167,8 @@ end
 function addtrigger!(node::DispatchNode,node_task::NodeTask,workflow_attribute::Attribute)
     node.action_triggers[workflow_attribute] = node_task
     unsuppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
-    addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
+    #addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
+    addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:idle), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
 end
 
 
@@ -247,15 +255,16 @@ function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute
     #Transition: idle + comm_reeived ==> idle, action = received_attribute
     addtransition!(state_manager,State(:idle),Signal(:comm_received,attribute2),State(:idle),action = TransitionAction(receive_attribute,[attribute2]),targets = [receive_node.state_manager])
 
+    #NOTE Commenting to remove :scheduled state
     #Receive an update while the node is still scheduled
-    for node_task in getnodetasks(receive_node)
-        #Allow attributes to be received while in the scheduled state
-        addtransition!(state_manager,State(:scheduled,node_task),Signal(:comm_received,attribute2),State(:scheduled,node_task),action = TransitionAction(receive_attribute,[attribute2]),targets = [receive_node.state_manager])
-
-        #Schedule more executions when another attribute gets updated
-        addtransition!(state_manager,State(:scheduled,node_task),Signal(:attribute_received,attribute2),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [receive_node.state_manager])
-
-    end
+    # for node_task in getnodetasks(receive_node)
+    #     #Allow attributes to be received while in the scheduled state
+    #     addtransition!(state_manager,State(:scheduled,node_task),Signal(:comm_received,attribute2),State(:scheduled,node_task),action = TransitionAction(receive_attribute,[attribute2]),targets = [receive_node.state_manager])
+    #
+    #     #Schedule more executions when another attribute gets updated
+    #     addtransition!(state_manager,State(:scheduled,node_task),Signal(:attribute_received,attribute2),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [receive_node.state_manager])
+    #
+    # end
 
 
 

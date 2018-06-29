@@ -28,6 +28,7 @@ end
 
 #NOTE New idea: Nodes can have multiple tasks
 function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode,node_task::NodeTask)
+#try
     run!(node_task)
     result_attribute = getworkflowattribute(node,getlabel(node_task))
     updateattribute(result_attribute,get(node_task.result))        #updates local value
@@ -51,13 +52,6 @@ function synchronize_node_task(signal::AbstractSignal,node::AbstractDispatchNode
         end
     end
     node.updated_attributes = Attribute[]
-
-    # for (key,attribute) in node.attributes
-    #     if isoutconnected(attribute)
-    #         push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
-    #     end
-    # end
-
     push!(return_signals,Pair(Signal(:synchronized,node_task),compute_time))
     return return_signals
 end

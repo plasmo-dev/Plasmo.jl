@@ -5,12 +5,9 @@ using JuMP
 include("resource_data.jl")
 include("resource_model.jl")
 
-#
-
 ###############################################################
 #Benders example
-##############################################################
-
+##############################################################aa
 #Arguments: Workflow, dispatch node, the subnode result attribute, a corresponding master node scenario attribute.  (sub node sends a result, master node updates a scenario to send back to that node)
 function update_duals(workflow::Workflow,node::DispatchNode,sub_result::Attribute,scenario::Attribute)
     #Get the master model
@@ -23,7 +20,6 @@ function update_duals(workflow::Workflow,node::DispatchNode,sub_result::Attribut
     sub_objective = sub_result[:objective]      #the sub result also has the sub node's objective value
 
     #Modify node data
-    println("Storing dual update")
     push!(node[:dual_updates],duals) #push the dual value of the last attribute update
     push!(node[:objective_updates],sub_objective)
 
@@ -31,7 +27,6 @@ function update_duals(workflow::Workflow,node::DispatchNode,sub_result::Attribut
 
     #If all the dual updates are finished (i.e. all the scenarios came back)
     if n_updates == length(scenarios)
-        println("Adding Single Cut")
         #Create the single cut based on all updates and schedule the master problem
         theta = model[:theta]
         S = length(scenarios)
@@ -47,10 +42,8 @@ function update_duals(workflow::Workflow,node::DispatchNode,sub_result::Attribut
         #Added the cut, now schedule another solve
         task = node.node_tasks[:run_master_problem]
         schedulesignal(workflow,Signal(:execute,task),node,getcurrenttime(workflow))
-
         setattribute(node,:dual_updates,[])
         setattribute(node,:objective_updates,[])
-
     else #Need to send out a new scenario
         scenarios_out = node[:scenarios_out]
         if scenarios_out < length(scenarios)
@@ -65,10 +58,7 @@ end
 function solve_master(node::DispatchNode)
     tic()
     model = node[:model]
-
-    println("Solving master problem")
     solve(model)
-
     updateattribute(node[:solution],JuMP.getvalue(model[:w]))
     setattribute(node,:lower_bound,getobjectivevalue(model))
 
@@ -84,10 +74,10 @@ function solve_master(node::DispatchNode)
     #Convergence check
     lower_bound = master_node[:lower_bound]
     upper_bound = master_node[:upper_bound]
-
-
+    println("current lower bound: ",lower_bound)
+    println("current upper bound: ", upper_bound)
     if upper_bound - lower_bound <= 0.000001
-        return StopWorkflow("Converged")  #NOTE: I don't deal with this return result yet
+        throw(StopWorkflow("Converged"))  #NOTE: I don't deal with this return result yet
     else
         solve_time = toc()
         setcomputetime(getnodetask(node,:run_master_problem),solve_time)
@@ -98,7 +88,6 @@ end
 
 function solve_subproblem(node::DispatchNode)
 
-
     #Get attribute values
     new_w = getlocalvalue(node[:solution])   #Current solution
     scenario = getlocalvalue(node[:scenario])
@@ -107,9 +96,7 @@ function solve_subproblem(node::DispatchNode)
 
     #Create a subproblem based on the data
     m_scenario = create_scenario_subproblem(new_w,demands,costs)
-
     tic()
-    println("Solving sub-problem")
     status_scenario = solve(m_scenario)
     solve_time = toc()
 
@@ -179,10 +166,25 @@ for i = 1:n_subnodes
     push!(master_scenarios,master_scenario)     #Keep an array of the scenario attributes on the master for easy access
 
     #Make the connections
-    c1 = connect!(workflow, master_node[:solution], sub_node[:solution], comm_delay = 0)         #no action taken is taken when a solution is communicated.  That's because the sub node isn't triggered by an updated solution.
-    c2 = connect!(workflow, master_scenario, sub_node[:scenario], comm_delay = 0)                #action = solve_subproblem
-    connect!(workflow, sub_node[:sub_result], master_sub, comm_delay = 0)
+    #NOTE: If the solution takes longer than the scenario to show up, this won't work.  I'm thinking of including something like guards and conditions, but I think that gets kind of messy.
+    c1 = connect!(workflow, master_node[:solution], sub_node[:solution], comm_delay = 0.0)    #no action taken is taken when a solution is communicated.  That's because the sub node isn't triggered by an updated solution.
+
+    c2 = connect!(workflow, master_scenario, sub_node[:scenario], comm_delay = 0.002)        #action = solve_subproblem
+    c3 = connect!(workflow, sub_node[:sub_result], master_sub, comm_delay = 0.001)
 
     #Maintain a priority mapping (This is a fairly standard practice)
     #setpriority(workflow,c1,0)  #custom priority on channel
 end
+
+execute!(workflow)
+
+println("workflow completed in: ",getcurrenttime(workflow))
+
+println(master_node[:upper_bound])
+println(master_node[:lower_bound])
+
+#OR to see what's happening...
+#step(workflow)
+#getqueue(workflow)
+#step(workflow)
+# ....
