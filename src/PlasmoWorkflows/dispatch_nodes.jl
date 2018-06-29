@@ -3,15 +3,12 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     basenode::BasePlasmoNode
     attributes::Dict{Symbol,Attribute}
     priority::Int                               #Priority of signals this node produces
-    # local_time::Float64  #Moved to StateManager                         #The node's local clock.  Gets synchronized with the workflow clock on triggers
-    # compute_time::Float64                       #The time the node takes to complete its task.
-    # schedule_delay::Float64
     node_tasks::Dict{Symbol,NodeTask}              #the actual function (tasks) to call
     state_manager::StateManager
-    #last_result::Nullable{Any}  Hard to implement this.  Not sure if it's useful
     action_triggers::Dict{Attribute,NodeTask}
     task_results::Dict{NodeTask,Attribute}
     updated_attributes::Vector{Attribute}
+    history::Union{Void,Vector{Tuple}}
 
     function DispatchNode()
         node = new()
@@ -25,6 +22,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
         node.action_triggers = Dict{Attribute,NodeTask}()
         node.task_results = Dict{NodeTask,Attribute}()
         node.updated_attributes = Attribute[]
+        node.history = nothing
         #setstates(node.state_manager,[:null,:idle,:scheduled,:computing,:synchronizing,:error,:inactive])
         addstates!(node.state_manager,[:null,:idle,:error,:inactive])
         setstate(node.state_manager,:idle)
@@ -34,8 +32,9 @@ end
 PlasmoGraphBase.create_node(graph::Workflow) = DispatchNode()
 
 #Dispatch node runs when it gets communication updates
-function add_dispatch_node!(workflow::Workflow)#;continuous = false)
+function add_dispatch_node!(workflow::Workflow;store_history = true)#;continuous = false)
     node = add_node!(workflow)
+    store_history == true && (node.history = Vector{Tuple}())
     state_manager = node.state_manager
     addtransition!(state_manager,State(:idle),Signal(:error),State(:error))
     addtransition!(state_manager,State(:idle),Signal(:disable),State(:inactive))

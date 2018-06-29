@@ -33,6 +33,10 @@ function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::A
     result_attribute = getworkflowattribute(node,getlabel(node_task))
     updateattribute(result_attribute,get(node_task.result))        #updates local value
     node.state_manager.local_time = now(workflow) + node_task.compute_time
+
+    if node.history != nothing
+        push!(node.history,(now(workflow),node_task.label,node_task.compute_time))
+    end
     return [Pair(Signal(:complete,node_task),0)]
 #catch #which error?
     return [Pair(Signal(:error,node_task),0)]
@@ -66,7 +70,7 @@ end
 # Edge actions
 ##############################
 #Send an attribute value from source to destination
-function communicate(signal::AbstractSignal,channel::AbstractChannel)
+function communicate(signal::AbstractSignal,workflow::AbstractWorkflow,channel::AbstractChannel)
     from_attribute = channel.from_attribute
     to_attribute= channel.to_attribute
     return_signals = Vector{Pair{AbstractSignal,Float64}}()
@@ -76,6 +80,10 @@ function communicate(signal::AbstractSignal,channel::AbstractChannel)
 
     comm_received_signal = Pair(DataSignal(:comm_received,to_attribute,getglobalvalue(from_attribute)),channel.delay)
     push!(return_signals,comm_received_signal)
+
+    if channel.history != nothing
+        push!(channel.history,(now(workflow),channel.delay))
+    end
 
     return return_signals
 end

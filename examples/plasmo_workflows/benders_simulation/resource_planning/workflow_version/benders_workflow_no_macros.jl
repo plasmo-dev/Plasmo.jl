@@ -144,6 +144,7 @@ task = addnodetask!(workflow,master_node,:run_master_problem,solve_master,args =
 schedulesignal(workflow,Signal(:execute,task),master_node,0.0)  #schedule an execute signal on the master node at time 0
 
 #Assume we have 3 processors to do subproblems (note: Could try more)
+channels = []
 n_subnodes = 3
 for i = 1:n_subnodes
     #Create each sub compute node
@@ -168,9 +169,10 @@ for i = 1:n_subnodes
     #Make the connections
     #NOTE: If the solution takes longer than the scenario to show up, this won't work.  I'm thinking of including something like guards and conditions, but I think that gets kind of messy.
     c1 = connect!(workflow, master_node[:solution], sub_node[:solution], comm_delay = 0.0)    #no action taken is taken when a solution is communicated.  That's because the sub node isn't triggered by an updated solution.
+    c2 = connect!(workflow, master_scenario, sub_node[:scenario], comm_delay = 0.00)        #action = solve_subproblem
+    c3 = connect!(workflow, sub_node[:sub_result], master_sub, comm_delay = 0.00)
 
-    c2 = connect!(workflow, master_scenario, sub_node[:scenario], comm_delay = 0.002)        #action = solve_subproblem
-    c3 = connect!(workflow, sub_node[:sub_result], master_sub, comm_delay = 0.001)
+    append!(channels,[c1,c2,c3])
 
     #Maintain a priority mapping (This is a fairly standard practice)
     #setpriority(workflow,c1,0)  #custom priority on channel

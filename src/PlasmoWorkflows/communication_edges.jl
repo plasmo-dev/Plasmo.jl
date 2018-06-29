@@ -5,10 +5,11 @@ mutable struct Channel <: AbstractChannel
     delay::Float64           #communication delay
     schedule_delay::Float64
     priority::Int            #signal priority (might make this event specific)
+    history::Union{Void,Vector{Tuple}}
 end
-Channel(from_attribute::Attribute,to_attribute::Attribute) = Channel(StateManager(),from_attribute,to_attribute,0,0,0)
-Channel(from_attribute::Attribute,to_attribute::Attribute,delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,delay,0,0)
-Channel(from_attribute::Attribute,to_attribute::Attribute,comm_delay::Float64,schedule_delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,comm_delay,schedule_delay,0)
+Channel(from_attribute::Attribute,to_attribute::Attribute) = Channel(StateManager(),from_attribute,to_attribute,0,0,0,nothing)
+Channel(from_attribute::Attribute,to_attribute::Attribute,delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,delay,0,0,nothing)
+Channel(from_attribute::Attribute,to_attribute::Attribute,comm_delay::Float64,schedule_delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,comm_delay,schedule_delay,0,nothing)
 
 ##########################
 # Communication Edges
@@ -42,11 +43,12 @@ gettransitions(channel::AbstractChannel) = gettransitions(channel.state_manager)
 getcurrentstate(channel::AbstractChannel) = getcurrentstate(channel.state_manager)
 getlocaltime(channel::AbstractChannel) = channel.state_manager.local_time
 
-function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0)
+function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0,store_history = true)
     channel = Channel(from_attribute,to_attribute,comm_delay,schedule_delay)
     setstates(channel.state_manager,[:null,:active,:inactive,:error])
     setstate(channel.state_manager,:active)
     push!(edge.channels,channel)
+    store_history == true && (channel.history = Vector{Tuple}())
     return channel
 end
 
@@ -61,11 +63,11 @@ function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2:
     suppresssignal!(destination_node.state_manager,Signal(:comm_sent,attribute1))
 
     if send_attribute_updates == true
-        addtransition!(channel.state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active),action = TransitionAction(communicate,[channel]), targets = [destination_node.state_manager])
+        addtransition!(channel.state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active),action = TransitionAction(communicate,[workflow,channel]), targets = [destination_node.state_manager])
     end
 
     if continuous == true
-        addtransition!(channel.state_manager,State(:active), Signal(:comm_sent,attribute1), State(:active), action = TransitionAction(schedule_communicate,[channel]),targets = [channel.state_manager])
+        addtransition!(channel.state_manager,State(:active), Signal(:comm_sent,attribute1), State(:active), action = TransitionAction(schedule_communicate,[workflow,channel]),targets = [channel.state_manager])
         schedulesignal(workflow,Signal(:communicate),channel,start_time)
         suppresssignal!(channel.state_manager,Signal(:comm_received,attribute2))
     end
