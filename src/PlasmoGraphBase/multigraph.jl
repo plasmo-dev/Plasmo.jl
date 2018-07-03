@@ -1,3 +1,4 @@
+#TODO Write a multigraph implementation for Workflows
 struct MultiEdge <: LightGraphs.AbstractEdge
     src::Int
     dst::Int
