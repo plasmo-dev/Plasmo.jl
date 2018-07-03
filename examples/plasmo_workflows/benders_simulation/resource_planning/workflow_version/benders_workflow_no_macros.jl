@@ -19,8 +19,11 @@ function update_duals(workflow::Workflow,node::DispatchNode,sub_result::Attribut
     duals = sub_result[:duals]                  #the sub result has duals
     sub_objective = sub_result[:objective]      #the sub result also has the sub node's objective value
 
-    #Modify node data
-    push!(node[:dual_updates],duals) #push the dual value of the last attribute update
+    scenario_id = sub_result[:scenario_id]  #should be an id
+    node[:dual_updates][scenario_id] = duals
+    #Modify node data #NOTE: Fix this
+    #push!(node[:dual_updates],duals) #push the dual value of the last attribute update
+
     push!(node[:objective_updates],sub_objective)
 
     n_updates = length(node[:dual_updates])
@@ -28,26 +31,32 @@ function update_duals(workflow::Workflow,node::DispatchNode,sub_result::Attribut
     #If all the dual updates are finished (i.e. all the scenarios came back)
     if n_updates == length(scenarios)
         #Create the single cut based on all updates and schedule the master problem
+        println("Adding Single Cut")
         theta = model[:theta]
-        S = length(scenarios)
-        upper_bound = 1/S*sum(obj for obj in node[:objective_updates])
+        #S = length(scenarios)
+        upper_bound = 1/length(S)*sum(obj for obj in node[:objective_updates])
         setattribute(node,:upper_bound,upper_bound)
         duals = node[:dual_updates]
+
         if (JuMP.getvalue(theta) - upper_bound < -0.000001)
             w = model[:w]
-            benderscut = @constraint(model, theta >= 1/S*sum(w[b]*duals[s][:balance][b] for s in 1:S,b in Bases)
-                                        + 1/S*sum(scenarios[s][:demands][f]*duals[s][:demand][f] for s in 1:S, f in Facilities))
+
+            #NOTE: scenarios[s] and duals[s] may not actually correspond!
+            benderscut = @constraint(model, theta >= 1/length(S)*sum(w[b]*duals[s][:balance][b] for s in S,b in Bases)
+                                        + 1/length(S)*sum(scenarios[s][:demands][f]*duals[s][:demand][f] for s in S, f in Facilities))
+            println(benderscut)
         end
 
         #Added the cut, now schedule another solve
         task = node.node_tasks[:run_master_problem]
         schedulesignal(workflow,Signal(:execute,task),node,getcurrenttime(workflow))
-        setattribute(node,:dual_updates,[])
+        #setattribute(node,:dual_updates,[])
+        setattribute(node,:dual_updates,Dict())
         setattribute(node,:objective_updates,[])
     else #Need to send out a new scenario
         scenarios_out = node[:scenarios_out]
         if scenarios_out < length(scenarios)
-            updateattribute(scenario,scenarios[scenarios_out + 1])  #The next scenario to send out.  Use updateattribute to update a workflow attribute
+            updateattribute(scenario,scenarios["S$(scenarios_out)"])  #The next scenario to send out.  Use updateattribute to update a workflow attribute
             setattribute(node,:scenarios_out,scenarios_out + 1)
         end
     end
@@ -66,7 +75,7 @@ function solve_master(node::DispatchNode)
     scenarios = node[:scenarios]
     i = 0
     for scenario_channel in node[:scenario_channels]
-        updateattribute(scenario_channel,scenarios[i+1])
+        updateattribute(scenario_channel,scenarios["S$(i)"])
         i += 1
     end
     setattribute(node,:scenarios_out,i)
@@ -90,6 +99,7 @@ function solve_subproblem(node::DispatchNode)
 
     #Get attribute values
     new_w = getlocalvalue(node[:solution])   #Current solution
+    #println(new_w)
     scenario = getlocalvalue(node[:scenario])
     demands = scenario[:demands]
     costs = scenario[:costs]
@@ -102,11 +112,15 @@ function solve_subproblem(node::DispatchNode)
 
     #Get the objective value and dual variables
     obj_scenario = getobjectivevalue(m_scenario)
+
     dual_demand_target = getdual(m_scenario[:demand_target])
     dual_second_stage_balance = getdual(m_scenario[:second_stage_balance])
+    println("sub objective: ", obj_scenario)
+    println("sub dual 1: ", sum(dual_demand_target))
+    println("sub dual 2: ", sum(dual_second_stage_balance))
 
     duals = Dict(:demand => dual_demand_target,:balance => dual_second_stage_balance)
-    sub_result = Dict(:duals => duals,:objective => obj_scenario)
+    sub_result = Dict(:duals => duals,:objective => obj_scenario, :scenario_id => scenario[:id])
 
     #Update the sub_result attribute.  This will be sent to the master.
     updateattribute(node[:sub_result],sub_result)
@@ -117,10 +131,12 @@ function solve_subproblem(node::DispatchNode)
 end
 
 #Create the workflow
+tic()
 workflow = Workflow()
 
 #Add a compute node to run the master problem
 master_node = add_dispatch_node!(workflow)
+
 
 #Add simple attributes.  This is just data
 setattribute(master_node,:model,create_master())        #the master model
@@ -130,7 +146,8 @@ setattribute(master_node,:upper_bound,10000)            #The current upper bound
 
 master_duals = setattribute(master_node,:dual_attributes,[])            #Array of the dual attributes to receive
 master_scenarios = setattribute(master_node,:scenario_channels,[])      #Array of the dual attributes to receive
-setattribute(master_node,:dual_updates,[])                              #Array of all dual updates received
+#setattribute(master_node,:dual_updates,[])                              #Array of all dual updates received
+setattribute(master_node,:dual_updates,Dict())
 setattribute(master_node,:objective_updates,[])
 
 #A workflow attribute is data that gets communicated to other nodes.  Workflow attributes can be connected to other node attributes
@@ -145,7 +162,8 @@ schedulesignal(workflow,Signal(:execute,task),master_node,0.0)  #schedule an exe
 
 #Assume we have 3 processors to do subproblems (note: Could try more)
 channels = []
-n_subnodes = 3
+sub_nodes = []
+n_subnodes = 1
 for i = 1:n_subnodes
     #Create each sub compute node
     sub_node = add_dispatch_node!(workflow)
@@ -169,16 +187,18 @@ for i = 1:n_subnodes
     #Make the connections
     #NOTE: If the solution takes longer than the scenario to show up, this won't work.  I'm thinking of including something like guards and conditions, but I think that gets kind of messy.
     c1 = connect!(workflow, master_node[:solution], sub_node[:solution], comm_delay = 0.0)    #no action taken is taken when a solution is communicated.  That's because the sub node isn't triggered by an updated solution.
-    c2 = connect!(workflow, master_scenario, sub_node[:scenario], comm_delay = 0.00)        #action = solve_subproblem
-    c3 = connect!(workflow, sub_node[:sub_result], master_sub, comm_delay = 0.00)
+    c2 = connect!(workflow, master_scenario, sub_node[:scenario], comm_delay = 0.0)        #action = solve_subproblem
+    c3 = connect!(workflow, sub_node[:sub_result], master_sub, comm_delay = 0.0)
 
     append!(channels,[c1,c2,c3])
-
+    push!(sub_nodes,sub_node)
     #Maintain a priority mapping (This is a fairly standard practice)
     #setpriority(workflow,c1,0)  #custom priority on channel
 end
 
+
 execute!(workflow)
+println(toc())
 
 println("workflow completed in: ",getcurrenttime(workflow))
 

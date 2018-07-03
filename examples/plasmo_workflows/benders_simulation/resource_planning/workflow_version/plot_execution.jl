@@ -6,10 +6,16 @@ task_scheme = ColorSchemes.Accent_3
 
 rect(w, h, x, y) = Shape(x + [0,w,w,0], (y - 0.5*h)  + [0,0,h,h])
 
-nodes = collectnodes(workflow)
+nodes = [master_node;sub_nodes]
+
+if length(nodes) > 7
+    nodes = [sub_nodes[1:3];master_node;sub_nodes[4:end]]
+end
+
+final_time = getcurrenttime(workflow)
 
 #Assume I have the channels
-plt = plot(;xlabel = "Time [s]" , ylabel = "Compute Node",legend = :topright,ylim = (0,length(nodes) + 1))
+plt = plot(;xlabel = "Time [s]" , ylabel = "Compute Node",legend = :topright,ylim = (0,length(nodes) + 1),grid = true)
 bar_height = 0.2
 j = 1
 node_map = Dict()
@@ -26,7 +32,13 @@ end
 
 checked_tasks = []
 for node in nodes
+
+
     node_map[node] = j
+
+    track_shape = rect(final_time,bar_height,0,j)
+    plot!(plt,track_shape,alpha = 0.05,c = :green,label = "")
+
     history = node.history
     for action in history
         time = action[1]
@@ -55,6 +67,26 @@ for node in nodes
     j += 1
 end
 
+for channel in channels
+    from_node = channel.from_attribute.node
+    to_node = channel.to_attribute.node
+    history = channel.history
+    for comm in history
+        time = comm[1]
+        duration = comm[2]
+        arrow_x = [time,time+duration]
+        if node_map[from_node] < node_map[to_node]
+            arrow_y = [node_map[from_node] + 0.5*bar_height,node_map[to_node] - 0.5*bar_height]
+        elseif node_map[from_node] > node_map[to_node]
+            arrow_y = [node_map[from_node] - 0.5*bar_height,node_map[to_node] + 0.5*bar_height]
+        end
+        plot!(plt,arrow_x,arrow_y,arrow = arrow(),label = "", color = :grey, linealpha = 0.5, linewidth = 1.5, linestyle = :dash)
+    end
+end
+
+
+
+#This will plot the communication
 # for channel in channels
 #     from_node = channel.from_attribute.node
 #     to_node = channel.to_attribute.node
