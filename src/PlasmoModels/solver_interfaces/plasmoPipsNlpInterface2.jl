@@ -6,19 +6,18 @@ importall MathProgBase.SolverInterface
 import MPI
 import JuMP
 
-
 import ..PlasmoModels
-
 
 include("PipsNlpSolver.jl")
 using .PipsNlpSolver
+
 export pipsnlp_solve
 
-function convert_to_c_idx(indicies)
-    for i in 1:length(indicies)
-        indicies[i] = indicies[i] - 1
-    end
-end
+# function convert_to_c_idx(indicies)
+#     for i in 1:length(indicies)
+#         indicies[i] = indicies[i] - 1
+#     end
+# end
 
 type ModelData
     d    #NLP evaluator
@@ -32,11 +31,11 @@ type ModelData
     firstVeq::Vector{Float64}       #coefficient of variable in equality constraint in 1st stage
     secondIeq::Vector{Int}          #row index of equality constraint in 2nd stage
     secondJeq::Vector{Int}          #column index of equality constraint in 2nd stage
-    secondVeq::Vector{Float64}
-    firstIineq::Vector{Int}
+    secondVeq::Vector{Float64}      #coefficient of variable in equality constraint in 2nd stage
+    firstIineq::Vector{Int}         #row index of inequality constraint in 1st stage
     firstJineq::Vector{Int}
     firstVineq::Vector{Float64}
-    secondIineq::Vector{Int}
+    secondIineq::Vector{Int}        #row index of inequality constraint in 2nd stage
     secondJineq::Vector{Int}
     secondVineq::Vector{Float64}
     num_eqconnect::Int
@@ -64,7 +63,6 @@ type ModelData
 end
 ModelData() = ModelData(nothing,0,0,0,0,0,Int[],Int[], Float64[], Int[], Int[], Float64[],Int[],Int[],Float64[], Int[], Int[], Float64[], 0, 0, Float64[],Float64[],Float64[],Float64[], Int[], Int[],nothing, nothing, nothing, nothing, Int[],Int[], Float64[], Int[], Int[], Float64[],Float64[], 0, false, 0)
 
-
 #Helper function
 function getData(m::JuMP.Model)
     if haskey(m.ext, :Data)
@@ -81,6 +79,33 @@ end
 #     modelList = [getmodel(master); submodels]
 # end
 
+#TODO Working on this function
+function process_graph_structure(graph::ModelGraph;partitions = nothing)
+    #By default, use top level of graph.  Could partition by subgraphs.
+    simple_links = getsimplelinkconstraints(graph)
+    hyper_links = gethyperlinkconstraints(graph)
+    nodes = collectnodes(graph)
+
+    master = Model()  #here we'll create variables to connect simple link models
+
+    pips_graph = ModelGraph()
+    for simple_link in simple_links
+        vars = []
+        for var in simple_link.terms.vars
+            push!(vars,@variable(master))
+        end
+
+        con_reference = @constraint(master, simple_link.lb <= sum(t[i][1]*JuMP.Variable(jump_model,indexmap[(t[i][2])]) for i = 1:length(t)) + linkconstraint.terms.constant <= linkconstraint.ub)
+
+        link_var = @variable(master)
+
+    end
+
+    for hyper_link in hyper_links
+    end
+return pips_graph,master_node,children_nodes
+
+
 function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.ModelNode,children_nodes::Vector{PlasmoModels.ModelNode})
     #need to check that the structure makes sense
 
@@ -90,7 +115,7 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
     master = PlasmoModels.getmodel(master_node)
     modelList = [master; submodels]
 
-    #Add ModelData to each model
+    #Add ModelData attribute to each model
     for (idx,node) in enumerate(modelList)
         node.ext[:Data] = ModelData()
     end
@@ -99,43 +124,48 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
     master_linear_ub = []
 
     linkconstraints = PlasmoModels.getlinkconstraints(graph) #get all of the link constraints in the graph
+
     #get arrays of lower and upper bounds for each link constraint
     for con in linkconstraints
         push!(master_linear_lb,con.lb)
         push!(master_linear_ub,con.ub)
     end
 
-    nlinkeq = 0
-    nlinkineq = 0
-    eqlink_lb = Float64[]
-    eqlink_ub = Float64[]
-    ineqlink_lb = Float64[]
-    ineqlink_ub = Float64[]
+    nlinkeq = 0                     #number of link equality constraints between all subnodes
+    nlinkineq = 0                   #number of link inequality constraints between all subnodes
+    eqlink_lb = Float64[]           #equality lower bounds
+    eqlink_ub = Float64[]           #equality upper bounds
+    ineqlink_lb = Float64[]         #inequality lower bounds
+    ineqlink_ub = Float64[]         #inequality upper bounds
 
-    #go through the link constraints
+    #Go through every link constraint
     for c in 1:length(linkconstraints)
-        coeffs = linkconstraints[c].terms.coeffs
-        vars   = linkconstraints[c].terms.vars
+        coeffs = linkconstraints[c].terms.coeffs    #constraint coefficients
+        vars   = linkconstraints[c].terms.vars      #constraint variables
         connect = false     #the constraint connects a single node to the master
         allconnect = false  #the constraint connects subproblems to eachother
         node = nothing
 
-		for (it,ind) in enumerate(coeffs)              #for each coefficient in the constraint
-            #if the constraint has a variable from a sub-node
+        #Determine what kind of link constraint we have
+        #NOTE Could probably make this code more clear
+		for (it,ind) in enumerate(coeffs)              #for each (index,coefficient) in the constraint
+            #Check if constraint variable is in a subnode.  Get the subnode if it is.
             if (!connect) && (vars[it].m) != master    #if the variable isn't in the master model
                 connect = true
-                node = vars[it].m                      #the submodel
+                node = vars[it].m                      #the submodel (scenario)
 		    end
-            #if the constraint actually involved multiple nodes
+            #Check if the constraint contains multiple subnodes
 		    if connect && (vars[it].m != master) && (vars[it].m != node)
 		       allconnect = true
 		       break  #don't need to check every variable if this statement runs
 		    end
 	    end
 
-    	if (connect) && (!allconnect)   #if there's a master child connection only
+        #If constraint is a single connection between master and sub
+    	if (connect) && (!allconnect)
     	    local_data = getData(node)
     		if master_linear_lb[c] == master_linear_ub[c]  #if it's an equality constraint
+                #Grab equality data fields to populate
                 firstIeq = local_data.firstIeq
                 firstJeq = local_data.firstJeq
                 firstVeq = local_data.firstVeq
@@ -145,7 +175,7 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
                 push!(local_data.eqconnect_lb, master_linear_lb[c])
                 push!(local_data.eqconnect_ub, master_linear_ub[c])
                 local_data.num_eqconnect += 1
-                row = local_data.num_eqconnect
+                row = local_data.num_eqconnect   #equality row index
                 for (it,ind) in enumerate(coeffs)
                     if (vars[it].m) == master
                            	  push!(firstIeq, row)
@@ -159,7 +189,8 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
                       error("only supports connection between first stage variables and second stage variables from one specific scenario")
                     end
                 end
-    		else
+    		else #it's an inequality link
+                #Grab inequality data fields to populate
                 firstIineq = local_data.firstIineq
                 firstJineq = local_data.firstJineq
                 firstVineq = local_data.firstVineq
@@ -171,7 +202,7 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
                 push!(local_data.ineqconnect_ub, master_linear_ub[c])
 
                 local_data.num_ineqconnect += 1
-                row = local_data.num_ineqconnect
+                row = local_data.num_ineqconnect  #inequality row index
                 for (it,ind) in enumerate(coeffs)
                     if (vars[it].m) == master
                         push!(firstIineq, row)
@@ -188,8 +219,9 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
 	        end
 	    end
 
+        #If constraint connects every subnode
 	    if (allconnect)
-            if master_linear_lb[c] == master_linear_ub[c]
+            if master_linear_lb[c] == master_linear_ub[c]  #if it's an equality linking constraint
                 nlinkeq = nlinkeq + 1
                 push!(eqlink_lb, master_linear_lb[c])
                 push!(eqlink_ub, master_linear_ub[c])
@@ -197,6 +229,7 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
                 for (it,ind) in enumerate(coeffs)
                     node = vars[it].m
                     local_data = getData(node)
+                    #Populate data fields
                     linkIeq = local_data.linkIeq
                     linkJeq = local_data.linkJeq
                     linkVeq = local_data.linkVeq
@@ -204,7 +237,7 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
                     push!(linkJeq, vars[it].col)
                     push!(linkVeq, ind)
                 end
-            else
+            else                            #if it's an inequality linking constraint
                 nlinkineq = nlinkineq + 1
                 push!(ineqlink_lb, master_linear_lb[c])
                 push!(ineqlink_ub, master_linear_ub[c])
@@ -654,9 +687,7 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
         return Int32(1)
     end
 
-    if !(MPI.Initialized())
-        MPI.Init()
-    end
+    #MPI.Init()
     comm = MPI.COMM_WORLD
     if(MPI.Comm_rank(comm) == 0)
         tic()
