@@ -114,6 +114,7 @@ LightGraphs.nv(g::HyperGraph) = length(g.vertices)
 #LightGraphs.outneighbors(g::HyperGraph, v::Integer) = nothing
 
 # LightGraphs.rem_edge!
+#TODO This shouldn't be too bad
 LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal not supported on hypergraphs"))
 # function rem_edge!(g::SimpleGraph, e::SimpleGraphEdge)
 #     i = searchsorted(g.fadjlist[src(e)], dst(e))
@@ -129,6 +130,7 @@ LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal no
 # end
 
 # LightGraphs.rem_vertex!
+#TODO Delete any associated edges with the vertex
 LightGraphs.rem_vertex!(g::HyperGraph) = throw(error("Vertex removal not supported on hypergraphs"))
 
 # LightGraphs.vertices
