@@ -46,7 +46,7 @@ include("solution.jl")
 
 include("macros.jl")
 
-include("aggregate.jl")
+include("aggregation.jl")
 
 #load PIPS-NLP if the library can be found
 if  !isempty(Libdl.find_library("libparpipsnlp"))
