@@ -79,31 +79,53 @@ end
 #     modelList = [getmodel(master); submodels]
 # end
 
-#TODO Working on this function
-function process_graph_structure(graph::ModelGraph;partitions = nothing)
-    #By default, use top level of graph.  Could partition by subgraphs.
-    simple_links = getsimplelinkconstraints(graph)
-    hyper_links = gethyperlinkconstraints(graph)
-    nodes = collectnodes(graph)
+# #TODO Working on this function
+# function process_graph_structure(graph::ModelGraph;partitions = nothing)
+#     #By default, use top level of graph.  Could partition by subgraphs.
+#     simple_links = getsimplelinkconstraints(graph)
+#     hyper_links = gethyperlinkconstraints(graph)
+#     nodes = collectnodes(graph)
+#
+#     master = Model()  #here we'll create variables to connect simple link models
+#
+#     pips_graph = ModelGraph()
+#     for simple_link in simple_links
+#         vars = []
+#         for var in simple_link.terms.vars
+#             push!(vars,@variable(master))
+#         end
+#
+#         con_reference = @constraint(master, simple_link.lb <= sum(t[i][1]*JuMP.Variable(jump_model,indexmap[(t[i][2])]) for i = 1:length(t)) + linkconstraint.terms.constant <= linkconstraint.ub)
+#
+#         link_var = @variable(master)
+#
+#     end
+#
+#     for hyper_link in hyper_links
+#     end
+# return pips_graph,master_node,children_nodes
 
-    master = Model()  #here we'll create variables to connect simple link models
+#Function to find link variables that show up in many constraints.
+function find_common_link_variables(graph::ModelGraph)
+end
 
-    pips_graph = ModelGraph()
-    for simple_link in simple_links
-        vars = []
-        for var in simple_link.terms.vars
-            push!(vars,@variable(master))
-        end
-
-        con_reference = @constraint(master, simple_link.lb <= sum(t[i][1]*JuMP.Variable(jump_model,indexmap[(t[i][2])]) for i = 1:length(t)) + linkconstraint.terms.constant <= linkconstraint.ub)
-
-        link_var = @variable(master)
-
+function pipsnlp_solve(graph::ModelGraph;partitions = :none)
+    if !(isa(partitions,Symbol))
+        return pipsnlp_solve(graph,partitions)
+    elseif partitions == :none
+        return pipsnlp_solve(graph,ModelNode(),collectnodes(graph))
     end
+end
 
-    for hyper_link in hyper_links
+function pipsnlp_solve(graph::ModelGraph,partitions::Vector{Vector{ModelNode}})
+    @assert no_duplicates(partitions)
+
+    aggregate_graph = ModelGraph()
+    #Add partitioned models
+    for partition in partitions
+        add_node(aggregate_graph,create_aggregate_model(partition))  #need to create new link constraints from aggregate model to other partitions
     end
-return pips_graph,master_node,children_nodes
+end
 
 
 function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.ModelNode,children_nodes::Vector{PlasmoModels.ModelNode})
