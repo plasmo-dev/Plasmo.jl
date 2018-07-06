@@ -105,7 +105,7 @@ end
 #     end
 # return pips_graph,master_node,children_nodes
 
-#Function to find link variables that show up in many constraints.
+#Function to find link variables that show up in many 
 function find_common_link_variables(graph::ModelGraph)
 end
 
