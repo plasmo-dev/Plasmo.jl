@@ -28,5 +28,5 @@ setscheduledelay(nodetask::NodeTask,delay::Float64) = nodetask.schedule_delay = 
 function string(node_task::NodeTask)
     string(node_task.label)*"("*string(node_task.func)*")"
 end
-print(io::IO, state::State) = print(io, string(state))
-show(io::IO, state::State) = print(io,state)
+print(io::IO, node_task::NodeTask) = print(io, string(node_task))
+show(io::IO, node_task::NodeTask) = print(io,node_task)

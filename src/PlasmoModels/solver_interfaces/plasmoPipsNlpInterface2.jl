@@ -121,13 +121,9 @@ function pipsnlp_solve(graph::ModelGraph;partitions = :none)
 end
 
 function pipsnlp_solve(graph::ModelGraph,partitions::Vector{Vector{ModelNode}})
-    @assert no_duplicates(partitions)
-
-    aggregate_graph = ModelGraph()
-    #Add partitioned models
-    for partition in partitions
-        add_node(aggregate_graph,create_aggregate_model(partition))  #need to create new link constraints from aggregate model to other partitions
-    end
+    #@assert no_duplicates(partitions)
+    aggregate_graph = create_partitioned_model_graph(graph,partitions)
+    return pipsnlp_solve(graph,ModelNode(),collectnodes(graph))
 end
 
 

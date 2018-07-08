@@ -1,7 +1,6 @@
 function get_local_and_cross_links(model_graph::ModelGraph,nodes::Vector{ModelNode})
     local_link_constraints = []  #all nodes in link constraint are in the set of nodes given
     cross_link_constraints = []  #at least one node in a link constraint is not in the node subset (must be connected to the rest of the graph)
-
     #Check each node's link constraints.  Add it to one of the above lists.
     checked_links = []
     for node in nodes
@@ -23,10 +22,10 @@ function get_local_and_cross_links(model_graph::ModelGraph,nodes::Vector{ModelNo
     return local_link_constraints , cross_link_constraints
 end
 
+#Build up an aggregate model with given nodes.
 function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode})
     local_links, cross_links = get_local_and_cross_links(model_graph,nodes)
-    #Build up an aggregate model with given nodes.
-    aggregate_model =  JuMPGraphModel()
+    aggregate_model =  JuMPGraphModel()     #Use a JuMPGraphModel so we can track the internal structure
     jump_graph = getgraph(aggregate_model)
 
     #COPY NODE MODELS INTO AGGREGATE MODEL
@@ -34,16 +33,12 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
     for model_node in nodes  #for each node in the model graph
         nodeindex = getindex(model_graph,model_node)
         jump_node = add_node!(aggregate_model,index = nodeindex)
-        m,var_map = Plasmo.PlasmoModels._buildnodemodel!(aggregate_model,jump_node,model_node)  #build model nodes into new jump node
-        #var_maps[jump_node] = var_map
-
+        m,var_map = _buildnodemodel!(aggregate_model,jump_node,model_node)  #build model nodes into new jump node.  var_map is a mapping of model node variable indices to new jump node variables
         var_maps[model_node] = var_map
-
-        #merge!(var_maps,var_map)
     end
 
     #LOCAL LINK CONSTRAINTS
-    #inspect the link constraints, and map them to variables within flat model
+    #Inspect the link constraints and map them to variables within flat model
     for linkconstraint in local_links
         indexmap = Dict() #{node variable => new jump model variable index} Need index of node variables to flat model variables
         vars = linkconstraint.terms.vars
@@ -65,6 +60,21 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
     return aggregate_model,cross_links,var_maps
 end
 
+function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Any})
+    model_partitions = convert(Vector{Vector{ModelNode}},partitions)
+    return create_partitioned_model_graph(model_graph,model_partitions)
+end
+
+function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Vector{Integer}})
+    model_partitions = Vector{Vector{ModelNode}}()
+    for partition in partitions
+        nodes = collectnodes(model_graph[[partition]])
+        push!(model_partitions,nodes)
+    end
+    return create_partitioned_model_graph(model_graph,model_partitions)
+end
+
+#Given a model graph and a set of node partitions, create a new aggregated model graph
 function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Vector{ModelNode}})
     new_model_graph = ModelGraph()
 
@@ -72,55 +82,43 @@ function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vect
     all_cross_links = []
     variable_mapping = Dict()
     all_var_maps = Dict()
-    for partition in partitions
+    for partition in partitions  #create aggregate model for each partition
         aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition)
         push!(aggregate_models,aggregate_model)
         append!(all_cross_links,cross_links)
         merge!(all_var_maps,var_maps)
-        #push!(var_mapss,var_maps)
     end
-    all_cross_links = unique(all_cross_links)
+    all_cross_links = unique(all_cross_links)  #remove duplicate cross links
 
     for agg_model in aggregate_models
         aggregate_node = add_node!(new_model_graph)
         setmodel(aggregate_node,agg_model)
     end
 
-    # #GLOBAL LINK CONSTRAINTS
+    #GLOBAL LINK CONSTRAINTS.  Re-add link constraints to aggregated model nodes
     for linkconstraint in all_cross_links
-        #indexmap = Dict()
-        #vars = linkconstraint.terms.vars        #These are the orignal model_graph node vars.
-        t = []
+        linear_terms = []
         for terms in linearterms(linkconstraint.terms)
-            push!(t,terms)
+            push!(linear_terms,terms)
         end
-    #
-        #Just need to reference the variables in the aggregate models
+
+        #Get references to variables in the aggregated models
         t_new = []
-        for i = 1:length(t)
-            coeff = t[i][1]
-            var = t[i][2]
-            model_node = getnode(var)
-            var_index = JuMP.linearindex(var)                   #index in modelgraph node
-            #node_index = getindex(model_graph,model_node)       #node index in modelgraph
-
-            var_map = all_var_maps[model_node]
+        for i = 1:length(linear_terms)
+            coeff = linear_terms[i][1]
+            var = linear_terms[i][2]
+            model_node = getnode(var)                #the original model node
+            var_index = JuMP.linearindex(var)        #variable index in the model node
+            var_map = all_var_maps[model_node]       #model node variable map {index => aggregate_variable}
             agg_var = var_map[var_index]
-
-            #it's on the aggregate node
-            #jump_node = getnode(jump_graph,node_index)          #the corresponding jumpgraph jumpnode
-            #flat_indexmap = jump_node.indexmap
-            #indexmap[var] = flat_indexmap[var_index]            #modelnode variable => jumpnode variable index
-            #new_var = JuMP.Variable(aggregate_model,indexmap[var])
             push!(t_new,(coeff,agg_var))
         end
         @linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
     end
-
-    #return 
-
+    return new_model_graph
 end
 
+#Aggregate parts of a graph into a model node
 function aggregate!(model_graph::ModelGraph,nodes::Vector{ModelNode})
     local_link_constraints = []  #all nodes in link constraint are in the set of nodes given
     cross_link_constraints = []  #at least one node in a link constraint is not in the node subset (must be connected to the rest of the graph)
