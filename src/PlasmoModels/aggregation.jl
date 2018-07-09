@@ -90,9 +90,11 @@ function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vect
     end
     all_cross_links = unique(all_cross_links)  #remove duplicate cross links
 
+    agg_nodes = []
     for agg_model in aggregate_models
         aggregate_node = add_node!(new_model_graph)
         setmodel(aggregate_node,agg_model)
+        push!(agg_nodes,aggregate_node)
     end
 
     #GLOBAL LINK CONSTRAINTS.  Re-add link constraints to aggregated model nodes
@@ -115,7 +117,7 @@ function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vect
         end
         @linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
     end
-    return new_model_graph
+    return new_model_graph , agg_nodes
 end
 
 
