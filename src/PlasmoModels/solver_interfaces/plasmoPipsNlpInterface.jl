@@ -654,9 +654,9 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
         return Int32(1)
     end
 
-    if !(MPI.Initialized())
-        MPI.Init()
-    end
+    # if !(MPI.Initialized())
+    #     MPI.Init()
+    # end
     comm = MPI.COMM_WORLD
     if(MPI.Comm_rank(comm) == 0)
         tic()

@@ -118,6 +118,79 @@ function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vect
     return new_model_graph
 end
 
+
+#Given a model graph and a set of node partitions, create a new aggregated model graph
+function create_lifted_model_graph(model_graph::ModelGraph,partitions::Vector{Vector{ModelNode}})
+    new_model_graph = ModelGraph()
+
+    aggregate_models = []
+    all_cross_links = []
+    variable_mapping = Dict()
+    all_var_maps = Dict()
+    for partition in partitions  #create aggregate model for each partition
+        aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition)
+        push!(aggregate_models,aggregate_model)
+        append!(all_cross_links,cross_links)
+        merge!(all_var_maps,var_maps)
+    end
+    all_cross_links = unique(all_cross_links)  #remove duplicate cross links
+
+    for agg_model in aggregate_models
+        aggregate_node = add_node!(new_model_graph)
+        setmodel(aggregate_node,agg_model)
+    end
+
+    sub_nodes = collectnodes(new_model_graph)
+    #GLOBAL LINK CONSTRAINTS.  Re-add link constraints to aggregated model nodes
+    master_node = add_node!(new_model_graph,Model())
+
+    for linkconstraint in all_cross_links
+        linear_terms = []
+        for terms in linearterms(linkconstraint.terms)
+            push!(linear_terms,terms)
+        end
+
+        #Get references to variables in the aggregated models
+        t_new = []
+        for i = 1:length(linear_terms)
+            coeff = linear_terms[i][1]
+            var = linear_terms[i][2]
+            model_node = getnode(var)                #the original model node
+            var_index = JuMP.linearindex(var)        #variable index in the model node
+            var_map = all_var_maps[model_node]       #model node variable map {index => aggregate_variable}
+            agg_var = var_map[var_index]
+            push!(t_new,(coeff,agg_var))
+        end
+
+        #For simple links, create a single lifted variable and 2 linkconstraints
+        if length(t_new) == 2 && (linkconstraint.lb == linkconstraint.ub) && (linear_terms[1][1]) == -linear_terms[2][1]
+            lifted_var = @variable(getmodel(master_node))
+            for term in t_new
+                var = term[2]
+                @linkconstraint(new_model_graph,lifted_var == var)
+            end
+#        end
+
+        else  #else create multiple duplicates and lift the constraints into the master
+            lift_terms = []
+            for term in t_new
+                coeff = term[1]
+                var = term[2]
+                lifted_var = @variable(getmodel(master_node) , start = JuMP.getvalue(var))
+                @linkconstraint(new_model_graph,lifted_var == var)
+                push!(lift_terms,(coeff,lifted_var))
+            end
+            @constraint(getmodel(master_node), linkconstraint.lb <= sum(lift_terms[i][1]*lift_terms[i][2] for i = 1:length(lift_terms)) + linkconstraint.terms.constant <= linkconstraint.ub)
+        end
+
+        #For simple links, create a single lifted variable and 2 linkconstraints
+
+        #@linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
+    end
+    return new_model_graph , master_node, sub_nodes
+end
+
+
 #Aggregate parts of a graph into a model node
 function aggregate!(model_graph::ModelGraph,nodes::Vector{ModelNode})
     local_link_constraints = []  #all nodes in link constraint are in the set of nodes given

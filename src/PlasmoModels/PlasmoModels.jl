@@ -17,7 +17,7 @@ getobjectivevalue,
 getinternalgraphmodel,
 
 #Graph Manipulation Functions
-aggregate!,create_partitioned_model_graph,
+aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,
 
 #JuMP Interface functions
 JuMPGraph,buildjumpmodel!,JuMPGraphModel,create_jump_graph_model,
