@@ -2,11 +2,12 @@ module PlasmoWorkflows
 
 #include("../PlasmoGraphBase/PlasmoGraphBase.jl")
 using ..PlasmoGraphBase
-import PlasmoGraphBase:create_node,create_edge,add_edge!,addattributes!#,getattribute,getattributes,
+import ..PlasmoGraphBase:create_node,create_edge,add_edge!,addattributes!#,getattribute,getattributes,
 
 import LightGraphs.DiGraph
 import DataStructures
 import Base:isless,step,==,show,print,string,getindex
+
 
 #State manager functions
 export AbstractSignal,AbstractEvent,SerialExecutor,
