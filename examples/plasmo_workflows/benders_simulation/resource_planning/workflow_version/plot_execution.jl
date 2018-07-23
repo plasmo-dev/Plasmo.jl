@@ -1,5 +1,6 @@
 using Plots
 pyplot()
+#Plots.scalefontsizes(1.5)
 using ColorSchemes
 task_scheme = ColorSchemes.Accent_3
 # nodes = collectnodes(workflow)
@@ -10,8 +11,12 @@ function create_workflow_plot(workflow::Workflow,master_node::DispatchNode,sub_n
 
     nodes = [master_node;sub_nodes]
 
+    plot_nodes = nodes
     if length(nodes) > 7
-        nodes = [sub_nodes[1:3];master_node;sub_nodes[4:end]]
+        plot_nodes = [sub_nodes[1:3];master_node;sub_nodes[4:end]]
+    end
+    if length(nodes) > 15
+        plot_nodes = [sub_nodes[1:7];master_node;sub_nodes[8:end]]
     end
 
     final_time = getcurrenttime(workflow)
@@ -33,7 +38,7 @@ function create_workflow_plot(workflow::Workflow,master_node::DispatchNode,sub_n
     end
 
     checked_tasks = []
-    for node in nodes
+    for node in plot_nodes
 
 
         node_map[node] = j

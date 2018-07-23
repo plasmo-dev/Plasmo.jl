@@ -170,7 +170,7 @@ function create_workflow(cpu::Integer)
     if n_subnodes == 1
         comm_delay = 0.0
     else
-        comm_delay = 0.01
+        comm_delay = 0.005
     end
     for i = 1:n_subnodes
         #Create each sub compute node
@@ -207,7 +207,7 @@ function create_workflow(cpu::Integer)
 end
 
 plts = []
-for cpu in [3]
+for cpu in [1,3,7,15]
     workflow,master_node,sub_nodes,channels = create_workflow(cpu)
 
     execute!(workflow)
@@ -223,7 +223,7 @@ end
 
 #l = @layout([a b; c d])
 #plot(plts...,layout = l,size = (1200,1000))
-plot(plts...,size = (1200,1000))
+plot(plts...,size = (800,600))
 
 #OR to see what's happening...
 #step(workflow)
