@@ -50,7 +50,7 @@ function setsolutiondata(node::ModelNode,solution_node::SolutionNode)
     solution_node.objval = getobjectivevalue(node)
 end
 
-function getvalue(solution_node::SolutionNode,s::Symbol)
+function JuMP.getvalue(solution_node::SolutionNode,s::Symbol)
     return solution_node.variable_value_map[s]
 end
 

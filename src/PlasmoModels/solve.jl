@@ -48,7 +48,7 @@ is_graphmodel(m::JuMP.Model) = haskey(m.ext,:Graph)? true : false  #check if the
 
 # Should be defined by base type
 # #Add nodes and edges to graph models.  These are used for model instantiation from a graph
-function add_node!(m::JuMP.Model; index = nv(getgraph(m).graph)+1)
+function add_node!(m::JuMP.Model; index = nv(getgraph(m).basegraph)+1)
     is_graphmodel(m) || error("Can only add nodes to graph models")
     #node = JuMPNode(Dict{AbstractPlasmoGraph,Int}(), Symbol("node"),Dict(),NodeData())
     node = create_node(getgraph(m))

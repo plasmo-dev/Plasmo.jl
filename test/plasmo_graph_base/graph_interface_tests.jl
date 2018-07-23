@@ -1,4 +1,4 @@
-println("Testing Interface Graph Functions")
+#println("Testing Interface Graph Functions")
 
 import Plasmo.PlasmoGraphBase:create_node,create_edge
 using Plasmo.PlasmoGraphBase

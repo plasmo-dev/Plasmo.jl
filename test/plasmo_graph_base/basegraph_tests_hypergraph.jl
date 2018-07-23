@@ -1,4 +1,4 @@
-println("Testing Base Graph HyperGraph Functions")
+#println("Testing Base Graph HyperGraph Functions")
 
 using Plasmo.PlasmoGraphBase
 using LightGraphs

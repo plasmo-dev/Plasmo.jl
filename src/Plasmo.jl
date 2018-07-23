@@ -54,6 +54,9 @@ getobjectivevalue,
 
 getinternalgraphmodel,
 
+#Graph Manipulation Functions
+aggregate!,
+
 #JuMP Interface functions
 JuMPGraph,buildjumpmodel!,
 #Internal JuMP models (when using JuMP solvers to solve the graph)
@@ -90,7 +93,7 @@ getsignals,getstates,getinitialsignal,getcurrentstate,gettransitionfunction,gett
 
 #WORKFLOWS
 
-Workflow, DispatchNode, CommunicationEdge, 
+Workflow, DispatchNode, CommunicationEdge,
 
 #Workflow functions
 
@@ -114,6 +117,7 @@ getresult,setinputs,getlocaltime,setinitialsignal,
 #Communication Edges
 connect!,setdelay,getdelay
 
+#Include and Use Modules
 include("PlasmoGraphBase/PlasmoGraphBase.jl")
 using .PlasmoGraphBase
 

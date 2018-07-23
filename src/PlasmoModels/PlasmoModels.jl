@@ -16,6 +16,9 @@ getnumnodes,
 getobjectivevalue,
 getinternalgraphmodel,
 
+#Graph Manipulation Functions
+aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,
+
 #JuMP Interface functions
 JuMPGraph,buildjumpmodel!,JuMPGraphModel,create_jump_graph_model,
 getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
@@ -24,7 +27,7 @@ getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,ge
 solve_jump,pipsnlp_solve,dsp_solve,solve,
 
 #Solution management
-getsolution,setsolution,setvalue,
+getsolution,setsolution,setvalue,getvalue,
 
 #macros
 @linkconstraint,@getconstraintlist
@@ -42,6 +45,8 @@ include("solve.jl")
 include("solution.jl")
 
 include("macros.jl")
+
+include("aggregation.jl")
 
 #load PIPS-NLP if the library can be found
 if  !isempty(Libdl.find_library("libparpipsnlp"))

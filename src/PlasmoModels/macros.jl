@@ -1,35 +1,6 @@
 import JuMP: isexpr, constraint_error, quot, getname, buildrefsets,_canonicalize_sense,parseExprToplevel, AffExpr, getloopedcode,addtoexpr_reorder,
 constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict,addkwargs!,coeftype
 
-"""
-    @linkconstraint(graph,args...)
-    macro for defining linkconstraints between nodes and edges.  Link constraints are associated with nodes and edges within their respective graph.
-"""
-macro linkconstraint(graph,args...)
-    #Check the inputs are the correct types.  This needs to throw
-    checkinputs = quote
-        #@assert Plasmo.is_graphmodel($m)
-        @assert isa($graph,Plasmo.ModelGraph)
-    end
-    #generate constraint list and them to node or edge linkdata
-    refscode = quote
-        cons_refs = Plasmo.@getconstraintlist($(args...))           #returns all of the constraints that would be generated from the expression
-
-        if isa(cons_refs,JuMP.JuMPArray)
-            cons_refs = cons_refs.innerArray
-        elseif isa(cons_refs,JuMP.JuMPDict)
-            cons_refs = collect(values(cons_refs.tupledict))
-        end
-        Plasmo.addlinkconstraint($graph,cons_refs)    #add the link constraints to the node or edge and map to graph
-    end
-    return esc(quote
-        begin
-            $checkinputs
-            $refscode
-        end
-    end)
-end
-
 #Would need to create link variables to do this
 macro NLlinkconstraint(graph,args...) end
 
@@ -180,4 +151,39 @@ macro getconstraintlist(args...)
       $loopedcode
       $escvarname
     end
+end
+
+"""
+    @linkconstraint(graph,args...)
+    macro for defining linkconstraints between nodes and edges.  Link constraints are associated with nodes and edges within their respective graph.
+"""
+macro linkconstraint(graph,args...)
+    #Check the inputs are the correct types.  This needs to throw
+    checkinputs = quote
+        #@assert Plasmo.is_graphmodel($m)
+        @assert isa($graph,PlasmoModels.ModelGraph)
+    end
+    #generate constraint list and them to node or edge linkdata
+    refscode = quote
+        cons_refs = PlasmoModels.@getconstraintlist($(args...))           #returns all of the constraints that would be generated from the expression
+
+        if isa(cons_refs,JuMP.JuMPArray)
+            cons_refs = cons_refs.innerArray
+        elseif isa(cons_refs,JuMP.JuMPDict)
+            cons_refs = collect(values(cons_refs.tupledict))
+        end
+        PlasmoModels.addlinkconstraint($graph,cons_refs)    #add the link constraints to the node or edge and map to graph
+    end
+    return esc(quote
+        begin
+            $checkinputs
+            $refscode
+        end
+    end)
+    # return esc(quote
+    #     begin
+    #         $checkinputs
+    #         $refscode
+    #     end
+    # end)
 end

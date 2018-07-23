@@ -4,6 +4,7 @@ using JuMP
 
 include("resource_data.jl")
 include("resource_model.jl")
+include("plot_execution.jl")
 
 ###############################################################
 #Benders example
@@ -81,8 +82,8 @@ function solve_master(node::DispatchNode)
     setattribute(node,:scenarios_out,i)
 
     #Convergence check
-    lower_bound = master_node[:lower_bound]
-    upper_bound = master_node[:upper_bound]
+    lower_bound = node[:lower_bound]
+    upper_bound = node[:upper_bound]
     println("current lower bound: ",lower_bound)
     println("current upper bound: ", upper_bound)
     if upper_bound - lower_bound <= 0.000001
@@ -130,79 +131,99 @@ function solve_subproblem(node::DispatchNode)
     return true
 end
 
-#Create the workflow
-tic()
-workflow = Workflow()
+function create_workflow(cpu::Integer)
 
-#Add a compute node to run the master problem
-master_node = add_dispatch_node!(workflow)
+    #Create the workflow
+    tic()
+    workflow = Workflow()
+
+    #Add a compute node to run the master problem
+    master_node = add_dispatch_node!(workflow)
 
 
-#Add simple attributes.  This is just data
-setattribute(master_node,:model,create_master())        #the master model
-setattribute(master_node,:scenarios_out,0)              #how many scenarios have been sent out
-setattribute(master_node,:scenarios,scenarios)          #set of scenarios to dish out
-setattribute(master_node,:upper_bound,10000)            #The current upper bound
+    #Add simple attributes.  This is just data
+    setattribute(master_node,:model,create_master())        #the master model
+    setattribute(master_node,:scenarios_out,0)              #how many scenarios have been sent out
+    setattribute(master_node,:scenarios,scenarios)          #set of scenarios to dish out
+    setattribute(master_node,:upper_bound,10000)            #The current upper bound
 
-master_duals = setattribute(master_node,:dual_attributes,[])            #Array of the dual attributes to receive
-master_scenarios = setattribute(master_node,:scenario_channels,[])      #Array of the dual attributes to receive
-#setattribute(master_node,:dual_updates,[])                              #Array of all dual updates received
-setattribute(master_node,:dual_updates,Dict())
-setattribute(master_node,:objective_updates,[])
+    master_duals = setattribute(master_node,:dual_attributes,[])            #Array of the dual attributes to receive
+    master_scenarios = setattribute(master_node,:scenario_channels,[])      #Array of the dual attributes to receive
+    #setattribute(master_node,:dual_updates,[])                              #Array of all dual updates received
+    setattribute(master_node,:dual_updates,Dict())
+    setattribute(master_node,:objective_updates,[])
 
-#A workflow attribute is data that gets communicated to other nodes.  Workflow attributes can be connected to other node attributes
-#Here, the solution attribute will be communicated.
-addworkflowattribute!(master_node,:solution)  #master node's current solution to pass to sub nodes
+    #A workflow attribute is data that gets communicated to other nodes.  Workflow attributes can be connected to other node attributes
+    #Here, the solution attribute will be communicated.
+    addworkflowattribute!(master_node,:solution)  #master node's current solution to pass to sub nodes
 
-#Add a task to the master node.  arguments are: (workflow,node,task_label,function,function_arguments)
-task = addnodetask!(workflow,master_node,:run_master_problem,solve_master,args = [master_node])
+    #Add a task to the master node.  arguments are: (workflow,node,task_label,function,function_arguments)
+    task = addnodetask!(workflow,master_node,:run_master_problem,solve_master,args = [master_node])
 
-#Initialize the workflow.  To do so, we will schedule a signal to execute the master task at time 0
-schedulesignal(workflow,Signal(:execute,task),master_node,0.0)  #schedule an execute signal on the master node at time 0
+    #Initialize the workflow.  To do so, we will schedule a signal to execute the master task at time 0
+    schedulesignal(workflow,Signal(:execute,task),master_node,0.0)  #schedule an execute signal on the master node at time 0
 
-#Assume we have 3 processors to do subproblems (note: Could try more)
-channels = []
-sub_nodes = []
-n_subnodes = 7
-for i = 1:n_subnodes
-    #Create each sub compute node
-    sub_node = add_dispatch_node!(workflow)
-    addworkflowattribute!(sub_node,:solution)               #sub node will receive a solution
-    scenario = addworkflowattribute!(sub_node,:scenario)    #sub node has a scenario
-    addworkflowattribute!(sub_node,:sub_result)             #sub node will produce a result
+    #Assume we have 3 processors to do subproblems (note: Could try more)
+    channels = []
+    sub_nodes = []
+    n_subnodes = cpu
+    if n_subnodes == 1
+        comm_delay = 0.0
+    else
+        comm_delay = 0.005
+    end
+    for i = 1:n_subnodes
+        #Create each sub compute node
+        sub_node = add_dispatch_node!(workflow)
+        addworkflowattribute!(sub_node,:solution)               #sub node will receive a solution
+        scenario = addworkflowattribute!(sub_node,:scenario)    #sub node has a scenario
+        addworkflowattribute!(sub_node,:sub_result)             #sub node will produce a result
 
-    #Receiving an update to the scenario will trigger this action because triggered_by_attributes is the scenario.
-    subnode_action = addnodetask!(workflow,sub_node,:solve_subproblem,solve_subproblem, args = [sub_node], triggered_by_attributes = [scenario])    #task is triggered by an update to the scenario attribute
+        #Receiving an update to the scenario will trigger this action because triggered_by_attributes is the scenario.
+        subnode_action = addnodetask!(workflow,sub_node,:solve_subproblem,solve_subproblem, args = [sub_node], triggered_by_attributes = [scenario])    #task is triggered by an update to the scenario attribute
 
-    #Now add corresponding attributes to the master node.
-    master_scenario = addworkflowattribute!(master_node,Symbol(string("scenario$i")))  #This adds a scenario attribute to the master for each subnode.  The master node has a scenario attribute for each sub node connected to it.
-    master_sub = addworkflowattribute!(master_node,:master_result_from_sub)            #Master node has an attribute for each sub node's result
+        #Now add corresponding attributes to the master node.
+        master_scenario = addworkflowattribute!(master_node,Symbol(string("scenario$i")))  #This adds a scenario attribute to the master for each subnode.  The master node has a scenario attribute for each sub node connected to it.
+        master_sub = addworkflowattribute!(master_node,:master_result_from_sub)            #Master node has an attribute for each sub node's result
 
-    #Create a different node task for each subnode update
-    addnodetask!(workflow,master_node,:update_duals,update_duals,args = [workflow,master_node,master_sub,master_scenario], triggered_by_attributes = [master_sub])
+        #Create a different node task for each subnode update
+        addnodetask!(workflow,master_node,:update_duals,update_duals,args = [workflow,master_node,master_sub,master_scenario], triggered_by_attributes = [master_sub])
 
-    push!(master_duals,master_sub)              #Keep an array of all the dual workflow attributes on the master for easy access
-    push!(master_scenarios,master_scenario)     #Keep an array of the scenario attributes on the master for easy access
+        push!(master_duals,master_sub)              #Keep an array of all the dual workflow attributes on the master for easy access
+        push!(master_scenarios,master_scenario)     #Keep an array of the scenario attributes on the master for easy access
 
-    #Make the connections
-    #NOTE: If the solution takes longer than the scenario to show up, this won't work.  I'm thinking of including something like guards and conditions, but I think that gets kind of messy.
-    c1 = connect!(workflow, master_node[:solution], sub_node[:solution], comm_delay = 0.0)    #no action taken is taken when a solution is communicated.  That's because the sub node isn't triggered by an updated solution.
-    c2 = connect!(workflow, master_scenario, sub_node[:scenario], comm_delay = 0.0)        #action = solve_subproblem
-    c3 = connect!(workflow, sub_node[:sub_result], master_sub, comm_delay = 0.0)
+        #Make the connections
+        #NOTE: If the solution takes longer than the scenario to show up, this won't work.  I'm thinking of including something like guards and conditions, but I think that gets kind of messy.
+        c1 = connect!(workflow, master_node[:solution], sub_node[:solution], comm_delay = 0.0)    #no action taken is taken when a solution is communicated.  That's because the sub node isn't triggered by an updated solution.
+        c2 = connect!(workflow, master_scenario, sub_node[:scenario], comm_delay = comm_delay)        #action = solve_subproblem
+        c3 = connect!(workflow, sub_node[:sub_result], master_sub, comm_delay = 0.0)
 
-    append!(channels,[c1,c2,c3])
-    push!(sub_nodes,sub_node)
-    #Maintain a priority mapping (This is a fairly standard practice)
-    #setpriority(workflow,c1,0)  #custom priority on channel
+        append!(channels,[c1,c2,c3])
+        push!(sub_nodes,sub_node)
+        #Maintain a priority mapping (This is a fairly standard practice)
+        #setpriority(workflow,c1,0)  #custom priority on channel
+    end
+    return workflow,master_node,sub_nodes,channels
 end
 
+plts = []
+for cpu in [1,3,7,15]
+    workflow,master_node,sub_nodes,channels = create_workflow(cpu)
 
-execute!(workflow)
-println(toc())
+    execute!(workflow)
+    println(toc())
 
-println("workflow completed in: ",getcurrenttime(workflow))
-println(master_node[:upper_bound])
-println(master_node[:lower_bound])
+    println("workflow completed in: ",getcurrenttime(workflow))
+    println(master_node[:upper_bound])
+    println(master_node[:lower_bound])
+
+    plt = create_workflow_plot(workflow,master_node,sub_nodes,channels)
+    push!(plts,plt)
+end
+
+#l = @layout([a b; c d])
+#plot(plts...,layout = l,size = (1200,1000))
+plot(plts...,size = (800,600))
 
 #OR to see what's happening...
 #step(workflow)
