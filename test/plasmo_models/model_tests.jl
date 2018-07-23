@@ -1,6 +1,7 @@
 import JuMP
 
-import Plasmo
+import Plasmo.PlasmoModels
+PM = Plasmo.PlasmoModels
 
 import Ipopt
 
@@ -9,12 +10,12 @@ import Ipopt
 graph = Plasmo.ModelGraph()
 #graph = Plasmo.getgraph(model)
 
-Plasmo.setsolver(graph,Ipopt.IpoptSolver())
+PM.setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
-n1 = Plasmo.add_node!(graph)
-n2 = Plasmo.add_node!(graph)
-n3 = Plasmo.add_node!(graph)
+n1 = PM.add_node!(graph)
+n2 = PM.add_node!(graph)
+n3 = PM.add_node!(graph)
 #Add edges between the nodes
 #edge = Plasmo.add_edge!(graph,n1,n2)
 
@@ -46,15 +47,15 @@ function simple_model()
 end
 
 #Set models on nodes and edges
-Plasmo.setmodel!(n1,m1)     #set m1 to node 1.  Updates reference on m1
-Plasmo.setmodel!(n2,m2)
-Plasmo.setmodel!(n3,m3)
+PM.setmodel!(n1,m1)     #set m1 to node 1.  Updates reference on m1
+PM.setmodel!(n2,m2)
+PM.setmodel!(n3,m3)
 #Plasmo.setmodel!(edge,simple_model())
 
 #Link constraints take the same expressions as the JuMP @constraint macro
-Plasmo.@linkconstraint(graph,n2[:x] == n1[:x])
+PM.@linkconstraint(graph,n2[:x] == n1[:x])
 #Plasmo.@linkconstraint(graph,[t = 1:5],edge[:x] == n2[:z][t])
-Plasmo.@linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
+PM.@linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
 #Plasmo.@linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == edge[:x])
 
 #Get all of the link constraints in a graph

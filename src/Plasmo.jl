@@ -93,7 +93,7 @@ getsignals,getstates,getinitialsignal,getcurrentstate,gettransitionfunction,gett
 
 #WORKFLOWS
 
-Workflow, DispatchNode, CommunicationEdge, 
+Workflow, DispatchNode, CommunicationEdge,
 
 #Workflow functions
 
@@ -117,6 +117,7 @@ getresult,setinputs,getlocaltime,setinitialsignal,
 #Communication Edges
 connect!,setdelay,getdelay
 
+#Include and Use Modules
 include("PlasmoGraphBase/PlasmoGraphBase.jl")
 using .PlasmoGraphBase
 

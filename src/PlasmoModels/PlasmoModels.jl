@@ -27,7 +27,7 @@ getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,ge
 solve_jump,pipsnlp_solve,dsp_solve,solve,
 
 #Solution management
-getsolution,setsolution,setvalue,
+getsolution,setsolution,setvalue,getvalue,
 
 #macros
 @linkconstraint,@getconstraintlist
