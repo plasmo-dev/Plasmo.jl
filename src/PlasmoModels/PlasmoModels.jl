@@ -8,6 +8,9 @@ import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, Constr
 #Model Graph Constructs
 export ModelGraph, ModelNode, LinkingEdge,LinkConstraint,
 
+#re-export base functions
+add_node!,getnodes,collectnodes,
+
 #Model functions
 setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,hasmodel,
 

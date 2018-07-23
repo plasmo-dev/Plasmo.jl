@@ -8,6 +8,7 @@ import LightGraphs.DiGraph
 import DataStructures
 import Base:isless,step,==,show,print,string,getindex
 
+
 #State manager functions
 export AbstractSignal,AbstractEvent,SerialExecutor,
 

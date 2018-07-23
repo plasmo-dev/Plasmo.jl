@@ -1,21 +1,22 @@
 import JuMP
 
-import Plasmo.PlasmoModels
-PM = Plasmo.PlasmoModels
+# import Plasmo.PlasmoModels
+# PM = Plasmo.PlasmoModels
+using Plasmo.PlasmoModels
 
 import Ipopt
 
 #Need to create standard optimization models to test against.  Check solution values
 #Create a Graph Model
-graph = Plasmo.ModelGraph()
+graph = ModelGraph()
 #graph = Plasmo.getgraph(model)
 
-PM.setsolver(graph,Ipopt.IpoptSolver())
+setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
-n1 = PM.add_node!(graph)
-n2 = PM.add_node!(graph)
-n3 = PM.add_node!(graph)
+n1 = add_node!(graph)
+n2 = add_node!(graph)
+n3 = add_node!(graph)
 #Add edges between the nodes
 #edge = Plasmo.add_edge!(graph,n1,n2)
 
@@ -47,20 +48,20 @@ function simple_model()
 end
 
 #Set models on nodes and edges
-PM.setmodel!(n1,m1)     #set m1 to node 1.  Updates reference on m1
-PM.setmodel!(n2,m2)
-PM.setmodel!(n3,m3)
+setmodel!(n1,m1)     #set m1 to node 1.  Updates reference on m1
+setmodel!(n2,m2)
+setmodel!(n3,m3)
 #Plasmo.setmodel!(edge,simple_model())
 
 #Link constraints take the same expressions as the JuMP @constraint macro
-PM.@linkconstraint(graph,n2[:x] == n1[:x])
+@linkconstraint(graph,n2[:x] == n1[:x])
 #Plasmo.@linkconstraint(graph,[t = 1:5],edge[:x] == n2[:z][t])
-PM.@linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
+@linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
 #Plasmo.@linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == edge[:x])
 
 #Get all of the link constraints in a graph
-Plasmo.getlinkconstraints(graph)
+getlinkconstraints(graph)
 
-Plasmo.solve(graph)
+solve(graph)
 
 true
