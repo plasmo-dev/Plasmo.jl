@@ -243,3 +243,24 @@ function getnodevariablemap(node::ModelNode)
     end
     return node_map
 end
+
+####################################
+#Print Functions
+####################################
+function string(graph::ModelGraph)
+    "Model Graph\ngraph_id: "*string(getlabel(graph))*"\nnodes:"*string((length(getnodes(graph))))*"\nsimple links:"*string(length(getsimplelinkconstraints(graph)))*"\nhyper links: "*string(length(gethyperlinkconstraints(graph)))
+end
+print(io::IO, graph::ModelGraph) = print(io, string(graph))
+show(io::IO,graph::ModelGraph) = print(io,graph)
+
+# function string(node::ModelNode)
+#     "node: "string(getlabel(node))*string(" in $(length(getindices(node))) graph(s) with indices $(collect(values(getindices(node))))")
+# end
+# print(io::IO,node::ModelNode) = print(io, string(node))
+# show(io::IO,node::ModelNode) = print(io,node)
+
+# function string(edge::AbstractPlasmoEdge)
+#     "edge: "*string(getlabel(edge))*string(" in $(length(getindices(edge))) graph(s) with ids $(collect(values(getindices(edge))))")
+# end
+# print(io::IO,edge::AbstractPlasmoEdge) = print(io, string(edge))
+# show(io::IO,edge::AbstractPlasmoEdge) = print(io,edge)

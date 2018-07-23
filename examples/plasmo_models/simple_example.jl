@@ -1,13 +1,13 @@
 using JuMP
-using Plasmo
+using Plasmo.PlasmoModels
 using Ipopt
 
-graph = Plasmo.ModelGraph()
+graph = ModelGraph()
 setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
-n1 = Plasmo.add_node(graph)
-n2 = Plasmo.add_node(graph)
+n1 = add_node!(graph)
+n2 = add_node!(graph)
 
 m1 = JuMP.Model()
 JuMP.@variable(m1,0 <= x <= 2)
@@ -21,20 +21,20 @@ JuMP.@NLconstraint(m2,exp(x) >= 2)
 
 
 #Set models on nodes and edges
-Plasmo.setmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1
-Plasmo.setmodel(n2,m2)
+setmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1
+setmodel(n2,m2)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
-Plasmo.@linkconstraint(graph,n1[:x] == n2[:x])
+@linkconstraint(graph,n1[:x] == n2[:x])
 
 #Get all of the link constraints in a graph
-links = Plasmo.getlinkconstraints(graph)
+links = getlinkconstraints(graph)
 for link in links
     println(link)
 end
 
-Plasmo.solve(graph)
+solve(graph)
 
 println("n1[:x]= ",JuMP.getvalue(n1[:x]))
 println("n2[:x]= ",JuMP.getvalue(n2[:x]))
-println("objective = ", Plasmo.getobjectivevalue(graph))
+println("objective = ", getobjectivevalue(graph))
