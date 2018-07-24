@@ -186,13 +186,14 @@ function create_lifted_model_graph(model_graph::ModelGraph,partitions::Vector{Ve
         end
 
         #For simple links, create a single lifted variable and 2 linkconstraints
-
-        #@linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
+        @linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
     end
     return new_model_graph , master_node, sub_nodes
 end
 
 
+
+#TODO
 #Aggregate parts of a graph into a model node
 function aggregate!(model_graph::ModelGraph,nodes::Vector{ModelNode})
     local_link_constraints = []  #all nodes in link constraint are in the set of nodes given

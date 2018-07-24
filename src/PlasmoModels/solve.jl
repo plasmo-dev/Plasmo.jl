@@ -348,11 +348,12 @@ end
 
 buildjumpmodel!(graph::ModelGraph) = graph.serial_model = create_jump_graph_model(graph)
 #Create a JuMP model and solve with a MPB compliant solver
-function jump_solve(graph::ModelGraph,kwargs...)
+function jump_solve(graph::ModelGraph,scale = 1.0,kwargs...)
     println("Aggregating Models...")
     m_flat = buildjumpmodel!(graph)
     println("Finished model instantiation")
     m_flat.solver = graph.linkmodel.solver
+    m_flat.obj = scale*m_flat.obj
     status = JuMP.solve(m_flat,kwargs...)
     if status == :Optimal
         setsolution(getgraph(m_flat),graph)                       #Now get our solution data back into the original ModelGraph
@@ -361,9 +362,9 @@ function jump_solve(graph::ModelGraph,kwargs...)
     return status
 end
 
-function JuMP.solve(graph::ModelGraph; method = :jump,kwargs...)
+function JuMP.solve(graph::ModelGraph; method = :jump,scale = 1.0,kwargs...)
     if method == :jump
-        status = jump_solve(graph,kwargs...)
+        status = jump_solve(graph,scale = scale,kwargs...)
     else
         throw(error("Given solve method not supported"))
     end

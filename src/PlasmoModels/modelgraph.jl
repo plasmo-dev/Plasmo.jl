@@ -253,11 +253,11 @@ end
 print(io::IO, graph::ModelGraph) = print(io, string(graph))
 show(io::IO,graph::ModelGraph) = print(io,graph)
 
-# function string(node::ModelNode)
-#     "node: "string(getlabel(node))*string(" in $(length(getindices(node))) graph(s) with indices $(collect(values(getindices(node))))")
-# end
-# print(io::IO,node::ModelNode) = print(io, string(node))
-# show(io::IO,node::ModelNode) = print(io,node)
+function string(node::ModelNode)
+    "Model Node: "string(getlabel(node))*"\n"*string("Member of $(length(getindices(node))) graph(s)")*"\n$(length(getmodel(node).colVal)) Variables"#*"\n$(length(collect(values(node.linkconrefs)))) Link Constraints"
+end
+print(io::IO,node::ModelNode) = print(io, string(node))
+show(io::IO,node::ModelNode) = print(io,node)
 
 # function string(edge::AbstractPlasmoEdge)
 #     "edge: "*string(getlabel(edge))*string(" in $(length(getindices(edge))) graph(s) with ids $(collect(values(getindices(edge))))")
