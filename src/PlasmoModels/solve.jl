@@ -348,7 +348,7 @@ end
 
 buildjumpmodel!(graph::ModelGraph) = graph.serial_model = create_jump_graph_model(graph)
 #Create a JuMP model and solve with a MPB compliant solver
-function jump_solve(graph::ModelGraph,scale = 1.0,kwargs...)
+function jump_solve(graph::ModelGraph;scale = 1.0,kwargs...)
     println("Aggregating Models...")
     m_flat = buildjumpmodel!(graph)
     println("Finished model instantiation")
