@@ -57,6 +57,10 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
         con_reference = @constraint(aggregate_model, linkconstraint.lb <= sum(t[i][1]*JuMP.Variable(aggregate_model,indexmap[(t[i][2])]) for i = 1:length(t)) + linkconstraint.terms.constant <= linkconstraint.ub)
         push!(jump_graph.linkconstraints,con_reference)
     end
+
+    #OBJECTIVE
+    @objective(aggregate_model,Min,sum(getobjective(node) for node in getnodes(jump_graph)))
+
     return aggregate_model,cross_links,var_maps
 end
 
@@ -82,6 +86,8 @@ function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vect
     all_cross_links = []
     variable_mapping = Dict()
     all_var_maps = Dict()
+
+    #NOTE Need to catch objective terms
     for partition in partitions  #create aggregate model for each partition
         aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition)
         push!(aggregate_models,aggregate_model)
