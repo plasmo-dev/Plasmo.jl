@@ -67,13 +67,13 @@ function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2:
     end
 
     if continuous == true
-        addtransition!(channel.state_manager,State(:active), Signal(:comm_sent,attribute1), State(:active), action = TransitionAction(schedule_communicate,[workflow,channel]),targets = [channel.state_manager])
+        addtransition!(channel.state_manager,State(:active), Signal(:comm_sent,attribute1), State(:active), action = TransitionAction(schedule_communicate,[channel]),targets = [channel.state_manager])
         schedulesignal(workflow,Signal(:communicate),channel,start_time)
         suppresssignal!(channel.state_manager,Signal(:comm_received,attribute2))
     end
 
     #run communication when given :communicate signal
-    addtransition!(channel.state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[channel]), targets = [channel.state_manager,destination_node.state_manager])
+    addtransition!(channel.state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[workflow,channel]), targets = [channel.state_manager,destination_node.state_manager])
 
     return channel
 end
