@@ -22,13 +22,16 @@ HyperGraph(n::Integer = 0) = HyperGraph(Int[],AbstractHyperEdge[],Dict{Int,Vecto
 struct HyperEdge <: AbstractHyperEdge
     vertices::Tuple  #vertices the edge connects.  Ordered by vertex number
 end
-HyperEdge(t::Vector{Int64}) = HyperEdge(tuple(sort(t)...))
-HyperEdge(t::Int...) = HyperEdge(tuple(sort(collect(t))...))
+
+HyperEdge(t::Vector{Int64}) = HyperEdge(tuple(t)...)
+HyperEdge(t::Int...) = HyperEdge(tuple(collect(t)...))
+
 #convert a simple edge to a hyperedge
-HyperEdge(edge::SimpleEdge) = HyperEdge(tuple(sort([src(edge),dst(edge)])...))
+HyperEdge(edge::SimpleEdge) = HyperEdge(tuple([src(edge),dst(edge)]...))
 HyperEdge(edge::HyperEdge) = edge
 
-show(io::IO, e::HyperEdge) = print(io, "Hyper Edge $(e.vertices)")
+
+show(io::IO, e::HyperEdge) = print(io, "Hyper Edge $(sort(collect(e.vertices)))")
 
 #
 # Base.broadcast(::typeof(==),h1::HyperEdge,h2::HyperEdge) = sort(unique(h1.vertices)) ==  sort(unique(h2.vertices))
@@ -148,6 +151,40 @@ function LightGraphs.all_neighbors(g::HyperGraph,v::Int)
 end
 
 LightGraphs.degree(g::HyperGraph,v::Int) = length(all_neighbors(g,v))
+
+#Simple Neighbor function for 2 vertex edges
+function LightGraphs.inneighbors(g::HyperGraph,v::Int)
+    hyperedges = g.node_map[v]
+    in_neighbors = []
+    for edge in hyperedges
+        if length(edge.vertices) == 2
+            if v == edge.vertices[2]
+                append!(in_neighbors,edge.vertices[1])
+            end
+        end
+    end
+    return unique(in_neighbors)
+end
+
+#Simple Neighbor function for 2 vertex edges
+function LightGraphs.outneighbors(g::HyperGraph,v::Int)
+    hyperedges = g.node_map[v]
+    out_neighbors = []
+    for edge in hyperedges
+        if length(edge.vertices) == 2
+            if v == edge.vertices[1]
+                append!(out_neighbors,edge.vertices[2])
+            end
+        end
+    end
+    return unique(out_neighbors)
+end
+
+
+
+
+
+
 
 #neighbors(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = [getnode(basegraph,node_index) for node_index in LightGraphs.all_neighbors(getlightgraph(basegraph),getindex(basegraph,node))]
 
