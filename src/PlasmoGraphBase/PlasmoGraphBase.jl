@@ -26,7 +26,7 @@ add_subgraph,add_subgraph!,getsubgraph,copy_graph,
 
 in_degree,out_degree,getsupportingnodes,getsupportingedges,getconnectedto,getconnectedfrom,is_connected,in_neighbors,out_neighbors,
 
-getattribute,setattribute,addattributes!,getattributes
+hasattribute, getattribute,setattribute,addattributes!,getattributes
 
 abstract type AbstractPlasmoGraph end
 abstract type AbstractPlasmoNode end
