@@ -47,6 +47,7 @@ function get_all_linkconstraints(graph::ModelGraph)
 end
 
 #TODO Figure out how JuMP sets solvers with MOI
+getsolver(model::ModelGraph) = model.linkmodel.solver
 setsolver(model::ModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
 
 ##############################################################################

@@ -25,7 +25,7 @@ getnodes,getedges,add_node,add_edge,add_node!,add_edge!,getnode,getedge,collectn
 
 add_subgraph,add_subgraph!,getsubgraph,copy_graph,
 
-in_degree,out_degree,getsupportingnodes,getsupportingedges,getconnectedto,getconnectedfrom,is_connected,
+in_degree,out_degree,getsupportingnodes,getsupportingedges,getconnectedto,getconnectedfrom,is_connected,neighbors,in_neighbors,out_neighbors,
 
 hasattribute,getattribute,setattribute,addattributes!,getattributes,
 
@@ -41,6 +41,8 @@ PlasmoGraph,getgraphobjectivevalue,GraphModel,NodeOrEdge,create_flat_graph_model
 ModelGraph, ModelNode, LinkingEdge, LinkConstraint,
 
 #Model functions
+getsolver,
+
 setmodel,setsolver,setmodel!,resetmodel,
 
 is_nodevar,

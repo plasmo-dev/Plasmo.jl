@@ -12,6 +12,8 @@ export ModelGraph, ModelNode, LinkingEdge,LinkConstraint,
 add_node!,getnodes,collectnodes,
 
 #Model functions
+getsolver,
+
 setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,hasmodel,
 
 addlinkconstraint, getlinkreferences,getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints,get_all_linkconstraints,
