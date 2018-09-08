@@ -152,7 +152,9 @@ end
 
 
 function addbroadcasttarget!(transition::Transition,target::SignalTarget)
-    push!(transition.output_signal_targets,target)
+    if !(target in transition.output_signal_targets)
+        push!(transition.output_signal_targets,target)
+    end
 end
 
 function runtransition!(SM::StateManager,transition::Transition,triggering_signal::AbstractSignal)

@@ -24,6 +24,11 @@ execute!(workflow::Workflow) = execute!(workflow,SerialExecutor())
 
 step(workflow::Workflow,executor::AbstractExecutor) = step(workflow.coordinator,executor,priority_map = workflow_priority_map)
 step(workflow::Workflow) = step(workflow.coordinator,priority_map = workflow_priority_map)
+advance(workflow::Workflow,executor::AbstractExecutor) = advance(workflow.coordinator,executor,priority_map = workflow_priority_map)
+
+# function advance(workflow::Workflow,executor::AbstractExecutor,time::Number)
+#     while getcurrenttime(workflow) <= time
+#         step()
 
 function run!(executor::SerialExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent;priority_map = workflow_priority_map)
     #task = @schedule call!(workflow,event)

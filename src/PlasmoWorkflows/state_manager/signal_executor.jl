@@ -76,6 +76,26 @@ function step(coordinator::SignalCoordinator,executor::AbstractExecutor;priority
     #wait(task)  #maybe drop this
  end
 
+function advance(coordinator::SignalCoordinator,executor::AbstractExecutor,time::Number;priority_map = Dict())
+    while coordinator.time <= time
+        try
+            step(coordinator,executor,priority_map = priority_map)             #step through the priority queue
+            if coordinator.time >= executor.final_time && coordinator.time != 0
+                throw(StopWorkflow())
+            end
+        catch err
+            if isa(err,StopWorkflow)
+                println(err)
+                println("Execution complete: ",err.value)
+                break
+            else
+                println("Found error")
+                rethrow(err)
+            end
+        end
+    end
+end
+
 function run!(executor::SimpleExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent;priority_map = Dict())
     #task = @schedule call!(workflow,event)
     task = call!(coordinator,signal_event,priority_map = priority_map)

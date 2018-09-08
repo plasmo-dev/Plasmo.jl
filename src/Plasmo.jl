@@ -88,7 +88,7 @@ State,Signal,DataSignal,Transition,TransitionAction,
 
 addstate!,addsignal!,addtransition!,addbroadcasttarget!,
 
-setstate,schedulesignal,step,
+setstate,schedulesignal,step,advance,
 
 getsignals,getstates,getinitialsignal,getcurrentstate,gettransitionfunction,gettransitions,gettransition,
 

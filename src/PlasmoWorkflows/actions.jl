@@ -14,6 +14,21 @@ function schedule_node_task(signal::AbstractSignal,node_task::NodeTask)
     return [Pair(signal_now,0),Pair(delayed_signal,delay)]
 end
 
+function schedule_node_task_during_synchronize(signal::AbstractSignal,node::AbstractDispatchNode,node_task::NodeTask)
+    #Put the execute signal in the node queue.  This signal will get evaluated after synchronization
+    push!(node.signal_queue,Signal(:execute,node_task))
+    return [Pair(Signal(:signal_queued),0)]
+end
+
+function pop_node_queue(signal::AbstractSignal,node::AbstractDispatchNode)
+    if !isempty(node.signal_queue)
+        return_signal = shift!(node.signal_queue)
+        return [Pair(return_signal,0)]
+    else
+        return [Pair(Signal(:nothing),0)]
+    end
+end
+
 #Run a node task
 # function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode)
 #     #try
@@ -94,6 +109,7 @@ function schedule_communicate(signal::AbstractSignal,channel::AbstractChannel)
 end
 
 #Action for receiving an attribute
+#attribute gets updated with value from signal
 function receive_attribute(signal::DataSignal,attribute::Attribute)
     value = getdata(signal)
     attribute.local_value = value
@@ -108,3 +124,9 @@ function update_attribute(signal::DataSignal,attribute::Attribute)
     attribute.global_value = value
     return [Pair(Signal(:attribute_updated,attribute),0)]
 end
+
+#Action for receiving an attribute
+# function receive_attribute_while_synchronizing(signal::DataSignal,node::AbstractDispatchNode,attribute::Attribute)
+#     push!(node.signal_queue,signal)
+#     return [Pair(Signal(:attribute_received,attribute),0)]
+# end
