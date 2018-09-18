@@ -23,7 +23,7 @@ n3 = add_node!(graph)
 #Set a model on node 1
 m1 = JuMP.Model()
 JuMP.@variable(m1,0 <= x <= 2)
-JuMP.@variable(m1,0 <= y <= 3)
+JuMP.@variable(m1, y == 3)
 JuMP.@constraint(m1,x+y <= 4)
 JuMP.@objective(m1,Min,x)
 

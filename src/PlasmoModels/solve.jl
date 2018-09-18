@@ -201,13 +201,18 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
     #add the node model variables to the new model
     for i = 1:num_vars
         x = JuMP.@variable(m)                                                #create an anonymous variable
-        setlowerbound(x,node_model.colLower[i])
-        setupperbound(x,node_model.colUpper[i])
         var_name = string(Variable(node_model,i))
         new_name = "$(getlabel(jump_node))$(getindex(getgraph(m),jump_node))."*var_name
         setname(x,new_name)                                                  #rename the variable to the node model variable name plus the node or edge name
-        setcategory(x,node_model.colCat[i])                                  #set the variable to the same category
-        setvalue(x,node_model.colVal[i])                                     #set the variable to the same value
+        if node_model.colCat[i] != :Fixed
+            setlowerbound(x,node_model.colLower[i])
+            setupperbound(x,node_model.colUpper[i])
+            setcategory(x,node_model.colCat[i])                              #set the variable to the same category.  Fixed should get caught by lower and upper bound
+            setvalue(x,node_model.colVal[i])                                 #set the variable to the same value
+        else
+            JuMP.fix(x,node_model.colVal[i])
+        end
+
         var_map[i] = x                                                       #map the linear index of the model_node variable to the new variable in the jump_node
         index_map[i] = linearindex(x)                                        #map of jump node variable index to it's actual flat model index
         m.objDict[Symbol(new_name)] = x                                      #Update master model variable dictionary
@@ -417,7 +422,11 @@ function setsolution(graph1::AbstractModelGraph,graph2::AbstractModelGraph)
         for i = 1:num_var(node)
             node1_var = getnodevariable(node,i)
             node2_var = getnodevariable(node2,i)
-            setvalue(node2_var,getvalue(node1_var))
+            if JuMP.getcategory(node2_var) == :Fixed
+                JuMP.fix(node2_var,getvalue(node1_var))
+            else
+                setvalue(node2_var,getvalue(node1_var))
+            end
         end
     end
     #TODO Set dual values
