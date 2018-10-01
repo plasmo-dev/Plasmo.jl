@@ -354,7 +354,7 @@ function jump_solve(graph::ModelGraph;scale = 1.0,kwargs...)
     println("Finished model instantiation")
     m_flat.solver = graph.linkmodel.solver
     m_flat.obj = scale*m_flat.obj
-    status = JuMP.solve(m_flat,kwargs...)
+    status = JuMP.solve(m_flat;kwargs...)
     if status == :Optimal
         setsolution(getgraph(m_flat),graph)                       #Now get our solution data back into the original ModelGraph
         _setobjectivevalue(graph,JuMP.getobjectivevalue(m_flat))  #Set the graph objective value for easy access
