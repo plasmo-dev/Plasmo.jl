@@ -7,7 +7,7 @@ import MPI
 import JuMP
 
 
-import ..PlasmoModels
+import ..PlasmoModelGraph
 
 
 include("PipsNlpSolver.jl")
@@ -81,13 +81,13 @@ end
 #     modelList = [getmodel(master); submodels]
 # end
 
-function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.ModelNode,children_nodes::Vector{PlasmoModels.ModelNode})
+function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoModelGraph.ModelNode,children_nodes::Vector{PlasmoModelGraph.ModelNode})
     #need to check that the structure makes sense
 
-    submodels = [PlasmoModels.getmodel(child) for child in children_nodes]
+    submodels = [PlasmoModelGraph.getmodel(child) for child in children_nodes]
     scen = length(children_nodes)
 
-    master = PlasmoModels.getmodel(master_node)
+    master = PlasmoModelGraph.getmodel(master_node)
     modelList = [master; submodels]
 
     #Add ModelData to each model
@@ -98,7 +98,7 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
     master_linear_lb = []
     master_linear_ub = []
 
-    linkconstraints = PlasmoModels.getlinkconstraints(graph) #get all of the link constraints in the graph
+    linkconstraints = PlasmoModelGraph.getlinkconstraints(graph) #get all of the link constraints in the graph
     #get arrays of lower and upper bounds for each link constraint
     for con in linkconstraints
         push!(master_linear_lb,con.lb)
@@ -710,7 +710,7 @@ function pipsnlp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.
     status = :Unknown
     if ret == 0
         status = :Optimal
-        PlasmoModels._setobjectivevalue(graph,prob.t_jl_eval_f)
+        PlasmoModelGraph._setobjectivevalue(graph,prob.t_jl_eval_f)
     elseif ret == 1
         status = :Not_Finished
     elseif	ret == 2

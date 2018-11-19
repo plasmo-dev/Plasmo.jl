@@ -1,4 +1,4 @@
-module PlasmoWorkflows
+module PlasmoComputingGraph
 
 #include("../PlasmoGraphBase/PlasmoGraphBase.jl")
 using ..PlasmoGraphBase
@@ -83,7 +83,7 @@ include("state_manager/signal_coordinator.jl")
 include("state_manager/signal_executor.jl")
 include("state_manager/signal_print.jl")
 
-#Workflow Graph
+#Computation Graph
 
 #Node Tasks
 include("node_task.jl")

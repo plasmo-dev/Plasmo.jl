@@ -2,11 +2,10 @@
 #flattened model which JuMP can always solve in serial.
 #import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue,getvalue
 import MathProgBase
+#import MathOptInterface (soon)
 import LightGraphs
 using JuMP
 import JuMP:setvalue,solve
-
-#import MathOptInterface (soon)
 
 #IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution to the graph
 #typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
@@ -33,7 +32,6 @@ hasmodel(node::JuMPNode) = throw(error("JuMP nodes are simple references to orig
 #Has constraint references for link constraints
 mutable struct JuMPEdge <: AbstractLinkingEdge
     baseedge::BasePlasmoEdge
-    #linkconstraintlist::Vector{Int}  #indices in JuMP model of linkconstraints for this edge
     linkconstraintlist::Vector{ConstraintRef}  #indices in JuMP model of linkconstraints for this edge
 end
 create_edge(graph::JuMPGraph) = JuMPEdge(BasePlasmoEdge(),ConstraintRef[])
@@ -50,7 +48,6 @@ is_graphmodel(m::JuMP.Model) = haskey(m.ext,:Graph)? true : false  #check if the
 # #Add nodes and edges to graph models.  These are used for model instantiation from a graph
 function add_node!(m::JuMP.Model; index = nv(getgraph(m).basegraph)+1)
     is_graphmodel(m) || error("Can only add nodes to graph models")
-    #node = JuMPNode(Dict{AbstractPlasmoGraph,Int}(), Symbol("node"),Dict(),NodeData())
     node = create_node(getgraph(m))
     add_node!(getgraph(m),node,index = index)
     return node
@@ -58,7 +55,6 @@ end
 
 function add_edge!(m::Model,nodes::JuMPNode...)
     is_graphmodel(m) || error("Can only add edges to graph models")
-    #edge = create_edge(getgraph(m))
     add_edge!(getgraph(m),nodes...)
     return edge
 end
@@ -68,22 +64,17 @@ getgraph(m::Model) = haskey(m.ext, :Graph)? m.ext[:Graph] : error("Model is not 
 PlasmoGraphBase.getnodes(m::Model) = getnodes(getgraph(m))
 getedges(m::Model) = getedges(getgraph(m))
 
-#TODO
-#Need to account for which graph to get from (Keep track of the subgraph in the JuMP model)
-getnode(m::Model,sid::Integer,nid::Integer) = getnode(getgraph(m).subgraphlist[sid],nid)
-getedge(m::Model,sid::Integer,eid::LightGraphs.AbstractEdge) = getedge(getgraph(m).subgraphlist[sid],eid)
-
-
 getnode(m::Model,id::Integer) = getnode(getraph(m),id)  #Grab from the highest level graph if not specified
-getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
+getnode(m::Model,sid::Integer,nid::Integer) = getnode(getgraph(m).subgraphlist[sid],nid)
 
+getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
+getedge(m::Model,sid::Integer,eid::LightGraphs.AbstractEdge) = getedge(getgraph(m).subgraphlist[sid],eid)
 
 JuMP.getobjective(node::JuMPNode) = node.objective
 JuMP.getobjectivevalue(node::JuMPNode) = getvalue(node.objective)
-#setobjectivevalue(node::JuMPNode,num::Number) = node.objval = num
 
 getnodevariablemap(node::JuMPNode) = node.variablemap
-getnodevariables(node::JuMPNode) = node.variablelist #getmodel(nodeoredge).objDict  #could store variable references on nodes
+getnodevariables(node::JuMPNode) = node.variablelist
 getnodevariable(node::JuMPNode,index::Integer) = node.variablelist[index]
 getnodeconstraints(node::JuMPNode) = node.constraintlist
 num_var(node::JuMPNode) = length(node.variablelist)
@@ -92,14 +83,13 @@ num_var(node::JuMPNode) = length(node.variablelist)
 getindex(node::JuMPNode,s::Symbol) = node.variablemap[s]
 
 #get all of the link constraints from a JuMP model
-#Go get the constraint indices that are link constraints
+#Retrieves constraint indices that are link constraints
 function getlinkconstraints(m::JuMP.Model)
     is_graphmodel(m) || error("link constraints are only available on graph models")
-    @assert is_graphmodel(m)
     return getgraph(m).linkconstraints
 end
 
-#Create a single JuMP model from a plasmo graph
+#Create a single JuMP model from a ModelGraph
 @deprecate create_flat_graph_model create_jump_graph_model
 
 function create_jump_graph_model(model_graph::ModelGraph)
@@ -346,12 +336,12 @@ function _splicevars!(expr::Expr,var_map::Dict)
     end
 end
 
-buildjumpmodel!(graph::ModelGraph) = graph.serial_model = create_jump_graph_model(graph)
 #Create a JuMP model and solve with a MPB compliant solver
+buildjumpmodel!(graph::ModelGraph) = graph.serial_model = create_jump_graph_model(graph)
 function jump_solve(graph::ModelGraph;scale = 1.0,kwargs...)
     println("Aggregating Models...")
     m_flat = buildjumpmodel!(graph)
-    println("Finished model instantiation")
+    println("Finished Creating JuMP Model")
     m_flat.solver = graph.linkmodel.solver
     m_flat.obj = scale*m_flat.obj
     status = JuMP.solve(m_flat;kwargs...)

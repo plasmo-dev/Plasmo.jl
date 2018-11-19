@@ -1,4 +1,4 @@
-module PlasmoModels
+module PlasmoModelGraph
 
 using ..PlasmoGraphBase
 

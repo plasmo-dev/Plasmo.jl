@@ -6,18 +6,18 @@ Pkg.installed("MPI") == nothing || using MPI
 #import .DspCInterface:DspModel,@dsp_ccall,check_problem
 #using .DspCInterface
 import .DspCInterface
-import ..PlasmoModels
+import ..PlasmoModelGraph
 import JuMP
 
 export dsp_solve
 
 #Build up Dsp Model using structure from Plasmo
 # This function is hooked by JuMP (see block.jl)
-function dsp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.ModelNode,children_nodes::Vector{PlasmoModels.ModelNode};
+function dsp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoModelGraph.ModelNode,children_nodes::Vector{PlasmoModelGraph.ModelNode};
                         probabilities = Dict(zip(1:length(children_nodes),fill(1/length(children_nodes),length(children_nodes)))),suppress_warnings = false, options...)
-    master = PlasmoModels.getmodel(master_node)
-    submodels = [PlasmoModels.getmodel(child) for child in children_nodes]
-    linkconstraints = PlasmoModels.getlinkconstraints(graph) #get all of the link constraints in the graph
+    master = PlasmoModelGraph.getmodel(master_node)
+    submodels = [PlasmoModelGraph.getmodel(child) for child in children_nodes]
+    linkconstraints = PlasmoModelGraph.getlinkconstraints(graph) #get all of the link constraints in the graph
 
     dspmodel = DspCInterface.DspModel()
     DspCInterface.freeModel(dspmodel)
@@ -68,13 +68,13 @@ function dsp_solve(graph::PlasmoModels.ModelGraph,master_node::PlasmoModels.Mode
     if !(stat == :Infeasible || stat == :Unbounded)
         getDspSolution(dspmodel,master,submodels)  #add solution data to master and children models
     end
-    PlasmoModels._setobjectivevalue(graph,dspmodel.primVal)
+    PlasmoModelGraph._setobjectivevalue(graph,dspmodel.primVal)
     # Return the solve status
     return stat
     #return dspmodel
 end
 
-function loadProblem(dsp::DspCInterface.DspModel,graph::PlasmoModels.ModelGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool,probabilities)
+function loadProblem(dsp::DspCInterface.DspModel,graph::PlasmoModelGraph.ModelGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool,probabilities)
     DspCInterface.check_problem(dsp)
 
     #if haskey(model.ext, :DspBlocks) #if there are children models given.....
@@ -87,9 +87,9 @@ function loadProblem(dsp::DspCInterface.DspModel,graph::PlasmoModels.ModelGraph,
         loadDeterministicProblem(dsp, master)
     end
 end
-loadProblem(dsp::DspCInterface.DspModel,graph::PlasmoModels.ModelGraph,master::JuMP.Model, subproblems::Vector{JuMP.Model},probabilites::Dict) = loadProblem(dsp,graph, master, subproblems, true,probabilites);
+loadProblem(dsp::DspCInterface.DspModel,graph::PlasmoModelGraph.ModelGraph,master::JuMP.Model, subproblems::Vector{JuMP.Model},probabilites::Dict) = loadProblem(dsp,graph, master, subproblems, true,probabilites);
 
-function loadStochasticProblem(dsp::DspCInterface.DspModel, graph::PlasmoModels.ModelGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool, probabilities::Dict)
+function loadStochasticProblem(dsp::DspCInterface.DspModel, graph::PlasmoModelGraph.ModelGraph, master::JuMP.Model, subproblems::Vector{JuMP.Model}, dedicatedMaster::Bool, probabilities::Dict)
     # model was a Dsp JuMP model
     # get DspBlocks
     #blocks = model.ext[:DspBlocks]    #this is a blockstructure with ids and weights
@@ -103,8 +103,8 @@ function loadStochasticProblem(dsp::DspCInterface.DspModel, graph::PlasmoModels.
     #for s in values(blocks.children)  #these are models
     #Do I need to figure out which variables are actually first stage?
     for s in subproblems
-        node = PlasmoModels.getnode(s)
-        link_cons = PlasmoModels.getlinkconstraints(node)[graph]  #link constraints specific to this subproblem
+        node = PlasmoModelGraph.getnode(s)
+        link_cons = PlasmoModelGraph.getlinkconstraints(node)[graph]  #link constraints specific to this subproblem
         ncols2 = s.numCols  #this is normally the number of second stage variables, but I'm lifting so....
         nrows2 = length(s.linconstr) + length(link_cons)
         break #this only runs the loop once?
@@ -154,10 +154,10 @@ function loadStochasticProblem(dsp::DspCInterface.DspModel, graph::PlasmoModels.
         # model and probability
         #blk = blocks.children[id] #the sub model
         blk = subproblems[id]  #need to be careful with block ids here
-        node = PlasmoModels.getnode(blk)
+        node = PlasmoModelGraph.getnode(blk)
         #probability = blocks.weight[id] #probability of this scenario
         probability = probabilities[id]
-        linkcons = PlasmoModels.getlinkconstraints(node)[graph]
+        linkcons = PlasmoModelGraph.getlinkconstraints(node)[graph]
         # get model data
         start, index, value, clbd, cubd, ctype, obj, rlbd, rubd = getDataFormat(master,blk,linkcons)
 
@@ -265,7 +265,7 @@ function getDataFormat(model::JuMP.Model)
 end
 
 #Get the data format for a child node.  We also need to pass the child's linkconstraints
-function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{PlasmoModels.LinkConstraint})
+function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{PlasmoModelGraph.LinkConstraint})
     # Column wise sparse matrix
     mat = prepChildConstrMatrix(master,child,linkcons)
     # Tranpose; now I have row-wise sparse matrix
@@ -314,7 +314,7 @@ function getDataFormat(master::JuMP.Model,child::JuMP.Model,linkcons::Vector{Pla
     return start, index, value, child.colLower, child.colUpper, ctype, obj, rlbd, rubd
 end
 
-function prepChildConstrMatrix(master::JuMP.Model,child::JuMP.Model,linkconstraints::Vector{PlasmoModels.LinkConstraint})
+function prepChildConstrMatrix(master::JuMP.Model,child::JuMP.Model,linkconstraints::Vector{PlasmoModelGraph.LinkConstraint})
     rind = Int[]
     cind = Int[]
     value = Float64[]
