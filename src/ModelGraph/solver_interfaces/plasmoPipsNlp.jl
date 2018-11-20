@@ -1,25 +1,25 @@
 # Plasmo Interface to Pips-NLP
-
-module PlasmoPipsNlpInterface
+module PlasmoPipsNlpInterface2
 
 importall MathProgBase.SolverInterface
 import MPI
 import JuMP
 
-import ..PlasmoModels
+import ..PlasmoModelGraph
+
 
 include("PipsNlpSolver.jl")
 using .PipsNlpSolver
 
-export pipsnlp_solve
+export pipsnlp_solver
 
-# function convert_to_c_idx(indicies)
-#     for i in 1:length(indicies)
-#         indicies[i] = indicies[i] - 1
-#     end
-# end
+mutable struct PipsNLPSolver
+    data::ModelData
+    parameters
+    graph::LinkedModelTree
+end
 
-type ModelData
+mutable struct ModelData
     d    #NLP evaluator
     n::Int
     m::Int

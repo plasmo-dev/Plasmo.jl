@@ -15,11 +15,9 @@ add_node!,getnodes,collectnodes,
 setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,hasmodel,
 
 addlinkconstraint, getlinkreferences,getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints,get_all_linkconstraints,
-getnumnodes,
-getobjectivevalue,
-getinternalgraphmodel,
+getnumnodes,getobjectivevalue,getinternalgraphmodel,
 
-#Graph Manipulation Functions
+#Graph Transformation functions
 aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,
 
 #JuMP Interface functions

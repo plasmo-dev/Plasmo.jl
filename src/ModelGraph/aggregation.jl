@@ -60,7 +60,6 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
 
     #OBJECTIVE
     @objective(aggregate_model,Min,sum(getobjective(node) for node in getnodes(jump_graph)))
-
     return aggregate_model,cross_links,var_maps
 end
 

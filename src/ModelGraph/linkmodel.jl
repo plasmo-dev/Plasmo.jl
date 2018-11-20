@@ -1,30 +1,27 @@
-
 import MathProgBase.SolverInterface:AbstractMathProgSolver
 
-#A constraint between JuMP Models (nodes)
-#Should link constraints be strictly equality?  Could always just convert inequality with slacks
 #####################################################
 # Link Constraint
+#   A linear constraint between JuMP Models (nodes)
+#   Link constraints can be equality or inequality.
 #####################################################
 mutable struct LinkConstraint <: JuMP.AbstractConstraint
     terms::JuMP.AffExpr
     lb::Number
     ub::Number
 end
+
 #Constructor
 LinkConstraint(con::JuMP.LinearConstraint) = LinkConstraint(con.terms,con.lb,con.ub)
-#Get the Link constraint from a reference
-LinkConstraint(ref::ConstraintRef) = ref.m.linkdata.linkconstraints[ref.idx]
+LinkConstraint(ref::ConstraintRef) = ref.m.linkdata.linkconstraints[ref.idx]  #Get the Link constraint from a constraint reference
 
-#Get number of nodes in a link constraint
+#Get the  nodes in a link constraint
 function PlasmoGraphBase.getnodes(con::LinkConstraint)
     vars = con.terms.vars
     nodes = unique([getnode(var) for var in vars])
     return nodes
 end
 
-#Get number of nodes in a link constraint
-#Could just look up the index
 function getnumnodes(con::LinkConstraint)
     nodes = getnodes(con)
     return length(nodes)
@@ -42,13 +39,14 @@ LinkData() = LinkData(Vector{LinkConstraint}(),Vector{Int}(),Vector{Int}())
 
 #####################################################
 # Link Model
+#   A link model stores model data about graph links
 #####################################################
-#A link model is a simple struct that stores link data.
+
 mutable struct LinkModel <: JuMP.AbstractModel   #subtyping here so I can get ConstraintRef
-    linkdata::LinkData  #LinkModel's store indices for each link constraint added
+    linkdata::LinkData           #LinkModel's store indices for each link constraint added
     objval::Number
-    objective::JuMP.AffExpr  #Possibly a function of multiple model variables.  Strictly linear
-    solver::AbstractMathProgSolver
+    objective::JuMP.AffExpr      #Possibly a function of multiple model variables.  Strictly linear
+    solver::Union{AbstractMathProgSolver,AbstractPlasmoSolver}
 end
 LinkModel() = LinkModel(LinkData(),0,JuMP.AffExpr(),JuMP.UnsetSolver())
 getlinkdata(model::LinkModel) = model.linkdata
@@ -69,12 +67,12 @@ function JuMP.addconstraint(model::LinkModel,constr::JuMP.LinearConstraint)
     push!(linkdata.linkconstraints,linkconstr)
     ref = ConstraintRef{LinkModel,LinkConstraint}(model, length(linkdata.linkconstraints))
 
-    if is_linkconstr(linkconstr )
+    if is_linkconstr(linkconstr)
         push!(linkdata.simple_links,length(linkdata.linkconstraints))
     elseif is_hyperconstr(linkconstr )
         push!(linkdata.hyper_links,length(linkdata.linkconstraints))
     else
-        error("constraint doesn't make sense")
+        error("constraint $constr doesn't make sense")
     end
     return ref
 end
