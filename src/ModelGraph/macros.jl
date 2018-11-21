@@ -161,7 +161,7 @@ macro linkconstraint(graph,args...)
     #Check the inputs are the correct types.  This needs to throw
     checkinputs = quote
         #@assert Plasmo.is_graphmodel($m)
-        @assert isa($graph,ModelGraph)
+        @assert isa($graph,AbstractModelGraph)
     end
     #generate constraint list and them to node or edge linkdata
     refscode = quote

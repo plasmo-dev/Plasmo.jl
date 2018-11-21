@@ -6,7 +6,7 @@ import JuMP
 import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
 
 #Model Graph Constructs
-export ModelGraph, ModelNode, LinkingEdge,LinkConstraint,
+export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge,LinkConstraint,
 
 #re-export base functions
 add_node!,getnodes,collectnodes,
@@ -36,10 +36,17 @@ getsolution,setsolution,setvalue,getvalue,
 abstract type AbstractModelGraph <: AbstractPlasmoGraph end
 abstract type AbstractModelNode <: AbstractPlasmoNode end
 abstract type AbstractLinkingEdge  <: AbstractPlasmoEdge end
+abstract type AbstractPlasmoSolver end
 
 include("linkmodel.jl")
 
 include("modelgraph.jl")
+
+include("modelnode.jl")
+
+include("modeledge.jl")
+
+include("modeltree.jl")
 
 include("solve.jl")
 

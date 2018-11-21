@@ -4,16 +4,16 @@
 mutable struct ModelNode <: AbstractModelNode
     basenode::BasePlasmoNode
     model::Nullable{AbstractModel}
-    linkconrefs::Dict{ModelGraph,Vector{ConstraintRef}}
+    linkconrefs::Dict{AbstractModelGraph,Vector{ConstraintRef}}
 end
 
 #Constructor
-ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),Dict{ModelGraph,Vector{ConstraintRef}}())
+ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),Dict{AbstractModelGraph,Vector{ConstraintRef}}())
 create_node(graph::ModelGraph) = ModelNode()
 
-function add_node!(graph::ModelGraph,m::AbstractModel)
+function add_node!(graph::AbstractModelGraph,m::AbstractModel)
     node = add_node!(graph)
-    setmodel!(node,m)
+    setmodel(node,m)
     return node
 end
 
@@ -28,7 +28,7 @@ setobjectivevalue(node::ModelNode,num::Number) = getmodel(node).objVal = num
 
 #Get all of the link constraints for a node in all of its graphs
 getlinkreferences(node::ModelNode) = node.linkconrefs
-getlinkreferences(graph::ModelGraph,node::ModelNode) = node.linkconrefs[graph]
+getlinkreferences(graph::AbstractModelGraph,node::ModelNode) = node.linkconrefs[graph]
 
 #Link constraints SHOULD be unique to each graph
 function getlinkconstraints(node::ModelNode)
@@ -43,7 +43,7 @@ function getlinkconstraints(node::ModelNode)
 end
 
 #Get link constraints for a model node in graph
-function getlinkconstraints(graph::ModelGraph,node::ModelNode)
+function getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
     links = []
     for ref in node.linkconrefs[graph]
         push!(links,LinkConstraint(ref))
@@ -92,3 +92,35 @@ function resetmodel(node::ModelNode,m::AbstractModel)
 end
 #TODO
 # removemodel(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
+getnodevariable(node::ModelNode,index::Integer) = Variable(getmodel(node),index)
+
+function getnodevariablemap(node::ModelNode)
+    node_map = Dict()
+    node_model = getmodel(node)
+    for key in keys(node_model.objDict)  #this contains both variable and constraint references
+        if isa(node_model.objDict[key],Union{JuMP.JuMPArray{AbstractJuMPScalar},Array{AbstractJuMPScalar}})     #if the JuMP variable is an array or a JuMPArray
+            vars = node_model.objDict[key]
+            node_map[key] = vars
+        #reproduce the same mapping in a dictionary
+        elseif isa(node_model.objDict[key],JuMP.JuMPDict)
+            tdict = node_model.objDict[key].tupledict  #get the tupledict
+            d_tmp = Dict()
+            for dkey in keys(tdict)
+                d_tmp[dkey] = var_map[linearindex(tdict[dkey])]
+            end
+            node_map[key] = d_tmp
+
+        elseif isa(node_model.objDict[key],JuMP.AbstractJuMPScalar) #else it's a single variable
+            node_map[key] = node_model.objDict[key]
+        # else #objDict also has contraints!
+        #     error("Did not recognize the type of a JuMP variable $(node_model.objDict[key])")
+        end
+    end
+    return node_map
+end
+
+function string(node::ModelNode)
+    "Model Node: "string(getlabel(node))*"\n"*string("Member of $(length(getindices(node))) graph(s)")*"\n$(length(getmodel(node).colVal)) Variables"#*"\n$(length(collect(values(node.linkconrefs)))) Link Constraints"
+end
+print(io::IO,node::ModelNode) = print(io, string(node))
+show(io::IO,node::ModelNode) = print(io,node)

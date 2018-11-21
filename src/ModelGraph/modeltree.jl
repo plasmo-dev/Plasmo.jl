@@ -1,12 +1,115 @@
 mutable struct ModelTree <: AbstractModelGraph
     basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
     linkmodel::LinkModel                         #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
-    serial_model::Nullable{AbstractModel}        #The internal serial model for the graph.  Returned if requested by the solve
+    serial_model::Nullable{AbstractModel}        #The internal serial model for the tree.  Returned if requested by the solve
+    levels::Vector{Vector{ModelNode}}            #the number of levels (or stages) in the tree
+    root::Union{Void,ModelNode}
+    levelmap::Dict{ModelNode,Int}             #levalmap:  Each node maps to a level in the tree child map for each node index.  Helpful for quickly getting child nodes
 end
-ModelTree() = ModelTree(BasePlasmoGraph(DiGraph),LinkModel(),Nullable())
+#ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),nothing,Dict{Int,Vector{Int}}())
+ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),nothing,Dict{ModelNode,Int}())
 
-function setroot(tree::ModelTree)
+create_node(tree::ModelTree) = ModelNode()
+create_edge(tree::ModelTree) = LinkingEdge()
+
+#Setting root should change edge directions
+#setroot(tree::ModelTree,id::Int) = tree.root_node = getnode(tree,id)
+function setroot(tree::ModelTree,node::ModelNode)
+    tree.root = node
+
+    # if length(tree.levels) == 0
+    #     push!(tree.levels,ModelNode[])
+    # end
+    # tree.levels[1] = node  #first level has a single node
+    #NOTE: We should re-create the tree if this gets called
 end
 
-function addchild!(tree::ModelTree,node::ModelNode)
+function add_node!(tree::ModelTree)
+    #Extend from base method
+    basegraph = getbasegraph(tree)
+    LightGraphs.add_vertex!(basegraph.lightgraph)
+    index = LightGraphs.nv(basegraph.lightgraph)
+    label = Symbol("node"*string(index))
+
+    node = create_node(tree)                   #create a node for the given graph type
+    basenode = getbasenode(node)
+    basenode.indices[basegraph] = index             #Set the index of this node in this basegraph
+    add_node!(basegraph.nodedict,node,index)
+
+    #New stuff
+    #Add node to tree structure
+    if  tree.root == nothing#make the node the root
+        setroot(tree,node)
+        tree.levelmap[node] = 0
+    elseif length(tree.levels) == 0 #add node to the second level
+        push!(tree.levels,ModelNode[])
+        push!(tree.levels[1],node)
+        tree.levelmap[node] = 1
+    else
+        push!(tree.levels[1],node)
+        tree.levelmap[node] = 1
+    end
+    return node
+end
+
+function add_node!(tree::ModelTree,level::Int)
+    node = add_node!(tree)
+    level > length(tree.levels) && throw(error("Tree does not contain level $level.  You may need to add a new level"))
+    push!(node.levels[level],node)
+    tree.levelmap[node] = level
+    return node
+end
+
+function add_node!(tree::ModelTree,m::AbstractModel,level::Int)
+    node = add_node!(tree,level)
+    setmodel!(node,m)
+    return node
+end
+
+function getchildren(tree::ModelTree,node::ModelNode)
+    #neighbors_out
+    #Look at node link constraints OR look at childmap
+end
+
+
+function getparent(tree::ModelTree,node::ModelNode)
+    #neighbors_in
+end
+
+function getlevel(tree::ModelTree,node::ModelNode)
+    return tree.levelamp[node]
+end
+
+#Store link constraint in the given graph.  Store a reference to the linking constraint on the nodes which it links
+#ModelTree enforces a linkconstraint structure
+function addlinkconstraint(tree::ModelTree,con::AbstractConstraint)
+    isa(con,JuMP.LinearConstraint) || throw(error("Link constraints must be linear.  If you're trying to add quadtratic or nonlinear links, try creating duplicate variables and linking those"))
+    vars = con.terms.vars
+    nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
+    length(nodes) == 2 || error("Linking constraints on ModelTree must be between 2 nodes")
+    tree.levelmap[nodes[1]] != tree.levelmap[nodes[2]] || throw(error("Linking constraints on ModelTree must connect different levels"))
+    abs(tree.levelmap[nodes[1]] - tree.levelmap[nodes[2]]) == 1 || throw(error("Linking constraints on ModelTree must connect adjacent levels"))
+    #Check if node2 already has a parent
+
+    ref = JuMP.addconstraint(tree.linkmodel,con)
+    link_edge = add_edge!(tree,ref)  #adds edge and a contraint reference to all objects involved in the constraint
+    return link_edge
+end
+
+#Add directed edge to graph using linkconstraint reference
+function add_edge!(tree::ModelTree,ref::JuMP.ConstraintRef)
+    con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
+    vars = con.terms.vars
+    nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
+    #check node levels
+    edge = add_edge!(tree,nodes[1],nodes[2])  #constraint edge connected to more than 2 nodes
+    push!(edge.linkconrefs,ref)
+    for node in nodes
+        if !haskey(node.linkconrefs,tree)
+            node.linkconrefs[tree] = [ref]
+        else
+            push!(node.linkconrefs[tree],ref)
+        end
+    end
+    return edge
 end

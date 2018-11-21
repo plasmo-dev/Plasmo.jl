@@ -16,7 +16,7 @@ HyperGraph, HyperEdge,
 
 BasePlasmoGraph, BasePlasmoNode, BasePlasmoEdge,
 
-getlightgraph,getbasegraph,
+getlightgraph,getbasegraph,getbasenode,getbaseedge,
 
 getindex, getsubgraphlist, getsubgraph, getindices,getlabel,
 
