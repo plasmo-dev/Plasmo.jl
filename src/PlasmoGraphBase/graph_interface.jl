@@ -182,6 +182,7 @@ function addattributes!(node::AbstractPlasmoNode,dict::Dict)
 end
 
 getattribute(graph::AbstractPlasmoGraph,attribute::Symbol) = getbasegraph(graph).attributes[attribute]
+hasattribute(graph::AbstractPlasmoGraph,attribute::Symbol) = haskey(getbasegraph(graph).attributes,attribute)
 getattribute(node::AbstractPlasmoNode,attribute::Symbol) = getbasenode(node).attributes[attribute]
 hasattribute(node::AbstractPlasmoNode,attribute::Symbol) = haskey(getbasenode(node).attributes,attribute)
 

@@ -1,13 +1,16 @@
+#A ModelTree is a specific graph structure containing a root node and a series of levels that can contain nodes with models.
+#Linkconstraints can be made between nodes on adjacent levels.  Each node can only have one parent.
+
 mutable struct ModelTree <: AbstractModelGraph
     basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
     linkmodel::LinkModel                         #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
     serial_model::Nullable{AbstractModel}        #The internal serial model for the tree.  Returned if requested by the solve
     levels::Vector{Vector{ModelNode}}            #the number of levels (or stages) in the tree
-    root::Union{Void,ModelNode}
-    levelmap::Dict{ModelNode,Int}             #levalmap:  Each node maps to a level in the tree child map for each node index.  Helpful for quickly getting child nodes
+    levelmap::Dict{ModelNode,Int}                #levelmap:  Each node maps to a level in the tree child map for each node index.  Helpful for quickly getting child nodes
+    root::Union{Void,ModelNode}                  #the root node
 end
 #ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),nothing,Dict{Int,Vector{Int}}())
-ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),nothing,Dict{ModelNode,Int}())
+ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),Dict{ModelNode,Int}(),nothing)
 
 create_node(tree::ModelTree) = ModelNode()
 create_edge(tree::ModelTree) = LinkingEdge()
@@ -37,8 +40,8 @@ function add_node!(tree::ModelTree)
     add_node!(basegraph.nodedict,node,index)
 
     #New stuff
-    #Add node to tree structure
-    if  tree.root == nothing#make the node the root
+    #Add node to a tree structure by default
+    if  tree.root == nothing        #make the node the root
         setroot(tree,node)
         tree.levelmap[node] = 0
     elseif length(tree.levels) == 0 #add node to the second level
