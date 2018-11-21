@@ -2,7 +2,7 @@ module PlasmoGraphBase
 
 import LightGraphs:AbstractGraph,AbstractEdge,Graph,DiGraph,
 add_vertex!,add_edge!,edgetype,nv,ne,vertices,edges,in_neighbors,out_neighbors,in_edges,out_edges,src,dst,degree,neighbors,is_directed,degree,all_neighbors,
-is_connected
+is_connected,has_edge
 
 import LightGraphs.SimpleGraphs.SimpleEdge
 
@@ -25,6 +25,7 @@ getnodes,getedges,add_node,add_edge,add_node!,add_edge!,getnode,getedge,collectn
 add_subgraph,add_subgraph!,getsubgraph,copy_graph,
 
 in_degree,out_degree,getsupportingnodes,getsupportingedges,getconnectedto,getconnectedfrom,is_connected,
+in_neighbors,out_neighbors,neighbors,has_edge,
 
 getattribute,hasattribute,setattribute,addattributes!,getattributes
 

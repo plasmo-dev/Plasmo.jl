@@ -7,10 +7,10 @@ mutable struct ModelTree <: AbstractModelGraph
     serial_model::Nullable{AbstractModel}        #The internal serial model for the tree.  Returned if requested by the solve
     levels::Vector{Vector{ModelNode}}            #the number of levels (or stages) in the tree
     levelmap::Dict{ModelNode,Int}                #levelmap:  Each node maps to a level in the tree child map for each node index.  Helpful for quickly getting child nodes
-    root::Union{Void,ModelNode}                  #the root node
+    #root::Union{Void,ModelNode}                  #the root node
 end
 #ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),nothing,Dict{Int,Vector{Int}}())
-ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),Dict{ModelNode,Int}(),nothing)
+ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),Dict{ModelNode,Int}())
 
 create_node(tree::ModelTree) = ModelNode()
 create_edge(tree::ModelTree) = LinkingEdge()
@@ -18,14 +18,20 @@ create_edge(tree::ModelTree) = LinkingEdge()
 #Setting root should change edge directions
 #setroot(tree::ModelTree,id::Int) = tree.root_node = getnode(tree,id)
 function setroot(tree::ModelTree,node::ModelNode)
-    tree.root = node
-
+    #tree.root = node
+    if  length(tree.levels) == 0
+        push!(tree.levels,ModelNode[])
+    end
+    tree.levels[1] = [node]
+    tree.levelmap[node] = 1
     # if length(tree.levels) == 0
     #     push!(tree.levels,ModelNode[])
     # end
     # tree.levels[1] = node  #first level has a single node
     #NOTE: We should re-create the tree if this gets called
 end
+
+getroot(tree::ModelTree) = tree.levels[1][1]
 
 function add_node!(tree::ModelTree)
     #Extend from base method
@@ -41,16 +47,16 @@ function add_node!(tree::ModelTree)
 
     #New stuff
     #Add node to a tree structure by default
-    if  tree.root == nothing        #make the node the root
+    if  length(tree.levels) == 0 #tree.root == nothing        #make the node the root
         setroot(tree,node)
-        tree.levelmap[node] = 0
-    elseif length(tree.levels) == 0 #add node to the second level
+        #tree.levelmap[node] = 1
+    elseif length(tree.levels) == 1 #add node to the second level
         push!(tree.levels,ModelNode[])
-        push!(tree.levels[1],node)
-        tree.levelmap[node] = 1
+        push!(tree.levels[2],node)
+        tree.levelmap[node] = 2
     else
-        push!(tree.levels[1],node)
-        tree.levelmap[node] = 1
+        push!(tree.levels[2],node)
+        tree.levelmap[node] = 2
     end
     return node
 end
@@ -83,6 +89,8 @@ function getlevel(tree::ModelTree,node::ModelNode)
     return tree.levelamp[node]
 end
 
+getnumlevels(tree::ModelTree) = length(tree.levels)
+
 #Store link constraint in the given graph.  Store a reference to the linking constraint on the nodes which it links
 #ModelTree enforces a linkconstraint structure
 function addlinkconstraint(tree::ModelTree,con::AbstractConstraint)
@@ -101,11 +109,18 @@ end
 
 #Add directed edge to graph using linkconstraint reference
 function add_edge!(tree::ModelTree,ref::JuMP.ConstraintRef)
+
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
     vars = con.terms.vars
     nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
     #check node levels
-    edge = add_edge!(tree,nodes[1],nodes[2])  #constraint edge connected to more than 2 nodes
+
+    if !(has_edge(tree,getindex(tree,nodes[1]),getindex(tree,nodes[2])))
+        edge = add_edge!(tree,nodes[1],nodes[2])  #constraint edge connected to more than 2 nodes
+    else
+        edge = getedge(tree,getindex(tree,nodes[1]),getindex(tree,nodes[2]))
+    end
+
     push!(edge.linkconrefs,ref)
     for node in nodes
         if !haskey(node.linkconrefs,tree)

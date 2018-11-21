@@ -2,9 +2,12 @@ module PlasmoModelGraph
 
 using ..PlasmoGraphBase
 
+import ..PlasmoGraphBase:getedge
+
 import JuMP
 import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
 import Base.==
+
 
 #Model Graph Constructs
 export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkConstraint,

@@ -66,6 +66,9 @@ getedge(basegraph::BasePlasmoGraph,edge::LightGraphs.AbstractEdge) = basegraph.e
 #getedge(basegraph::BasePlasmoGraph,from::Int,to::Int) = basegraph.edgedict[SimpleEdge(from,to)]
 getedge(basegraph::BasePlasmoGraph,from::Int,to::Int) = basegraph.edgedict[edgetype(basegraph.lightgraph)(from,to)]
 getedge(basegraph::BasePlasmoGraph,vertices::Int...) = basegraph.edgedict[edgetype(basegraph.lightgraph)(vertices...)]
+
+has_edge(basegraph::BasePlasmoGraph,from::Int,to::Int) = haskey(basegraph.edgedict.id_dict,edgetype(basegraph.lightgraph)(from,to))
+has_edge(basegraph::BasePlasmoGraph,vertices::Int...) = haskey(basegraph.edgedict.id_dict,edgetype(basegraph.lightgraph)(vertices...))
 ##############################################################################
 # Base Nodes
 ##############################################################################
@@ -137,7 +140,6 @@ end
 
 getconnectedfrom(basegraph::BasePlasmoGraph,edge::BasePlasmoEdge) = src(basegraph,edge)
 getconnectedto(basegraph::BasePlasmoGraph,edge::BasePlasmoEdge) = dst(basegraph,edge)
-
 
 degree(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = LightGraphs.degree(getlightgraph(basegraph),getindex(basegraph,node))
 in_degree(basegraph::BasePlasmoGraph,node::BasePlasmoNode) = length(in_neighbors(basegraph,node))

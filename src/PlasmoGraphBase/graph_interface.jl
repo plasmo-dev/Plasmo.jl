@@ -24,6 +24,8 @@ getedge(graph::AbstractPlasmoGraph,edge::LightGraphs.AbstractEdge) = getedge(get
 getedge(graph::AbstractPlasmoGraph,pair::Pair) = getedge(getbasegraph(graph),pair)
 getedge(graph::AbstractPlasmoGraph,tuple::Tuple) = getedge(getbasegraph(graph,tuple))
 
+has_edge(graph::AbstractPlasmoGraph,src::Int,dst::Int) = has_edge(getbasegraph(graph),src,dst)
+
 ##############################
 # Node Interface
 ##############################
@@ -148,6 +150,8 @@ getsupportingedges(graph::AbstractPlasmoGraph,node::AbstractPlasmoNode) = getsup
 getconnectedfrom(graph::AbstractPlasmoGraph,edge::AbstractPlasmoEdge) = getconnectedfrom(graph.basegraph,edge.baseedge)
 getconnectedto(graph::AbstractPlasmoGraph,edge::AbstractPlasmoEdge) = getconnectedto(graph.basegraph,edge.baseedge)
 getsupportingnodes(graph::AbstractPlasmoGraph,edge::AbstractPlasmoEdge) = tuple(src(graph.basegraph,edge),dst(graph.basegraph,edge))
+
+#has_edge(graph::AbstractPlasmoGraph,edge::AbstractPlasmoEdge) = LightGraphs.has_edge(getlightgraph(graph.basegraph),getindex(graph.basegraph,edge.baseedge))
 
 degree(graph::AbstractPlasmoGraph,node::AbstractPlasmoNode) = LightGraphs.degree(getlightgraph(graph.basegraph),getindex(graph.basegraph,node.basenode))
 in_degree(graph::AbstractPlasmoGraph,node::AbstractPlasmoNode) = length(in_neighbors(graph.basegraph,node.basenode))

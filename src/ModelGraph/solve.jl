@@ -7,6 +7,7 @@ import LightGraphs
 using JuMP
 import JuMP:setvalue,solve
 
+
 #IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution to the graph
 #typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
 

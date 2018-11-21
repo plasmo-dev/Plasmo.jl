@@ -15,7 +15,9 @@ n1 = add_node!(tree,test_model())
 n2 = add_node!(tree,test_model())
 n3 = add_node!(tree,test_model())
 
-@linkconstraint(tree,n1[:x][1] == n2[:x][2])
+@linkconstraint(tree,n1[:x][1] == n2[:x][1])
+@linkconstraint(tree,n1[:x][2] == n2[:x][2])
+
 @linkconstraint(tree,n1[:x][2] == n3[:x][2])
 
 setsolver(tree,BendersSolver(max_iterations = 5))

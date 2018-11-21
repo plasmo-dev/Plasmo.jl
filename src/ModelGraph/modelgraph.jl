@@ -42,7 +42,7 @@ function get_all_linkconstraints(graph::AbstractModelGraph)
     return links
 end
 setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
-
+setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver) = model.linkmodel.solver = solver
 ########################################
 # Add the link constraints
 ########################################
