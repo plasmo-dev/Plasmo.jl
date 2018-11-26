@@ -20,89 +20,93 @@ end
 (==)(cd1::IntegerCutData,cd2::IntegerCutData) = (cd1.yk == cd2.yk)
 
 """
-bendersolve
+    bendersolve
+
+    Solve a ModelTree object using nested benders decomposition.
 """
-function bendersolve(graph::ModelGraph; max_iterations::Int64=10, cuts::Array{Symbol,1}=[:LP], ϵ=1e-5,UBupdatefrequency=1,timelimit=3600,verbose=false)
+function bendersolve(tree::ModelTree; max_iterations::Int64=10, cuts::Array{Symbol,1}=[:LP], ϵ=1e-5,UBupdatefrequency=1,timelimit=3600,verbose=false,lp_solver = ClpSolver(),node_solver = ClpSolver())
     starttime = time()
     s = Solution(method=:benders)
     updatebound = true
 
     verbose && info("Preparing graph")
-    bdprepare(graph)
-    n = getattribute(graph, :normalized)
+    bdprepare(tree,lp_solver,node_solver)
+    n = getattribute(tree, :normalized)
 
     verbose && info("Solve relaxation and set LB")
-    mf = getattribute(graph, :mflat)
+    mf = getattribute(tree, :mflat)
     solve(mf,relaxation=true)
-    LB = getobjectivevalue(getattribute(graph, :mflat))
+    LB = getobjectivevalue(getattribute(tree, :mflat))
     UB = Inf
 
     # Set bound to root node
-    rootnode = getattribute(graph, :roots)[1]
+    #rootnode = getattribute(graph, :roots)[1]
+    rootnode = getroot(tree)
     rootmodel = getmodel(rootnode)
     @constraint(rootmodel, rootmodel.obj.aff >= LB)
 
     # Begin iterations
     for i in 1:max_iterations
-    tic()
-    updatebound = ((i-1) % UBupdatefrequency) == 0
-    LB,UB = forwardstep(graph, cuts, updatebound)
+        tic()
+        updatebound = ((i-1) % UBupdatefrequency) == 0
+        LB,UB = forwardstep(tree, cuts, updatebound)
 
-    tstamp = time() - starttime
+        tstamp = time() - starttime
 
-    itertime = toc()
-    if n == 1
-      saveiteration(s,tstamp,[UB,LB,itertime,tstamp],n)
-    else
-      saveiteration(s,tstamp,[n*LB,n*UB,itertime,tstamp],n)
-    end
-    printiterationsummary(s,singleline=false)
+        itertime = toc()
+        if n == 1
+          saveiteration(s,tstamp,[UB,LB,itertime,tstamp],n)
+        else
+          saveiteration(s,tstamp,[n*LB,n*UB,itertime,tstamp],n)
+        end
+        printiterationsummary(s,singleline=false)
 
-    if abs(UB-LB) < ϵ
-      s.termination = "Optimal"
-      return s
-    end
+        if abs(UB-LB) < ϵ
+          s.termination = "Optimal"
+          return s
+        end
 
-    # Check time limit
-    if tstamp > timelimit
-      s.termination = "Time Limit"
-      return s
-    end
+        # Check time limit
+        if tstamp > timelimit
+          s.termination = "Time Limit"
+          return s
+        end
 
-    if getattribute(graph, :stalled)
-      s.termination = "Stalled"
-      return s
-    end
+        if getattribute(tree, :stalled)
+          s.termination = "Stalled"
+          return s
+        end
     end
 
     s.termination = "Max Iterations"
     return s
 end
 
-function forwardstep(graph::ModelGraph, cuts::Array{Symbol,1}, updatebound::Bool)
-  levels = getattribute(graph, :levels)
+function forwardstep(tree::ModelTree, cuts::Array{Symbol,1}, updatebound::Bool)
+  #levels = getattribute(tree, :levels)
+  levels = tree.levels
   numlevels = length(levels)
   for level in 1:numlevels
     nodeslevel = levels[level]
     for node in nodeslevel
-      solveprimalnode(node,graph,cuts,updatebound)
+      solveprimalnode(node,tree,cuts,updatebound)
     end
   end
-  LB = getattribute(graph, :LB)
+  LB = getattribute(tree, :LB)
   if updatebound
-    iterUB = sum(getattribute(node, :preobjval) for node in getnodes(graph))
-    setattribute(graph, :iterUB, iterUB)
-    UB = min(getattribute(graph, :UB),iterUB)
-    setattribute(graph, :UB, UB)
+    iterUB = sum(getattribute(node, :preobjval) for node in getnodes(tree))
+    setattribute(tree, :iterUB, iterUB)
+    UB = min(getattribute(tree, :UB),iterUB)
+    setattribute(tree, :UB, UB)
   else
-    UB = getattribute(graph, :UB)
+    UB = getattribute(tree, :UB)
   end
   return LB,UB
 end
 
-function solveprimalnode(node::ModelNode, graph::ModelGraph, cuts::Array{Symbol,1}, updatebound::Bool)
+function solveprimalnode(node::ModelNode, tree::ModelTree, cuts::Array{Symbol,1}, updatebound::Bool)
   # 1. Add cuts
-  generatecuts(node,graph)
+  generatecuts(node,tree)
   # 2. Take x
   takex(node)
   # 3. solve
@@ -110,12 +114,12 @@ function solveprimalnode(node::ModelNode, graph::ModelGraph, cuts::Array{Symbol,
     solvelprelaxation(node)
   end
   if updatebound
-    solvenodemodel(node,graph)
+    solvenodemodel(node,tree)
   end
   # 4. put x
-  putx(node,graph)
+  putx(node,tree)
   # 5. put cuts and nodebound
-  putcutdata(node,graph,cuts)
+  putcutdata(node,tree,cuts)
 end
 
 function solvelprelaxation(node::ModelNode)
@@ -135,11 +139,11 @@ function solvelprelaxation(node::ModelNode)
   return status
 end
 
-function solvenodemodel(node::ModelNode,graph::ModelGraph)
+function solvenodemodel(node::ModelNode,tree::ModelTree)
   model = getmodel(node)
   solve(model)
-  if in_degree(graph,node) == 0 # Root node
-    setattribute(graph, :LB, getobjectivevalue(model))
+  if in_degree(tree,node) == 0 # Root node
+    setattribute(tree, :LB, getobjectivevalue(model))
   end
   setattribute(node, :preobjval, JuMP.getvalue(model.ext[:preobj]))
 end
@@ -152,26 +156,26 @@ function takex(node::ModelNode)
   end
 end
 
-function putx(node::ModelNode,graph::ModelGraph)
+function putx(node::ModelNode,tree::ModelTree)
   childvars = getattribute(node,:childvars)
-  children = out_neighbors(graph,node)
+  children = out_neighbors(tree,node)
   length(children) == 0 && return true
 
   for child in children
-    xnode = getvalue(childvars[getindex(graph,child)])
+    xnode = getvalue(childvars[getindex(tree,child)])
     setattribute(child,:xin, xnode)
   end
 end
 
-function putcutdata(node::ModelNode,graph::ModelGraph,cuts::Array{Symbol,1})
-  parents = in_neighbors(graph,node)
+function putcutdata(node::ModelNode,tree::ModelTree,cuts::Array{Symbol,1})
+  parents = in_neighbors(tree,node)
   length(parents) == 0 && return true
   parent = parents[1]    # Assume only one parent
   parentcuts = getattribute(parent, :cutdata)
   θk = getattribute(node,:bound)
   λk = getattribute(node,:λ)
   xk = getattribute(node,:xin)
-  nodeindex = getindex(graph,node)
+  nodeindex = getindex(tree,node)
   if :LP in cuts || :Root in cuts
     bcd = BendersCutData(θk, λk, xk)
     push!(parentcuts[nodeindex],bcd)
@@ -186,8 +190,8 @@ function putcutdata(node::ModelNode,graph::ModelGraph,cuts::Array{Symbol,1})
   end
 end
 
-function generatecuts(node::ModelNode,graph::ModelGraph)
-  children = out_neighbors(graph,node)
+function generatecuts(node::ModelNode,tree::ModelTree)
+  children = out_neighbors(tree,node)
   length(children) == 0 && return true
 
   cutdataarray = getattribute(node,:cutdata)
@@ -195,7 +199,7 @@ function generatecuts(node::ModelNode,graph::ModelGraph)
   thisitercuts = Dict()
   samecuts = Dict()
   for child in children
-    childindex = getindex(graph,child)
+    childindex = getindex(tree,child)
     thisitercuts[childindex] = CutData[]
     samecuts[childindex] = Bool[]
 
@@ -219,8 +223,9 @@ function generatecuts(node::ModelNode,graph::ModelGraph)
   nodesamecuts = collect(values(samecuts))
   setattribute(node, :stalled, reduce(*,nodesamecuts))
   getattribute(node, :stalled) && warn("Node $(node.label) stalled")
-  if in(node,getattribute(graph, :roots) ) && getattribute(node, :stalled)
-    setattribute(graph, :stalled,  true)
+  #if in(node,getattribute(tree, :roots) ) && getattribute(node, :stalled)
+  if node == getroot(tree) && getattribute(node, :stalled)
+    setattribute(tree, :stalled,  true)
  end
 end
 
@@ -231,113 +236,93 @@ function generatebenderscut(node::ModelNode, cd::BendersCutData,index)
   @constraint(model, θ[index] >= cd.θk + cd.λk'*(cd.xk - x))
 end
 
-
-function identifylevels(graph::ModelGraph)
-  #Create lists of root and leaf nodes in graph
-  setattribute(graph, :roots, ModelNode[])
-  roots = getattribute(graph, :roots)
-  setattribute(graph, :leaves, ModelNode[])
-  leaves = getattribute(graph, :leaves)
-  #Create dictionary to keep track of levels of nodes
-  setattribute(graph, :levels, Dict())
-  levels = getattribute(graph, :levels)
-  #Iterate through every node to check for root/leaf nodes
-  for node in getnodes(graph)
-    setattribute(node,:xin, [])
-    setattribute(node,:λ, [])
-    setattribute(node,:bound, NaN)
-    setattribute(node,:xinvars, [])
-    setattribute(node,:preobjval, NaN)
-    setattribute(node,:linkconstraints, [])
-    #If the node does not have parents it is a root node
-    if in_degree(graph,node) == 0
-      push!(roots,node)
+function bdprepare(tree::ModelTree,lp_solver::AbstractMathProgSolver,node_solver::AbstractMathProgSolver)
+    #Check if preprocessing was already done
+    if hasattribute(tree,:preprocessed)
+        return true
     end
-    #If the node does not have children it is a leaf node
-    if out_degree(graph,node) == 0
-      push!(leaves,node)
-    end
-  end
 
-  #Start mapping level from the root nodes
-  current = roots
-  level = 1
-  levels[1]  = roots
-  while length(current) > 0
-    levels[level] = current
-    children = []
-    for node in current
-        push!(children,out_neighbors(graph,node)...)
-        setattribute(node,:childvars, Dict(getindex(graph,child) => [] for child in out_neighbors(graph,node)))
-        setattribute(node,:cutdata, Dict(getindex(graph,child) => CutData[] for child in out_neighbors(graph,node)))
-        setattribute(node,:prevcuts, Dict(getindex(graph,child) => CutData[] for child in out_neighbors(graph,node)))
+    #Add node attributes
+    for node in getnodes(tree)
+        setattribute(node,:xin, [])
+        setattribute(node,:λ, [])
+        setattribute(node,:bound, NaN)
+        setattribute(node,:xinvars, [])
+        setattribute(node,:preobjval, NaN)
+        setattribute(node,:linkconstraints, [])
+        setattribute(node,:childvars, Dict(getindex(tree,child) => [] for child in out_neighbors(tree,node)))
+        setattribute(node,:cutdata, Dict(getindex(tree,child) => CutData[] for child in out_neighbors(tree,node)))
+        setattribute(node,:prevcuts, Dict(getindex(tree,child) => CutData[] for child in out_neighbors(tree,node)))
         setattribute(node,:stalled, false)
     end
-    current = children
-    level += 1
-  end
-  setattribute(graph,:numlevels,level - 1)
-end
 
-function bdprepare(graph::ModelGraph)
-  if Plasmo.hasattribute(graph,:preprocessed)
-    return true
-  end
+    # NOTE: ModelTree handles this.  Could use this for transforming a graph into a tree though
+    #identifylevels(graph)
 
-  identifylevels(graph)
-  setattribute(graph, :normalized, normalizegraph(graph))
-  setattribute(graph, :stalled, false)
-  setattribute(graph, :mflat ,create_jump_graph_model(graph))
-  setattribute(graph, :UB, Inf)
-  JuMP.setsolver(getattribute(graph, :mflat) ,getsolver(graph))
+    #Set tree attributes
+    setattribute(tree,:numlevels, getnumlevels(tree))  #root node doesn't count as level in ModelTree
+    setattribute(tree, :normalized, normalizegraph(tree))
+    setattribute(tree, :stalled, false)
+    setattribute(tree, :mflat, create_jump_graph_model(tree))
+    setattribute(tree, :UB, Inf)
+    JuMP.setsolver(getattribute(tree, :mflat),lp_solver)
 
-  links = getlinkconstraints(graph)
-  numlinks = length(links)
+    links = getlinkconstraints(tree)
+    numlinks = length(links)
 
-  for index in 1:length(getnodes(graph))
-    node = getnode(graph, index)
-    model = getmodel(node)
-    if model.solver == JuMP.UnsetSolver()
-      model.solver = getsolver(graph)
+    # for index in 1:length(getnodes(graph))
+    #     node = getnode(graph, index)
+    #     model = getmodel(node)
+    # if model.solver == JuMP.UnsetSolver()
+    #     model.solver = getsolver(graph)
+    # end
+
+    for node in getnodes(tree)
+        model = getmodel(node)
+        if model.solver == JuMP.UnsetSolver()
+            model.solver = node_solver
+            #model.solver = getsolver(tree)
+        end
+        model.ext[:preobj] = model.obj
+        setattribute(node, :cgmodel, deepcopy(model))
+        #Add theta to parent nodes
+        if out_degree(tree,node) != 0
+            childrenindices = [getindex(tree,child) for child in out_neighbors(tree,node)]
+            sort!(childrenindices)
+            @variable(model, θ[i in childrenindices] >= -1e6)
+            model.obj += sum(θ[i] for i in childrenindices)
+        end
     end
-    model.ext[:preobj] = model.obj
-    setattribute(node, :cgmodel, deepcopy(model))
-    #Add theta to parent nodes
-    if out_degree(graph,node) != 0
-      childrenindices = [getindex(graph,child) for child in out_neighbors(graph,node)]
-      sort!(childrenindices)
-      @variable(model, θ[i in childrenindices] >= -1e6)
-      model.obj += sum(θ[i] for i in childrenindices)
+
+    #Add dual constraint to child nodes using the linking constraints
+    for (numlink,link) in enumerate(links)
+        #Take the two variables of the constraint
+        var1 = link.terms.vars[1]
+        var2 = link.terms.vars[2]
+        #Determine which nodes they belong to
+        nodeV1 = getnode(var1)
+        nodeV2 = getnode(var2)
+
+        #Set the order of the nodes
+        if ischildnode(tree,nodeV1,nodeV2)
+            childnode = nodeV1
+            childvar = var1
+            parentnode = nodeV2
+            parentvar = var2
+        else
+            childnode = nodeV2
+            childvar = var2
+            parentnode = nodeV1
+            parentvar = var1
+        end
+        childindex = getindex(tree,childnode)
+        childmodel = getmodel(childnode)
+        push!(getattribute(parentnode, :childvars)[childindex],parentvar)
+        linkvar = @variable(childmodel)
+        setname(linkvar,"linkvar$numlink")
+        push!(getattribute(childnode, :xinvars),linkvar)
+        conref = @constraint(childmodel, linkvar - childvar == 0)
+        push!(getattribute(childnode, :linkconstraints), conref)
     end
-  end
-  #Add dual constraint to child nodes using the linking constraints
-  for (numlink,link) in enumerate(links)
-    #Take the two variables of the constraint
-    var1 = link.terms.vars[1]
-    var2 = link.terms.vars[2]
-    #Determine which nodes they belong to
-    nodeV1 = getnode(var1)
-    nodeV2 = getnode(var2)
-    #Set the order of the nodes
-    if ischildnode(graph,nodeV1,nodeV2)
-      childnode = nodeV1
-      childvar = var1
-      parentnode = nodeV2
-      parentvar = var2
-    else
-      childnode = nodeV2
-      childvar = var2
-      parentnode = nodeV1
-      parentvar = var1
-    end
-    childindex = getindex(graph,childnode)
-    childmodel = getmodel(childnode)
-    push!(getattribute(parentnode, :childvars)[childindex],parentvar)
-    linkvar = @variable(childmodel)
-    setname(linkvar,"linkvar$numlink")
-    push!(getattribute(childnode, :xinvars),linkvar)
-    conref = @constraint(childmodel, linkvar - childvar == 0)
-    push!(getattribute(childnode, :linkconstraints), conref)
-  end
-  setattribute(graph, :preprocessed, true)
+    setattribute(tree, :preprocessed, true)
 end

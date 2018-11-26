@@ -20,8 +20,8 @@ BendersSolver,
 add_node!,getnodes,collectnodes,
 
 #Model functions
-setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,hasmodel,
-getnumnodes, getobjectivevalue, getinternalgraphmodel,
+setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,getsolver,hasmodel,
+getnumnodes, getobjectivevalue, getinternalgraphmodel,getroot,
 
 #Link Constraints
 addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints, get_all_linkconstraints,
@@ -35,7 +35,7 @@ buildjumpmodel!, create_jump_graph_model,
 getgraph,getnodevariables,getnodevariable,getnodevariablemap,getnodeobjective,getnodeconstraints,getnodedata,is_graphmodel,
 
 #solve handles
-solve_jump,pipsnlp_solve,dsp_solve,solve,
+solve_jump,pipsnlp_solve,dsp_solve,bendersolve,solve,
 
 #Solution management
 getsolution,setsolution,setvalue,getvalue,

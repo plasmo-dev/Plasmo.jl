@@ -20,7 +20,7 @@ end
 """
 Checks if n1 is a child node of n2
 """
-ischildnode(tree::ModelTree, n1::ModelNode, n2::ModelNode) = in(n2,in_neighbors(graph,n1))
+ischildnode(tree::ModelTree, n1::ModelNode, n2::ModelNode) = in(n2,in_neighbors(tree,n1))
 
 function savenodeobjective(mf::JuMP.Model)
     g = mf.ext[:Graph]

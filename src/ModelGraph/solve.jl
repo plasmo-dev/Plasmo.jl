@@ -93,7 +93,7 @@ end
 #Create a single JuMP model from a ModelGraph
 @deprecate create_flat_graph_model create_jump_graph_model
 
-function create_jump_graph_model(model_graph::ModelGraph)
+function create_jump_graph_model(model_graph::AbstractModelGraph)
     jump_model = JuMPGraphModel()
     jump_graph = copy_graph(model_graph,to_graph_type = JuMPGraph)
     jump_model.ext[:Graph] = jump_graph
@@ -338,8 +338,8 @@ function _splicevars!(expr::Expr,var_map::Dict)
 end
 
 #Create a JuMP model and solve with a MPB compliant solver
-buildjumpmodel!(graph::ModelGraph) = graph.serial_model = create_jump_graph_model(graph)
-function jump_solve(graph::ModelGraph;scale = 1.0,kwargs...)
+buildjumpmodel!(graph::AbstractModelGraph) = graph.serial_model = create_jump_graph_model(graph)
+function jump_solve(graph::AbstractModelGraph;scale = 1.0,kwargs...)
     println("Aggregating Models...")
     m_flat = buildjumpmodel!(graph)
     println("Finished Creating JuMP Model")
@@ -353,11 +353,14 @@ function jump_solve(graph::ModelGraph;scale = 1.0,kwargs...)
     return status
 end
 
-function JuMP.solve(graph::ModelGraph; method = :jump,scale = 1.0,kwargs...)
-    if method == :jump
+#check if graph has a mathprogbase solver
+function JuMP.solve(graph::AbstractModelGraph;scale = 1.0,kwargs...)
+    if isa(getsolver(graph),AbstractMathProgSolver)
         status = jump_solve(graph,scale = scale,kwargs...)
+    elseif isa(getsolver(graph),AbstractPlasmoSolver)
+        status = solve(graph,getsolver(graph))
     else
-        throw(error("Given solve method not supported"))
+        throw(error("Given solver not recognized"))
     end
     return status
 end
