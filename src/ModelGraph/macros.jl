@@ -4,6 +4,8 @@ constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict,addkwar
 #Would need to create link variables to do this
 macro NLlinkconstraint(graph,args...) end
 
+#TODO
+#Graph objective should be a sum of node objectives
 #Should work similar to JuMPs @objective
 macro graphobjective(graph,args...)
     graph = esc(graph)
