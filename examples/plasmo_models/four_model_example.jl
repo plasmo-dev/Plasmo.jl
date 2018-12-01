@@ -34,6 +34,7 @@ JuMP.@objective(m2,Min,x)
 
 m3 = JuMP.Model()
 JuMP.@variable(m3,x[1:5])
+@constraint(m3,[i = 1:5],x[i] <= 10)
 
 m4 = JuMP.Model()
 JuMP.@variable(m4,x <= 1)
@@ -47,6 +48,7 @@ Plasmo.setmodel(n4,m4)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
 Plasmo.@linkconstraint(graph,n4[:x] == n1[:x])
+
 Plasmo.@linkconstraint(graph,[t = 1:5],n4[:x] == n2[:z][t])
 Plasmo.@linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
 Plasmo.@linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])

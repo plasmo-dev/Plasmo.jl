@@ -1,5 +1,6 @@
 import JuMP: isexpr, constraint_error, quot, getname, buildrefsets,_canonicalize_sense,parseExprToplevel, AffExpr, getloopedcode,addtoexpr_reorder,
-constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict,addkwargs!,coeftype
+constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict,addkwargs!,
+coeftype,undef
 
 #Would need to create link variables to do this
 macro NLlinkconstraint(graph,args...) end
