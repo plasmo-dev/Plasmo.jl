@@ -20,7 +20,7 @@ create_edge(tree::ModelTree) = LinkingEdge()
 function setroot(tree::ModelTree,node::ModelNode)
     #tree.root = node
     if  length(tree.levels) == 0
-        push!(tree.levels,ModelNode[])
+        add_level!(tree)
     end
     tree.levels[1] = [node]
     tree.levelmap[node] = 1
@@ -33,8 +33,51 @@ end
 
 getroot(tree::ModelTree) = tree.levels[1][1]
 
-function add_node!(tree::ModelTree)
+function add_level!(tree::ModelTree)
+    push!(tree.levels,ModelNode[])
+end
+
+
+function add_node!(tree::ModelTree;level = nothing)
     #Extend from base method
+
+    if level == nothing
+
+        basegraph = getbasegraph(tree)
+        LightGraphs.add_vertex!(basegraph.lightgraph)
+        index = LightGraphs.nv(basegraph.lightgraph)
+        label = Symbol("node"*string(index))
+
+        node = create_node(tree)                   #create a node for the given graph type
+        basenode = getbasenode(node)
+        basenode.indices[basegraph] = index             #Set the index of this node in this basegraph
+        add_node!(basegraph.nodedict,node,index)
+
+        #New stuff
+        #Add node to a tree structure by default
+        if  length(tree.levels) == 0 #tree.root == nothing        #make the node the root
+            setroot(tree,node)
+            #tree.levelmap[node] = 1
+        elseif length(tree.levels) == 1 #add node to the second level
+            add_level!(tree)
+            push!(tree.levels[2],node)
+            tree.levelmap[node] = 2
+        else
+            push!(tree.levels[2],node)
+            tree.levelmap[node] = 2
+        end
+        return node
+
+    else
+        node = add_node!(tree,level)
+        return node
+    end
+end
+
+function add_node!(tree::ModelTree,level::Int)
+    level > 0 || throw(error("Tree level must be greater than zero"))
+    level > length(tree.levels) + 1 && throw(error("Tree does not contain levels yet.  You may need to add a parent level first"))
+
     basegraph = getbasegraph(tree)
     LightGraphs.add_vertex!(basegraph.lightgraph)
     index = LightGraphs.nv(basegraph.lightgraph)
@@ -45,26 +88,16 @@ function add_node!(tree::ModelTree)
     basenode.indices[basegraph] = index             #Set the index of this node in this basegraph
     add_node!(basegraph.nodedict,node,index)
 
-    #New stuff
-    #Add node to a tree structure by default
-    if  length(tree.levels) == 0 #tree.root == nothing        #make the node the root
+    if level == 1
         setroot(tree,node)
-        #tree.levelmap[node] = 1
-    elseif length(tree.levels) == 1 #add node to the second level
-        push!(tree.levels,ModelNode[])
-        push!(tree.levels[2],node)
-        tree.levelmap[node] = 2
-    else
-        push!(tree.levels[2],node)
-        tree.levelmap[node] = 2
+        return node
     end
-    return node
-end
 
-function add_node!(tree::ModelTree,level::Int)
-    node = add_node!(tree)
-    level > length(tree.levels) && throw(error("Tree does not contain level $level.  You may need to add a new level"))
-    push!(node.levels[level],node)
+    if level > length(tree.levels)
+        add_level!(tree)
+    end
+
+    push!(tree.levels[level],node)
     tree.levelmap[node] = level
     return node
 end
