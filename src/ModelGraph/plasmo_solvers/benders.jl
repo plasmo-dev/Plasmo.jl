@@ -281,7 +281,6 @@ function bdprepare(tree::ModelTree,lp_solver::AbstractMathProgSolver,node_solver
         model = getmodel(node)
         if model.solver == JuMP.UnsetSolver()
             model.solver = node_solver
-            #model.solver = getsolver(tree)
         end
         model.ext[:preobj] = model.obj
         setattribute(node, :cgmodel, deepcopy(model))

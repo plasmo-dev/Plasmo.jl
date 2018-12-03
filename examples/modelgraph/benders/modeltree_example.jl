@@ -2,7 +2,7 @@ using Plasmo
 using JuMP
 using Gurobi
 
-tree = ModelTree()
+tree = ModelTree(solver = BendersSolver(max_iterations = 5,lp_solver = GurobiSolver()))
 
 function test_model()
     m1 = Model()
@@ -20,7 +20,6 @@ n3 = add_node!(tree,test_model())
 @linkconstraint(tree,[i = 1:2],n1[:x][i] == n2[:x][i])
 @linkconstraint(tree,n1[:x][2] == n3[:x][2])
 
-setsolver(tree,BendersSolver(max_iterations = 5,lp_solver = GurobiSolver()))
 solve(tree)
 
 #NOT ALLOWED ON A TREE

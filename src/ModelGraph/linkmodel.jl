@@ -48,7 +48,7 @@ mutable struct LinkModel <: JuMP.AbstractModel   #subtyping here so I can get Co
     objective::JuMP.AffExpr      #Possibly a function of multiple model variables.  Strictly linear
     solver::Union{AbstractMathProgSolver,AbstractPlasmoSolver}
 end
-LinkModel() = LinkModel(LinkData(),0,JuMP.AffExpr(),JuMP.UnsetSolver())
+LinkModel(;solver = JuMP.UnsetSolver()) = LinkModel(LinkData(),0,JuMP.AffExpr(),solver)
 getlinkdata(model::LinkModel) = model.linkdata
 
 #Get the 2 variable or multi-variable linkconstraints

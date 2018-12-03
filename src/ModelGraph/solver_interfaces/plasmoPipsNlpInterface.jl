@@ -245,6 +245,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoMod
     if haskey(master.ext, :ineqlink_ub)
         ineqlink_ub = copy(master.ext[:ineqlink_ub])
     end
+
     for (idx,node) in enumerate(modelList)
         local_data = getData(node)
         if haskey(node.ext, :linkIineq)

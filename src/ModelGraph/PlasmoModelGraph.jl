@@ -1,6 +1,7 @@
 module PlasmoModelGraph
 
 using ..PlasmoGraphBase
+using Requires
 
 import ..PlasmoGraphBase:getedge
 
@@ -14,7 +15,7 @@ export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkCo
 JuMPGraphModel, JuMPGraph,
 
 #Solver Constructs
-BendersSolver,
+BendersSolver,LagrangeSolver,
 
 #re-export base functions
 add_node!,getnodes,collectnodes,

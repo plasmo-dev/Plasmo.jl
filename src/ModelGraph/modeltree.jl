@@ -7,10 +7,8 @@ mutable struct ModelTree <: AbstractModelGraph
     serial_model::Nullable{AbstractModel}        #The internal serial model for the tree.  Returned if requested by the solve
     levels::Vector{Vector{ModelNode}}            #the number of levels (or stages) in the tree
     levelmap::Dict{ModelNode,Int}                #levelmap:  Each node maps to a level in the tree child map for each node index.  Helpful for quickly getting child nodes
-    #root::Union{Void,ModelNode}                  #the root node
 end
-#ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),nothing,Dict{Int,Vector{Int}}())
-ModelTree() = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(),Nullable(),Vector{Vector{ModelNode}}(),Dict{ModelNode,Int}())
+ModelTree(;solver = JuMP.UnsetSolver()) = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(;solver = solver),Nullable(),Vector{Vector{ModelNode}}(),Dict{ModelNode,Int}())
 
 create_node(tree::ModelTree) = ModelNode()
 create_edge(tree::ModelTree) = LinkingEdge()
