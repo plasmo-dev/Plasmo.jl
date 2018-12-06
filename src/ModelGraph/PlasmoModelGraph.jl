@@ -15,7 +15,9 @@ export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkCo
 JuMPGraphModel, JuMPGraph,
 
 #Solver Constructs
-BendersSolver,LagrangeSolver,
+BendersSolver,LagrangeSolver,PipsSolver,
+
+load_pips,
 
 #re-export base functions
 add_node!,getnodes,collectnodes,
@@ -73,21 +75,11 @@ include("plasmo_solvers/plasmo_solvers.jl")
 
 
 #External Solver Interfaces
+include("solver_interfaces/wrapped_solvers.jl")
 
-#load PIPS-NLP if the library can be found
-if  !isempty(Libdl.find_library("libparpipsnlp"))
-    include("solver_interfaces/plasmoPipsNlpInterface.jl")
-    using .PlasmoPipsNlpInterface
-else
-    pipsnlp_solve(Any...) = throw(error("Could not find a PIPS-NLP installation"))
-end
-
-#load DSP if the library can be found
-if !isempty(Libdl.find_library("libDsp"))
-    include("solver_interfaces/plasmoDspInterface.jl")
-    using .PlasmoDspInterface
-else
-    dsp_solve(Any...) = throw(error("Could not find a DSP installation"))
-end
+include("solver_interfaces/plasmoPipsNlpInterface3.jl")
+# load_pips()
+#
+# load_dsp()
 
 end

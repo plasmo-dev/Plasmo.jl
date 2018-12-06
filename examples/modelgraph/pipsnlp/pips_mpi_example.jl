@@ -19,7 +19,7 @@ function get_electricity_model(demand)
 end
 
 #Setup processor information
-Ns = 10
+Ns = 8
 demand = rand(Ns)*10
 comm = MPI.COMM_WORLD
 ncores = MPI.Comm_size(comm)
@@ -67,9 +67,10 @@ if rank == 0
 end
 pipsnlp_solve(graph,master_node,scen_nodes)
 
-@show getobjectivevalue(graph)
+if rank == 0
+    @show getobjectivevalue(graph)
+end
 
-# if rank == 0
 #     graph.solver = IpoptSolver()
 #     println()
 #     println("Solving with Ipopt")
