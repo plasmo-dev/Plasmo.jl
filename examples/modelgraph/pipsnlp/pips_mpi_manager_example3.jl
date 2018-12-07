@@ -3,22 +3,6 @@ using MPI
 using Ipopt
 using Plasmo
 
-# manager = MPI.MPIManager(np = 2)
-# addprocs(manager)
-#
-# @everywhere using ParallelDataTransfer
-#
-# @everywhere  using Plasmo
-# @everywhere  include("../../../src/ModelGraph/solver_interfaces/PipsNlpSolver.jl")
-# @everywhere using PipsNlpSolver
-# @everywhere include("../../../src/ModelGraph/solver_interfaces/plasmoPipsNlpInterface2.jl")
-# @everywhere using PlasmoPipsNlpInterface2
-# @everywhere using JuMP
-# using Plasmo
-# include("../../../src/ModelGraph/solver_interfaces/plasmoPipsNlpInterface2.jl")
-# using PlasmoPipsNlpInterface2
-
-#MPI.@mpi_do manager begin
 function get_electricity_model(demand)
     m = Model()
     #amount of electricity produced
@@ -32,8 +16,7 @@ function get_electricity_model(demand)
     return m
 end
 
-#Setup processor information
-Ns = 8
+Ns = 15
 demand = rand(Ns)*10
 graph = ModelGraph()
 
@@ -44,14 +27,10 @@ master = Model()
 
 #Add the master model to the graph
 master_node = add_node!(graph,master)
-
 scenm=Array{JuMP.Model}(Ns)
-scen_nodes = Array{ModelNode}(Ns)
-#split scenarios between processors
 for j in 1:Ns
     scenm[j] = get_electricity_model(demand[j])
     node = add_node!(graph,scenm[j])
-    scen_nodes[j] = node
     #connect children and parent variables
     @linkconstraint(graph, master[:gas_purchased] == scenm[j][:gas_purchased])
     #reconstruct second stage objective
@@ -60,36 +39,9 @@ end
 #create a link constraint between the subproblems (PIPS-NLP supports this kind of constraint)
 @linkconstraint(graph, (1/Ns)*sum(scenm[s][:prod] for s in 1:Ns) == 8)
 
-
-println("Solving with PIPS-NLP")
-
 master = 1
-children = collect(2:9)
+children = collect(2:16)
 
-solver = PipsSolver(n_workers = 2, master = 1, children = collect(2:9))
-#solve(graph,solver)
-# @passobj 1 workers() graph
-# # @passobj 1 workers() master_node
-# # @passobj 1 workers() scen_nodes
-#
-# #@mpi_do manager pipsnlp_solve(graph,master_node,scen_nodes)
-# @mpi_do manager pipsnlp_solve(graph,1,collect(2:9))
-# rank_zero = manager.mpi2j[0]
+solver = PipsSolver(n_workers = 2, master = master, children = children)
 
-# g = @getfrom rank_zero graph
-# n1 = getnode(g,1)
-# println(getvalue(n1[:gas_purchased]))
-#pipsnlp_solve(graph,master_node,scen_nodes)
-
-#
-#
-# @show getobjectivevalue(graph)
-
-
-#     graph.solver = IpoptSolver()
-#     println()
-#     println("Solving with Ipopt")
-#     solve(graph)
-# end
-
-#MPI.Finalize()
+solve(graph,solver)

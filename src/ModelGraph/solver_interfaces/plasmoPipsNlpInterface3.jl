@@ -77,17 +77,8 @@ function getData(m::JuMP.Model)
 end
 
 function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_index::Int64,children_indices::Vector{Int64})#,manager)
-
-    # jworkers = collect(values(manager.mpi2j))
-    #
-    # @passobj 1 jworkers graph
-    # @passobj 1 jworkers master_node
-    # @passobj 1 jworkers children_nodes
-    # m_index = getindex(graph,master_node)
-    # println(m_index)
     master_node = PlasmoModelGraph.getnode(graph,master_index)
     children_nodes = [PlasmoModelGraph.getnode(graph,c_index) for c_index in children_indices]
-    #MPI.@mpi_do manager begin
 
     #need to check that the structure makes sense
     submodels = [PlasmoModelGraph.getmodel(child) for child in children_nodes]
@@ -100,9 +91,6 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_index::Int64,ch
     for (idx,node) in enumerate(modelList)
         node.ext[:Data] = ModelData()
     end
-
-    # println("first check")
-    # println(modelList[1].ext)
 
     master_linear_lb = []
     master_linear_ub = []
