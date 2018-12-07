@@ -62,10 +62,12 @@ end
 
 
 println("Solving with PIPS-NLP")
-#
 
-solver = PipsSolver(;n_workers = 2,master = 1, children = collect(2:9))
-solve(graph,solver)
+master = 1
+children = collect(2:9)
+
+solver = PipsSolver(n_workers = 2, master = 1, children = collect(2:9))
+#solve(graph,solver)
 # @passobj 1 workers() graph
 # # @passobj 1 workers() master_node
 # # @passobj 1 workers() scen_nodes
