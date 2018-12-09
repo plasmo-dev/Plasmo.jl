@@ -1,24 +1,8 @@
 using JuMP
-#using Plasmo
 using MPI
 using Ipopt
-
-
-manager = MPI.MPIManager(np = 4)
-addprocs(manager)
-@mpi_do manager begin
-     using Plasmo
-     include("../../../src/ModelGraph/solver_interfaces/PipsNlpSolver.jl")
-     include("../../../src/ModelGraph/solver_interfaces/plasmoPipsNlpInterface2.jl")
-     using PipsNlpSolver
-     using PlasmoPipsNlpInterface2
-     using JuMP
- end
 using Plasmo
-include("../../../src/ModelGraph/solver_interfaces/plasmoPipsNlpInterface2.jl")
-using PlasmoPipsNlpInterface2
 
-MPI.@mpi_do manager begin
 function get_electricity_model(demand)
     m = Model()
     #amount of electricity produced
@@ -32,8 +16,7 @@ function get_electricity_model(demand)
     return m
 end
 
-#Setup processor information
-Ns = 8
+Ns = 15
 demand = rand(Ns)*10
 graph = ModelGraph()
 
@@ -44,14 +27,10 @@ master = Model()
 
 #Add the master model to the graph
 master_node = add_node!(graph,master)
-
 scenm=Array{JuMP.Model}(Ns)
-scen_nodes = Array{ModelNode}(Ns)
-#split scenarios between processors
 for j in 1:Ns
     scenm[j] = get_electricity_model(demand[j])
-    node = add_node(graph,scenm[j])
-    scen_nodes[j] = node
+    node = add_node!(graph,scenm[j])
     #connect children and parent variables
     @linkconstraint(graph, master[:gas_purchased] == scenm[j][:gas_purchased])
     #reconstruct second stage objective
@@ -60,21 +39,9 @@ end
 #create a link constraint between the subproblems (PIPS-NLP supports this kind of constraint)
 @linkconstraint(graph, (1/Ns)*sum(scenm[s][:prod] for s in 1:Ns) == 8)
 
+master = 1
+children = collect(2:16)
 
-println("Solving with PIPS-NLP")
+solver = PipsSolver(n_workers = 3, master = master, children = children)
 
-
-pipsnlp_solve(graph,master_node,scen_nodes)
-end
-#
-#
-# @show getobjectivevalue(graph)
-
-
-#     graph.solver = IpoptSolver()
-#     println()
-#     println("Solving with Ipopt")
-#     solve(graph)
-# end
-
-#MPI.Finalize()
+solve(graph,solver)

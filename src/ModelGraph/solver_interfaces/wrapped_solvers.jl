@@ -1,5 +1,5 @@
 import MPI
-using ParallelDataTransfer
+#using ParallelDataTransfer
 
 #Benders Decomposition Solver
 mutable struct PipsSolver <: AbstractPlasmoSolver
@@ -12,6 +12,7 @@ function PipsSolver(;n_workers = 1,master = nothing, children = nothing)
     solver = PipsSolver(Dict(:n_workers => n_workers,:master => master,:children => children),MPI.MPIManager(np = n_workers),nothing)
 end
 
+#TODO Better checking of PIPS library
 function solve(graph::ModelGraph,solver::PipsSolver)
     !isempty(Libdl.find_library("libparpipsnlp")) || error("Could not find a PIPS-NLP installation")
     manager = solver.manager
@@ -57,8 +58,6 @@ end
 #         pipsnlp_solve(Any...) = throw(error("Could not find a PIPS-NLP installation"))
 #     end
 # end
-
-
 
 #load DSP if the library can be found
 # function load_dsp()
