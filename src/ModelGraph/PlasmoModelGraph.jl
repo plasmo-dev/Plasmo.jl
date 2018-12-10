@@ -3,7 +3,7 @@ module PlasmoModelGraph
 using ..PlasmoGraphBase
 using Requires
 
-import ..PlasmoGraphBase:getedge
+import ..PlasmoGraphBase:getedge,getnodes,getedges
 
 import JuMP
 import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
@@ -12,7 +12,7 @@ import Base.==
 
 #Model Graph Constructs
 export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkConstraint,
-JuMPGraphModel, JuMPGraph,
+JuMPGraphModel, JuMPGraph,BipartiteGraph,
 
 #Solver Constructs
 BendersSolver,LagrangeSolver,PipsSolver,
@@ -20,7 +20,7 @@ BendersSolver,LagrangeSolver,PipsSolver,
 load_pips,
 
 #re-export base functions
-add_node!,getnodes,collectnodes,
+add_node!,getnodes,getedges,collectnodes,
 
 #Model functions
 setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,getsolver,hasmodel,
@@ -31,7 +31,7 @@ addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstrain
 
 
 #Graph Transformation functions
-aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,
+aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,
 
 #JuMP Interface functions
 buildjumpmodel!, create_jump_graph_model,
@@ -60,8 +60,6 @@ include("modelnode.jl")
 
 include("modeledge.jl")
 
-include("modeltree.jl")
-
 include("solve.jl")
 
 include("solution.jl")
@@ -70,9 +68,14 @@ include("macros.jl")
 
 include("aggregation.jl")
 
+include("graph_transformations/modeltree.jl")
+
+include("graph_transformations/bipartite_graph.jl")
+
+include("graph_transformations/graph_transformation.jl")
+
 #Plasmo Solvers
 include("plasmo_solvers/plasmo_solvers.jl")
-
 
 #External Solver Interfaces
 include("solver_interfaces/wrapped_solvers.jl")

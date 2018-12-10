@@ -1,0 +1,48 @@
+#Functions that do graph transformations to facilitate different decomposition algorithms
+
+#Convert ModelGraph ==> ModelTree
+#NOTE: Could use a spanning tree
+function getmodeltree(graph::ModelGraph;root_node = nothing)
+    #1.) If no root_node, lift all the link constraints into a root node
+    #if root_node == nothing
+
+
+    #2.) If there is a root node, create the tree by recursively going out
+    #3.) Lift hyper-constraints into root node
+end
+
+#Convert Hypergraph ==> Unipartite Graph
+function getunipartitegraph(graph::ModelGraph)
+end
+
+#Convert Hypergraph ==> Bipartite Graph
+    #convert hypergraph to a bipartite graph to do partitioning and community detection
+function getbipartitegraph(graph::ModelGraph)
+    bgraph = BipartiteGraph()
+
+    #model nodes
+    for node in getnodes(graph)
+        idx = getindex(graph,node)
+        node = create_node(graph)
+        add_node!(bgraph,node,index = idx)  #keep the same indices
+    end
+
+    #hyper edges
+    for edge in getedges(graph)
+        hyperedge = getindex(graph,edge)
+        vertices = hyperedge.vertices
+        constraint_node = add_node!(bgraph)
+        #connect this "node" to the other nodes
+        for vertex in vertices
+            model_node = getnode(bgraph,vertex)
+            add_edge!(bgraph,constraint_node,model_node)
+        end
+    end
+
+    return bgraph
+
+end
+
+#Convert JuMP Model ==> Bipartite Graph
+function getbipartitegraph(model::JuMP.Model)
+end

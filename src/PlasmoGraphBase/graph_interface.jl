@@ -69,16 +69,9 @@ getindex(graph::AbstractPlasmoGraph,edge::AbstractPlasmoEdge) = getindex(getbase
 
 function add_edge!(graph::AbstractPlasmoGraph,lightedge::LightGraphs.AbstractEdge{Int})
     basegraph = getbasegraph(graph)
-
     LightGraphs.add_edge!(getlightgraph(graph),lightedge)  #add the edge to the lightgraph
-    # println(edgetype(graph.lightgraph))
-    # edgetype(graph.lightgraph)(lightedge)
     lightedge = edgetype(getlightgraph(graph))(lightedge)
-    #LightGraphs.add_edge!(basegraph.lightgraph,lightedge.src,lightedge.dst)  #add the edge to the lightgraph
-
     edge = create_edge(graph)                               #create edge for this graph type
-    # println(lightedge)
-    # println(edge)
     add_edge!(basegraph.edgedict,edge,lightedge)            #add to the edge dictionary
     baseedge = getbaseedge(edge)
     baseedge.indices[basegraph] = lightedge                 #set the edge index in the basegraph

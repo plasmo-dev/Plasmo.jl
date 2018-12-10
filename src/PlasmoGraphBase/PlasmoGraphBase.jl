@@ -20,7 +20,7 @@ getlightgraph,getbasegraph,getbasenode,getbaseedge,
 
 getindex, getsubgraphlist, getsubgraph, getindices,getlabel,
 
-getnodes,getedges,add_node,add_edge,add_node!,add_edge!,getnode,getedge,collectnodes,collectedges,
+getnodes,getedges,add_node,add_edge,add_node!,add_edge!,getnode,getedge,collectnodes,collectedges,create_node,
 
 add_subgraph,add_subgraph!,getsubgraph,copy_graph,
 
