@@ -14,8 +14,10 @@ function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
     vars = con.terms.vars
     nodes = unique([getnode(var) for var in vars])  #each var belongs to a node
+
     edge = add_edge!(graph,nodes...)  #constraint edge connected to more than 2 nodes
     push!(edge.linkconrefs,ref)
+
     for node in nodes
         if !haskey(node.linkconrefs,graph)
             node.linkconrefs[graph] = [ref]

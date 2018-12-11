@@ -1,4 +1,4 @@
-using Plasmo.PlasmoModels
+using Plasmo
 using JuMP
 using Ipopt
 

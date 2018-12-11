@@ -1,5 +1,4 @@
-using Plasmo.PlasmoGraphBase
-using Plasmo.PlasmoModels
+using Plasmo
 using JuMP
 
 function simple_model()

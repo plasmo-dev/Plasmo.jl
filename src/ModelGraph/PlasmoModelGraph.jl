@@ -12,7 +12,7 @@ import Base.==
 
 #Model Graph Constructs
 export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkConstraint,
-JuMPGraphModel, JuMPGraph,BipartiteGraph,
+JuMPGraphModel, JuMPGraph,BipartiteGraph,UnipartiteGraph,
 
 #Solver Constructs
 BendersSolver,LagrangeSolver,PipsSolver,
@@ -31,7 +31,7 @@ addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstrain
 
 
 #Graph Transformation functions
-aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,
+aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,
 
 #JuMP Interface functions
 buildjumpmodel!, create_jump_graph_model,
@@ -70,7 +70,7 @@ include("aggregation.jl")
 
 include("graph_transformations/modeltree.jl")
 
-include("graph_transformations/bipartite_graph.jl")
+include("graph_transformations/partite_graphs.jl")
 
 include("graph_transformations/graph_transformation.jl")
 

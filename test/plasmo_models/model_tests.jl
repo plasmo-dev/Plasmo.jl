@@ -2,7 +2,8 @@ import JuMP
 
 # import Plasmo.PlasmoModels
 # PM = Plasmo.PlasmoModels
-using Plasmo.PlasmoModels
+#using Plasmo.ModelGraph
+using Plasmo
 
 import Ipopt
 
@@ -48,9 +49,9 @@ function simple_model()
 end
 
 #Set models on nodes and edges
-setmodel!(n1,m1)     #set m1 to node 1.  Updates reference on m1
-setmodel!(n2,m2)
-setmodel!(n3,m3)
+setmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1
+setmodel(n2,m2)
+setmodel(n3,m3)
 #Plasmo.setmodel!(edge,simple_model())
 
 #Link constraints take the same expressions as the JuMP @constraint macro
