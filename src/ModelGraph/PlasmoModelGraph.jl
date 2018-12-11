@@ -31,7 +31,7 @@ addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstrain
 
 
 #Graph Transformation functions
-aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,
+aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,partition,
 
 #JuMP Interface functions
 buildjumpmodel!, create_jump_graph_model,
@@ -67,6 +67,8 @@ include("solution.jl")
 include("macros.jl")
 
 include("aggregation.jl")
+
+include("partition.jl")
 
 include("graph_transformations/modeltree.jl")
 

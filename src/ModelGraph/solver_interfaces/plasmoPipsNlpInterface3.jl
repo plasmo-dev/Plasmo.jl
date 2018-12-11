@@ -456,7 +456,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_index::Int64,ch
         node = modelList[id+1]
         local_data = getData(node)
         local_data.x_sol = copy(x)
-	if id == 0
+        if id == 0
             node.objVal = str_eval_f(id, x, nothing)
         else
             node.objVal = str_eval_f(id, nothing, x)
