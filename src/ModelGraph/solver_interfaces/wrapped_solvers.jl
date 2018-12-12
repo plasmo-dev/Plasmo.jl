@@ -3,41 +3,65 @@ import MPI
 
 #Benders Decomposition Solver
 mutable struct PipsSolver <: AbstractPlasmoSolver
-    options::Dict{Any,Any}
+    options::Dict{Symbol,Any}
+    partition_options::Dict{Symbol,Any}
     manager::MPI.MPIManager
     status
 end
 
-function PipsSolver(;n_workers = 1,master = nothing, children = nothing)
-    solver = PipsSolver(Dict(:n_workers => n_workers,:master => master,:children => children),MPI.MPIManager(np = n_workers),nothing)
+function PipsSolver(;n_workers = 1,master = 0,children = nothing,partitions = Vector{Vector{Int64}}(),master_partition = Vector{Int64}())
+    solver = PipsSolver(
+    Dict(:n_workers => n_workers,:master => master,:children => children),
+    Dict(:master_partition => master_partition,:sub_partitions => partitions),
+    MPI.MPIManager(np = n_workers),
+    nothing)
 end
 
-#TODO Better checking of PIPS library
 function solve(graph::ModelGraph,solver::PipsSolver)
     !isempty(Libdl.find_library("libparpipsnlp")) || error("Could not find a PIPS-NLP installation")
+
+    #If we partition
+    if !isempty(solver.partition_options[:sub_partitions])
+        println("Using partitions for PIPS-NLP")
+        graph = create_pips_tree(graph,solver.partition_options[:sub_partitions];master_partition = solver.partition_options[:master_partition])
+        master = graph.master_node_index
+        children = graph.sub_node_indices
+    else #just use master and child indices from original graph
+        println("Using graph structure for PIPS-NLP")
+        master = solver.options[:master]
+        children = solver.options[:children]
+    end
+
     manager = solver.manager
     if length(manager.mpi2j) == 0
         addprocs(manager)
     end
-    master = solver.options[:master]
-    children = solver.options[:children]
-    @assert length(children) + 1 == length(getnodes(graph))
-    if manager.np > 0
-        println("Preparing PIPS MPI environment")
-        eval(quote @everywhere using Plasmo end)
-        eval(quote @everywhere using Plasmo.PlasmoModelGraph.PlasmoPipsNlpInterface3 end)
-        send_pips_data(manager,graph,master,children)
-        println("Solving with PIPS-NLP")
-        MPI.@mpi_do manager pipsnlp_solve(graph,master,children)
-        #Get solution
-        rank_zero = manager.mpi2j[0]
-        sol = fetch(@spawnat(rank_zero, getfield(Main, :graph)))
-        setsolution(sol,graph)
-        return nothing
-    end
+
+    #TODO better structure checks
+    #@assert length(children) + 1 == length(getnodes(graph))
+
+    println("Preparing PIPS MPI environment")
+    eval(quote @everywhere using Plasmo end)
+    eval(quote @everywhere using Plasmo.PlasmoModelGraph.PlasmoPipsNlpInterface3 end)
+
+    println(master)
+    println(children)
+    send_pips_data(manager,graph,master,children)
+
+    println("Solving with PIPS-NLP")
+    MPI.@mpi_do manager pipsnlp_solve(graph,master,children)
+
+    #Get solution
+    rank_zero = manager.mpi2j[0]
+    sol = fetch(@spawnat(rank_zero, getfield(Main, :graph)))
+
+    #NOTE Update the original graph if we used a PipsTree
+    setsolution(sol,graph)
+
+    return nothing  #TODO retrieve solve status
 end
 
-function send_pips_data(manager::MPI.MPIManager,graph::ModelGraph,master::Int,children::Vector{Int})
+function send_pips_data(manager::MPI.MPIManager,graph::AbstractModelGraph,master::Int,children::Vector{Int})
     julia_workers = collect(values(manager.mpi2j))
     r = RemoteChannel(1)
     @spawnat(1, put!(r, [graph,master,children]))

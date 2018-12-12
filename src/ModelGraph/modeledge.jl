@@ -10,7 +10,7 @@ LinkingEdge() = LinkingEdge(BasePlasmoEdge(),JuMP.ConstraintRef[])
 create_edge(graph::ModelGraph) = LinkingEdge()
 
 #Add hyperedge to graph using linkconstraint reference
-function add_edge!(graph::ModelGraph,ref::JuMP.ConstraintRef)
+function add_edge!(graph::AbstractModelGraph,ref::JuMP.ConstraintRef)
     con = LinkConstraint(ref)   #Get the Linkconstraint object so we can inspect the nodes on it
     vars = con.terms.vars
     nodes = unique([getnode(var) for var in vars])  #each var belongs to a node

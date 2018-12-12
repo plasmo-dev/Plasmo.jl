@@ -12,7 +12,7 @@ import Base.==
 
 #Model Graph Constructs
 export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkConstraint,
-JuMPGraphModel, JuMPGraph,BipartiteGraph,UnipartiteGraph,
+JuMPGraphModel, JuMPGraph,BipartiteGraph,UnipartiteGraph,PipsTree,
 
 #Solver Constructs
 BendersSolver,LagrangeSolver,PipsSolver,
@@ -24,14 +24,14 @@ add_node!,getnodes,getedges,collectnodes,
 
 #Model functions
 setmodel,setsolver,setmodel!,resetmodel,is_nodevar,getmodel,getsolver,hasmodel,
-getnumnodes, getobjectivevalue, getinternalgraphmodel,getroot,
+getnumnodes, getobjectivevalue, getinternalgraphmodel,getroot,add_master!,
 
 #Link Constraints
 addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstraints, gethyperlinkconstraints, get_all_linkconstraints,
 
 
 #Graph Transformation functions
-aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,partition,
+aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,partition,create_pips_tree,
 
 #JuMP Interface functions
 buildjumpmodel!, create_jump_graph_model,
@@ -72,6 +72,8 @@ include("partition.jl")
 
 include("graph_transformations/modeltree.jl")
 
+include("graph_transformations/pipstree.jl")
+
 include("graph_transformations/partite_graphs.jl")
 
 include("graph_transformations/graph_transformation.jl")
@@ -83,6 +85,7 @@ include("plasmo_solvers/plasmo_solvers.jl")
 include("solver_interfaces/wrapped_solvers.jl")
 
 include("solver_interfaces/plasmoPipsNlpInterface3.jl")
+using .PlasmoPipsNlpInterface3
 # load_pips()
 #
 # load_dsp()

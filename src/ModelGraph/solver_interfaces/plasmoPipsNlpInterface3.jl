@@ -1,29 +1,17 @@
 # Plasmo Interface to Pips-NLP
 
-# manager = MPI.MPIManager(np = 1)
-# addprocs(manager)
-# @everywhere using Plasmo
-
 module PlasmoPipsNlpInterface3
 
 importall MathProgBase.SolverInterface
 import MPI
 import JuMP
-using ParallelDataTransfer
-
 import ..PlasmoModelGraph
 
 include("PipsNlpSolver.jl")
 using .PipsNlpSolver
 export pipsnlp_solve
 
-function convert_to_c_idx(indicies)
-    for i in 1:length(indicies)
-        indicies[i] = indicies[i] - 1
-    end
-end
-
-type ModelData
+mutable struct ModelData
     d    #NLP evaluator
     n::Int
     m::Int
@@ -76,13 +64,19 @@ function getData(m::JuMP.Model)
     end
 end
 
-function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_index::Int64,children_indices::Vector{Int64})#,manager)
-    master_node = PlasmoModelGraph.getnode(graph,master_index)
+function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::Int64,children_indices::Vector{Int64})
+
+    if master_index == 0
+        master_node = PlasmoModelGraph.ModelNode()
+    else
+        master_node = PlasmoModelGraph.getnode(graph,master_index)
+    end
     children_nodes = [PlasmoModelGraph.getnode(graph,c_index) for c_index in children_indices]
 
     #need to check that the structure makes sense
     submodels = [PlasmoModelGraph.getmodel(child) for child in children_nodes]
     scen = length(children_nodes)
+    #############################
 
     master = PlasmoModelGraph.getmodel(master_node)
     modelList = [master; submodels]
@@ -844,6 +838,12 @@ function sparseKeepZero{Tv,Ti<:Integer}(I::AbstractVector{Ti},
     end
 
     return SparseMatrixCSC(nrow, ncol, RpT, RiT, RxT)
+end
+
+function convert_to_c_idx(indicies)
+    for i in 1:length(indicies)
+        indicies[i] = indicies[i] - 1
+    end
 end
 
 end #end module

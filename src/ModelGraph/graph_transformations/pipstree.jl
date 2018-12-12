@@ -1,17 +1,47 @@
-mutable struct PipsStruct <: AbstractModelGraph
+mutable struct PipsTree <: AbstractModelGraph
     basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
     linkmodel::LinkModel
     serial_model::Nullable{AbstractModel}        #The internal serial model for the tree.  Returned if requested by the solve
     master_node_index::Int64
     sub_node_indices::Vector{Int64}
 end
-PipsStruct(;solver = JuMP.UnsetSolver()) = PipsStruct(BasePlasmoGraph(HyperGraph),LinkModel(;solver = solver),Nullable(),Vector{Vector{ModelNode}}(),Dict{ModelNode,Int}())
+PipsTree(;solver = JuMP.UnsetSolver()) = PipsTree(BasePlasmoGraph(HyperGraph),LinkModel(;solver = solver),Nullable(),0,Vector{Int64}())
 
-create_node(pstruct::PipsStruct) = ModelNode()
-create_edge(pstruct::PipsStruct) = LinkingEdge()
+create_node(tree::PipsTree) = ModelNode()
+create_edge(tree::PipsTree) = LinkingEdge()
+
+function add_master!(tree::PipsTree)
+    master = add_node!(tree)
+    tree.master_node_index = getindex(tree,master)
+    return master
+end
+
+#Add a node to a PipsTree
+function add_node!(tree::PipsTree)
+    #Extend from base method
+    basegraph = getbasegraph(tree)
+    LightGraphs.add_vertex!(basegraph.lightgraph)
+    index = LightGraphs.nv(basegraph.lightgraph)
+    label = Symbol("node"*string(index))
+
+    node = create_node(tree)                        #create a node for the given graph type
+    basenode = getbasenode(node)
+    basenode.indices[basegraph] = index             #Set the index of this node in this basegraph
+    add_node!(basegraph.nodedict,node,index)
+
+    #NEW STUFF
+    push!(tree.sub_node_indices,getindex(tree,node))
+    return node
+end
+
+# function create_pips_tree(model_graph::ModelGraph,master_index::Int64,sub_node_indices::Vector{Int64})
+#     pips_tree = PipsTree()
+#     pips_tree.master_index
+# end
 
 #Create a Pips tree from a model graph
-function create_pips_tree(model_graph::ModelGraph,partitions::Vector{Vector{Int64}})
+#master partition is the optional first stage problem
+function create_pips_tree(model_graph::ModelGraph,partitions::Vector{Vector{Int64}};master_partition = Vector{Int64}())
     pips_tree = PipsTree()
 
     aggregate_models = []
@@ -19,21 +49,29 @@ function create_pips_tree(model_graph::ModelGraph,partitions::Vector{Vector{Int6
     variable_mapping = Dict()
     all_var_maps = Dict()
 
-    #NOTE Need to catch objective terms
-    for partition in partitions  #create aggregate model for each partition
-        aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition)
+    if !isempty(master_partition)
+        partition_nodes = [getnode(model_graph,index) for index in master_partition]
+        aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition_nodes)
         push!(aggregate_models,aggregate_model)
         append!(all_cross_links,cross_links)
         merge!(all_var_maps,var_maps)
+
+        aggregate_master = add_master!(pips_tree)
+        setmodel(aggregate_master,agg_model)
+    end
+
+    #NOTE Need to catch objective terms
+    for partition in partitions  #create aggregate model for each partition
+        partition_nodes = [getnode(model_graph,index) for index in partition]
+        aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition_nodes)
+        push!(aggregate_models,aggregate_model)
+        append!(all_cross_links,cross_links)
+        merge!(all_var_maps,var_maps)
+
+        aggregate_node = add_node!(pips_tree)
+        setmodel(aggregate_node,aggregate_model)
     end
     all_cross_links = unique(all_cross_links)  #remove duplicate cross links
-
-    agg_nodes = []
-    for agg_model in aggregate_models
-        aggregate_node = add_node!(new_model_graph)
-        setmodel(aggregate_node,agg_model)
-        push!(agg_nodes,aggregate_node)
-    end
 
     #GLOBAL LINK CONSTRAINTS.  Re-add link constraints to aggregated model nodes
     for linkconstraint in all_cross_links
@@ -53,7 +91,12 @@ function create_pips_tree(model_graph::ModelGraph,partitions::Vector{Vector{Int6
             agg_var = var_map[var_index]
             push!(t_new,(coeff,agg_var))
         end
-        @linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
+        @linkconstraint(pips_tree, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
     end
-    return new_model_graph , agg_nodes
+
+    return pips_tree
+end
+
+#Function to find link variables that show up in many
+function find_common_link_variables(graph::ModelGraph)
 end
