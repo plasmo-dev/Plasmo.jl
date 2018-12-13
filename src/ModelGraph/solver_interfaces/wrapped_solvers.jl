@@ -23,13 +23,14 @@ function solve(graph::ModelGraph,solver::PipsSolver)
     #If we partition
     if !isempty(solver.partition_options[:sub_partitions])
         println("Using partitions for PIPS-NLP")
-        graph = create_pips_tree(graph,solver.partition_options[:sub_partitions];master_partition = solver.partition_options[:master_partition])
-        master = graph.master_node_index
-        children = graph.sub_node_indices
+        pips_graph = create_pips_tree(graph,solver.partition_options[:sub_partitions];master_partition = solver.partition_options[:master_partition])
+        master = pips_graph.master_node_index
+        children = pips_graph.sub_node_indices
     else #just use master and child indices from original graph
         println("Using graph structure for PIPS-NLP")
         master = solver.options[:master]
         children = solver.options[:children]
+        pips_graph = graph
     end
 
     manager = solver.manager
@@ -44,19 +45,20 @@ function solve(graph::ModelGraph,solver::PipsSolver)
     eval(quote @everywhere using Plasmo end)
     eval(quote @everywhere using Plasmo.PlasmoModelGraph.PlasmoPipsNlpInterface3 end)
 
-    println(master)
-    println(children)
-    send_pips_data(manager,graph,master,children)
+    send_pips_data(manager,pips_graph,master,children)
 
     println("Solving with PIPS-NLP")
-    MPI.@mpi_do manager pipsnlp_solve(graph,master,children)
+    MPI.@mpi_do manager pipsnlp_solve(pips_graph,master,children)
 
     #Get solution
     rank_zero = manager.mpi2j[0]
-    sol = fetch(@spawnat(rank_zero, getfield(Main, :graph)))
+    sol = fetch(@spawnat(rank_zero, getfield(Main, :pips_graph)))
 
-    #NOTE Update the original graph if we used a PipsTree
-    setsolution(sol,graph)
+    #Update the graph on the julia process if we used a PipsTree
+    setsolution(sol,pips_graph)
+
+    #Now move the pips_graph solution to the original model graph
+    setsolution(pips_graph,graph)
 
     return nothing  #TODO retrieve solve status
 end
@@ -66,7 +68,7 @@ function send_pips_data(manager::MPI.MPIManager,graph::AbstractModelGraph,master
     r = RemoteChannel(1)
     @spawnat(1, put!(r, [graph,master,children]))
     @sync for to in julia_workers
-        @spawnat(to, Core.eval(Main, Expr(:(=), :graph, fetch(r)[1])))
+        @spawnat(to, Core.eval(Main, Expr(:(=), :pips_graph, fetch(r)[1])))
         @spawnat(to, Core.eval(Main, Expr(:(=), :master, fetch(r)[2])))
         @spawnat(to, Core.eval(Main, Expr(:(=), :children, fetch(r)[3])))
     end
