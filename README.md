@@ -1,4 +1,4 @@
-![Plasmo](docs/Plasmo.svg)
+![Logo](./docs/plasmo.svg)
 
 # Plasmo.jl
 Plasmo.jl is a graph-based modeling interface for optimization problems.  It facilitates component modeling by modularizing individual optimization models which can be connected using linking constraints.  Optimization models can be associated with both nodes and edges within a PlasmoGraph which facilitates modeling physical networks, or a collection of nodes can simply be connected through link constraints.  It is also possible to define multiple subgraphs within a graph, and create linking constraints between nodes and edges within their respective subgraphs.  This facilitates construction of hierarchical models which can be solved with parallel solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) and [DSP](https://github.com/Argonne-National-Laboratory/DSP).
@@ -13,7 +13,7 @@ Pkg.clone("https://github.com/jalving/Plasmo.jl")
 
 # Simple Example
 
-Plasmo.jl currently supports optimization models written with JuMP.
+Plasmo.jl uses optimization models written with JuMP.
 
 ```julia
 using JuMP
