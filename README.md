@@ -1,9 +1,11 @@
 ![Logo](./docs/plasmo.svg)
 
 # Plasmo.jl
-Plasmo.jl is a graph-based modeling interface for optimization problems.  It facilitates component modeling by modularizing individual optimization models which can be connected using linking constraints.  Optimization models can be associated with both nodes and edges within a PlasmoGraph which facilitates modeling physical networks, or a collection of nodes can simply be connected through link constraints.  It is also possible to define multiple subgraphs within a graph, and create linking constraints between nodes and edges within their respective subgraphs.  This facilitates construction of hierarchical models which can be solved with parallel solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) and [DSP](https://github.com/Argonne-National-Laboratory/DSP).
+Plasmo.jl is a graph-based modeling interface that facilitates modeling and solving optimization problems over physical systems.  
+Plasmo facilitates component modeling by means of modularization such that models can be constructed independently and connected to each other using linking constraints with a graph.    
+It is also possible to model hierarchical systems (such as a network of networks) by linking nodes across different subgraphs within a larger graph.  
+The graph-based modeling approach facilitates decomposition techniques such as graph partitioning and community detection approaches which can exploit parallel solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) and [DSP](https://github.com/Argonne-National-Laboratory/DSP).
 Plasmo.jl been developed by the [Scalable Systems Laboratory](http://zavalab.engr.wisc.edu/) at the University of Wisconsin-Madison.
-The primary developers are Jordan Jalving(@jalving) and Yankai Cao (@YankaiCao), with notable input from the JuMP development community.
 
 # Installation
 
@@ -13,7 +15,7 @@ Pkg.clone("https://github.com/jalving/Plasmo.jl")
 
 # Simple Example
 
-Plasmo.jl uses optimization models written with JuMP.
+Plasmo.jl uses optimization models written with [JuMP](https://github.com/JuliaOpt/JuMP.jl).
 
 ```julia
 using JuMP
@@ -53,3 +55,17 @@ solve(graph)
 println("n1[:x]= ",JuMP.getvalue(n1[:x]))
 println("n2[:x]= ",JuMP.getvalue(n2[:x]))
 ```
+
+## Acknowledgments
+This code is based on work supported by the U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357 as well as the DOE Office of Electricity Delivery and Energy Reliability’s Advanced Grid Research and Development program at Argonne National Laboratory.
+
+## Citing Plasmo
+If you find Plasmo useful for your work, you might cite the current [pre-print](https://arxiv.org/pdf/1812.04983.pdf) of the manuscript:
+
+    @article{JalvingZavala2018,
+    archivePrefix = {arXiv},
+    arxivId = {arXiv:1812.04983v1},
+    author = {Jalving, Jordan and Cao, Yankai and Zavala, Victor M},
+    eprint = {arXiv:1812.04983v1},
+    title = {{Graph-Based Modeling and Simulation of Complex Systems}}
+    }
