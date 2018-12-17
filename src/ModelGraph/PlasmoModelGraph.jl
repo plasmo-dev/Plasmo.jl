@@ -31,7 +31,7 @@ addlinkconstraint, getlinkreferences, getlinkconstraints, getsimplelinkconstrain
 
 
 #Graph Transformation functions
-aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,partition,create_pips_tree,
+aggregate!,create_aggregate_model,create_partitioned_model_graph,create_lifted_model_graph,getbipartitegraph,getunipartitegraph,partition,label_propagation,create_pips_tree,
 
 #JuMP Interface functions
 buildjumpmodel!, create_jump_graph_model,

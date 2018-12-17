@@ -58,6 +58,7 @@ function getbipartitegraph(graph::ModelGraph)
         idx = getindex(graph,node)
         new_node = create_node(bgraph)
         add_node!(bgraph,new_node,index = idx)  #keep the same indices
+        push!(bgraph.part1,idx)
     end
 
     #hyper edges
@@ -65,6 +66,7 @@ function getbipartitegraph(graph::ModelGraph)
         hyperedge = getindex(graph,edge)
         vertices = hyperedge.vertices
         constraint_node = add_node!(bgraph)
+        push!(bgraph.part2,getindex(bgraph,constraint_node))
         #connect this "node" to the other nodes
         for vertex in vertices
             model_node = getnode(bgraph,vertex)
