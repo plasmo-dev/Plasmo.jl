@@ -2,7 +2,7 @@
 #Print Functions
 ####################################
 function string(signal::AbstractSignal)
-    "Signal("string(signal.label)*" "*string(signal.value)*")"
+    "Signal("*string(signal.label)*" "*string(signal.value)*")"
 end
 print(io::IO, signal::AbstractSignal) = print(io, string(signal))
 show(io::IO, signal::AbstractSignal) = print(io,signal)

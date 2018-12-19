@@ -1,4 +1,4 @@
-using Base.Test
+using Test
 
 #Test the graph functionality
 println("Testing Basic Graph Functions")

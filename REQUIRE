@@ -1,4 +1,9 @@
-julia 0.5
-JuMP 0.17
+julia 0.7
+JuMP 0.18
 MathProgBase
-LightGraphs 0.7
+LightGraphs
+Reexport
+Requires
+DataStructures
+MPI
+Compat

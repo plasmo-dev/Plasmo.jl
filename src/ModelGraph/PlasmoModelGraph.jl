@@ -2,6 +2,7 @@ module PlasmoModelGraph
 
 using ..PlasmoGraphBase
 using Requires
+using Distributed
 
 import ..PlasmoGraphBase:getedge,getnodes,getedges
 
@@ -77,10 +78,34 @@ include("graph_transformations/graph_transformation.jl")
 #Plasmo Solvers
 include("plasmo_solvers/plasmo_solvers.jl")
 
+function __init__()
+    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" begin
+        function interactive(graph,λ,res,lagrangeheuristic)
+            α = getattribute(graph , :α)[end]
+            n = getattribute(graph , :normalized)
+            bound = n*lagrangeheuristic(graph)
+            Zk = getattribute(graph , :Zk)[end]
+            αexplore(graph,bound)
+            plot(0:0.1:2,getattribute(graph , :explore)[end])
+            print("α = ")
+            α = parse(Float64,readline(STDIN))
+            step = α*abs(Zk-bound)/(norm(res)^2)
+            λ += step*res
+            return λ,bound
+        end
+    end
+end
+
+
 #External Solver Interfaces
 include("solver_interfaces/wrapped_solvers.jl")
 
-include("solver_interfaces/plasmoPipsNlpInterface3.jl")
+include("solver_interfaces/plasmoPipsNlpInterface.jl")
+
+# function __init__()
+#     @require MPI="da04e1cc-30fd-572f-bb4f-1f8673147195" include("solver_interfaces/wrapped_solvers.jl"); include("solver_interfaces/plasmoPipsNlpInterface3.jl")
+# end
+
 # load_pips()
 #
 # load_dsp()

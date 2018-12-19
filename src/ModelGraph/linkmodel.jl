@@ -56,8 +56,8 @@ getlinkconstraints(model::LinkModel) = getlinkdata(model).linkconstraints
 getsimplelinkconstraints(model::LinkModel) = getlinkdata(model).linkconstraints[getlinkdata(model).simple_links]
 gethyperlinkconstraints(model::LinkModel) = getlinkdata(model).linkconstraints[getlinkdata(model).hyper_links]
 
-is_linkconstr(con::LinkConstraint) = getnumnodes(con) == 2? true : false
-is_hyperconstr(con::LinkConstraint) = getnumnodes(con) > 2? true : false
+is_linkconstr(con::LinkConstraint) = getnumnodes(con) == 2 ? true : false
+is_hyperconstr(con::LinkConstraint) = getnumnodes(con) > 2 ? true : false
 
 #Extend JuMP's add constraint for link models.  Return a reference to the constraint
 function JuMP.addconstraint(model::LinkModel,constr::JuMP.LinearConstraint)

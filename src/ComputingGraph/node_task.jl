@@ -4,7 +4,7 @@ mutable struct NodeTask
     func::Function                   #the function to call
     args::Vector{Any}                #the function args
     kwargs::Dict{Any,Any}
-    result::Nullable{Any}            #the result after calling the event
+    result::Union{Any,Nothing}            #the result after calling the event
     compute_time::Float64
     schedule_delay::Float64
 end

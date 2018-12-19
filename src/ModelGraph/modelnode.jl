@@ -3,7 +3,7 @@
 ##############################################################################
 mutable struct ModelNode <: AbstractModelNode
     basenode::BasePlasmoNode
-    model::Nullable{AbstractModel}
+    model::Union{AbstractModel,Nothing}
     linkconrefs::Dict{AbstractModelGraph,Vector{ConstraintRef}}
 end
 
@@ -18,7 +18,7 @@ function add_node!(graph::AbstractModelGraph,m::AbstractModel)
 end
 
 getmodel(node::ModelNode) = get(node.model)
-hasmodel(node::ModelNode) = get(node.model) != nothing? true: false
+hasmodel(node::ModelNode) = get(node.model) != nothing ? true : false
 getindex(node::ModelNode,sym::Symbol) = getmodel(node)[sym]         #get variable index on a node
 
 #Node objective value
@@ -61,7 +61,7 @@ num_var(node::ModelNode) = MathProgBase.numvar(getmodel(node))
 ########################################
 #Get model nodes corresponding to models or variables
 ########################################
-getnode(m::AbstractModel) = _is_assignedtonode(m)? m.ext[:node] : throw(error("Only node models have associated graph nodes"))
+getnode(m::AbstractModel) = _is_assignedtonode(m) ? m.ext[:node] : throw(error("Only node models have associated graph nodes"))
 getnode(var::AbstractJuMPScalar) = var.m.ext[:node]
 
 function setmodel(node::ModelNode,m::AbstractModel;preserve_links = false)
@@ -120,7 +120,7 @@ function getnodevariablemap(node::ModelNode)
 end
 
 function string(node::ModelNode)
-    "Model Node: "string(getlabel(node))*"\n"*string("Member of $(length(getindices(node))) graph(s)")*"\n$(length(getmodel(node).colVal)) Variables"#*"\n$(length(collect(values(node.linkconrefs)))) Link Constraints"
+    "Model Node: "*"\n"*string("Member of $(length(getindices(node))) graph(s)")*"\n$(length(getmodel(node).colVal)) Variables"
 end
 print(io::IO,node::ModelNode) = print(io, string(node))
 show(io::IO,node::ModelNode) = print(io,node)

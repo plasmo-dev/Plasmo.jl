@@ -12,10 +12,10 @@ import MathProgBase.numvar
 mutable struct ModelGraph <: AbstractModelGraph
     basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
     linkmodel::LinkModel                         #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
-    serial_model::Nullable{AbstractModel}        #The internal serial model for the graph.  Returned if requested by the solve
+    serial_model::Union{AbstractModel,Nothing}        #The internal serial model for the graph.  Returned if requested by the solve
 end
 
-ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
+ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),nothing)
 @deprecate PlasmoGraph ModelGraph
 @deprecate GraphModel ModelGraph
 #ModelGraph(lightgraph::LightGraphs.AbstractGraph) = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
@@ -56,15 +56,15 @@ function addlinkconstraint(graph::AbstractModelGraph,con::AbstractConstraint)
 end
 
 #NOTE Figure out a good way to use containers here instead of making arrays
-function addlinkconstraint{T}(graph::AbstractModelGraph,linkcons::Array{AbstractConstraint,T})
+function addlinkconstraint(graph::AbstractModelGraph,linkcons::Array{AbstractConstraint,T}) where T
     array_type = typeof(linkcons)   #get the array type
-    array_type.parameters.length > 1? linkcons = vec(linkcons): nothing   #flatten out the constraints into a single vector
+    array_type.parameters.length > 1 ? linkcons = vec(linkcons) : nothing   #flatten out the constraints into a single vector
 
     #Check all of the constraints before I add one to the graph
     for con in linkcons
         vars = con.terms.vars
         nodes = unique([getnode(var) for var in vars])
-        all(node->node in getnodes(graph),nodes)? nothing: error("the linkconstraint: $con contains variables that don't belong to the graph: $graph")
+        all(node->node in getnodes(graph),nodes) ? nothing : error("the linkconstraint: $con contains variables that don't belong to the graph: $graph")
     end
 
     #Now add the constraints

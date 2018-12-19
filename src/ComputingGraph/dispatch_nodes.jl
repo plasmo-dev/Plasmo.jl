@@ -9,7 +9,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     task_results::Dict{NodeTask,Attribute}
     updated_attributes::Vector{Attribute}
     signal_queue::Vector{AbstractSignal}
-    history::Union{Void,Vector{Tuple}}
+    history::Union{Nothing,Vector{Tuple}}
 
     function DispatchNode()
         node = new()

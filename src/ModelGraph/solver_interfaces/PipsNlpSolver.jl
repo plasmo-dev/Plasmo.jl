@@ -6,6 +6,7 @@
 module PipsNlpSolver
 import MPI
 using Compat
+using Libdl
 
 try
   sharedLib=ENV["PIPS_NLP_PAR_SHARED_LIB"]
@@ -22,7 +23,7 @@ catch
 end
 @compat abstract type ModelInterface end
 #######################
-type FakeModel <: ModelInterface
+mutable struct FakeModel <: ModelInterface
     sense::Symbol
     status::Int
     nscen::Int
@@ -112,8 +113,8 @@ end
 #######################
 
 
-type PipsNlpProblemStruct
-    ref::Ptr{Void}
+mutable struct PipsNlpProblemStruct
+    ref::Ptr{Nothing}
     model::ModelInterface
     comm::MPI.Comm
     prof::Bool
@@ -146,8 +147,8 @@ type PipsNlpProblemStruct
     end
 end
 
-immutable CallBackData
-	prob::Ptr{Void}
+struct CallBackData
+	prob::Ptr{Nothing}
 	row_node_id::Cint
     col_node_id::Cint
     flag::Cint  #this wrapper ignore this flag as it is only for problems without linking constraint
@@ -596,11 +597,11 @@ function createProblemStruct(comm::MPI.Comm, model::ModelInterface, prof::Bool)
     # println(" callback created ")
     prob = PipsNlpProblemStruct(comm, model, prof)
     # @show prob
-    ret = ccall(Libdl.dlsym(libparpipsnlp,:CreatePipsNlpProblemStruct),Ptr{Void},
+    ret = ccall(Libdl.dlsym(libparpipsnlp,:CreatePipsNlpProblemStruct),Ptr{Nothing},
             (MPI.Comm,
-            Cint, Ptr{Void}, Ptr{Void},
-	    Ptr{Void}, Ptr{Void}, Ptr{Void},
-	    Ptr{Void}, Ptr{Void}, Ptr{Void},Any
+            Cint, Ptr{Nothing}, Ptr{Nothing},
+	    Ptr{Nothing}, Ptr{Nothing}, Ptr{Nothing},
+	    Ptr{Nothing}, Ptr{Nothing}, Ptr{Nothing},Any
             # ,Ptr{Void}, Ptr{Void}  #comply with link interface from yankai
             ),
             comm,
@@ -634,7 +635,7 @@ function solveProblemStruct(prob::PipsNlpProblemStruct)
     # @show prob
 
     ret = ccall(Libdl.dlsym(libparpipsnlp,:PipsNlpSolveStruct), Cint,
-            (Ptr{Void},),
+            (Ptr{Nothing},),
             prob.ref)
     # @show ret
     prob.model.set_status(Int(ret))
@@ -647,7 +648,7 @@ end
 function freeProblemStruct(prob::PipsNlpProblemStruct)
     # @show "freeProblemStruct"
     ret = ccall(Libdl.dlsym(libparpipsnlp,:FreePipsNlpProblemStruct),
-            Void, (Ptr{Void},),
+            Nothing, (Ptr{Nothing},),
             prob.ref)
     # @show ret
     return ret

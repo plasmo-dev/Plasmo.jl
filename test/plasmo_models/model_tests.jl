@@ -1,9 +1,5 @@
 import JuMP
-
-# import Plasmo.PlasmoModels
-# PM = Plasmo.PlasmoModels
-using Plasmo.PlasmoModels
-
+using Plasmo
 import Ipopt
 
 #Need to create standard optimization models to test against.  Check solution values

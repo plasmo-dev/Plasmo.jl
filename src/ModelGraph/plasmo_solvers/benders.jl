@@ -270,13 +270,6 @@ function bdprepare(tree::ModelTree,lp_solver::AbstractMathProgSolver,node_solver
     links = getlinkconstraints(tree)
     numlinks = length(links)
 
-    # for index in 1:length(getnodes(graph))
-    #     node = getnode(graph, index)
-    #     model = getmodel(node)
-    # if model.solver == JuMP.UnsetSolver()
-    #     model.solver = getsolver(graph)
-    # end
-
     for node in getnodes(tree)
         model = getmodel(node)
         if model.solver == JuMP.UnsetSolver()

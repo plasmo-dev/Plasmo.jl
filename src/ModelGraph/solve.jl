@@ -43,7 +43,7 @@ function JuMPGraphModel()
     m.ext[:Graph] = JuMPGraph()
     return m
 end
-is_graphmodel(m::JuMP.Model) = haskey(m.ext,:Graph)? true : false  #check if the model is a graph model
+is_graphmodel(m::JuMP.Model) = haskey(m.ext,:Graph) ? true : false  #check if the model is a graph model
 
 # Should be defined by base type
 # #Add nodes and edges to graph models.  These are used for model instantiation from a graph
@@ -61,7 +61,7 @@ function add_edge!(m::Model,nodes::JuMPNode...)
 end
 
 #Define all of the JuMP model extension functions
-getgraph(m::Model) = haskey(m.ext, :Graph)? m.ext[:Graph] : error("Model is not a graph model")
+getgraph(m::Model) = haskey(m.ext, :Graph) ? m.ext[:Graph] : error("Model is not a graph model")
 PlasmoGraphBase.getnodes(m::Model) = getnodes(getgraph(m))
 getedges(m::Model) = getedges(getgraph(m))
 
@@ -152,7 +152,7 @@ function create_jump_graph_model(model_graph::AbstractModelGraph)
         for node in getnodes(jump_graph)
             id = getindex(jump_graph,node)
             node_model = getmodel(getnode(model_graph,id))
-            getobjectivesense(node_model) == :Min? sense = 1: sense = -1
+            getobjectivesense(node_model) == :Min ? sense = 1 : sense = -1
             nlp = node_model.nlpdata
             if nlp == nothing# || (nlp != nothing && nlp.nlobj == nothing) #cast the problem as nonlinear
                 #copy_model = copy(node_model)
@@ -210,7 +210,7 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
     for key in keys(node_model.objDict)  #this contains both variable and constraint references
         if isa(node_model.objDict[key],Union{JuMP.JuMPArray{AbstractJuMPScalar},Array{AbstractJuMPScalar}})     #if the JuMP variable is an array or a JuMPArray
             vars = node_model.objDict[key]
-            isa(vars,JuMP.JuMPArray)? vars = vars.innerArray : nothing
+            isa(vars,JuMP.JuMPArray) ? vars = vars.innerArray : nothing
             dims = JuMP.size(vars)
             node_map[key] = Array{AbstractJuMPScalar}(dims)
             for j = 1:length(vars)
@@ -294,7 +294,7 @@ function _buildnodemodel!(m::Model,jump_node::JuMPNode,model_node::ModelNode)
     end
 
     #OBJECTIVE FUNCTION
-    getobjectivesense(node_model) == :Min? sense = 1: sense = -1
+    getobjectivesense(node_model) == :Min ? sense = 1 : sense = -1
 
     #LINEAR OR QUADRATIC OBJECTIVE
     nlp = node_model.nlpdata

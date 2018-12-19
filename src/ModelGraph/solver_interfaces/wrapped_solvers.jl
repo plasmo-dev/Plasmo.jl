@@ -1,5 +1,5 @@
 import MPI
-#using ParallelDataTransfer
+
 
 #Benders Decomposition Solver
 mutable struct PipsSolver <: AbstractPlasmoSolver
@@ -25,7 +25,7 @@ function solve(graph::ModelGraph,solver::PipsSolver)
     if manager.np > 0
         println("Preparing PIPS MPI environment")
         eval(quote @everywhere using Plasmo end)
-        eval(quote @everywhere using Plasmo.PlasmoModelGraph.PlasmoPipsNlpInterface3 end)
+        eval(quote @everywhere using Plasmo.PlasmoModelGraph.PlasmoPipsNlpInterface end)
         send_pips_data(manager,graph,master,children)
         println("Solving with PIPS-NLP")
         MPI.@mpi_do manager pipsnlp_solve(graph,master,children)

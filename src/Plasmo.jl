@@ -15,6 +15,6 @@ include("PlasmoGraphBase/PlasmoGraphBase.jl")
 include("ModelGraph/PlasmoModelGraph.jl")
 @reexport using .PlasmoModelGraph
 
-include("ComputingGraph/PlasmoComputingGraph.jl")
-@reexport using .PlasmoComputingGraph
+# include("ComputingGraph/PlasmoComputingGraph.jl")
+# @reexport using .PlasmoComputingGraph
 end

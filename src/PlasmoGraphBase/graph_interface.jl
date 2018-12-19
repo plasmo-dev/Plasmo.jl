@@ -207,17 +207,16 @@ print(io::IO, graph::AbstractPlasmoGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractPlasmoGraph) = print(io,graph)
 
 function string(node::AbstractPlasmoNode)
-    "node: "string(getlabel(node))*string(" in $(length(getindices(node))) graph(s) with indices $(collect(values(getindices(node))))")
+    #"node: "string(getlabel(node))*string(" in $(length(getindices(node))) graph(s) with indices $(collect(values(getindices(node))))")
+    "node "*getindices(node)
 end
 print(io::IO,node::AbstractPlasmoNode) = print(io, string(node))
 show(io::IO,node::AbstractPlasmoNode) = print(io,node)
 
 function string(edge::AbstractPlasmoEdge)
-    "edge: "*string(getlabel(edge))*string(" in $(length(getindices(edge))) graph(s) with ids $(collect(values(getindices(edge))))")
+    #"edge: "*string(getlabel(edge))*string(" in $(length(getindices(edge))) graph(s) with ids $(collect(values(getindices(edge))))")
+    "edge: "*string(getindices(edge))
 end
-print(io::IO,edge::AbstractPlasmoEdge) = print(io, string(edge))
-show(io::IO,edge::AbstractPlasmoEdge) = print(io,edge)
-
 
 #
 # Copy function to get graph structure

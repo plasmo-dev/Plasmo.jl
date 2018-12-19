@@ -5,7 +5,7 @@ mutable struct Channel <: AbstractChannel
     delay::Float64           #communication delay
     schedule_delay::Float64
     priority::Int            #signal priority (might make this event specific)
-    history::Union{Void,Vector{Tuple}}
+    history::Union{Nothing,Vector{Tuple}}
 end
 Channel(from_attribute::Attribute,to_attribute::Attribute) = Channel(StateManager(),from_attribute,to_attribute,0,0,0,nothing)
 Channel(from_attribute::Attribute,to_attribute::Attribute,delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,delay,0,0,nothing)

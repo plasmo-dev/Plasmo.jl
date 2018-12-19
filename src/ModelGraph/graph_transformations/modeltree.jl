@@ -4,7 +4,7 @@
 mutable struct ModelTree <: AbstractModelGraph
     basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
     linkmodel::LinkModel                         #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
-    serial_model::Nullable{AbstractModel}        #The internal serial model for the tree.  Returned if requested by the solve
+    serial_model::Union{AbstractModel,Nothing}        #The internal serial model for the tree.  Returned if requested by the solve
     levels::Vector{Vector{ModelNode}}            #the number of levels (or stages) in the tree
     levelmap::Dict{ModelNode,Int}                #levelmap:  Each node maps to a level in the tree child map for each node index.  Helpful for quickly getting child nodes
 end
@@ -22,10 +22,6 @@ function setroot(tree::ModelTree,node::ModelNode)
     end
     tree.levels[1] = [node]
     tree.levelmap[node] = 1
-    # if length(tree.levels) == 0
-    #     push!(tree.levels,ModelNode[])
-    # end
-    # tree.levels[1] = node  #first level has a single node
     #NOTE: We should re-create the tree if this gets called
 end
 

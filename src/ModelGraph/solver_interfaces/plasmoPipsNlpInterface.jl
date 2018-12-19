@@ -1,26 +1,16 @@
-# Plasmo Interface to Pips-NLP
 
 module PlasmoPipsNlpInterface
 
-importall MathProgBase.SolverInterface
+using MathProgBase.SolverInterface
 import MPI
 import JuMP
-
-
 import ..PlasmoModelGraph
-
 
 include("PipsNlpSolver.jl")
 using .PipsNlpSolver
 export pipsnlp_solve
 
-function convert_to_c_idx(indicies)
-    for i in 1:length(indicies)
-        indicies[i] = indicies[i] - 1
-    end
-end
-
-type ModelData
+mutable struct ModelData
     d    #NLP evaluator
     n::Int
     m::Int
@@ -64,7 +54,6 @@ type ModelData
 end
 ModelData() = ModelData(nothing,0,0,0,0,0,Int[],Int[], Float64[], Int[], Int[], Float64[],Int[],Int[],Float64[], Int[], Int[], Float64[], 0, 0, Float64[],Float64[],Float64[],Float64[], Int[], Int[],nothing, nothing, nothing, nothing, Int[],Int[], Float64[], Int[], Int[], Float64[],Float64[], 0, false, 0)
 
-
 #Helper function
 function getData(m::JuMP.Model)
     if haskey(m.ext, :Data)
@@ -74,18 +63,19 @@ function getData(m::JuMP.Model)
     end
 end
 
-#also add a solve function that takes a master subgraph.  aggregate graphs into nodes(models) and pass to PIPS
-# function ParPipsNlp_solve(graph::PlasmoGraph,master::PlasmoGraph,children::Vector{PlasmoGraph})
-#     submodels = [getmodel(child) for child in children]
-#     scen = length(children)
-#     modelList = [getmodel(master); submodels]
-# end
+function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::Int64,children_indices::Vector{Int64})
 
-function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoModelGraph.ModelNode,children_nodes::Vector{PlasmoModelGraph.ModelNode})
+    if master_index == 0
+        master_node = PlasmoModelGraph.ModelNode()
+    else
+        master_node = PlasmoModelGraph.getnode(graph,master_index)
+    end
+    children_nodes = [PlasmoModelGraph.getnode(graph,c_index) for c_index in children_indices]
+
     #need to check that the structure makes sense
-
     submodels = [PlasmoModelGraph.getmodel(child) for child in children_nodes]
     scen = length(children_nodes)
+    #############################
 
     master = PlasmoModelGraph.getmodel(master_node)
     modelList = [master; submodels]
@@ -134,6 +124,8 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoMod
 	    end
 
     	if (connect) && (!allconnect)   #if there's a master child connection only
+            # println("Simple Links")
+            # println(node.ext)
     	    local_data = getData(node)
     		if master_linear_lb[c] == master_linear_ub[c]  #if it's an equality constraint
                 firstIeq = local_data.firstIeq
@@ -188,6 +180,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoMod
 	        end
 	    end
 
+
 	    if (allconnect)
             if master_linear_lb[c] == master_linear_ub[c]
                 nlinkeq = nlinkeq + 1
@@ -196,6 +189,10 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoMod
                 row = nlinkeq
                 for (it,ind) in enumerate(coeffs)
                     node = vars[it].m
+                    # println("Linking constraint")
+                    # println(node.ext)
+                    # println("Check model list again")
+                    # println(modelList[1].ext)
                     local_data = getData(node)
                     linkIeq = local_data.linkIeq
                     linkJeq = local_data.linkJeq
@@ -452,7 +449,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoMod
         node = modelList[id+1]
         local_data = getData(node)
         local_data.x_sol = copy(x)
-	if id == 0
+        if id == 0
             node.objVal = str_eval_f(id, x, nothing)
         else
             node.objVal = str_eval_f(id, nothing, x)
@@ -655,13 +652,11 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoMod
         return Int32(1)
     end
 
-    # if !(MPI.Initialized())
-    #     MPI.Init()
-    # end
     comm = MPI.COMM_WORLD
     if(MPI.Comm_rank(comm) == 0)
         tic()
     end
+
     #Create FakeModel (The PIPS interface model) and pass all the functions it requires
     model = FakeModel(:Min,0, scen,
     str_init_x0, str_prob_info, str_eval_f, str_eval_g, str_eval_grad_f, str_eval_jac_g, str_eval_h,str_write_solution)
@@ -706,12 +701,12 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoMod
             node.colVal = local_data.x_sol
         end
     end
-    #MPI.Finalize()
+
 
     status = :Unknown
     if ret == 0
         status = :Optimal
-        PlasmoModelGraph._setobjectivevalue(graph,prob.t_jl_eval_f)
+        #PlasmoModelGraph._setobjectivevalue(graph,prob.t_jl_eval_f)
     elseif ret == 1
         status = :Not_Finished
     elseif	ret == 2
@@ -721,6 +716,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.ModelGraph,master_node::PlasmoMod
     elseif ret == 4
         status = :Restoration_needed
     else
+        status = :UnknownStatus
     end
 
     return status
@@ -737,10 +733,10 @@ function exchange(a,b)
 	 return (a,b)
 end
 
-function sparseKeepZero{Tv,Ti<:Integer}(I::AbstractVector{Ti},
+function sparseKeepZero(I::AbstractVector{Ti},
     J::AbstractVector{Ti},
     V::AbstractVector{Tv},
-    nrow::Integer, ncol::Integer)
+    nrow::Integer, ncol::Integer) where {Tv,Ti<:Integer}
     N = length(I)
     if N != length(J) || N != length(V)
         throw(ArgumentError("triplet I,J,V vectors must be the same length"))
@@ -841,6 +837,12 @@ function sparseKeepZero{Tv,Ti<:Integer}(I::AbstractVector{Ti},
     end
 
     return SparseMatrixCSC(nrow, ncol, RpT, RiT, RxT)
+end
+
+function convert_to_c_idx(indicies)
+    for i in 1:length(indicies)
+        indicies[i] = indicies[i] - 1
+    end
 end
 
 end #end module
