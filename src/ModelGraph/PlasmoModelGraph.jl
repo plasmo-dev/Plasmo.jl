@@ -1,15 +1,13 @@
 module PlasmoModelGraph
 
 using ..PlasmoGraphBase
-using Requires
-using Distributed
-
 import ..PlasmoGraphBase:getedge,getnodes,getedges
 
+using Requires
+using Distributed
 import JuMP
 import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
 import Base.==
-
 
 #Model Graph Constructs
 export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkConstraint,
@@ -104,10 +102,7 @@ end
 #External Solver Interfaces
 include("solver_interfaces/wrapped_solvers.jl")
 
-include("solver_interfaces/plasmoPipsNlpInterface3.jl")
-using .PlasmoPipsNlpInterface3
-# load_pips()
-#
-# load_dsp()
+include("solver_interfaces/plasmoPipsNlpInterface.jl")
+using .PlasmoPipsNlpInterface
 
 end

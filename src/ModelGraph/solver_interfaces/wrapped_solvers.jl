@@ -43,7 +43,7 @@ function solve(graph::ModelGraph,solver::PipsSolver)
 
     println("Preparing PIPS MPI environment")
     eval(quote @everywhere using Plasmo end)
-    eval(quote @everywhere using Plasmo.PlasmoModelGraph.PlasmoPipsNlpInterface3 end)
+    eval(quote @everywhere using Plasmo.PlasmoModelGraph.PlasmoPipsNlpInterface end)
 
     send_pips_data(manager,pips_graph,master,children)
 
