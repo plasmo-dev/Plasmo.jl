@@ -21,8 +21,8 @@ add_vertex!(g_lightgraph)
 add_vertex!(g_lightgraph)
 add_edge!(g_lightgraph,1,2)
 # #
-basegraph2 = BasePlasmoGraph(g_lightgraph)
-add_node!(basegraph2)
+# basegraph2 = BasePlasmoGraph(g_lightgraph)
+# add_node!(basegraph2)
 #
 # #Test getters and setters
 getnodes(basegraph1)

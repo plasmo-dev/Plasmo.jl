@@ -63,67 +63,67 @@ function create_aggregate_model(model_graph::ModelGraph,nodes::Vector{ModelNode}
     return aggregate_model,cross_links,var_maps
 end
 
-function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Any})
-    model_partitions = convert(Vector{Vector{ModelNode}},partitions)
-    return create_partitioned_model_graph(model_graph,model_partitions)
-end
+# function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Any})
+#     model_partitions = convert(Vector{Vector{ModelNode}},partitions)
+#     return create_partitioned_model_graph(model_graph,model_partitions)
+# end
 
-function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Vector{Integer}})
-    model_partitions = Vector{Vector{ModelNode}}()
-    for partition in partitions
-        nodes = collectnodes(model_graph[[partition]])
-        push!(model_partitions,nodes)
-    end
-    return create_partitioned_model_graph(model_graph,model_partitions)
-end
+# function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Vector{Integer}})
+#     model_partitions = Vector{Vector{ModelNode}}()
+#     for partition in partitions
+#         nodes = collectnodes(model_graph[[partition]])
+#         push!(model_partitions,nodes)
+#     end
+#     return create_partitioned_model_graph(model_graph,model_partitions)
+# end
 
-#Given a model graph and a set of node partitions, create a new aggregated model graph
-function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Vector{ModelNode}})
-    new_model_graph = ModelGraph()
-
-    aggregate_models = []
-    all_cross_links = []
-    variable_mapping = Dict()
-    all_var_maps = Dict()
-
-    #NOTE Need to catch objective terms
-    for partition in partitions  #create aggregate model for each partition
-        aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition)
-        push!(aggregate_models,aggregate_model)
-        append!(all_cross_links,cross_links)
-        merge!(all_var_maps,var_maps)
-    end
-    all_cross_links = unique(all_cross_links)  #remove duplicate cross links
-
-    agg_nodes = []
-    for agg_model in aggregate_models
-        aggregate_node = add_node!(new_model_graph)
-        setmodel(aggregate_node,agg_model)
-        push!(agg_nodes,aggregate_node)
-    end
-
-    #GLOBAL LINK CONSTRAINTS.  Re-add link constraints to aggregated model nodes
-    for linkconstraint in all_cross_links
-        linear_terms = []
-        for terms in linearterms(linkconstraint.terms)
-            push!(linear_terms,terms)
-        end
-
-        #Get references to variables in the aggregated models
-        t_new = []
-        for i = 1:length(linear_terms)
-            coeff = linear_terms[i][1]
-            var = linear_terms[i][2]
-            model_node = getnode(var)                #the original model node
-            var_index = JuMP.linearindex(var)        #variable index in the model node
-            var_map = all_var_maps[model_node]       #model node variable map {index => aggregate_variable}
-            agg_var = var_map[var_index]
-            push!(t_new,(coeff,agg_var))
-        end
-        @linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
-    end
-    return new_model_graph , agg_nodes
-end
+# #Given a model graph and a set of node partitions, create a new aggregated model graph
+# function create_partitioned_model_graph(model_graph::ModelGraph,partitions::Vector{Vector{ModelNode}})
+#     new_model_graph = ModelGraph()
+# 
+#     aggregate_models = []
+#     all_cross_links = []
+#     variable_mapping = Dict()
+#     all_var_maps = Dict()
+#
+#     #NOTE Need to catch objective terms
+#     for partition in partitions  #create aggregate model for each partition
+#         aggregate_model,cross_links,var_maps = create_aggregate_model(model_graph,partition)
+#         push!(aggregate_models,aggregate_model)
+#         append!(all_cross_links,cross_links)
+#         merge!(all_var_maps,var_maps)
+#     end
+#     all_cross_links = unique(all_cross_links)  #remove duplicate cross links
+#
+#     agg_nodes = []
+#     for agg_model in aggregate_models
+#         aggregate_node = add_node!(new_model_graph)
+#         setmodel(aggregate_node,agg_model)
+#         push!(agg_nodes,aggregate_node)
+#     end
+#
+#     #GLOBAL LINK CONSTRAINTS.  Re-add link constraints to aggregated model nodes
+#     for linkconstraint in all_cross_links
+#         linear_terms = []
+#         for terms in linearterms(linkconstraint.terms)
+#             push!(linear_terms,terms)
+#         end
+#
+#         #Get references to variables in the aggregated models
+#         t_new = []
+#         for i = 1:length(linear_terms)
+#             coeff = linear_terms[i][1]
+#             var = linear_terms[i][2]
+#             model_node = getnode(var)                #the original model node
+#             var_index = JuMP.linearindex(var)        #variable index in the model node
+#             var_map = all_var_maps[model_node]       #model node variable map {index => aggregate_variable}
+#             agg_var = var_map[var_index]
+#             push!(t_new,(coeff,agg_var))
+#         end
+#         @linkconstraint(new_model_graph, linkconstraint.lb <= sum(t_new[i][1]*t_new[i][2] for i = 1:length(t_new)) + linkconstraint.terms.constant <= linkconstraint.ub)
+#     end
+#     return new_model_graph , agg_nodes
+# end
 
 
 #Given a model graph and a set of node partitions, create a new aggregated model graph

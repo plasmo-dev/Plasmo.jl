@@ -65,7 +65,7 @@ getgraph(m::Model) = haskey(m.ext, :Graph) ? m.ext[:Graph] : error("Model is not
 PlasmoGraphBase.getnodes(m::Model) = getnodes(getgraph(m))
 getedges(m::Model) = getedges(getgraph(m))
 
-getnode(m::Model,id::Integer) = getnode(getraph(m),id)  #Grab from the highest level graph if not specified
+getnode(m::Model,id::Integer) = getnode(getgraph(m),id)  #Grab from the highest level graph if not specified
 getnode(m::Model,sid::Integer,nid::Integer) = getnode(getgraph(m).subgraphlist[sid],nid)
 
 getedge(m::Model,id::LightGraphs.AbstractEdge) = getedge(getgraph(m))[id]
@@ -415,7 +415,7 @@ function setsolution(graph1::AbstractModelGraph,graph2::AbstractModelGraph)
             setvalue(node2_var,getvalue(node1_var))
         end
     end
-    #TODO Set dual values
+    #TODO Set dual values for linear constraints
 end
 
 
