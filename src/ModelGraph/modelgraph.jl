@@ -57,8 +57,10 @@ end
 
 #NOTE Figure out a good way to use containers here instead of making arrays
 function addlinkconstraint(graph::AbstractModelGraph,linkcons::Array{AbstractConstraint,T}) where T
-    array_type = typeof(linkcons)   #get the array type
-    array_type.parameters.length > 1 ? linkcons = vec(linkcons) : nothing   #flatten out the constraints into a single vector
+    #NOTE I don't know why I wrote these two lines anymore
+    #array_type = typeof(linkcons)   #get the array type
+    #array_type.parameters.length > 1 ? linkcons = vec(linkcons) : nothing   #flatten out the constraints into a single vector
+    linkcons = vec(linkcons)
 
     #Check all of the constraints before I add one to the graph
     for con in linkcons

@@ -1,11 +1,11 @@
 mutable struct PipsTree <: AbstractModelGraph
     basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
     linkmodel::LinkModel
-    serial_model::Nullable{AbstractModel}        #The internal serial model for the tree.  Returned if requested by the solve
+    serial_model::Union{AbstractModel,Nothing}        #The internal serial model for the tree.  Returned if requested by the solve
     master_node_index::Int64
     sub_node_indices::Vector{Int64}
 end
-PipsTree(;solver = JuMP.UnsetSolver()) = PipsTree(BasePlasmoGraph(HyperGraph),LinkModel(;solver = solver),Nullable(),0,Vector{Int64}())
+PipsTree(;solver = JuMP.UnsetSolver()) = PipsTree(BasePlasmoGraph(HyperGraph),LinkModel(;solver = solver),nothing,0,Vector{Int64}())
 
 create_node(tree::PipsTree) = ModelNode()
 create_edge(tree::PipsTree) = LinkingEdge()

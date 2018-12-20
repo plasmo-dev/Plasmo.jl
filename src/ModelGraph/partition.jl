@@ -1,7 +1,7 @@
 import Metis
 import LightGraphs
 
-function Metis.partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY)
+function partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY)
     ugraph = getunipartitegraph(graph)
     lg = getlightgraph(ugraph)
     #TODO Make metis account for weights

@@ -1,5 +1,5 @@
 import MPI
-
+using Libdl
 
 #Benders Decomposition Solver
 mutable struct PipsSolver <: AbstractPlasmoSolver

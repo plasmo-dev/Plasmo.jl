@@ -1,6 +1,5 @@
 #This file contains all of the constructs to create and manage a JuMP GraphModel.  The idea is that you use PLASMO to create your graph, associate models, and build the
 #flattened model which JuMP can always solve in serial.
-#import JuMP:AbstractModel,Model,Variable,ConstraintRef,getvariable,@variable,@constraint,@objective,GenericQuadExpr,GenericAffExpr,solve,setvalue,getvalue
 import MathProgBase
 #import MathOptInterface (soon)
 import LightGraphs
@@ -9,7 +8,6 @@ import JuMP:setvalue,solve
 
 
 #IDEA : If solving with JuMP: Create the corresponding JuMP model and return the solution to the graph
-#typealias GenericExpr Union{GenericQuadExpr,GenericAffExpr} #NonlinearExpression?
 
 #If solving with a MathProgBase compliant solver, convert the model graph to a flattened JuMP Model, solve that, and pass the result back to the ModelGraph
 mutable struct JuMPGraph <: AbstractModelGraph

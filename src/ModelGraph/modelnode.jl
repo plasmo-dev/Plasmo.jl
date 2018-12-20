@@ -17,8 +17,8 @@ function add_node!(graph::AbstractModelGraph,m::AbstractModel)
     return node
 end
 
-getmodel(node::ModelNode) = get(node.model)
-hasmodel(node::ModelNode) = get(node.model) != nothing ? true : false
+getmodel(node::ModelNode) = node.model
+hasmodel(node::ModelNode) = node.model != nothing ? true : false
 getindex(node::ModelNode,sym::Symbol) = getmodel(node)[sym]         #get variable index on a node
 
 #Node objective value

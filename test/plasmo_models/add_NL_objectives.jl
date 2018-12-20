@@ -1,6 +1,7 @@
 using Plasmo
 using JuMP
 using Ipopt
+using MathProgBase
 
 println("Testing addition of nonlinear objective functions")
 

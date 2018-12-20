@@ -5,6 +5,7 @@ import ..PlasmoGraphBase:getedge,getnodes,getedges
 
 using Requires
 using Distributed
+using LinearAlgebra
 import JuMP
 import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
 import Base.==
