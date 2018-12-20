@@ -5,8 +5,6 @@ import Ipopt
 #Need to create standard optimization models to test against.  Check solution values
 #Create a Graph Model
 graph = ModelGraph()
-#graph = Plasmo.getgraph(model)
-
 setsolver(graph,Ipopt.IpoptSolver())
 
 #Add nodes to a GraphModel
@@ -14,7 +12,6 @@ n1 = add_node!(graph)
 n2 = add_node!(graph)
 n3 = add_node!(graph)
 #Add edges between the nodes
-#edge = Plasmo.add_edge!(graph,n1,n2)
 
 #Set a model on node 1
 m1 = JuMP.Model()
@@ -47,13 +44,10 @@ end
 setmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1
 setmodel(n2,m2)
 setmodel(n3,m3)
-#Plasmo.setmodel!(edge,simple_model())
 
 #Link constraints take the same expressions as the JuMP @constraint macro
 @linkconstraint(graph,n2[:x] == n1[:x])
-#Plasmo.@linkconstraint(graph,[t = 1:5],edge[:x] == n2[:z][t])
 @linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
-#Plasmo.@linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == edge[:x])
 
 #Get all of the link constraints in a graph
 getlinkconstraints(graph)

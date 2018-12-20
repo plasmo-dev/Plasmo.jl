@@ -104,8 +104,8 @@ end
 setsolver(PID,IpoptSolver())
 solve(PID)
 
-@assert round(getvalue(Kc),4) == 4.3186
-@assert round(getvalue(tauI),4) == 2.2479
-@assert round(getvalue(tauD),4) == -3.1009
+@assert round(getvalue(Kc),digits = 4) == 4.3186
+@assert round(getvalue(tauI),digits = 4) == 2.2479
+@assert round(getvalue(tauD),digits = 4) == -3.1009
 
 true
