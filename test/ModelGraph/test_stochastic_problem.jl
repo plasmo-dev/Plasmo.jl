@@ -12,7 +12,7 @@ master_node = add_node(graph,m)
 @objective(m, Min, x0[1]^2 + x0[2]^2 + x0[1]*x0[2])
 
 NS = 2
-child_nodes = Array{Plasmo.ModelNode}(NS)
+child_nodes = Array{Plasmo.ModelNode}(undef,NS)
 for i in 1:NS
    bl = Model()
    @variable(bl, x[1:2], start=1)

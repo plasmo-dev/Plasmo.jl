@@ -37,22 +37,23 @@ Determine whether a node is in a node dict.
 Base.in(node::AbstractPlasmoNode, nd::NodeDict) = node in keys(nd.node_dict)
 Base.in(edge::AbstractPlasmoEdge, ed::EdgeDict) = edge in keys(ed.edge_dict)
 
-"""
-    findin(nd::NodeDict, nodes) -> Vector{Int}
-
-Return the node numbers of all nodes in the node dict which are present in the `nodes`
-iterable of AbstractPlasmoNodes.
-"""
-function Base.findin(nd::NodeDict, nodes)
-    numbers = Int[]
-    for node in nodes
-        number = get(nd.node_dict, node, 0)
-        if number != 0
-            push!(numbers, number)
-        end
-    end
-    return numbers
-end
+#NOTE: Gone in Julia 1.0
+# """
+#     findin(nd::NodeDict, nodes) -> Vector{Int}
+#
+# Return the node numbers of all nodes in the node dict which are present in the `nodes`
+# iterable of AbstractPlasmoNodes.
+# """
+# function Base.findin(nd::NodeDict, nodes)
+#     numbers = Int[]
+#     for node in nodes
+#         number = get(nd.node_dict, node, 0)
+#         if number != 0
+#             push!(numbers, number)
+#         end
+#     end
+#     return numbers
+# end
 
 """
     getindex(nd::NodeDict, node_id::Int) -> AbstractPlasmoNode

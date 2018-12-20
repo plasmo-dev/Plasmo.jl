@@ -87,7 +87,7 @@ master_node = add_node(PID,master)
 @variable(master,-100<=tauD<=1000)
 
 # create array of children models
-PIDch=Array{ModelNode}(NS)
+PIDch=Array{ModelNode}(undef,NS)
 for s in 1:NS
    # get scenario model
    bl = get_scenario_model(s)
