@@ -48,6 +48,7 @@ function solve(graph::ModelGraph,solver::PipsSolver)
     send_pips_data(manager,pips_graph,master,children)
 
     println("Solving with PIPS-NLP")
+    #NOTE Might need to do status = pipsnlp_solve
     MPI.@mpi_do manager pipsnlp_solve(pips_graph,master,children)
 
     #Get solution

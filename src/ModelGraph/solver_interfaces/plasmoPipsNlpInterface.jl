@@ -2,6 +2,8 @@
 module PlasmoPipsNlpInterface
 
 using MathProgBase.SolverInterface
+using SparseArrays
+using LinearAlgebra
 import MPI
 import JuMP
 import ..PlasmoModelGraph
@@ -301,7 +303,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
     			nlp_lb, nlp_ub = JuMP.constraintbounds(node)
          		local_data.local_m  = length(nlp_lb)
 
-    			newRowId = Array{Int}(local_data.local_m)
+    			newRowId = Array{Int}(undef,local_data.local_m)
     			eqId = 1
     			ineqId = 1
                 for c in 1:local_data.local_m
@@ -438,7 +440,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
         else
             local_x = x1
         end
-        local_g = Array{Float64}(local_data.local_m)
+        local_g = Array{Float64}(undef,local_data.local_m)
         eval_g(local_d, local_g, local_x)
         new_eq_g[1:end] = [local_g[local_data.eq_idx]; local_data.firstJeqmat*x0+local_data.secondJeqmat*x1]
         new_inq_g[1:end] = [local_g[local_data.ineq_idx]; local_data.firstJineqmat*x0+local_data.secondJineqmat*x1]
@@ -469,28 +471,29 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
         else
             local_x = x1
         end
-        local_grad_f = Array{Float64}(local_data.n)
+        local_grad_f = Array{Float64}(undef,local_data.n)
         eval_grad_f(local_d, local_grad_f, local_x)
         local_scl = (node.objSense == :Min) ? 1.0 : -1.0
-        scale!(local_grad_f,local_scl)
+        #scale!(local_grad_f,local_scl)
+        rmul!(local_grad_f,local_scl)
         original_copy(local_grad_f, new_grad_f)
     elseif colid == 0
-        new_grad_f[1:end] = 0
+        new_grad_f[1:end] .= 0
     else
-        assert(false)
+        @assert(false)
     end
     return Int32(1)
     end
 
     function array_copy(src,dest)
-        assert(length(src)==length(dest))
+        @assert(length(src)==length(dest))
         for i in 1:length(src)
             dest[i] = src[i]-1
         end
     end
 
     function original_copy(src,dest)
-        assert(length(src)==length(dest))
+        @assert(length(src)==length(dest))
         for i in 1:length(src)
             dest[i] = src[i]
         end
@@ -504,17 +507,17 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
             local_m_ineq = length(local_data.ineq_idx)
             if mode == :Structure
                 if (rowid == colid)
-                    Ieq=[node.ext[:Ijaceq];local_data.secondIeq + local_m_eq]
+                    Ieq=[node.ext[:Ijaceq];local_data.secondIeq .+ local_m_eq]
                     Jeq=[node.ext[:Jjaceq];local_data.secondJeq]
                     Veq= ones(Float64, length(Ieq))
-                    Iineq=[node.ext[:Ijacineq];local_data.secondIineq + local_m_ineq]
+                    Iineq=[node.ext[:Ijacineq];local_data.secondIineq .+ local_m_ineq]
                     Jineq=[node.ext[:Jjacineq];local_data.secondJineq]
                     Vineq=ones(Float64, length(Iineq))
                     eqmat = sparse(Ieq, Jeq, Veq, local_m_eq + local_data.num_eqconnect, local_data.n)
                     ineqmat = sparse(Iineq, Jineq, Vineq, local_m_ineq + local_data.num_ineqconnect, local_data.n)
                 else
-                    eqmat = sparse(local_m_eq + local_data.firstIeq, local_data.firstJeq, local_data.firstVeq, local_m_eq + local_data.num_eqconnect, master_data.n)
-                    ineqmat = sparse(local_m_ineq + local_data.firstIineq, local_data.firstJineq, local_data.firstVineq, local_m_ineq + local_data.num_ineqconnect, master_data.n)
+                    eqmat = sparse(local_m_eq .+ local_data.firstIeq, local_data.firstJeq, local_data.firstVeq, local_m_eq .+ local_data.num_eqconnect, master_data.n)
+                    ineqmat = sparse(local_m_ineq .+ local_data.firstIineq, local_data.firstJineq, local_data.firstVineq, local_m_ineq .+ local_data.num_ineqconnect, master_data.n)
                 end
                 return(length(eqmat.rowval), length(ineqmat.rowval))
             else
@@ -524,21 +527,21 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
                     else
                         local_x = x1
                     end
-                    local_values = Array{Float64}(length(node.ext[:Ijaceq])+length(node.ext[:Ijacineq]))
+                    local_values = Array{Float64}(undef,length(node.ext[:Ijaceq])+length(node.ext[:Ijacineq]))
                     eval_jac_g(local_data.d, local_values, local_x)
                     jac_eq_index = node.ext[:jac_eq_index]
                     jac_ineq_index = node.ext[:jac_ineq_index]
-                    Ieq=[node.ext[:Ijaceq];local_data.secondIeq + local_m_eq]
+                    Ieq=[node.ext[:Ijaceq];local_data.secondIeq .+ local_m_eq]
                     Jeq=[node.ext[:Jjaceq];local_data.secondJeq]
                     Veq=[local_values[jac_eq_index];local_data.secondVeq]
-                    Iineq=[node.ext[:Ijacineq];local_data.secondIineq + local_m_ineq]
+                    Iineq=[node.ext[:Ijacineq];local_data.secondIineq .+ local_m_ineq]
                     Jineq=[node.ext[:Jjacineq];local_data.secondJineq]
                     Vineq=[local_values[jac_ineq_index];local_data.secondVineq]
                     eqmat = sparseKeepZero(Ieq, Jeq, Veq, local_m_eq + local_data.num_eqconnect, local_data.n)
                     ineqmat = sparseKeepZero(Iineq, Jineq, Vineq, local_m_ineq + local_data.num_ineqconnect, local_data.n)
                 else
-                    eqmat = sparseKeepZero(local_m_eq + local_data.firstIeq, local_data.firstJeq, local_data.firstVeq, local_m_eq + local_data.num_eqconnect, master_data.n)
-                    ineqmat = sparseKeepZero(local_m_ineq + local_data.firstIineq, local_data.firstJineq, local_data.firstVineq, local_m_ineq + local_data.num_ineqconnect, master_data.n)
+                    eqmat = sparseKeepZero(local_m_eq .+ local_data.firstIeq, local_data.firstJeq, local_data.firstVeq, local_m_eq .+ local_data.num_eqconnect, master_data.n)
+                    ineqmat = sparseKeepZero(local_m_ineq .+ local_data.firstIineq, local_data.firstJineq, local_data.firstVineq, local_m_ineq .+ local_data.num_ineqconnect, master_data.n)
                 end
                 if length(eqmat.nzval) > 0
                     array_copy(eqmat.rowval,e_rowidx)
@@ -611,7 +614,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
                 else
                     local_x = x1
                 end
-                local_unsym_values = Array{Float64}(local_data.local_unsym_hessnnz)
+                local_unsym_values = Array{Float64}(undef,local_data.local_unsym_hessnnz)
                 node_val = ones(Float64,length(node_Hrows))
                 local_scl = (node.objSense == :Min) ? 1.0 : -1.0
                 local_m_eq = length(local_data.eq_idx)
@@ -654,7 +657,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
 
     comm = MPI.COMM_WORLD
     if(MPI.Comm_rank(comm) == 0)
-        tic()
+        t1 = time()
     end
 
     #Create FakeModel (The PIPS interface model) and pass all the functions it requires
@@ -666,6 +669,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
     r = MPI.Comm_rank(comm)
 
     if(MPI.Comm_rank(comm) == 0)
+        println("Timing Results:")
         println("init_x0  ",prob.t_jl_init_x0)
         println("str_init_x0  ", prob.t_jl_str_prob_info)
         println("eval_f  ", prob.t_jl_eval_f)
@@ -676,7 +680,7 @@ function pipsnlp_solve(graph::PlasmoModelGraph.AbstractModelGraph,master_index::
         println("eval_h  ",  prob.t_jl_eval_h)
         println("str_eval_h ",  prob.t_jl_str_eval_h)
         println("eval_write_solution  ",  prob.t_jl_write_solution)
-        println("PIPS-NLP time:   ",  toq(), " (s)")
+        println("PIPS-NLP time:   ",  time() - t1, " (s)")
     end
 
     for (idx,node) in enumerate(modelList)  #set solution values for each model
@@ -746,7 +750,7 @@ function sparseKeepZero(I::AbstractVector{Ti},
     end
 
     # Work array
-    Wj = Array{Ti}(max(nrow,ncol)+1)
+    Wj = Array{Ti}(undef,max(nrow,ncol)+1)
     # Allocate sparse matrix data structure
     # Count entries in each row
     Rnz = zeros(Ti, nrow+1)
@@ -760,8 +764,8 @@ function sparseKeepZero(I::AbstractVector{Ti},
         nz += 1
     end
     Rp = cumsum(Rnz)
-    Ri = Array{Ti}(nz)
-    Rx = Array{Tv}(nz)
+    Ri = Array{Ti}(undef,nz)
+    Rx = Array{Tv}(undef,nz)
 
     # Construct row form
     # place triplet (i,j,x) in column i of R
@@ -807,8 +811,8 @@ function sparseKeepZero(I::AbstractVector{Ti},
     end
 
     # Transpose from row format to get the CSC format
-    RiT = Array{Ti}(anz)
-    RxT = Array{Tv}(anz)
+    RiT = Array{Ti}(undef,anz)
+    RxT = Array{Tv}(undef,anz)
 
     # Reset work array to build the final colptr
     Wj[1] = 1

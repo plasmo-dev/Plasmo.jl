@@ -9,3 +9,5 @@ DataStructures
 MPI
 Compat
 Metis
+SparseArrays
+LinearAlgebra
