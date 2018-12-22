@@ -1,26 +1,20 @@
-#Plasmo.jl Documentation
+# Plasmo.jl
 
-Plasmo.jl is a graph-based modeling/optimization package for constructing hierarchical and modular system models.
+Plasmo.jl (Platform for Scalable Modeling and Optimization) is a graph-based modeling/optimization package for constructing and solving optimization problems over systems.
 
-<!-- ## Subtitle
-
-More text -->
+## Documentation
+```@contents
+Pages = [
+    "documentation/graph_functions.md",
+    ]
+Depth = 2
+```
 
 ## Tutorials
 
 ```@contents
 Pages = [
     "quick_start/simple_example.md",
-    ]
-Depth = 2
-```
-
-## Documentation
-```@contents
-Pages = [
-    "documentation/graph_functions.md",
-    "documentation/model_functions.md",
-    "documentation/modeling_with_JuMP.md"
     ]
 Depth = 2
 ```

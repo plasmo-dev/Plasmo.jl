@@ -1,14 +1,13 @@
-# The Plasmo Graph
+# BasePlasmoGraph
 
-A PlasmoGraph wraps a LightGraphs.jl Graph (or DiGraph) and adds additional attributes for managing subgraphs and models.
-These are all of the graph functions a user might use in plasmo.  Most core functions from LightGraphs.jl have been dispatched.
+A BasePlasmoGraph wraps a LightGraphs.jl AbstractGraph and adds additional attributes for managing subgraphs and data.
+These are all of the graph functions a user might use in Plasmo.  Most core functions from LightGraphs.jl have been extended for a PlasmoGraph.
 
 ## Graph Functions
 
 ```@docs
-PlasmoGraph
+BasePlasmoGraph
 
-getindex(::PlasmoGraph)
-getindex(::PlasmoGraph,::NodeOrEdge)
-getindex(::NodeOrEdge)
+getindex(::BasePlasmoGraph)
+getindex(::BasePlasmoGraph,::BasePlasmoNode)
 ```
