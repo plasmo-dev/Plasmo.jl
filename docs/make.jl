@@ -1,4 +1,4 @@
-using Documenter, Plasmo
+using Documenter, Plasmo, JuMP
 
 makedocs(sitename="Plasmo.jl - Platform for Scalable Modeling and Optimization", modules=[Plasmo],
         doctest=true,html_prettyurls = get(ENV, "CI", nothing) == "true",
@@ -8,7 +8,7 @@ makedocs(sitename="Plasmo.jl - Platform for Scalable Modeling and Optimization",
         "Quick Start" => "quick_start/quickstart.md",
         "ModelGraph" => "documentation/modelgraph.md",
         "Graph Analysis" => "documentation/graphanalysis.md",
-        "Solvers" => "documentation/solvers.md",
+        "Solvers" => "documentation/solvers/solvers.md",
         "Tutorials" => "tutorials/example_1.md",
         "Low-Level Functions" => "low_level/baseplasmograph.md"]
         )

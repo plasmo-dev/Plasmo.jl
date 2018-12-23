@@ -82,7 +82,7 @@ println("n2[:x]= ",JuMP.getvalue(n2[:x]))
 Pages = [
     "documentation/modelgraph.md"
     "documentation/graphanalysis.md"
-    "documentation/solvers.md"
+    "documentation/solvers/solvers.md"
     ]
 Depth = 2
 ```

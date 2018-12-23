@@ -38,13 +38,53 @@ where `model` is a JuMP `Model` object.  We can also set a model on a node after
 setmodel(n1,model)
 ```
 This can be helpful in instances where a user wants to swap out a model on a node without changing the graph topology.  Keep in mind however that swapping out
-a model will remove any link constraints that involve that node.
+a model will by default remove any link-constraints that involve that node.
 
-We can also iterate over the nodes in a `ModelGraph` using `getnodes`.
+We can also iterate over the nodes in a `ModelGraph` using the `getnodes` function.  For example
 
-## Adding Link Constraints
+```julia
+for node in getnodes(mg)
+    println(node)
+end
+```
+will print the string for every node in the `ModelGraph` mg.  
 
-Link constraints are linear constraints that couple variables across different `ModelNode`s.
+`ModelNode`s can also be retrieved based on their index, or a node index can be found within a `ModelGraph`.  
+For example, since n1 was the first node added to mg, it will have an index of 1.
+
+```julia
+n1 = getnode(mg,1)
+getindex(mg,n1) == 1  #will return true
+```
+
+Variables within a JuMP `Model` can be accessed directly from their enclosing node.  
+
+```julia
+jump_model = Model()
+@variable(jump_model,x >= 0)
+setmodel(n1,jump_model)
+println(n1[:x])  
+```
+
+## Adding Link-Constraints
+
+Link constraints are linear constraints that couple variables across different `ModelNode`s.  The simplist way to add link-constraints
+is to use the `@linkconstraint` macro.  This macro accepts the same input as a JuMP `@constraint` macro, except it
+handles linear constraints over multiple nodes within the same graph.
+
+```julia
+jump_2 = Model()
+@variable(jump_2,x >= 0)
+n2 = add_node!(mg,jump_2)
+
+@linkconstraint(mg,n1[:x] == n2[:x])
+```
+
+
+## Subgraph Structures
+
+Finally, it is possible to create subgraphs within a `ModelGraph` object.  This is helpful when a user wants to develop to separate systems and link them together within
+a higher level graph.
 
 
 ## Methods
@@ -66,5 +106,6 @@ Plasmo.PlasmoModelGraph.get_all_linkconstraints
 `ModelNode`s contain methods for managing their contained JuMP models.
 
 ```@docs
-Plasmo.PlasmoModelGraph.ModelNode
+Plasmo.PlasmoModelGraph.getlinkconstraints(node::ModelNode)
+Plasmo.PlasmoModelGraph.add_node!(graph::AbstractModelGraph,model::JuMP.AbstractModel)
 ```

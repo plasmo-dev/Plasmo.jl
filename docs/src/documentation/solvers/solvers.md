@@ -2,7 +2,6 @@
 
 ## JuMP Solvers
 
-
 ## Plasmo Solvers
 
 Built-in Plasmo solvers include a `BendersSolver` and `LagrangeSolver`
@@ -10,6 +9,7 @@ Built-in Plasmo solvers include a `BendersSolver` and `LagrangeSolver`
 ### BendersSolver
 
 ### LagrangeSolver
+
 
 ## External Solvers
 

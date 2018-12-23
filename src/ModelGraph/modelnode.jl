@@ -11,26 +11,39 @@ end
 ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),Dict{AbstractModelGraph,Vector{ConstraintRef}}())
 create_node(graph::ModelGraph) = ModelNode()
 
+"""
+Add a ModelNode to a ModelGraph.
+
+add_node!(graph::AbstractModelGraph)
+"""
 function add_node!(graph::AbstractModelGraph,m::AbstractModel)
     node = add_node!(graph)
     setmodel(node,m)
     return node
 end
 
+"Get the underlying JuMP model for a node"
 getmodel(node::ModelNode) = node.model
+
+"Check whethere a node has a model"
 hasmodel(node::ModelNode) = node.model != nothing ? true : false
+
+"Get an underlying model variable"
 getindex(node::ModelNode,sym::Symbol) = getmodel(node)[sym]         #get variable index on a node
 
-#Node objective value
+"Get a node objective"
 JuMP.getobjective(node::ModelNode) = getobjective(node.model)
+
+"Get node objective value"
 JuMP.getobjectivevalue(node::ModelNode) = getobjectivevalue(node.model)
 setobjectivevalue(node::ModelNode,num::Number) = getmodel(node).objVal = num
 
-#Get all of the link constraints for a node in all of its graphs
+"Retrieve all of the LinkConstraint references for a given node"
 getlinkreferences(node::ModelNode) = node.linkconrefs
+
 getlinkreferences(graph::AbstractModelGraph,node::ModelNode) = node.linkconrefs[graph]
 
-#Link constraints SHOULD be unique to each graph
+"Return an array of LinkConstraints for a node"
 function getlinkconstraints(node::ModelNode)
     links = Dict()
     for (graph,refs) in node.linkconrefs
@@ -42,7 +55,7 @@ function getlinkconstraints(node::ModelNode)
     return links
 end
 
-#Get link constraints for a model node in graph
+"Retrieve the LinkConstraints for a node in a given ModelGraph"
 function getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
     links = []
     for ref in node.linkconrefs[graph]
@@ -54,6 +67,7 @@ end
 ########################################
 # Get model node from other objects
 ########################################
+"Check where a JuMP variable belongs to a ModelNode"
 is_nodevar(node::ModelNode,var::AbstractJuMPScalar) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
 _is_assignedtonode(m::AbstractModel) = haskey(m.ext,:node)                      #checks whether a model is assigned to a node
 num_var(node::ModelNode) = MathProgBase.numvar(getmodel(node))
@@ -61,8 +75,10 @@ num_var(node::ModelNode) = MathProgBase.numvar(getmodel(node))
 ########################################
 #Get model nodes corresponding to models or variables
 ########################################
+"Get the ModelNode corresponding to a JuMP Model"
 getnode(m::AbstractModel) = _is_assignedtonode(m) ? m.ext[:node] : throw(error("Only node models have associated graph nodes"))
 getnode(var::AbstractJuMPScalar) = var.m.ext[:node]
+
 
 function setmodel(node::ModelNode,m::AbstractModel;preserve_links = false)
     !(_is_assignedtonode(m) && getmodel(node) == m) || error("the model is already asigned to another node")
