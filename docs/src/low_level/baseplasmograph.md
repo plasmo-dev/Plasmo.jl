@@ -7,7 +7,6 @@ These are all of the graph functions a user might use in Plasmo.  Most core func
 
 ```@docs
 BasePlasmoGraph
-
 getindex(::BasePlasmoGraph)
 getindex(::BasePlasmoGraph,::BasePlasmoNode)
 ```

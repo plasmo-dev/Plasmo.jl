@@ -1,5 +1,9 @@
 # Simple Plasmo Example
 
+Plasmo.jl uses JuMP to create component models in a ModelGraph.  JuMP models are associated with nodes and can have their variables connected to other nodes (models) with linkconstraints.
+The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint between them and solving with Ipopt.
+
+
 ```julia
 using JuMP
 using Plasmo

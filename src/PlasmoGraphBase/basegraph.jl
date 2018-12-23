@@ -1,7 +1,14 @@
 ##############################################################################
 # Base Plasmo Graph Structures
 ##############################################################################
-"The BasePlasmoGraph Type.  Contains a reference to a LightGraphs.Graph."
+"""
+BasePlasmoGraph()
+
+The BasePlasmoGraph Type.  The BasePlasmoGraph wraps a LightGraphs.AbstractGraph (such as a LightGraphs.Graph or LightGraphs.DiGraph).
+The BasePlasmoGraph extends a LightGraphs.AbstractGraph and adds a label (i.e. a name), an index, attributes (a dictionary), and a nodedict and edgedict to map nodes and edges to indices.
+Most notable is the addition of a subgraphlist.  A BasePlasmoGraph contains a list of other AbstractPlasmoGraph objects reprsenting subgraphs within the BasePlasmoGraph.  The index therefore, is the
+PlasmoGraph index within its parent graph.  An index of 0 means the graph is the top-level graph (i.e. it is not a subgraph of any other graph).
+"""
 mutable struct BasePlasmoGraph{T <: AbstractGraph} <: AbstractPlasmoGraph
     lightgraph::T                               #The underlying lightgraph  #Could be a Graph or DiGraph, #or a custom hypergraph
     label::Symbol
@@ -14,6 +21,7 @@ end
 #Constructors
 BasePlasmoGraph() = BasePlasmoGraph(LightGraphs.Graph(),gensym(),0,AbstractPlasmoGraph[],NodeDict(),EdgeDict(),Dict())
 BasePlasmoGraph(graphtype) = BasePlasmoGraph(graphtype(),gensym(),0,AbstractPlasmoGraph[],NodeDict(),EdgeDict(),Dict())
+
 function BasePlasmoGraph(lightgraph::LightGraphs.AbstractGraph)  #build a graph from a LightGraph
     basegraph = BasePlasmoGraph(lightgraph,gensym(),0,AbstractPlasmoGraph[],NodeDict(),EdgeDict(),Dict())
     for vertex in LightGraphs.vertices(lightgraph)
@@ -25,7 +33,7 @@ function BasePlasmoGraph(lightgraph::LightGraphs.AbstractGraph)  #build a graph 
     return basegraph
 end
 
-"The BasePlasmoNode Type.  Can be indexed to multiple BasePlasmoGraphs."
+"The BasePlasmoNode Type.  Contains indices corresponding to each graph it is a member of as well as an attribute dictionary."
 mutable struct BasePlasmoNode <: AbstractPlasmoNode
     indices::Dict{BasePlasmoGraph,Int} #map to an index in each graph containing the node
     label::Symbol
@@ -50,6 +58,11 @@ create_edge(graph::BasePlasmoGraph) = BasePlasmoEdge()
 ##############################################################################
 getbasegraph(graph::BasePlasmoGraph) = graph
 getlightgraph(basegraph::BasePlasmoGraph) = basegraph.lightgraph
+"""
+getindex(basegraph::BasePlasmoGraph)
+
+Get a basegraph index
+"""
 getindex(basegraph::BasePlasmoGraph) = basegraph.index
 getlabel(basegraph::BasePlasmoGraph) = basegraph.label
 
@@ -74,6 +87,11 @@ has_edge(basegraph::BasePlasmoGraph,vertices::Int...) = haskey(basegraph.edgedic
 ##############################################################################
 #base node has index and label fields
 getbasenode(basenode::BasePlasmoNode) = basenode
+"""
+getindex(basegraph::BasePlasmoGraph,basenode::BasePlasmoNode)
+
+Get the index of the node in the BasePlasmoGraph
+"""
 getindex(basegraph::BasePlasmoGraph,basenode::BasePlasmoNode) = basenode.indices[basegraph]
 getindices(basenode::BasePlasmoNode) = basenode.indices
 getlabel(basenode::BasePlasmoNode) = basenode.label

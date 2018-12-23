@@ -7,8 +7,13 @@ import MathProgBase.numvar
 ##############################################################################
 # ModelGraph
 ##############################################################################
-#A PlasmoGraph encapsulates a pure graph object wherein nodes and edges are integers and pairs of integers respectively
-"The ModelGraph Type.  Represents a system of models and the links between them"
+"""
+ModelGraph()
+
+The ModelGraph Type.  Represents a graph containing models (nodes) and the linkconstraints (edges) between them.
+A ModelGraph wraps a BasePlasmoGraph and can use its methods.  A ModelGraph also wraps a LinkModel object which extends a JuMP AbstractModel to provide model management functions.
+
+"""
 mutable struct ModelGraph <: AbstractModelGraph
     basegraph::BasePlasmoGraph                   #Model graph structure.  Put constraint references on edges
     linkmodel::LinkModel                         #Using composition to represent a graph as a "Model".  Someday I will figure out how to do multiple inheritance.
@@ -16,38 +21,37 @@ mutable struct ModelGraph <: AbstractModelGraph
 end
 
 ModelGraph() = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),nothing)
-@deprecate PlasmoGraph ModelGraph
-@deprecate GraphModel ModelGraph
-#ModelGraph(lightgraph::LightGraphs.AbstractGraph) = ModelGraph(BasePlasmoGraph(HyperGraph),LinkModel(),Nullable())
-#ModelGraph() = ModelGraph(BasePlasmoGraph(Graph),LinkModel(),Nullable())
+# @deprecate PlasmoGraph ModelGraph
+# @deprecate GraphModel ModelGraph
 
 #Write total objective functions for a model graph
 _setobjectivevalue(graph::AbstractModelGraph,value::Number) = graph.linkmodel.objval = value
+
+"Set the objective of a ModelGraph"
 setobjective(graph::AbstractModelGraph, sense::Symbol, x::JuMP.Variable) = setobjective(graph.linkmodel, sense, convert(AffExpr,x))
-getlinkconstraints(model::AbstractModelGraph) = getlinkconstraints(model.linkmodel)
-getsimplelinkconstraints(model::AbstractModelGraph) = getsimplelinkconstraints(model.linkmodel)
-gethyperlinkconstraints(model::AbstractModelGraph) = gethyperlinkconstraints(model.linkmodel)
+
+"Get the ModelGraph objective value"
 JuMP.getobjectivevalue(graph::AbstractModelGraph) = graph.linkmodel.objval
+
+"Get the current created JuMP model for the ModelGraph.  Only created when solving using a JuMP compliant solver."
 getinternaljumpmodel(graph::AbstractModelGraph) = get(graph.serial_model)
 
-"""
-    Get every link constraint in the graph, including subgraphs
-"""
-function get_all_linkconstraints(graph::AbstractModelGraph)
-    links = []
-    for subgraph in getsubgraphlist(graph)
-        append!(links,getlinkconstraints(subgraph))
-    end
-    append!(links,getlinkconstraints(graph))
-    return links
-end
+
+###
+# Solver setters and getters
+###
+"Set the ModelGraph solver"
 setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
 setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver) = model.linkmodel.solver = solver
+
+"Get the ModelGraph solver"
 getsolver(model::AbstractModelGraph) = model.linkmodel.solver
+
 ########################################
-# Add the link constraints
+# Link Constraints
 ########################################
 #Store link constraint in the given graph.  Store a reference to the linking constraint on the nodes which it links
+"Add a single link-constraint to the ModelGraph"
 function addlinkconstraint(graph::AbstractModelGraph,con::AbstractConstraint)
     isa(con,JuMP.LinearConstraint) || throw(error("Link constraints must be linear.  If you're trying to add quadtratic or nonlinear links, try creating duplicate variables and linking those"))
     ref = JuMP.addconstraint(graph.linkmodel,con)
@@ -56,6 +60,7 @@ function addlinkconstraint(graph::AbstractModelGraph,con::AbstractConstraint)
 end
 
 #NOTE Figure out a good way to use containers here instead of making arrays
+"Add a vector of link-constraints to the ModelGraph"
 function addlinkconstraint(graph::AbstractModelGraph,linkcons::Array{AbstractConstraint,T}) where T
     #NOTE I don't know why I wrote these two lines anymore
     #array_type = typeof(linkcons)   #get the array type
@@ -75,6 +80,29 @@ function addlinkconstraint(graph::AbstractModelGraph,linkcons::Array{AbstractCon
     end
 end
 
+"
+getlinkconstraints(graph::AbstractModelGraph)
+
+Retrieve a list of link-constraints created for the ModelGraph object.
+"
+getlinkconstraints(model::AbstractModelGraph) = getlinkconstraints(model.linkmodel)
+
+"Retrieve link-constraints that only connect two nodes"
+getsimplelinkconstraints(model::AbstractModelGraph) = getsimplelinkconstraints(model.linkmodel)
+
+"Retrieve link-constraints that connect three or more nodes"
+gethyperlinkconstraints(model::AbstractModelGraph) = gethyperlinkconstraints(model.linkmodel)
+
+"Get a list containing every link constraint in the graph, including its subgraphs"
+function get_all_linkconstraints(graph::AbstractModelGraph)
+    links = []
+    for subgraph in getsubgraphlist(graph)
+        append!(links,getlinkconstraints(subgraph))
+    end
+    append!(links,getlinkconstraints(graph))
+    return links
+end
+
 #TODO
 # function copy(graph::AbstractModelGraph)
 #     nodes = getnodes(graph)
@@ -92,11 +120,3 @@ function string(graph::AbstractModelGraph)
 end
 print(io::IO, graph::AbstractModelGraph) = print(io, string(graph))
 show(io::IO,graph::AbstractModelGraph) = print(io,graph)
-
-
-
-# function string(edge::AbstractPlasmoEdge)
-#     "edge: "*string(getlabel(edge))*string(" in $(length(getindices(edge))) graph(s) with ids $(collect(values(getindices(edge))))")
-# end
-# print(io::IO,edge::AbstractPlasmoEdge) = print(io, string(edge))
-# show(io::IO,edge::AbstractPlasmoEdge) = print(io,edge)

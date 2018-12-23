@@ -1,13 +1,16 @@
 using Documenter, Plasmo
 
-makedocs(sitename="Plasmo", modules=[Plasmo],
+makedocs(sitename="Plasmo.jl - Platform for Scalable Modeling and Optimization", modules=[Plasmo],
         doctest=true,html_prettyurls = get(ENV, "CI", nothing) == "true",
         authors = "Jordan Jalving",
         pages = [
         "Introduction" => "index.md",
-        "Quick Start" => "quick_start/simple_example.md",
-        "Documentation" => "documentation/graph_functions.md",
-        "Tutorials" => "tutorials/example_1.md"]
+        "Quick Start" => "quick_start/quickstart.md",
+        "ModelGraph" => "documentation/modelgraph.md",
+        "Graph Analysis" => "documentation/graphanalysis.md",
+        "Solvers" => "documentation/solvers.md",
+        "Tutorials" => "tutorials/example_1.md",
+        "Low-Level Functions" => "low_level/baseplasmograph.md"]
         )
 
 # deploydocs(deps   = Deps.pip("mkdocs", "python-markdown-math"),
