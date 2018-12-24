@@ -40,8 +40,18 @@ getinternaljumpmodel(graph::AbstractModelGraph) = get(graph.serial_model)
 ###
 # Solver setters and getters
 ###
-"Set the ModelGraph solver"
+"""
+setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver)
+
+Set the graph solver to use an AbstractMathProg compliant solver
+"""
 setsolver(model::AbstractModelGraph,solver::AbstractMathProgSolver) = model.linkmodel.solver = solver
+
+"""
+setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver)
+
+Set the graph solver to use an AbstractMathProg compliant solver
+"""
 setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver) = model.linkmodel.solver = solver
 
 "Get the ModelGraph solver"
@@ -80,20 +90,33 @@ function addlinkconstraint(graph::AbstractModelGraph,linkcons::Array{AbstractCon
     end
 end
 
-"
+"""
 getlinkconstraints(graph::AbstractModelGraph)
 
-Retrieve a list of link-constraints created for the ModelGraph object.
-"
+Return Array of all LinkConstraints in the ModelGraph graph
+"""
 getlinkconstraints(model::AbstractModelGraph) = getlinkconstraints(model.linkmodel)
 
-"Retrieve link-constraints that only connect two nodes"
+"""
+getsimplelinkconstraints(model::AbstractModelGraph)
+
+Retrieve link-constraints that only connect two nodes"
+"""
 getsimplelinkconstraints(model::AbstractModelGraph) = getsimplelinkconstraints(model.linkmodel)
 
-"Retrieve link-constraints that connect three or more nodes"
+
+"""
+gethyperlinkconstraints(model::AbstractModelGraph)
+
+Retrieve link-constraints that connect three or more nodes"
+"""
 gethyperlinkconstraints(model::AbstractModelGraph) = gethyperlinkconstraints(model.linkmodel)
 
-"Get a list containing every link constraint in the graph, including its subgraphs"
+"""
+get_all_linkconstraints(graph::AbstractModelGraph)
+
+Get a list containing every link constraint in the graph, including its subgraphs
+"""
 function get_all_linkconstraints(graph::AbstractModelGraph)
     links = []
     for subgraph in getsubgraphlist(graph)

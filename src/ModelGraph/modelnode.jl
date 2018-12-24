@@ -1,6 +1,15 @@
 ##############################################################################
 # Model Nodes
 ##############################################################################
+
+#Constructor
+"""
+The ModelNode type
+
+ModelNode()
+
+Creates an empty ModelNode.  Does not add it to a graph.
+"""
 mutable struct ModelNode <: AbstractModelNode
     basenode::BasePlasmoNode
     model::Union{AbstractModel,Nothing}
@@ -12,9 +21,9 @@ ModelNode() = ModelNode(BasePlasmoNode(),JuMP.Model(),Dict{AbstractModelGraph,Ve
 create_node(graph::ModelGraph) = ModelNode()
 
 """
-Add a ModelNode to a ModelGraph.
-
 add_node!(graph::AbstractModelGraph)
+
+Add a ModelNode to a ModelGraph.
 """
 function add_node!(graph::AbstractModelGraph,m::AbstractModel)
     node = add_node!(graph)
@@ -22,6 +31,7 @@ function add_node!(graph::AbstractModelGraph,m::AbstractModel)
     return node
 end
 
+#Model Management
 "Get the underlying JuMP model for a node"
 getmodel(node::ModelNode) = node.model
 
@@ -31,7 +41,11 @@ hasmodel(node::ModelNode) = node.model != nothing ? true : false
 "Get an underlying model variable"
 getindex(node::ModelNode,sym::Symbol) = getmodel(node)[sym]         #get variable index on a node
 
-"Get a node objective"
+"""
+getobjective(node::ModelNode)
+
+Get a node objective.
+"""
 JuMP.getobjective(node::ModelNode) = getobjective(node.model)
 
 "Get node objective value"
@@ -43,7 +57,11 @@ getlinkreferences(node::ModelNode) = node.linkconrefs
 
 getlinkreferences(graph::AbstractModelGraph,node::ModelNode) = node.linkconrefs[graph]
 
-"Return an array of LinkConstraints for a node"
+"""
+getlinkconstraints(node::ModelNode)
+
+Return a Dictionary of LinkConstraints for each graph the node is a member of
+"""
 function getlinkconstraints(node::ModelNode)
     links = Dict()
     for (graph,refs) in node.linkconrefs
@@ -55,7 +73,11 @@ function getlinkconstraints(node::ModelNode)
     return links
 end
 
-"Retrieve the LinkConstraints for a node in a given ModelGraph"
+"""
+getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
+
+Return Array of LinkConstraints for the node
+"""
 function getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
     links = []
     for ref in node.linkconrefs[graph]
@@ -67,7 +89,11 @@ end
 ########################################
 # Get model node from other objects
 ########################################
-"Check where a JuMP variable belongs to a ModelNode"
+"""
+is_nodevar(node::ModelNode,var::AbstractJuMPScalar)
+
+Check whether a JuMP variable belongs to a ModelNode
+"""
 is_nodevar(node::ModelNode,var::AbstractJuMPScalar) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
 _is_assignedtonode(m::AbstractModel) = haskey(m.ext,:node)                      #checks whether a model is assigned to a node
 num_var(node::ModelNode) = MathProgBase.numvar(getmodel(node))
@@ -75,11 +101,25 @@ num_var(node::ModelNode) = MathProgBase.numvar(getmodel(node))
 ########################################
 #Get model nodes corresponding to models or variables
 ########################################
-"Get the ModelNode corresponding to a JuMP Model"
+"""
+getnode(model::AbstractModel)
+
+Get the ModelNode corresponding to a JuMP Model
+"""
 getnode(m::AbstractModel) = _is_assignedtonode(m) ? m.ext[:node] : throw(error("Only node models have associated graph nodes"))
+
+"""
+getnode(model::AbstractModel)
+
+Get the ModelNode corresponding to a JuMP Variable
+"""
 getnode(var::AbstractJuMPScalar) = var.m.ext[:node]
 
+"""
+setmodel(node::ModelNode,m::AbstractModel)
 
+Set the model on a node.  This will delete any link-constraints the node is currently part of
+"""
 function setmodel(node::ModelNode,m::AbstractModel;preserve_links = false)
     !(_is_assignedtonode(m) && getmodel(node) == m) || error("the model is already asigned to another node")
     #TODO
@@ -107,7 +147,8 @@ function resetmodel(node::ModelNode,m::AbstractModel)
     #throw warnings if link constraints break
 end
 #TODO
-# removemodel(nodeoredge::NodeOrEdge) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
+# removemodel(node::ModelNode) = nodeoredge.attributes[:model] = nothing  #need to update link constraints
+
 getnodevariable(node::ModelNode,index::Integer) = Variable(getmodel(node),index)
 
 function getnodevariablemap(node::ModelNode)

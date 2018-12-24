@@ -11,7 +11,7 @@ import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, Constr
 import Base.==
 
 #Model Graph Constructs
-export AbstractModelGraph, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkConstraint,
+export AbstractModelGraph, AbstractPlasmoSolver, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkConstraint,
 JuMPGraphModel, JuMPGraph,BipartiteGraph,UnipartiteGraph,PipsTree,
 
 #Solver Constructs

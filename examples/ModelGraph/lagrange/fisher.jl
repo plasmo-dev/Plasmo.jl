@@ -1,5 +1,5 @@
 using JuMP
-using Gurobi
+using GLPKMathProgInterface
 using Plasmo
 
 ## Model from Fisher,1985. An Applications Oriented Guide to Lagrangian Relaxation
@@ -13,7 +13,8 @@ using Plasmo
 # Min 16x[1] + 10x[2]
 # s.t. x[1] + x[2] <= 1OutputFlag=0
 #      x ∈ {0,1}
-m1 = Model(solver=GurobiSolver(OutputFlag=0))
+#m1 = Model(solver=GurobiSolver(OutputFlag=0))
+m1 = Model(solver=GLPKSolverMIP())
 
 @variable(m1, xm[i in 1:2],Bin)
 @constraint(m1, xm[1] + xm[2] <= 1)
@@ -25,8 +26,8 @@ m1 = Model(solver=GurobiSolver(OutputFlag=0))
 #      8x[1] + 2x[2] + y[1] + 4y[2] <= 10
 #      x, y ∈ {0,1}
 
-m2 = Model(solver=GurobiSolver(OutputFlag=0))
-
+#m2 = Model(solver=GurobiSolver(OutputFlag=0))
+m2 = Model(solver=GLPKSolverMIP())
 @variable(m2, xs[i in 1:2],Bin)
 @variable(m2, y[i in 1:2], Bin)
 @constraint(m2, y[1] + y[2] <= 1)

@@ -19,7 +19,7 @@ For example, we could construct a
 mg = ModelGraph(solver = IpoptSolver())
 ```
 
-## Adding Model Nodes
+## Adding Nodes
 Nodes can be added to a `ModelGraph` using the `add_node!` function.  By default, a node contains an empty JuMP `Model` object.
 
 ```julia
@@ -88,24 +88,38 @@ a higher level graph.
 
 
 ## Methods
+
+### ModelGraph
 The `ModelGraph` contains the following useful methods:
 
 ```@docs
 Plasmo.PlasmoModelGraph.ModelGraph
 Plasmo.PlasmoModelGraph.getobjectivevalue
 Plasmo.PlasmoModelGraph.getinternaljumpmodel
-Plasmo.PlasmoModelGraph.setsolver
+setsolver(model::AbstractModelGraph,solver::MathProgBase.AbstractMathProgSolver)
+setsolver(model::AbstractModelGraph,solver::AbstractPlasmoSolver)
 Plasmo.PlasmoModelGraph.getsolver
-Plasmo.PlasmoModelGraph.addlinkconstraint
-Plasmo.PlasmoModelGraph.getlinkconstraints
-Plasmo.PlasmoModelGraph.getsimplelinkconstraints
-Plasmo.PlasmoModelGraph.gethyperlinkconstraints
-Plasmo.PlasmoModelGraph.get_all_linkconstraints
 ```
-
+### ModelNode
 `ModelNode`s contain methods for managing their contained JuMP models.
 
 ```@docs
-Plasmo.PlasmoModelGraph.getlinkconstraints(node::ModelNode)
+Plasmo.PlasmoModelGraph.ModelNode
 Plasmo.PlasmoModelGraph.add_node!(graph::AbstractModelGraph,model::JuMP.AbstractModel)
+Plasmo.PlasmoModelGraph.setmodel(node::ModelNode,model::JuMP.AbstractModel)
+Plasmo.PlasmoModelGraph.is_nodevar
+Plasmo.PlasmoModelGraph.getnode(model::JuMP.AbstractModel)
+Plasmo.PlasmoModelGraph.getnode(var::JuMP.AbstractJuMPScalar)
+```
+
+### LinkConstraints
+```@docs
+Plasmo.PlasmoModelGraph.getlinkconstraints(graph::AbstractModelGraph)
+Plasmo.PlasmoModelGraph.getsimplelinkconstraints
+Plasmo.PlasmoModelGraph.gethyperlinkconstraints
+Plasmo.PlasmoModelGraph.get_all_linkconstraints
+Plasmo.PlasmoModelGraph.addlinkconstraint
+Plasmo.PlasmoModelGraph.getlinkconstraints(graph::AbstractModelGraph,node::ModelNode)
+Plasmo.PlasmoModelGraph.getlinkconstraints(node::ModelNode)
+
 ```

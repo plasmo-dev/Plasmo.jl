@@ -179,7 +179,7 @@ function solvenode(node,λ,x,variant=:default)
     end
     objval = JuMP.getvalue(m.ext[:lgobj])
     setattribute(node, :objective, objval)
-    setattribute(node, :solvetime, getsolvetime(m))
+    #setattribute(node, :solvetime, getsolvetime(m))
 
     return x, objval
 end

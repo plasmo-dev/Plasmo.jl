@@ -1,6 +1,11 @@
 import Metis
 import LightGraphs
 
+"""
+partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY) --> Vector{Vector{Int64}}
+
+Return a graph partition containing a vector of a vectors of node indices.
+"""
 function partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY)
     ugraph = getunipartitegraph(graph)
     lg = getlightgraph(ugraph)
@@ -21,6 +26,11 @@ function partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY)
     return partitions
 end
 
+"""
+LightGraphs.label_propagation(graph::ModelGraph)
+
+Return partitions corresponding to detected communities using the LightGraphs label propagation algorithm.
+"""
 function LightGraphs.label_propagation(graph::ModelGraph)
     ugraph = getunipartitegraph(graph)
     lg = getlightgraph(ugraph)
