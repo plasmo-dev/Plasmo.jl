@@ -2,11 +2,7 @@
 language: julia
 os:
   - linux
-  - osx
 julia:
-  - nightly
-  - release
-  - 0.7
   - 1.0.3
 matrix:
   allow_failures:
@@ -15,7 +11,8 @@ notifications:
   email: false
 script:
 #  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'Pkg.clone(pwd())'
+  - julia -e 'using Pkg'
+  - julia -e 'Pkg.clone("https://github.com/jalving/Plasmo.jl.git")'
   - julia -e 'Pkg.test("Plasmo",coverage=true)'
 after_success:
   - julia -e julia -e 'Pkg.add("Documenter")'
