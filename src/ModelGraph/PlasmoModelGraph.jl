@@ -6,6 +6,7 @@ import ..PlasmoGraphBase:getedge,getnodes,getedges
 using Requires
 using Distributed
 using LinearAlgebra
+using Pkg
 import JuMP
 import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, ConstraintRef
 import Base.==
@@ -82,28 +83,16 @@ include("graph_transformations/graph_transformation.jl")
 include("plasmo_solvers/plasmo_solvers.jl")
 
 function __init__()
-    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" begin
-        function interactive(graph,λ,res,lagrangeheuristic)
-            α = getattribute(graph , :α)[end]
-            n = getattribute(graph , :normalized)
-            bound = n*lagrangeheuristic(graph)
-            Zk = getattribute(graph , :Zk)[end]
-            αexplore(graph,bound)
-            plot(0:0.1:2,getattribute(graph , :explore)[end])
-            print("α = ")
-            α = parse(Float64,readline(STDIN))
-            step = α*abs(Zk-bound)/(norm(res)^2)
-            λ += step*res
-            return λ,bound
-        end
-    end
+    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/extras.jl")
 end
 
 
+if haskey(Pkg.installed(),"MPI")
 #External Solver Interfaces
-include("solver_interfaces/wrapped_solvers.jl")
+    include("solver_interfaces/wrapped_solvers.jl")
 
-include("solver_interfaces/plasmoPipsNlpInterface.jl")
-using .PlasmoPipsNlpInterface
+    include("solver_interfaces/plasmoPipsNlpInterface.jl")
+    using .PlasmoPipsNlpInterface
+end
 
 end
