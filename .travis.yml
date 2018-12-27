@@ -9,6 +9,13 @@ matrix:
     - julia: nightly
 notifications:
   email: false
+
+addons:
+    apt_packages:
+        - gfortran
+        - liblapack-dev
+        - libblas-dev
+
 script:
 #  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   - julia -e 'using Pkg; Pkg.clone("https://github.com/fredrikekre/Metis.jl.git")'
