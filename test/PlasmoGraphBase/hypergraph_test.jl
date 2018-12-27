@@ -1,4 +1,4 @@
-using Plasmo.PlasmoGraphBase
+using Plasmo
 using LightGraphs
 
 hyper = HyperGraph()

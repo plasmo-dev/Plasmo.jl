@@ -6,6 +6,5 @@ LightGraphs
 Reexport
 Requires
 DataStructures
-MPI
 Compat
 Metis
