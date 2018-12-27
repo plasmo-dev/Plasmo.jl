@@ -11,7 +11,7 @@ notifications:
   email: false
 script:
 #  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-  - julia -e 'using Pkg; Pkg.clone("https://github.com/fredrikekre/Metis.jl.git")
+  - julia -e 'using Pkg; Pkg.clone("https://github.com/fredrikekre/Metis.jl.git")'
   - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Plasmo.jl.git") ; Pkg.test("Plasmo",coverage=true)'
 after_success:
   - julia -e 'Pkg.add("Documenter")'
