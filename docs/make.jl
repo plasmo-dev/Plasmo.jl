@@ -13,7 +13,6 @@ makedocs(sitename="Plasmo.jl - Platform for Scalable Modeling and Optimization",
         "Low-Level Functions" => "low_level/baseplasmograph.md"]
         )
 
-# deploydocs(
-#     repo = "github.com/jalving/Plasmo.jl.git",
-#     julia  = "1.0.3",
-#     osname = "linux")
+deploydocs(
+    repo = "github.com/jalving/Plasmo.jl.git"
+    )
