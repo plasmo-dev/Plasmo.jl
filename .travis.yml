@@ -38,6 +38,7 @@ jobs:
       julia: 1.0.3
       os: linux
       script:
+        - julia --project=docs/ -e 'using Pkg; Pkg.clone("https://github.com/fredrikekre/Metis.jl.git")'
         - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
         - julia --project=docs/ docs/make.jl
       after_success: skip
