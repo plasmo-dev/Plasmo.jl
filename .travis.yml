@@ -15,6 +15,11 @@ addons:
         - liblapack-dev
         - libblas-dev
 
+
+#script: # the default script is equivalent to the following
+#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
+#  - julia -e 'Pkg.clone(pwd()); Pkg.build("Example"); Pkg.test("Example"; coverage=true)';
+
 #script:
 #  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
   # - julia -e 'using Pkg; Pkg.clone("https://github.com/fredrikekre/Metis.jl.git")'
@@ -27,12 +32,12 @@ after_success:
   # - julia -e 'cd(Pkg.dir("Plasmo")); Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder())'
   # - julia -e 'cd(Pkg.dir("Plasmo")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
 
-# jobs:
-#   include:
-#     - stage: "Documentation"
-#       julia: 1.0.3
-#       os: linux
-#       script:
-#         - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.add(PackageSpec(path=pwd()))'
-#         - julia --project=docs/ docs/make.jl
-#       after_success: skip
+jobs:
+  include:
+    - stage: "Documentation"
+      julia: 1.0.3
+      os: linux
+      script:
+        - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.add(PackageSpec(path=pwd()))'
+        - julia --project=docs/ docs/make.jl
+      after_success: skip

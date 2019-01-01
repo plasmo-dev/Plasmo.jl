@@ -1,4 +1,4 @@
-using Documenter, Plasmo, JuMP, MathProgBase, LightGraphs
+using Documenter, Plasmo, JuMP, MathProgBase, LightGraphs, Metis
 
 makedocs(sitename="Plasmo.jl - Platform for Scalable Modeling and Optimization", modules=[Plasmo],
         doctest=true,html_prettyurls = get(ENV, "CI", nothing) == "true",
