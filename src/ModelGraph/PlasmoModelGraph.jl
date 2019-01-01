@@ -83,7 +83,8 @@ include("graph_transformations/graph_transformation.jl")
 include("plasmo_solvers/plasmo_solvers.jl")
 
 function __init__()
-    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/extras.jl")
+    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
+    @require Metis = "2679e427-3c69-5b7f-982b-ece356f1e94b" include("extras/metis.jl")
 end
 
 
