@@ -11,7 +11,7 @@ Plasmo.jl been developed by the [Scalable Systems Laboratory](http://zavalab.eng
 
 * Testing status:
     * TravisCI: [![Build Status](https://travis-ci.org/jalving/Plasmo.jl.svg?branch=master)](https://travis-ci.org/jalving/Plasmo.jl)
-
+    * Coverage: [![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
 
 # Installation
 
