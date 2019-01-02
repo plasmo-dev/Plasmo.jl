@@ -26,7 +26,7 @@ jobs:
         - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Plasmo.jl.git") ; Pkg.test("Plasmo",coverage=true)'
 
       after_success:
-          - julia -e 'if VERSION >= v"0.7.0-" using Pkg end; cd(Pkg.dir("Plasmo")); Pkg.add("Coverage"); using Coverage; Coveralls.submit(Coveralls.process_folder())';
+          - julia -e 'if VERSION >= v"0.7.0-" using Pkg end; cd(Pkg.dir("Plasmo")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder()); Coveralls.submit(Coveralls.process_folder())';
 
     - stage: "Documentation"
       julia: 1.0.3
