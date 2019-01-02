@@ -10,13 +10,18 @@ It is also possible to model hierarchical systems (such as a network of networks
 The graph-based modeling approach facilitates decomposition techniques such as graph partitioning and community detection approaches which can exploit parallel solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) and [DSP](https://github.com/Argonne-National-Laboratory/DSP).
 Plasmo.jl been developed by the [Scalable Systems Laboratory](http://zavalab.engr.wisc.edu/) at the University of Wisconsin-Madison.
 
-# Installation
+
+## Documentation
+Documentation is available through [GitHub Pages](https://jalving.github.io/Plasmo.jl/dev).
+Additional examples can be found at [Plasmo Examples](https://github.com/jalving/Plasmo.jl/tree/master/examples/ModelGraph).
+
+## Installation
 
 ```julia
 Pkg.clone("https://github.com/jalving/Plasmo.jl")
 ```
 
-# Simple Example
+## Simple Example
 
 Plasmo.jl uses optimization models written with [JuMP](https://github.com/JuliaOpt/JuMP.jl).
 
