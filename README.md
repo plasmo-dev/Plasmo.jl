@@ -1,17 +1,14 @@
 ![Logo](./docs/plasmo.svg)
 
+[![Build Status](https://travis-ci.org/jalving/Plasmo.jl.svg?branch=master)](https://travis-ci.org/jalving/Plasmo.jl)
+[![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://jalving.github.io/Plasmo.jl/dev/)
+
 # Plasmo.jl
-Plasmo.jl is a graph-based modeling interface that facilitates modeling and solving optimization problems over physical systems.  
-Plasmo facilitates component modeling by means of modularization such that models can be constructed independently and connected to each other using linking constraints with a graph.    
+Plasmo.jl is a graph-based modeling interface that facilitates modeling and solving optimization problems over physical systems.  Plasmo facilitates component modeling by means of modularization such that models can be constructed independently and connected to each other using linking constraints with a graph.    
 It is also possible to model hierarchical systems (such as a network of networks) by linking nodes across different subgraphs within a larger graph.  
 The graph-based modeling approach facilitates decomposition techniques such as graph partitioning and community detection approaches which can exploit parallel solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) and [DSP](https://github.com/Argonne-National-Laboratory/DSP).
 Plasmo.jl been developed by the [Scalable Systems Laboratory](http://zavalab.engr.wisc.edu/) at the University of Wisconsin-Madison.
-
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://jalving.github.io/Plasmo.jl/dev/)
-
-* Testing status:
-    * TravisCI: [![Build Status](https://travis-ci.org/jalving/Plasmo.jl.svg?branch=master)](https://travis-ci.org/jalving/Plasmo.jl)
-    * Coverage: [![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
 
 # Installation
 
