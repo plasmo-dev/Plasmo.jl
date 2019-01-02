@@ -5,15 +5,16 @@
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://jalving.github.io/Plasmo.jl/dev/)
 
 # Plasmo.jl
-Plasmo.jl is a graph-based modeling interface that facilitates modeling and solving optimization problems over physical systems.  Plasmo facilitates component modeling by means of modularization such that models can be constructed independently and connected to each other using linking constraints with a graph.    
-It is also possible to model hierarchical systems (such as a network of networks) by linking nodes across different subgraphs within a larger graph.  
-The graph-based modeling approach facilitates decomposition techniques such as graph partitioning and community detection approaches which can exploit parallel solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) and [DSP](https://github.com/Argonne-National-Laboratory/DSP).
+Plasmo.jl is modeling interface that facilitates solving optimization problems using a graph-based approach.  The package enables component style modeling by means of modularizing optimization models that
+can be constructed independently and connected using linking constraints.    
+The graph-based modeling approach facilitates decomposition techniques such as graph partitioning and community detection which enable the use of parallel solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP),[DSP](https://github.com/Argonne-National-Laboratory/DSP), or built-in Julia solvers for Benders
+and Lagrangean Decomposition.
 Plasmo.jl been developed by the [Scalable Systems Laboratory](http://zavalab.engr.wisc.edu/) at the University of Wisconsin-Madison.
 
 
 ## Documentation
 Documentation is available through [GitHub Pages](https://jalving.github.io/Plasmo.jl/dev).
-Additional examples can be found at [Plasmo Examples](https://github.com/jalving/Plasmo.jl/tree/master/examples/ModelGraph).
+Additional examples can be found in the [examples](https://github.com/jalving/Plasmo.jl/tree/master/examples/ModelGraph) folder.
 
 ## Installation
 
