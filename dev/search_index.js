@@ -369,14 +369,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "documentation/solvers/solvers/#BendersSolver-1",
-    "page": "Solvers",
-    "title": "BendersSolver",
-    "category": "section",
-    "text": ""
-},
-
-{
     "location": "documentation/solvers/solvers/#LagrangeSolver-1",
     "page": "Solvers",
     "title": "LagrangeSolver",
@@ -406,6 +398,14 @@ var documenterSearchIndex = {"docs": [
     "title": "Multiplier updated methods",
     "category": "section",
     "text": "It supports the following methods for updating the lagrangean multipliers:Subgradient\nProbing Subgradient\nMarching Step\nIntersection Step (experimental)\nInteractive\nCutting Planes\nCutting planes with trust region\nLevels"
+},
+
+{
+    "location": "documentation/solvers/solvers/#BendersSolver-1",
+    "page": "Solvers",
+    "title": "BendersSolver",
+    "category": "section",
+    "text": ""
 },
 
 {
