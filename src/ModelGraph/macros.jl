@@ -160,12 +160,6 @@ macro getconstraintlist(args...)
                   "       expr1 == expr2\n" * "       lb <= expr <= ub"))
         end
 
-    # loopedcode = getloopedcode(variable, code, condition, idxvars, idxsets, idxpairs, :AbstractConstraint)  #trying abstract constraint
-    # return quote
-    #   $loopedcode
-    #   $escvarname
-    # end
-
     creation_code = getloopedcode(variable, code, condition, idxvars, idxsets, idxpairs, :AbstractConstraint)
 
     if anonvar
@@ -173,8 +167,6 @@ macro getconstraintlist(args...)
     else
         macro_code = macro_assign_and_return(creation_code, variable, getname(c))
     end
-
-
 end
 
 """
@@ -211,34 +203,3 @@ macro linkconstraint(graph,args...)
         end
     end)
 end
-
-# macro linkconstraint(graph,args...)
-#     #Check the inputs are the correct types.  This needs to throw
-#     checkinputs = quote
-#         #@assert Plasmo.is_graphmodel($m)
-#         @assert isa($graph,AbstractModelGraph)
-#     end
-#     #generate constraint list and them to node or edge linkdata
-#     refscode = quote
-#         cons_refs = @LinearConstraint($(args...))           #returns all of the constraints that would be generated from the expression
-#
-#         if isa(cons_refs,JuMP.JuMPArray)
-#             cons_refs = cons_refs.innerArray
-#         elseif isa(cons_refs,JuMP.JuMPDict)
-#             cons_refs = collect(values(cons_refs.tupledict))
-#         end
-#         addlinkconstraint($graph,cons_refs)    #add the link constraints to the node or edge and map to graph
-#     end
-#     # return quote
-#     #     begin
-#     #         $checkinputs
-#     #         $refscode
-#     #     end
-#     # end
-#     return esc(quote
-#         begin
-#             $checkinputs
-#             $refscode
-#         end
-#     end)
-# end

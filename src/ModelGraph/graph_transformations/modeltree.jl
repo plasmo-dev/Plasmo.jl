@@ -102,20 +102,16 @@ function add_node!(tree::ModelTree,m::AbstractModel,level::Int)
     return node
 end
 
+#TODO
 function getchildren(tree::ModelTree,node::ModelNode)
     #neighbors_out
     #Look at node link constraints OR look at childmap
 end
-
-
 function getparent(tree::ModelTree,node::ModelNode)
     #neighbors_in
 end
 
-function getlevel(tree::ModelTree,node::ModelNode)
-    return tree.levelamp[node]
-end
-
+getlevel(tree::ModelTree,node::ModelNode) = tree.levelamp[node]
 getnumlevels(tree::ModelTree) = length(tree.levels)
 
 #Store link constraint in the given graph.  Store a reference to the linking constraint on the nodes which it links

@@ -11,7 +11,7 @@ function getmodeltree(graph::ModelGraph;root_node = nothing)
     #3.) Lift hyper-constraints into root node
 end
 
-# Use a Unipartite graph to do partitioning
+# IDEA: Use a Unipartite graph to do partitioning
 #Convert Hypergraph ==> Unipartite Graph
 function getunipartitegraph(graph::ModelGraph)
     ugraph = UnipartiteGraph()
@@ -50,7 +50,6 @@ function getunipartitegraph(graph::ModelGraph)
 end
 
 #Convert Hypergraph ==> Bipartite Graph
-    #convert hypergraph to a bipartite graph to do partitioning and community detection
 function getbipartitegraph(graph::ModelGraph)
     bgraph = BipartiteGraph()
 

@@ -16,11 +16,6 @@ LinkConstraint(con::JuMP.LinearConstraint) = LinkConstraint(con.terms,con.lb,con
 LinkConstraint(ref::ConstraintRef) = ref.m.linkdata.linkconstraints[ref.idx]  #Get the Link constraint from a constraint reference
 LinkConstraint(con::LinkConstraint) = LinkConstraint(con.terms,con.lb,con.ub)
 
-#convert(::LinkConstraint, ref::ConstraintRef) = LinkConstraint(ref)
-# LinkConstraint(ref::ConstraintRef) = convert(LinkConstraint,ref)
-# convert(::LinkConstraint,ref::ConstraintRef) = ref.m.linkdata.linkconstraints[ref.idx]
-#convert(LinkConstraint,ref::ConstraintRef) = ref.m.linkdata.linkconstraints[ref.idx]
-
 #Get the  nodes in a link constraint
 function PlasmoGraphBase.getnodes(con::LinkConstraint)
     vars = con.terms.vars
