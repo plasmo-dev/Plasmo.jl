@@ -6,6 +6,6 @@ useful for creating decompositions of optimization problems and in fact, this is
 ## Methods
 
 ```@docs
-Plasmo.PlasmoModelGraph.partition(graph::ModelGraph,n_parts::Int64)
+Metis.partition(graph::ModelGraph,n_parts::Int64)
 LightGraphs.label_propagation(graph::ModelGraph)
 ```

@@ -1,5 +1,5 @@
 using JuMP
-using Plasmo.PlasmoModels
+using Plasmo
 using Ipopt
 
 graph = ModelGraph()
@@ -17,7 +17,7 @@ JuMP.@objective(m1,Min,x)
 
 m2 = JuMP.Model()
 JuMP.@variable(m2,x)
-JuMP.@NLconstraint(m2,exp(x) >= 2)
+JuMP.@NLconstraint(m2,ref,exp(x) >= 2)
 
 
 #Set models on nodes and edges
