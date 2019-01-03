@@ -313,22 +313,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "documentation/graphanalysis/#Plasmo.PlasmoModelGraph.partition-Tuple{ModelGraph,Int64}",
-    "page": "Graph Analysis",
-    "title": "Plasmo.PlasmoModelGraph.partition",
-    "category": "method",
-    "text": "partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY) –> Vector{Vector{Int64}}\n\nReturn a graph partition containing a vector of a vectors of node indices.\n\n\n\n\n\n"
-},
-
-{
-    "location": "documentation/graphanalysis/#LightGraphs.label_propagation-Tuple{ModelGraph}",
-    "page": "Graph Analysis",
-    "title": "LightGraphs.label_propagation",
-    "category": "method",
-    "text": "LightGraphs.label_propagation(graph::ModelGraph)\n\nReturn partitions corresponding to detected communities using the LightGraphs label propagation algorithm.\n\n\n\n\n\n"
-},
-
-{
     "location": "documentation/graphanalysis/#Methods-1",
     "page": "Graph Analysis",
     "title": "Methods",
