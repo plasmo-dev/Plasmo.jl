@@ -1,11 +1,11 @@
 using JuMP
-using Gurobi
+using GLPKMathProgInterface
 using Plasmo
 
-mp = Model(solver = GurobiSolver())
-sp1 = Model(solver = GurobiSolver())
-sp2 = Model(solver = GurobiSolver())
-sp3 = Model(solver = GurobiSolver())
+mp = Model(solver = GLPKSolverLP())
+sp1 = Model(solver = GLPKSolverLP())
+sp2 = Model(solver = GLPKSolverLP())
+sp3 = Model(solver = GLPKSolverLP())
 
 @variable(mp,x[1:3]>=0)
 @constraint(mp,x[1]+x[2]+x[3]<=500)
@@ -40,7 +40,7 @@ sp3 = Model(solver = GurobiSolver())
 
 
 g = ModelTree()
-setsolver(g, BendersSolver(lp_solver = GurobiSolver()))
+setsolver(g, BendersSolver(lp_solver = GLPKSolverLP()))
 n1 = add_node(g,mp)
 n2 = add_node(g,sp1)
 n3 = add_node(g,sp2)

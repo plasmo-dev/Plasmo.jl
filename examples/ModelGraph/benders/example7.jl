@@ -1,5 +1,5 @@
 using JuMP
-using Gurobi
+using GLPKMathProgInterface
 using Plasmo
 
 ##Place MP and SP into ModelGraph

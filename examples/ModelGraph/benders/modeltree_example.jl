@@ -1,15 +1,15 @@
 using Plasmo
 using JuMP
-using Gurobi
+using GLPKMathProgInterface
 
-tree = ModelTree(solver = BendersSolver(max_iterations = 5,lp_solver = GurobiSolver()))
+tree = ModelTree(solver = BendersSolver(max_iterations = 5,lp_solver = GLPKSolverLP()))
 
 function test_model()
     m1 = Model()
     @variable(m1,x[1:2] >= 0)
     @constraint(m1,x[1] >= 3)
     @objective(m1,Min,x[1] + x[2])
-    setsolver(m1,GurobiSolver())
+    setsolver(m1,GLPKSolverLP())
     return m1
 end
 

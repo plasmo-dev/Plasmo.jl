@@ -1,5 +1,4 @@
 using JuMP
-#using MPI
 using Ipopt
 using Plasmo
 using PlasmoSolverInterface

@@ -47,13 +47,16 @@ function bendersolve(tree::ModelTree; max_iterations::Int64=10, cuts::Array{Symb
 
     # Begin iterations
     for i in 1:max_iterations
-        tic()
-        updatebound = ((i-1) % UBupdatefrequency) == 0
-        LB,UB = forwardstep(tree, cuts, updatebound)
 
-        tstamp = time() - starttime
+        itertime = @elapsed begin
 
-        itertime = toc()
+            updatebound = ((i-1) % UBupdatefrequency) == 0
+            LB,UB = forwardstep(tree, cuts, updatebound)
+            tstamp = time() - starttime
+
+        end
+        #itertime = toc()
+
         if n == 1
           saveiteration(s,tstamp,[UB,LB,itertime,tstamp],n)
         else
@@ -191,49 +194,49 @@ function putcutdata(node::ModelNode,tree::ModelTree,cuts::Array{Symbol,1})
 end
 
 function generatecuts(node::ModelNode,tree::ModelTree)
-  children = out_neighbors(tree,node)
-  length(children) == 0 && return true
+    children = out_neighbors(tree,node)
+    length(children) == 0 && return true
 
-  cutdataarray = getattribute(node,:cutdata)
-  previouscuts = getattribute(node,:prevcuts)
-  thisitercuts = Dict()
-  samecuts = Dict()
-  for child in children
-    childindex = getindex(tree,child)
-    thisitercuts[childindex] = CutData[]
-    samecuts[childindex] = Bool[]
+    cutdataarray = getattribute(node,:cutdata)
+    previouscuts = getattribute(node,:prevcuts)
+    thisitercuts = Dict()
+    samecuts = Dict()
+    for child in children
+        childindex = getindex(tree,child)
+        thisitercuts[childindex] = CutData[]
+        samecuts[childindex] = Bool[]
 
-    while length(cutdataarray[childindex]) > 0
-      cutdata = pop!(cutdataarray[childindex])
-      samecut = in(cutdata,previouscuts[childindex])
-      push!(samecuts[childindex],samecut)
-      samecut && continue
-      if typeof(cutdata) == BendersCutData
-        generatebenderscut(node,cutdata,childindex)
-      elseif typeof(cutdata) == LLIntegerCutData
-        generateLLintegercut(node,cutdata)
-      elseif typeof(cutdata) == IntegerCutData
-        generateintegercut(node,cutdata)
-      end
-      push!(thisitercuts[childindex],cutdata)
+        while length(cutdataarray[childindex]) > 0
+            cutdata = pop!(cutdataarray[childindex])
+            samecut = in(cutdata,previouscuts[childindex])
+            push!(samecuts[childindex],samecut)
+            samecut && continue
+            if typeof(cutdata) == BendersCutData
+                generatebenderscut(node,cutdata,childindex)
+            elseif typeof(cutdata) == LLIntegerCutData
+                generateLLintegercut(node,cutdata)
+            elseif typeof(cutdata) == IntegerCutData
+                generateintegercut(node,cutdata)
+            end
+            push!(thisitercuts[childindex],cutdata)
+        end
+        samecuts[childindex] = reduce(*,samecuts[childindex]) && length(samecuts[childindex]) > 0
     end
-    samecuts[childindex] = reduce(*,samecuts[childindex]) && length(samecuts[childindex]) > 0
-  end
-  setattribute(node,:prevcuts, thisitercuts)
-  nodesamecuts = collect(values(samecuts))
-  setattribute(node, :stalled, reduce(*,nodesamecuts))
-  getattribute(node, :stalled) && warn("Node $(node.label) stalled")
-  #if in(node,getattribute(tree, :roots) ) && getattribute(node, :stalled)
-  if node == getroot(tree) && getattribute(node, :stalled)
-    setattribute(tree, :stalled,  true)
- end
+    setattribute(node,:prevcuts, thisitercuts)
+    nodesamecuts = collect(values(samecuts))
+    setattribute(node, :stalled, reduce(*,nodesamecuts))
+    getattribute(node, :stalled) && @warn("Node $getlabel(node) stalled")
+    #if in(node,getattribute(tree, :roots) ) && getattribute(node, :stalled)
+    if node == getroot(tree) && getattribute(node, :stalled)
+        setattribute(tree, :stalled,  true)
+    end
 end
 
 function generatebenderscut(node::ModelNode, cd::BendersCutData,index)
-  model = getmodel(node)
-  θ = getindex(model, :θ)
-  x = getattribute(node, :childvars)[index]
-  @constraint(model, θ[index] >= cd.θk + cd.λk'*(cd.xk - x))
+    model = getmodel(node)
+    θ = getindex(model, :θ)
+    x = getattribute(node, :childvars)[index]
+    @constraint(model, θ[index] .>= cd.θk + cd.λk'*(cd.xk - x))
 end
 
 function bdprepare(tree::ModelTree,lp_solver::AbstractMathProgSolver,node_solver::AbstractMathProgSolver)

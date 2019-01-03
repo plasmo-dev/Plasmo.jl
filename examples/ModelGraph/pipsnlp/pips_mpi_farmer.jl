@@ -8,6 +8,7 @@ using JuMP
 using Distributions
 using Ipopt
 using Plasmo
+using PlasmoSolverInterface
  # Initialize MPI
 MPI.Init()
 

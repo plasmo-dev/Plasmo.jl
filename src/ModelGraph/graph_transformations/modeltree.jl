@@ -8,7 +8,7 @@ mutable struct ModelTree <: AbstractModelGraph
     levels::Vector{Vector{ModelNode}}            #the number of levels (or stages) in the tree
     levelmap::Dict{ModelNode,Int}                #levelmap:  Each node maps to a level in the tree child map for each node index.  Helpful for quickly getting child nodes
 end
-ModelTree(;solver = JuMP.UnsetSolver()) = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(;solver = solver),Nullable(),Vector{Vector{ModelNode}}(),Dict{ModelNode,Int}())
+ModelTree(;solver = JuMP.UnsetSolver()) = ModelTree(BasePlasmoGraph(LightGraphs.DiGraph),LinkModel(;solver = solver),nothing,Vector{Vector{ModelNode}}(),Dict{ModelNode,Int}())
 
 create_node(tree::ModelTree) = ModelNode()
 create_edge(tree::ModelTree) = LinkingEdge()

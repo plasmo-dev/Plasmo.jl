@@ -2,6 +2,7 @@ using JuMP
 using Plasmo
 using MPI
 using Ipopt
+using PlasmoSolverInterface
 
 MPI.Init()
 

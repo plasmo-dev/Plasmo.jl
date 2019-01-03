@@ -1,7 +1,7 @@
 #Functions that do graph transformations to facilitate different decomposition algorithms
 
 #Convert ModelGraph ==> ModelTree
-#NOTE: Could use a spanning tree
+#NOTE: Could use a spanning tree?
 function getmodeltree(graph::ModelGraph;root_node = nothing)
     #1.) If no root_node, lift all the link constraints into a root node
     #if root_node == nothing
@@ -11,6 +11,7 @@ function getmodeltree(graph::ModelGraph;root_node = nothing)
     #3.) Lift hyper-constraints into root node
 end
 
+# Use a Unipartite graph to do partitioning
 #Convert Hypergraph ==> Unipartite Graph
 function getunipartitegraph(graph::ModelGraph)
     ugraph = UnipartiteGraph()
