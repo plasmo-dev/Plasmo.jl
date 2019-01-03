@@ -16,7 +16,7 @@ export AbstractModelGraph, AbstractPlasmoSolver, ModelGraph, ModelTree, ModelNod
 JuMPGraphModel, JuMPGraph,BipartiteGraph,UnipartiteGraph,PipsTree,
 
 #Solver Constructs
-BendersSolver,LagrangeSolver,PipsSolver,
+BendersSolver,LagrangeSolver,
 
 load_pips,
 
@@ -88,12 +88,12 @@ function __init__()
 end
 
 
-if haskey(Pkg.installed(),"MPI")
-#External Solver Interfaces
-    include("solver_interfaces/wrapped_solvers.jl")
-
-    include("solver_interfaces/plasmoPipsNlpInterface.jl")
-    using .PlasmoPipsNlpInterface
-end
+# if haskey(Pkg.installed(),"MPI")
+# #External Solver Interfaces
+#     include("solver_interfaces/wrapped_solvers.jl")
+#
+#     include("solver_interfaces/plasmoPipsNlpInterface.jl")
+#     using .PlasmoPipsNlpInterface
+# end
 
 end

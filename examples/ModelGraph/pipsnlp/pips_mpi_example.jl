@@ -71,10 +71,5 @@ if rank == 0
     @show getobjectivevalue(graph)
 end
 
-#     graph.solver = IpoptSolver()
-#     println()
-#     println("Solving with Ipopt")
-#     solve(graph)
-# end
 
 MPI.Finalize()
