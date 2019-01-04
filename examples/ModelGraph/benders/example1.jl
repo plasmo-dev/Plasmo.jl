@@ -20,9 +20,9 @@ sp = Model(solver = GLPKSolverLP())
 g = ModelTree()
 setsolver(g,BendersSolver(lp_solver = GLPKSolverLP()))
 
-n1 = add_node(g)
+n1 = add_node!(g)
 setmodel(n1,mp)
-n2 = add_node(g)
+n2 = add_node!(g)
 setmodel(n2,sp)
 
 ## Linking constraints between MP and SP

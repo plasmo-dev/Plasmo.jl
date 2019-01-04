@@ -24,9 +24,9 @@ sp2 = Model(solver = GLPKSolverLP())
 
 g = ModelTree()
 setsolver(g, BendersSolver(lp_solver = GLPKSolverLP()))
-n1 = add_node(g,level = 1)
-n2 = add_node(g,level = 2)  #set node levels
-n3 = add_node(g,level = 3)
+n1 = add_node!(g,level = 1)
+n2 = add_node!(g,level = 2)  #set node levels
+n3 = add_node!(g,level = 3)
 
 setmodel(n1, mp)
 setmodel(n2, sp1)

@@ -2,8 +2,8 @@
 
 # Plasmo.jl - Platform for Scalable Modeling and Optimization
 
-Plasmo.jl is a graph-based modeling and optimization package for constructing and solving optimization problems over systems.
-
+Plasmo.jl is a modeling and optimization interface for constructing and solving optimization problems that exploits a graph-aware structure.
+The package provides modular model building for optimization problems and graph analysis capabilities that the enable the use of decomposition-based solvers.
 
 ## Installation
 
@@ -32,8 +32,9 @@ or using the Julia package manager
 
 ## Example Script
 
-Plasmo.jl uses JuMP to create component models in a ModelGraph.  JuMP models are associated with nodes and can have their variables connected to other nodes (models) with linkconstraints.
-The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint between them and solving with Ipopt.
+Plasmo.jl uses JuMP to create component models in a `ModelGraph`, a graph wherein the nodes are component models.  JuMP models are associated with nodes and can
+have their variables linked to other node variables using `LinkConstraints`.
+The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint and solving with Ipopt.
 
 ```julia
 using JuMP

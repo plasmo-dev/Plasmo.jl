@@ -21,8 +21,8 @@ jobs:
       julia: 1.0.3
       os: linux
       script:
-        - julia -e 'using Pkg; Pkg.clone("https://github.com/fredrikekre/Metis.jl.git")'
-        - julia -e 'using Pkg; Pkg.add("Ipopt")'
+        - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Metis.jl.git")'
+        - julia -e 'using Pkg; Pkg.add("Ipopt"); Pkg.add("GLPKMathProgInterface")'
         - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Plasmo.jl.git") ; Pkg.test("Plasmo",coverage=true)'
 
       after_success:
@@ -32,7 +32,7 @@ jobs:
       julia: 1.0.3
       os: linux
       script:
-        - julia --project=docs/ -e 'using Pkg; Pkg.clone("https://github.com/fredrikekre/Metis.jl.git")'
+        - julia --project=docs/ -e 'using Pkg; Pkg.clone("https://github.com/jalving/Metis.jl.git")'
         - julia --project=docs/ -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
         - julia --project=docs/ docs/make.jl
 

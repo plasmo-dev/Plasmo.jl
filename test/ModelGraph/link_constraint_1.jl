@@ -34,7 +34,9 @@ linkcon1 = LinkConstraint(ref1)
 
 lincon2 = LinearConstraint(AffExpr([n1[:x],n2[:x],n3[:x]],[1,-1,1],0),0,0)
 edge2 = addlinkconstraint(m,lincon2)  #adds a hyper edge between all 3 nodes
+
 getlinkconstraints(n2)
+
 ref2 = getlinkreferences(m,n2)[2]
 linkcon2 = LinkConstraint(ref2)
 

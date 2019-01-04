@@ -19,9 +19,9 @@ sp = Model(solver = GurobiSolver())
 ## Plasmo Graph
 g = ModelTree()
 setsolver(g, BendersSolver(lp_solver = GurobiSolver()))
-n1 = add_node(g)
+n1 = add_node!(g)
 setmodel(n1,mp)
-n2 = add_node(g,level = 2)
+n2 = add_node!(g,level = 2)
 setmodel(n2,sp)
 
 ## Linking constraints between MP and SP

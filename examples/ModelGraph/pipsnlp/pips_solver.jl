@@ -31,11 +31,14 @@ scenm=Array{JuMP.Model}(undef,Ns)
 for j in 1:Ns
     scenm[j] = get_electricity_model(demand[j])
     node = add_node!(graph,scenm[j])
+
     #connect children and parent variables
     @linkconstraint(graph, master[:gas_purchased] == scenm[j][:gas_purchased])
-    #reconstruct second stage objective
+
+    #Create child objective
     @objective(scenm[j],Min,1/Ns*(scenm[j][:prod] + 3*scenm[j][:input]))
 end
+
 #create a link constraint between the subproblems (PIPS-NLP supports this kind of constraint)
 @linkconstraint(graph, (1/Ns)*sum(scenm[s][:prod] for s in 1:Ns) == 8)
 
