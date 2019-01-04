@@ -2,7 +2,6 @@ using JuMP
 using Plasmo
 using Ipopt
 using Metis
-using PlasmoSolverInterface
 
 graph = ModelGraph()
 
