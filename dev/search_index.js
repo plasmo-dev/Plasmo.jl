@@ -13,7 +13,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Plasmo.jl - Platform for Scalable Modeling and Optimization",
     "category": "section",
-    "text": "Plasmo.jl is a graph-based modeling and optimization package for constructing and solving optimization problems over systems."
+    "text": "Plasmo.jl is a modeling and optimization interface for constructing and solving optimization problems that exploits a graph-aware structure. The package provides modular model building for optimization problems and graph analysis capabilities that the enable the use of decomposition-based solvers."
 },
 
 {
@@ -29,7 +29,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Example Script",
     "category": "section",
-    "text": "Plasmo.jl uses JuMP to create component models in a ModelGraph.  JuMP models are associated with nodes and can have their variables connected to other nodes (models) with linkconstraints. The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint between them and solving with Ipopt.using JuMP\nusing Plasmo\nusing Ipopt\n\ngraph = ModelGraph()\nsetsolver(graph,IpoptSolver())\n\n#Add nodes to a ModelGraph\nn1 = add_node!(graph)\nn2 = add_node!(graph)\n\n#Create JuMP models\nm1 = Model()\n@variable(m1,0 <= x <= 2)\n@variable(m1,0 <= y <= 3)\n@constraint(m1,x+y <= 4)\n@objective(m1,Min,x)\n\nm2 = Model()\n@variable(m2,x)\n@NLconstraint(m2,exp(x) >= 2)\n\n#Set JuMP models on nodes\nsetmodel(n1,m1)     #set m1 to n1\nsetmodel(n2,m2)\n\n#Link constraints take the same expressions as the JuMP @constraint macro\n@linkconstraint(graph,n1[:x] == n2[:x])\n\n#Get all of the link constraints in a model-graph\nlinks = getlinkconstraints(graph)\n\nsolve(graph)\n\n#Look at individual node solutions\nprintln(\"n1[:x]= \",JuMP.getvalue(n1[:x]))\nprintln(\"n2[:x]= \",JuMP.getvalue(n2[:x]))"
+    "text": "Plasmo.jl uses JuMP to create component models in a ModelGraph, a graph wherein the nodes are component models.  JuMP models are associated with nodes and can have their variables linked to other node variables using LinkConstraints. The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint and solving with Ipopt.using JuMP\nusing Plasmo\nusing Ipopt\n\ngraph = ModelGraph()\nsetsolver(graph,IpoptSolver())\n\n#Add nodes to a ModelGraph\nn1 = add_node!(graph)\nn2 = add_node!(graph)\n\n#Create JuMP models\nm1 = Model()\n@variable(m1,0 <= x <= 2)\n@variable(m1,0 <= y <= 3)\n@constraint(m1,x+y <= 4)\n@objective(m1,Min,x)\n\nm2 = Model()\n@variable(m2,x)\n@NLconstraint(m2,exp(x) >= 2)\n\n#Set JuMP models on nodes\nsetmodel(n1,m1)     #set m1 to n1\nsetmodel(n2,m2)\n\n#Link constraints take the same expressions as the JuMP @constraint macro\n@linkconstraint(graph,n1[:x] == n2[:x])\n\n#Get all of the link constraints in a model-graph\nlinks = getlinkconstraints(graph)\n\nsolve(graph)\n\n#Look at individual node solutions\nprintln(\"n1[:x]= \",JuMP.getvalue(n1[:x]))\nprintln(\"n2[:x]= \",JuMP.getvalue(n2[:x]))"
 },
 
 {
@@ -85,7 +85,7 @@ var documenterSearchIndex = {"docs": [
     "page": "ModelGraph",
     "title": "Constructor",
     "category": "section",
-    "text": "The ModelGraph is the primary object for creating graph-based models in Plasmo.jl.  A ModelGraph is a collection of ModelNodes which are connected by means of LinkingEdges (link constraints) over variables.  One way to think of the structure of a ModelGraph is a HyperGraph wherein edges represent linking constraints that can link multiple ModelNode variables.A ModelGraph does not require any arguments to construct:mg = ModelGraph()A ModelGraph solver can be specified upon construction using the solver keyword argument.  A solver can be any JuMP compatible solver or a Plasmo provided solver (see solvers section).   For example, we could construct a ModelGraph that starts with the IpoptSolver from the Ipopt package:mg = ModelGraph(solver = IpoptSolver())"
+    "text": "The ModelGraph is the primary object for creating graph-based models in Plasmo.jl.  A ModelGraph is a collection of ModelNodes which are connected by LinkConstraints (i.e. edges) over variables.  One way to think of the structure of a ModelGraph is a HyperGraph wherein edges represent linking constraints that can link multiple ModelNode variables.A ModelGraph does not require any arguments to construct:mg = ModelGraph()A ModelGraph solver can be specified upon construction using the solver keyword argument.  A solver can be any JuMP compatible solver or a Plasmo.jl provided solver (see solvers section).   For example, we could construct a ModelGraph that uses the IpoptSolver from the Ipopt package:graph = ModelGraph(solver = IpoptSolver())"
 },
 
 {
@@ -93,15 +93,15 @@ var documenterSearchIndex = {"docs": [
     "page": "ModelGraph",
     "title": "Adding Nodes",
     "category": "section",
-    "text": "Nodes can be added to a ModelGraph using the add_node! function.  By default, a node contains an empty JuMP Model object.n1 = add_node!(mg)A model can be set upon creation by providing a second argument.  For example:model = JuMP.Model()\nn1 = add_node!(mg,model)where model is a JuMP Model object.  We can also set a model on a node after construction:setmodel(n1,model)This can be helpful in instances where a user wants to swap out a model on a node without changing the graph topology.  Keep in mind however that swapping out a model will by default remove any link-constraints that involve that node.We can also iterate over the nodes in a ModelGraph using the getnodes function.  For examplefor node in getnodes(mg)\n    println(node)\nendwill print the string for every node in the ModelGraph mg.  ModelNodes can also be retrieved based on their index, or a node index can be found within a ModelGraph.   For example, since n1 was the first node added to mg, it will have an index of 1.n1 = getnode(mg,1)\ngetindex(mg,n1) == 1  #will return trueVariables within a JuMP Model can be accessed directly from their enclosing node.  jump_model = Model()\n@variable(jump_model,x >= 0)\nsetmodel(n1,jump_model)\nprintln(n1[:x])  "
+    "text": "Nodes can be added to a ModelGraph using the add_node! function.  By default, a node contains an empty JuMP Model object.n1 = add_node!(graph)A model can be set upon creation by providing a second argument.  For example:model = JuMP.Model()\nn1 = add_node!(graph,model)  #sets model to n1where model is a JuMP Model object.  We can also set a model on a node after construction:setmodel(n1,model)This can be helpful in instances where a user wants to swap out a model on a node without changing the graph topology.  Keep in mind however that swapping out a model will by default remove any link-constraints that involve that node.  Also note that any single JuMP Model can only be assigned to a single node.We can also iterate over the nodes in a ModelGraph using the getnodes function.  For examplefor node in getnodes(graph)\n    println(node)\nendwill print the string for every node in the ModelGraph graph.  ModelNodes can also be retrieved based on their index within a ModelGraph or vic versa.   For example, since n1 was the first node added to mg, it will have an index of 1.n1 == getnode(mg,1)   #will return true\ngetindex(graph,n1) == 1  #will also return trueVariables within a JuMP Model can be accessed directly from their enclosing node.  jump_model = Model()\n@variable(jump_model,x >= 0)\nsetmodel(n1,jump_model)\nprintln(n1[:x])    #accesses variable x on jump_model"
 },
 
 {
-    "location": "documentation/modelgraph/#Adding-Link-Constraints-1",
+    "location": "documentation/modelgraph/#Adding-LinkConstraints-1",
     "page": "ModelGraph",
-    "title": "Adding Link-Constraints",
+    "title": "Adding LinkConstraints",
     "category": "section",
-    "text": "Link constraints are linear constraints that couple variables across different ModelNodes.  The simplist way to add link-constraints is to use the @linkconstraint macro.  This macro accepts the same input as a JuMP @constraint macro, except it handles linear constraints over multiple nodes within the same graph.jump_2 = Model()\n@variable(jump_2,x >= 0)\nn2 = add_node!(mg,jump_2)\n\n@linkconstraint(mg,n1[:x] == n2[:x])"
+    "text": "LinkConstraints are linear constraints that couple variables across different ModelNodes.  The simplest way to add LinkConstraints is to use the @linkconstraint macro.  This macro accepts the same input as a JuMP @constraint macro and creates linear constraints over multiple nodes within the same graph.jump_2 = Model()\n@variable(jump_2,x >= 0)\nn2 = add_node!(graph,jump_2)\n\n@linkconstraint(graph,n1[:x] == n2[:x])  #creates a linear constraint between nodes n1 and n2"
 },
 
 {
@@ -109,7 +109,7 @@ var documenterSearchIndex = {"docs": [
     "page": "ModelGraph",
     "title": "Subgraph Structures",
     "category": "section",
-    "text": "Finally, it is possible to create subgraphs within a ModelGraph object.  This is helpful when a user wants to develop to separate systems and link them together within a higher level graph."
+    "text": "It is possible to create subgraphs within a ModelGraph object.  This is helpful when a user wants to develop to separate systems and link them together within a higher level graph.(Section TBD)"
 },
 
 {
@@ -309,7 +309,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Graph Analysis",
     "title": "ModelGraph Analysis",
     "category": "section",
-    "text": "A ModelGraph supports graph analysis to perform functions such as graph partitioning or community detection.  The graph analysis functions are particularly useful for creating decompositions of optimization problems and in fact, this is what is done to use Plasmo\'s built-in structure-based solvers."
+    "text": "A ModelGraph supports graph analysis functions such as graph partitioning or community detection.  The graph analysis functions are particularly useful for creating decompositions of optimization problems and in fact, this is what is done to use Plasmo\'s built-in structure-based solvers."
+},
+
+{
+    "location": "documentation/graphanalysis/#Partitioning-1",
+    "page": "Graph Analysis",
+    "title": "Partitioning",
+    "category": "section",
+    "text": "Graph partitioning can be performed on a ModelGraph using Metis.partition.  The function requires a working Metis interface, which can be cloned with:using Pkg\nPkg.clone(\"https://github.com/jalving/Metis.jl.git\")Once Metis is installed, graph partitions can be obtained like following:using Metis\n#Assuming we have a ModelGraph\npartitions = Metis.partition(graph,4,alg = :KWAY)  #Use the Metis KWAY partitionwhere partitions will be a vector of vectors.  Each vector will contain the indices of the nodes in graph.  Partitions can be used to communicate structure to PlasmoSolvers or the PipsSolver if PlasmoSolverInterface is installed."
 },
 
 {
@@ -441,17 +449,17 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "tutorials/tutorials/#Convert-a-ModelGraph-to-JuMP-Model-1",
+    "location": "tutorials/tutorials/#Convert-ModelGraph-to-JuMP-Model-1",
     "page": "Tutorials",
-    "title": "Convert a ModelGraph to JuMP Model",
+    "title": "Convert ModelGraph to JuMP Model",
     "category": "section",
     "text": "using JuMP\nusing Plasmo\nusing Ipopt\n\ngraph = ModelGraph()\nsetsolver(graph,Ipopt.IpoptSolver())\n\n#Add nodes to a GraphModel\nn1 = add_node(graph)\nn2 = add_node(graph)\n\nm1 = JuMP.Model()\n@variable(m1,0 <= x <= 2)\n@variable(m1,0 <= y <= 3)\n@constraint(m1,x+y <= 4)\n@objective(m1,Min,x)\n\nm2 = Model()\n@variable(m2,x)\n@NLconstraint(m2,exp(x) >= 2)\n\n\n#Set models on nodes and edges\nsetmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1\nsetmodel(n2,m2)\n\n#Link constraints take the same expressions as the JuMP @constraint macro\n@linkconstraint(graph,n1[:x] == n2[:x])\n\n#Get all of the link constraints in a graph\nlinks = getlinkconstraints(graph)\nfor link in links\n    println(link)\nend\n\njump_model = create_jump_graph_model(graph)\njump_model.solver = IpoptSolver()\n\nsolve(jump_model)\n\nlinks = getlinkconstraints(jump_model)\n\ngetdual(links[1])"
 },
 
 {
-    "location": "tutorials/tutorials/#Solve-ModelGraph-with-the-LagrangeSolver-1",
+    "location": "tutorials/tutorials/#Using-the-LagrangeSolver-1",
     "page": "Tutorials",
-    "title": "Solve ModelGraph with the LagrangeSolver",
+    "title": "Using the LagrangeSolver",
     "category": "section",
     "text": "using JuMP\nusing GLPKMathProgInterface\nusing Plasmo\n\nm1 = Model(solver=GLPKSolverMIP())\n\n@variable(m1, xm[i in 1:2],Bin)\n@constraint(m1, xm[1] + xm[2] <= 1)\n@objective(m1, Max, 16xm[1] + 10xm[2])\n\n## Model on y`\n# Max  4y[2]\n# s.t. y[1] + y[2] <= 1\n#      8x[1] + 2x[2] + y[1] + 4y[2] <= 10\n#      x, y ∈ {0,1}\n\n#m2 = Model(solver=GurobiSolver(OutputFlag=0))\nm2 = Model(solver=GLPKSolverMIP())\n@variable(m2, xs[i in 1:2],Bin)\n@variable(m2, y[i in 1:2], Bin)\n@constraint(m2, y[1] + y[2] <= 1)\n@constraint(m2, 8xs[1] + 2xs[2] + y[1] + 4y[2] <= 10)\n@objective(m2, Max, 4y[2])\n\n## Model Graph\ngraph = ModelGraph()\nheur(g) = 16\nsetsolver(graph, LagrangeSolver(update_method=:subgradient,max_iterations=30,lagrangeheuristic=heur))\nn1 = add_node(graph)\nsetmodel(n1,m1)\nn2 = add_node(graph)\nsetmodel(n2,m2)\n\n## Linking\n# m1[x] = m2[x]  ∀i ∈ {1,2}\n@linkconstraint(graph, [i in 1:2], n1[:xm][i] == n2[:xs][i])\n\nsolution = solve(graph)"
 },
