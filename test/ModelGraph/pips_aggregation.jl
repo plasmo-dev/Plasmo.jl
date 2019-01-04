@@ -55,10 +55,6 @@ setmodel(n4,m4)
 
 
 partitions = Metis.partition(graph,2,alg = :RECURSIVE)
-
-solver = PipsSolver(n_workers = 2, partitions = partitions)
-setsolver(graph,solver)
-
-pips_graph = Plasmo.PlasmoModelGraph.create_pips_tree(graph,solver.partition_options[:sub_partitions];master_partition = solver.partition_options[:master_partition])
+pips_tree = Plasmo.PlasmoModelGraph.create_pips_tree(graph,partitions)
 
 true

@@ -16,7 +16,6 @@ println("Test SolutionGraph")
 #Plasmo Solvers
 Pkg.add("GLPKMathProgInterface")
 Pkg.clone("https://github.com/jalving/Metis.jl.git")
-Pkg.clone("https://github.com/jalving/PlasmoSolverInterface.jl.git")
 
 @test include("benders.jl")
 @test include("lagrange.jl")
