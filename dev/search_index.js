@@ -49,7 +49,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "quick_start/quickstart/#",
+    "location": "documentation/quickstart/#",
     "page": "Quick Start",
     "title": "Quick Start",
     "category": "page",
@@ -57,7 +57,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "quick_start/quickstart/#Simple-Plasmo-Example-1",
+    "location": "documentation/quickstart/#Simple-Plasmo-Example-1",
     "page": "Quick Start",
     "title": "Simple Plasmo Example",
     "category": "section",
