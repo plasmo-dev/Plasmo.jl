@@ -385,9 +385,9 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "documentation/solvers/solvers/#Useage-1",
+    "location": "documentation/solvers/solvers/#Usage-1",
     "page": "Solvers",
-    "title": "Useage",
+    "title": "Usage",
     "category": "section",
     "text": "lagrangesolve(graph::ModelGraph;update_method,ϵ,timelimit,lagrangeheuristic,initialmultipliers,α,δ,maxnoimprove,cpbound), solves the graph using the lagrangean decomposition algorithmA solver can also be created using LagrangeSolver([options])"
 },
@@ -417,7 +417,7 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "documentation/solvers/solvers/#Usage-1",
+    "location": "documentation/solvers/solvers/#Usage-2",
     "page": "Solvers",
     "title": "Usage",
     "category": "section",
@@ -445,7 +445,15 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "PipsSolver",
     "category": "section",
-    "text": "The PipsSolver solves nonlinear optimization problems with PIPS-NLP using a defined structure (similar to StructJuMP)."
+    "text": "The PipsSolver solves nonlinear optimization problems with PIPS-NLP."
+},
+
+{
+    "location": "documentation/solvers/solvers/#Usage-3",
+    "page": "Solvers",
+    "title": "Usage",
+    "category": "section",
+    "text": ""
 },
 
 {
