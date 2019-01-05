@@ -365,7 +365,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Solvers",
     "title": "JuMP Solvers",
     "category": "section",
-    "text": "Any MathProgBase compliant JuMP solver can be used to solve a ModelGraph object.  In this case, the entire ModelGraph will be aggregated into a JuMP model and will use the JuMP solve function.  The solution updates the ModelGraph nodes and Linkconstraints with corresponding variable and dual values."
+    "text": "Any MathProgBase compliant JuMP solver can be used to solve a ModelGraph object.  In this case, the entire ModelGraph will be aggregated into a JuMP model and will use the JuMP solve function.  The solution updates the ModelGraph nodes and LinkConstraints with corresponding variable and dual values."
 },
 
 {
@@ -417,11 +417,27 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
+    "location": "documentation/solvers/solvers/#Usage-1",
+    "page": "Solvers",
+    "title": "Usage",
+    "category": "section",
+    "text": ""
+},
+
+{
+    "location": "documentation/solvers/solvers/#Options-2",
+    "page": "Solvers",
+    "title": "Options",
+    "category": "section",
+    "text": ""
+},
+
+{
     "location": "documentation/solvers/solvers/#External-Solvers-1",
     "page": "Solvers",
     "title": "External Solvers",
     "category": "section",
-    "text": ""
+    "text": "External parallel optimization solvers are available through PlasmoSolverInterface.jl.  This package can be added with:using Pkg\nPkg.clone(\"https://github.com/jalving/PlasmoSolverInterface.jl\")"
 },
 
 {
