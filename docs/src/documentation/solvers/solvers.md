@@ -11,7 +11,7 @@ Built-in Plasmo solvers include a `BendersSolver` and `LagrangeSolver`
 
 The `LagrangeSolver` will perform a Lagrangean decomposition algorithm which will dualize all linking constraints for any arbitrary graph. It could be a tree, it could be a sequence of nodes connected (e.g. temporal decomposition), or it may even contain cycles.
 
-### Useage
+### Usage
 `lagrangesolve(graph::ModelGraph;update_method,ϵ,timelimit,lagrangeheuristic,initialmultipliers,α,δ,maxnoimprove,cpbound)`, solves the graph using the lagrangean decomposition algorithm
 
 A solver can also be created using `LagrangeSolver([options])`
@@ -65,4 +65,6 @@ Pkg.clone("https://github.com/jalving/PlasmoSolverInterface.jl")
 ```
 
 ### PipsSolver
-The `PipsSolver` solves nonlinear optimization problems with PIPS-NLP using a defined structure (similar to StructJuMP).
+The `PipsSolver` solves nonlinear optimization problems with PIPS-NLP.
+
+### Usage
