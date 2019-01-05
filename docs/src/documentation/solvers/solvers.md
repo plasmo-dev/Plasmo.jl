@@ -65,6 +65,6 @@ Pkg.clone("https://github.com/jalving/PlasmoSolverInterface.jl")
 ```
 
 ### PipsSolver
-The `PipsSolver` solves nonlinear optimization problems with PIPS-NLP.
+The `PipsSolver` solves nonlinear optimization problems with [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
 
 #### Usage
