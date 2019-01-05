@@ -5,11 +5,11 @@
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://jalving.github.io/Plasmo.jl/dev/)
 
 # Plasmo.jl
-Plasmo.jl is modeling interface that facilitates solving optimization problems using a graph-based approach.  The package enables component style modeling by means of modularizing optimization models that
+Plasmo.jl (Platform for Scalable Modeling and Optimization) is modeling interface that facilitates solving optimization problems using a graph-based approach.  The package enables component style modeling by means of modularizing optimization models that
 can be constructed independently and connected using linking constraints.    
 The graph-based modeling approach facilitates decomposition techniques such as graph partitioning and community detection which enable the use of parallel solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP),[DSP](https://github.com/Argonne-National-Laboratory/DSP), or built-in Julia solvers for Benders
 and Lagrangean Decomposition.
-Plasmo.jl been developed by the [Scalable Systems Laboratory](http://zavalab.engr.wisc.edu/) at the University of Wisconsin-Madison.
+Plasmo.jl has been developed by the [Scalable Systems Laboratory](http://zavalab.engr.wisc.edu/) at the University of Wisconsin-Madison.
 
 
 ## Documentation
