@@ -1,12 +1,12 @@
 using Test
 
 #Test the graph functionality
-println("Testing Basic Graph Functions")
+println("Testing Base Graph Functions")
 
-println("Testing hypergraph implementation")
+println("Testing HyperGraph implementation")
 @test include("hypergraph_test.jl")
 
-println("Testing basegraph functions")
+println("Testing BaseGraph functions")
 @test include("basegraph_tests_graph.jl")
 
 @test include("basegraph_tests_digraph.jl")

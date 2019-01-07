@@ -1,10 +1,10 @@
 using JuMP
-using Gurobi
+using GLPKMathProgInterface
 using Plasmo
 
 ##Place MP and SP into ModelGraph
-mp = Model(solver = GurobiSolver())
-sp = Model(solver = GurobiSolver())
+mp = Model(solver = GLPKSolverLP())
+sp = Model(solver = GLPKSolverLP())
 
 @variable(mp,y>=1)
 @objective(mp,Min,2y)
@@ -17,10 +17,10 @@ sp = Model(solver = GurobiSolver())
 
 ## Plasmo Graph
 g = ModelTree()
-setsolver(g, BendersSolver(lp_solver = GurobiSolver()))
-n1 = add_node(g)
+setsolver(g, BendersSolver(lp_solver = GLPKSolverLP()))
+n1 = add_node!(g)
 setmodel(n1,mp)
-n2 = add_node(g,level = 2)
+n2 = add_node!(g,level = 2)
 setmodel(n2,sp)
 
 ## Linking constraints between MP and SP

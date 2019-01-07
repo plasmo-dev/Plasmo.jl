@@ -1,5 +1,6 @@
 import JuMP: isexpr, constraint_error, quot, getname, buildrefsets,_canonicalize_sense,parseExprToplevel, AffExpr, getloopedcode,addtoexpr_reorder,
-constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict,addkwargs!,coeftype,undef
+constructconstraint!,ConstraintRef,AbstractConstraint,JuMPArray,JuMPDict,addkwargs!,coeftype,undef,
+macro_return,macro_assign_and_return
 
 #Would need to create link variables to do this
 macro NLlinkconstraint(graph,args...) end
@@ -37,7 +38,8 @@ macro getconstraintlist(args...)
             kwargs = Expr(:parameters)
         end
 
-        kwsymbol = VERSION < v"0.6.0-dev.1934" ? :kw : :(=) #changed by julia PR #19868
+        #kwsymbol = VERSION < v"0.6.0-dev.1934" ? :kw : :(=) #changed by julia PR #19868
+        kwsymbol = :(=) # changed by julia PR #19868
         append!(kwargs.args, filter(x -> isexpr(x, kwsymbol), collect(args)))# comma separated
         args = filter(x->!isexpr(x, kwsymbol), collect(args))
 
@@ -64,18 +66,25 @@ macro getconstraintlist(args...)
 
         anonvar = isexpr(c, :vect) || isexpr(c, :vcat) || length(extra) != 1
         variable = gensym()
-        quotvarname = quot(getname(c))
-        escvarname = anonvar ? variable : esc(getname(c))
+
+        # quotvarname = quot(getname(c))
+        # escvarname = anonvar ? variable : esc(getname(c))
+
         if isa(x, Symbol)
             constraint_error(args, "Incomplete constraint specification $x. Are you missing a comparison (<=, >=, or ==)?")
         end
+
         (x.head == :block) && constraint_error(args, "Code block passed as constraint. Perhaps you meant to use @constraints instead?")
-         refcall, idxvars, idxsets, idxpairs, condition = buildrefsets(c, variable)
+
+        refcall, idxvars, idxsets, idxpairs, condition = buildrefsets(c, variable)
+
         if isexpr(x, :call)
+
             if x.args[1] == :in
                 @assert length(x.args) == 3
                 newaff, parsecode = parseExprToplevel(x.args[2], :q)
-                constraintcall = :(addconstraint($m, constructconstraint!($newaff,$(esc(x.args[3])))))
+                #constraintcall = :(addconstraint($m, constructconstraint!($newaff,$(esc(x.args[3])))))
+                constraintcall = :(constructconstraint!($newaff,$(esc(x.args[3]))))
             else
                 # Simple comparison - move everything to the LHS
                 @assert length(x.args) == 3
@@ -98,7 +107,7 @@ macro getconstraintlist(args...)
                 constraint_error(args, "Only ranged rows of the form lb <= expr <= ub are supported.")
             end
             ((vectorized = lvectorized) == rvectorized) || constraint_error("Signs are inconsistently vectorized")
-            addconstr = (lvectorized ? :addVectorizedConstraint : :addconstraint)
+            #addconstr = (lvectorized ? :addVectorizedConstraint : :addconstraint)
             x_str = string(x)
             lb_str = string(x.args[1])
             ub_str = string(x.args[5])
@@ -108,6 +117,7 @@ macro getconstraintlist(args...)
             newub, parseub = parseExprToplevel(x.args[5],:ub)
 
             constraintcall = :(constructconstraint!($newaff,$newlb,$newub))
+
             addkwargs!(constraintcall, kwargs.args)
             code = quote
                 aff = zero(AffExpr)
@@ -138,6 +148,7 @@ macro getconstraintlist(args...)
                     end
                 end
             end
+
             code = quote
                 $code
                 $(refcall) = $constraintcall
@@ -148,10 +159,13 @@ macro getconstraintlist(args...)
                   "       expr1 <= expr2\n" * "       expr1 >= expr2\n" *
                   "       expr1 == expr2\n" * "       lb <= expr <= ub"))
         end
-    loopedcode = getloopedcode(variable, code, condition, idxvars, idxsets, idxpairs, :AbstractConstraint)  #trying abstract constraint
-    return quote
-      $loopedcode
-      $escvarname
+
+    creation_code = getloopedcode(variable, code, condition, idxvars, idxsets, idxpairs, :AbstractConstraint)
+
+    if anonvar
+        macro_code = macro_return(creation_code, variable)
+    else
+        macro_code = macro_assign_and_return(creation_code, variable, getname(c))
     end
 end
 

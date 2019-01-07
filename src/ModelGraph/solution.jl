@@ -23,6 +23,7 @@ create_edge(graph::SolutionGraph) = SolutionEdge()
 
 #copy solution data out of plasmo node or edge
 function setsolutiondata(node::ModelNode,solution_node::SolutionNode)
+
     for (key,var) in getnodevariablemap(node)   #This is grabbing constraint references too....
         if isa(var,Array) || isa(var,Dict)# || isa(var,JuMP.Variable)
             vals = JuMP.getvalue(var)  #get value of the
@@ -40,13 +41,22 @@ function setsolutiondata(node::ModelNode,solution_node::SolutionNode)
             error("encountered a variable type not recognized")
         end
     end
-    for var in getnodevariables(node)
-        val = getvalue(var)
+
+    for i = 1:num_var(node)
+        node1_var = getnodevariable(node,i)
+        val = getvalue(node1_var)
         push!(solution_node.variable_values,val)
     end
-    for con in node.constraintlist
-        push!(solution_node.constraint_duals,getdual(con))
-    end
+
+    # for var in getnodevariables(node)
+    #     val = getvalue(var)
+    #     push!(solution_node.variable_values,val)
+    # end
+
+    # TODO Constraint Duals
+    # for con in node.constraintlist
+    #     push!(solution_node.constraint_duals,getdual(con))
+    # end
     solution_node.objval = getobjectivevalue(node)
 end
 
@@ -65,6 +75,12 @@ function getsolution(model_graph::ModelGraph)
     end
     return solution_graph
 end
+
+function string(node::SolutionNode)
+    "Solution Node"
+end
+print(io::IO,node::SolutionNode) = print(io, string(node))
+show(io::IO,node::SolutionNode) = print(io,node)
 
 #use a solution graph to initialize a plasmo model graph
 #Works as long as graph and solution_graph have the exact same structure

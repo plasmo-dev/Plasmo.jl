@@ -22,5 +22,4 @@ n3 = add_node!(tree,test_model())
 
 solve(tree)
 
-#NOT ALLOWED ON A TREE
-#@linkconstraint(tree,n1[:x][1] + n2[:x][2] + n3[:x][2] == 2)
+true

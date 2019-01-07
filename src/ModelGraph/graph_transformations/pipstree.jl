@@ -125,8 +125,3 @@ end
 #Function to find link variables that show up in many
 # function find_common_link_variables(graph::ModelGraph)
 # end
-
-# function create_pips_tree(model_graph::ModelGraph,master_index::Int64,sub_node_indices::Vector{Int64})
-#     pips_tree = PipsTree()
-#     pips_tree.master_index
-# end

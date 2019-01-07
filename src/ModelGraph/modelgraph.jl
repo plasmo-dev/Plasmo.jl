@@ -34,7 +34,7 @@ setobjective(graph::AbstractModelGraph, sense::Symbol, x::JuMP.Variable) = setob
 JuMP.getobjectivevalue(graph::AbstractModelGraph) = graph.linkmodel.objval
 
 "Get the current created JuMP model for the ModelGraph.  Only created when solving using a JuMP compliant solver."
-getinternaljumpmodel(graph::AbstractModelGraph) = get(graph.serial_model)
+getinternaljumpmodel(graph::AbstractModelGraph) = graph.serial_model
 
 
 ###

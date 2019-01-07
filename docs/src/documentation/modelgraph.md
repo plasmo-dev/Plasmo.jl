@@ -2,7 +2,7 @@
 
 ## Constructor
 The `ModelGraph` is the primary object for creating graph-based models in Plasmo.jl.  A `ModelGraph` is a collection of `ModelNode`s
-which are connected by means of `LinkingEdge`s (link constraints) over variables.  One way to think of the structure of a `ModelGraph` is a HyperGraph wherein edges represent linking constraints
+which are connected by `LinkConstraint`s (i.e. edges) over variables.  One way to think of the structure of a `ModelGraph` is a HyperGraph wherein edges represent linking constraints
 that can link multiple `ModelNode` variables.
 
 A `ModelGraph` does not require any arguments to construct:
@@ -11,26 +11,26 @@ A `ModelGraph` does not require any arguments to construct:
 mg = ModelGraph()
 ```
 
-A `ModelGraph` solver can be specified upon construction using the `solver` keyword argument.  A `solver` can be any JuMP compatible solver or a Plasmo provided solver (see solvers section).  
+A `ModelGraph` solver can be specified upon construction using the `solver` keyword argument.  A `solver` can be any JuMP compatible solver or a Plasmo.jl provided solver (see solvers section).  
 For example, we could construct a
-`ModelGraph` that starts with the `IpoptSolver` from the Ipopt package:
+`ModelGraph` that uses the `IpoptSolver` from the Ipopt package:
 
 ```julia
-mg = ModelGraph(solver = IpoptSolver())
+graph = ModelGraph(solver = IpoptSolver())
 ```
 
 ## Adding Nodes
 Nodes can be added to a `ModelGraph` using the `add_node!` function.  By default, a node contains an empty JuMP `Model` object.
 
 ```julia
-n1 = add_node!(mg)
+n1 = add_node!(graph)
 ```
 
 A model can be set upon creation by providing a second argument.  For example:
 
 ```julia
 model = JuMP.Model()
-n1 = add_node!(mg,model)
+n1 = add_node!(graph,model)  #sets model to n1
 ```
 where `model` is a JuMP `Model` object.  We can also set a model on a node after construction:
 
@@ -38,23 +38,23 @@ where `model` is a JuMP `Model` object.  We can also set a model on a node after
 setmodel(n1,model)
 ```
 This can be helpful in instances where a user wants to swap out a model on a node without changing the graph topology.  Keep in mind however that swapping out
-a model will by default remove any link-constraints that involve that node.
+a model will by default remove any link-constraints that involve that node.  Also note that any single JuMP `Model` can only be assigned to a single node.
 
 We can also iterate over the nodes in a `ModelGraph` using the `getnodes` function.  For example
 
 ```julia
-for node in getnodes(mg)
+for node in getnodes(graph)
     println(node)
 end
 ```
-will print the string for every node in the `ModelGraph` mg.  
+will print the string for every node in the `ModelGraph` graph.  
 
-`ModelNode`s can also be retrieved based on their index, or a node index can be found within a `ModelGraph`.  
+`ModelNode`s can also be retrieved based on their index within a `ModelGraph` or vic versa.  
 For example, since n1 was the first node added to mg, it will have an index of 1.
 
 ```julia
-n1 = getnode(mg,1)
-getindex(mg,n1) == 1  #will return true
+n1 == getnode(mg,1)   #will return true
+getindex(graph,n1) == 1  #will also return true
 ```
 
 Variables within a JuMP `Model` can be accessed directly from their enclosing node.  
@@ -63,28 +63,29 @@ Variables within a JuMP `Model` can be accessed directly from their enclosing no
 jump_model = Model()
 @variable(jump_model,x >= 0)
 setmodel(n1,jump_model)
-println(n1[:x])  
+println(n1[:x])    #accesses variable x on jump_model
 ```
 
-## Adding Link-Constraints
+## Adding LinkConstraints
 
-Link constraints are linear constraints that couple variables across different `ModelNode`s.  The simplist way to add link-constraints
-is to use the `@linkconstraint` macro.  This macro accepts the same input as a JuMP `@constraint` macro, except it
-handles linear constraints over multiple nodes within the same graph.
+`LinkConstraint`s are linear constraints that couple variables across different `ModelNode`s.  The simplest way to add `LinkConstraint`s
+is to use the `@linkconstraint` macro.  This macro accepts the same input as a JuMP `@constraint` macro and creates linear constraints over multiple nodes within the same graph.
 
 ```julia
 jump_2 = Model()
 @variable(jump_2,x >= 0)
-n2 = add_node!(mg,jump_2)
+n2 = add_node!(graph,jump_2)
 
-@linkconstraint(mg,n1[:x] == n2[:x])
+@linkconstraint(graph,n1[:x] == n2[:x])  #creates a linear constraint between nodes n1 and n2
 ```
 
 
 ## Subgraph Structures
 
-Finally, it is possible to create subgraphs within a `ModelGraph` object.  This is helpful when a user wants to develop to separate systems and link them together within
+It is possible to create subgraphs within a `ModelGraph` object.  This is helpful when a user wants to develop to separate systems and link them together within
 a higher level graph.
+
+(Section TBD)
 
 
 ## Methods

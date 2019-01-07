@@ -12,11 +12,13 @@ import JuMP:AbstractModel, AbstractConstraint, AbstractJuMPScalar, Model, Constr
 import Base.==
 
 #Model Graph Constructs
-export AbstractModelGraph, AbstractPlasmoSolver, ModelGraph, ModelTree, ModelNode, LinkingEdge, LinkConstraint,
-JuMPGraphModel, JuMPGraph,BipartiteGraph,UnipartiteGraph,PipsTree,
+export AbstractModelGraph, ModelGraph, SolutionGraph, ModelTree, JuMPGraphModel, JuMPGraph, BipartiteGraph, UnipartiteGraph, PipsTree,
+
+ModelNode, LinkingEdge, LinkConstraint,
+
 
 #Solver Constructs
-BendersSolver,LagrangeSolver,PipsSolver,
+AbstractPlasmoSolver,BendersSolver,LagrangeSolver,
 
 load_pips,
 
@@ -69,7 +71,7 @@ include("macros.jl")
 
 include("aggregation.jl")
 
-include("partition.jl")
+include("community_detection.jl")
 
 include("graph_transformations/modeltree.jl")
 
@@ -88,12 +90,12 @@ function __init__()
 end
 
 
-if haskey(Pkg.installed(),"MPI")
-#External Solver Interfaces
-    include("solver_interfaces/wrapped_solvers.jl")
-
-    include("solver_interfaces/plasmoPipsNlpInterface.jl")
-    using .PlasmoPipsNlpInterface
-end
+# if haskey(Pkg.installed(),"MPI")
+# #External Solver Interfaces
+#     include("solver_interfaces/wrapped_solvers.jl")
+#
+#     include("solver_interfaces/plasmoPipsNlpInterface.jl")
+#     using .PlasmoPipsNlpInterface
+# end
 
 end

@@ -1,6 +1,6 @@
 # Tutorials
 
-## Convert a ModelGraph to JuMP Model
+## Convert `ModelGraph` to JuMP `Model`
 
 ```julia
 using JuMP
@@ -47,7 +47,7 @@ links = getlinkconstraints(jump_model)
 
 getdual(links[1])
 ```
-## Solve ModelGraph with the LagrangeSolver
+## Using the `LagrangeSolver`
 
 ```julia
 using JuMP
