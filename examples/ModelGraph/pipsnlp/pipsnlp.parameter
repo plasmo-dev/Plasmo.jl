@@ -1,0 +1,79 @@
+!-------------------------------------------------------------------------
+!		General Options
+!-------------------------------------------------------------------------
+! print out level  (1)
+prtLvl 1
+! convergence tolerance (1e-6)
+conv_tol 1e-6
+! max number of iterations (500)
+max_iter 500
+! How to deal with the parallel setting. (0): do not adding slacks  1: adding slacks
+AddSlackParallelSetting 0
+
+!-------------------------------------------------------------------------
+!		Options about Iterative Refinement (IR)
+!-------------------------------------------------------------------------
+! do IR for the Augmented system. 0: do not perform    (1): perform it
+DoIR_Aug 1
+! do IR for the full KKT system. (0): do not perform    1: perform it
+DoIR_Full 0
+! Max number if IR iterations (10)
+MaxIR 10
+! tolerance of IR (1e-12)
+IRtol 1e-12
+
+!-------------------------------------------------------------------------
+!		Treatment of the Schur complement (first-stage)
+!-------------------------------------------------------------------------
+! 1. form dense Schur complement and solve with LAPACK
+! 3: compute and form a sparsified Schur complement and solve with sparse
+! solver, such as MUMPS (MPI)
+!
+! Do not use other values since they are experimental and aren't robust
+! or have been replaced by 3 (i.e., value of 2).
+BuildSchurComp 1
+! Tolerance used to decide which elements in Schur complement are zeros.
+! default 0. Use a small positive val to obtain a sparser Schur complement.
+AbsTolForZero 0
+
+
+!-------------------------------------------------------------------------
+!		linear solver
+!-------------------------------------------------------------------------
+! 	0:Ma27 	(1):Ma57  	2:pardiso 3:Umfpack
+SymLinearSolver 1
+!  	HSL pivot level. range is (0,0.5],  0:fast, 0.5:stable 	(1e-4)
+HSL_PivotLV		1e-4
+! MA57 Ordering method: (5) automatic choice(MA47 or Metis); 4 use Metis (ND); 3 min degree ordering as in MA27; 2 use MC47;
+MA57_Ordering 5
+
+!-------------------------------------------------------------------------
+!		about inertia-free test
+!-------------------------------------------------------------------------
+! (0): test inertia   1: do dWd test  2: tWt test (set d=n+t)
+dWd_test 0
+! (0): do not perform the dWd/tWt test for soc step  1: perform test
+dWd_test_soc	0
+! (1e-10): this is the constant used in test dWd >= kappa_tWt d'd
+kappa_tWt	1e-10
+! add mu in the test dWd >= kappa_tWt * mu * d'd   (1): add mu	0: without mu
+kappaWithMu	1
+
+
+!-------------------------------------------------------------------------
+!		filter line search algorithm
+!-------------------------------------------------------------------------
+! second order correction (SOC).  0: do not perform SOC   (1): perform second order correction
+DoSOC	1
+! Filter 0: do not perform filter test   (1): perform filter test
+UseFilter	1
+! reset Filter, this is the max number of previous iter rejected by filter. 0: do not apply    (5): reset
+FilterResetStep		5
+! tiny step test. 0: do not perform tiny step test    (1): perform tiny step test
+DoTinyStepTest	1
+! assume Mat is always singular once detected. (0): do not perform    1: perform it
+AssumeMatSingular	0
+! check constraint violation in switching condition	0: do not perform    1: perform it
+CheckSmallConstVio	1
+! max number of line search  (50)
+LineSearchMatStep	50
