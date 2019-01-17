@@ -11,7 +11,16 @@ create_node(tree::PipsTree) = ModelNode()
 create_edge(tree::PipsTree) = LinkingEdge()
 
 function addmaster!(tree::PipsTree)
-    master = add_node!(tree)
+    basegraph = getbasegraph(tree)
+    LightGraphs.add_vertex!(basegraph.lightgraph)
+    index = LightGraphs.nv(basegraph.lightgraph)
+    label = Symbol("node"*string(index))
+
+    master = create_node(tree)                        #create a node for the given graph type
+    basenode = getbasenode(master)
+    basenode.indices[basegraph] = index             #Set the index of this node in this basegraph
+    add_node!(basegraph.nodedict,master,index)
+
     tree.master_node_index = getindex(tree,master)
     return master
 end
