@@ -140,8 +140,14 @@ function create_pips_tree(model_graph::ModelGraph,partitions::Vector{Vector{Int6
                 local_linear_terms = []
                 for i = 1:length(new_linear_terms)
                     agg_var = new_linear_terms[i][2]
+                    agg_col = agg_var.col
                     if getnode(agg_var) != agg_node                     #if the variable belongs to a different node
                         ghost_var = @variable(getmodel(agg_node))       #create a ghost variable
+                        setlowerbound(ghost_var,agg_var.m.colLower[agg_col])
+                        setupperbound(ghost_var,agg_var.m.colUpper[agg_col])
+                        setcategory(ghost_var,agg_var.m.colCat[agg_col])
+                        setvalue(ghost_var,getvalue(agg_var))
+
                         push!(local_linear_terms,(new_linear_terms[i][1],ghost_var))                #swap out variable
                         if haskey(ghost_dict,i)
                             push!(ghost_dict[i],ghost_var)
@@ -167,8 +173,14 @@ function create_pips_tree(model_graph::ModelGraph,partitions::Vector{Vector{Int6
 
             #Add linkconstraint to force consensus among corresponding ghost and local variables
             for i = 1:length(new_linear_terms)
-                if haskey(ghost_dict,i)  #if there are ghost vars for this term, create a master variable
+                if haskey(ghost_dict,i)         #if there are ghost vars for this term, create a master variable
                     ghost_master_var = @variable(getmodel(master))
+                    local_var = local_dict[i]
+                    local_col = local_var.col
+                    setlowerbound(ghost_master_var,local_var.m.colLower[local_col])
+                    setupperbound(ghost_master_var,local_var.m.colUpper[local_col])
+                    setcategory(ghost_master_var,local_var.m.colCat[local_col])
+                    setvalue(ghost_master_var,getvalue(local_var))
                     for ghost_var in ghost_dict[i]
                         @linkconstraint(pips_tree,ghost_master_var == ghost_var)
                     end
@@ -183,15 +195,17 @@ end
 #Copy the solution from the aggregated
 function setsolution(tree::PipsTree,graph::ModelGraph)
     for tree_node in getnodes(tree)
-        model = getmodel(tree_node)
-        jump_graph = getgraph(model)
-        for node in getnodes(model)
-            index = getindex(jump_graph,node)
-            node2 = getnode(graph,index)       #get the corresponding node in the original graph
-            for i = 1:num_var(node)
-                node1_var = getnodevariable(node,i)
-                node2_var = getnodevariable(node2,i)
-                setvalue(node2_var,getvalue(node1_var))
+        model = getmodel(tree_node) #TODO IGNORE THE ROOT NODE IF IT WAS LIFTED
+        if is_graphmodel(model)
+            jump_graph = getgraph(model)
+            for node in getnodes(model)
+                index = getindex(jump_graph,node)
+                node2 = getnode(graph,index)       #get the corresponding node in the original graph
+                for i = 1:num_var(node)
+                    node1_var = getnodevariable(node,i)
+                    node2_var = getnodevariable(node2,i)
+                    setvalue(node2_var,getvalue(node1_var))
+                end
             end
         end
     end
