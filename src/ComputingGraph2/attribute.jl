@@ -1,11 +1,11 @@
 #A workflow node attribute.  Has local and global values to manage time synchronization
-mutable struct Attribute
+mutable struct NodeAttribute <: AbstractAttribute
     node::AbstractDispatchNode
     label::Symbol
     local_value::Any   #local to the node
     global_value::Any
-    out_channels::Vector{AbstractChannel}
-    in_channels::Vector{AbstractChannel}
+    out_edges::Vector{AbstractCommunicationEdge}
+    in_edges::Vector{AbstractCommunicationEdge}
 end
 Attribute(node::AbstractDispatchNode) = Attribute(node,gensym(),nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
 Attribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())

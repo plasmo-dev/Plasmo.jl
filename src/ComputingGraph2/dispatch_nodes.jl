@@ -6,7 +6,7 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     node_tasks::Dict{Symbol,NodeTask}              #the actual function (tasks) to call
     state_manager::StateManager
 
-    task_triggers::Dict{Attribute,NodeTask}
+    task_triggers::Dict{Attribute,NodeTask} #action_triggers
 
     task_results::Dict{NodeTask,Attribute}
 
@@ -44,10 +44,8 @@ PlasmoGraphBase.create_node(graph::Workflow) = DispatchNode()
 function add_dispatch_node!(graph::ComutingGraph;store_history = true)#;continuous = false)
     node = add_node!(graph)
     store_history == true && (node.history = Vector{Tuple}())
-    state_manager = node.state_manager
-    addtransition!(state_manager,State(:idle),Signal(:error),State(:error))
-    addtransition!(state_manager,State(:idle),Signal(:off),State(:inactive))
-
+    addtransition!(node,State(:idle),Signal(:error),State(:error))
+    addtransition!(node,State(:idle),Signal(:off),State(:inactive))
     #Set suppressed signals by default
     #suppresssignal!(state_manager,Signal(:scheduled,:Any))
     return node

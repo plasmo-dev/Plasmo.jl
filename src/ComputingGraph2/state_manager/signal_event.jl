@@ -9,7 +9,7 @@ mutable struct SignalEvent <: AbstractEvent
     priority::Int
     #localtime::Float64     #Local time of the target
     result::Any            #the result after evaluating the signal
-    status::event_status   #the event status
+    #status::event_status   #the event status
 end
 SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget) = SignalEvent(time,signal,target,0,0,Nullable(Any),1)  #idle by default
 SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget,priority::Int64) = SignalEvent(time,signal,target,priority,0,Nullable(Any),1)
@@ -31,8 +31,8 @@ getpriority(event::AbstractEvent) = event.priority
 getlocaltime(sigevent::SignalEvent) = sigevent.localtime
 
 #Call a signal event (run its functions with its arguments)
-function call!(queue::AbstractSignalQueue,signal_event::AbstractEvent; priority_map = Dict())
-    result = evaluate_signal!(coordinator,signal_event.signal,signal_event.target,priority_map = priority_map)  #call the node dispatch function
+function call!(squeue::AbstractSignalQueue,signal_event::AbstractEvent; priority_map = Dict())
+    result = evaluate_signal!(squeue,signal_event.signal,signal_event.target)#,priority_map = priority_map)  #call the node dispatch function
     signal_event.result = result
     signal_event.status = complete
     return result

@@ -5,7 +5,9 @@ mutable struct StateManager <: AbstractStateManager
     states::Vector{State}            #possible states
     current_state::State             #current state
     signals::Vector{AbstractSignal}  #signal the manager recognizes
-    transition_map::Dict{Tuple{State,AbstractSignal},Transition}             #Allowable transitions for this state manager
+    transition_map::Dict{Tuple{State,AbstractSignal},State} , # Transition}             #Allowable transitions for this state manager
+    action_map::Dict{Tuple{State,AbstractSignal},Action}
+    return_signal_map::Dict{AbstractSignal,SignalTarget}
     suppressed_signals::Vector{AbstractSignal}
     #local_time::Number
     #initial_signal::Union{Nothing,AbstractSignal}
@@ -79,6 +81,19 @@ end
 function addbroadcasttarget!(transition::Transition,target::SignalTarget)
     if !(target in transition.output_signal_targets)
         push!(transition.output_signal_targets,target)
+    end
+end
+
+function runtransition!(SM::StateManager,transition::Transition,triggering_signal::AbstractSignal)
+    current_state = getcurrentstate(SM)
+    if current_state == transition.starting_state
+        new_state = transition.new_state
+        setstate(SM,new_state)
+        result = run!(transition.action,triggering_signal)
+        return result  #returns signals
+    else
+        #NOTE Return something more helpful
+        return nothing
     end
 end
 

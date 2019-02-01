@@ -56,21 +56,24 @@ function evaluate_signal!(queue::SignalQueue,signal::AbstractSignal,target::Sign
         return nothing
     end
 
-    check_signal = Signal(signal)   #Convert data signal to a simple signal
-    if !(tuple(SM.current_state,check_signal) in keys(SM.transition_map))  #Or if it's not suppressed
+    #check_signal = Signal(signal)   #Convert data signal to a simple signal
+    check_signal = signal
+    #if !(tuple(SM.current_state,check_signal) in keys(SM.transition_map))  #Or if it's not suppressed
+    if !(hastransition(SM,check_signal))
         warn("no transition for $(SM.current_state) + $signal on $SM")
         return nothing
     end
 
     transition = SM.transition_map[SM.current_state,check_signal]
 
-    signal_pairs = runtransition!(SM,transition,signal)    #run the transition action.  Returns vector of signal delay pairs
-    #Now queue output signals if there are any
-    for signal_pair in signal_pairs
+    #signal_pairs = runtransition!(SM,transition,signal)    #run the transition action.  Returns vector of return signals
+    return_signals = runtransition!(SM,transition)
+    #Now queue return signals if there are any
+    for return_signal in return_signals
         for target in transition.output_signal_targets
             signal = signal_pair.first
             delay = signal_pair.second
-            schedulesignal(queue,signal,target,now(queue) + delay,local_time = getlocaltime(target),priority_map = priority_map)
+            schedulesignal(queue,signal,target,now(queue) + delay,local_time = getlocaltime(target))#,priority_map = priority_map)
         end
     end
 end

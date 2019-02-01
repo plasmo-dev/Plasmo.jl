@@ -49,13 +49,13 @@ function execute!(queue::SignalQueue,executor::AbstractExecutor)#;priority_map =
     end
 end
 
-function step(coordinator::SignalCoordinator;priority_map = Dict())
-    isempty(getqueue(coordinator)) && throw(StopWorkflow("Queue is Empty"))
-    (signal_event, priority_key) = DataStructures.peek(coordinator.queue)
+function step(squeue::SignalQueue)#;priority_map = Dict())
+    isempty(getqueue(coordinator)) && throw(QueueComplete("Queue is Empty"))
+    (signal_event, priority_key) = DataStructures.peek(squeue.queue)
     #Dequeue the event function
-    DataStructures.dequeue!(getqueue(coordinator))
-    coordinator.time = priority_key.time
-    task = run!(coordinator,signal_event,priority_map = priority_map)
+    DataStructures.dequeue!(squeue.queue))
+    squeue.time = priority_key.time
+    task = run!(squeue,signal_event)#,priority_map = priority_map)
 end
 
 #run the next item in the schedule with the given executor

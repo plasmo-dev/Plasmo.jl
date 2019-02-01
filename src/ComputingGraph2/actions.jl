@@ -7,13 +7,14 @@
 # Node Actions
 #################################
 #Schedule a node to run given a delay
-function schedule_node_task(signal::AbstractSignal,node_task::NodeTask)
-    delay = getscheduledelay(node_task)
-    signal_now = Signal(:scheduled,node_task)
+function schedule_node_task(node_task::NodeTask,delay::Float64)
+    #delay = getscheduledelay(node_task)
+    #signal_now = Signal(:scheduled,node_task)
     delayed_signal = Signal(:execute,node_task)
     return [Pair(signal_now,0),Pair(delayed_signal,delay)]
 end
 
+#NOTE Just queue tasks 
 function schedule_node_task_during_synchronize(signal::AbstractSignal,node::AbstractDispatchNode,node_task::NodeTask)
     #Put the execute signal in the node queue.  This signal will get evaluated after synchronization
     push!(node.signal_queue,Signal(:execute,node_task))
@@ -44,7 +45,7 @@ end
 function queue_node_task(node_task::NodeTask)
 end
 
-function execute_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode,node_task::NodeTask)
+function execute_node_task(workflow::AbstractWorkflow,node::AbstractDispatchNode,node_task::NodeTask)
 #try
     run!(node_task)
     result_attribute = getworkflowattribute(node,getlabel(node_task))
@@ -61,7 +62,7 @@ function execute_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,nod
 end
 
 #Finalize node task results
-function finalize_node_task(signal::AbstractSignal,node::AbstractDispatchNode,node_task::NodeTask)
+function finalize_node_task(node::AbstractDispatchNode,node_task::NodeTask)
     compute_time = getcomputetime(node_task)
     return_signals = Vector{Pair{Signal,Float64}}()
 

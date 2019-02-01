@@ -17,6 +17,11 @@ end
 Signal(sym::Symbol) = Signal(sym,nothing,nothing)
 Signal() = Signal(:null,nothing,nothing)
 
+struct ReturnSignal <: AbstractSignal
+    label::Symbol
+    value::Any
+end
+
 # #A signal carrying information
 # mutable struct DataSignal <: AbstractSignal
 #     label::Symbol

@@ -11,12 +11,17 @@ TransitionAction() = TransitionAction((signal::AbstractSignal) -> [Pair(Signal(:
 TransitionAction(func::Function) = TransitionAction(func,[],Dict(),Vector{Pair{Signal,Float64}}())
 TransitionAction(func::Function,args::Vector) = TransitionAction(func,args,Dict(),Vector{Pair{Signal,Float64}}())
 
+# function run!(action::TransitionAction,triggering_signal::AbstractSignal)  #Transition action and signal that triggered it
+#     action.result = action.func(triggering_signal,action.args...,action.kwargs...)
+#     return action.result  #will be a vector of signals and times
+# end
 
-#NOTE Makes more sense to pass the triggering signal to the transition action
-function run!(action::TransitionAction,triggering_signal::AbstractSignal)  #Transition action and signal that triggered it
-    action.result = action.func(triggering_signal,action.args...,action.kwargs...)
-    return action.result  #will be a vector of signals and times
-end
+function run!(action::TransitionAction) = action.result = action.func(action.args...,action.kwargs...)
+
+# function run!(action::TransitionAction)  #Transition action and signal that triggered it
+#     action.result = action.func(action.args...,action.kwargs...)
+#     return action.result  #will be a vector of signals and times
+# end
 
 #############################################
 # Transition
@@ -26,14 +31,15 @@ mutable struct Transition
     input_signal::AbstractSignal
     new_state::State
     action::TransitionAction
-    output_signal_targets::Vector{SignalTarget}
+#    return_signal_targets::Vector{SignalTarget}
 end
 Transition() =  Transition(State(),Signal(),State(),TransitionAction(),SignalTarget[])
 gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
 settransitionaction(transition::Transition,action::TransitionAction) = transition.action = action
 
-function runtransition(transition::Transition)
-end
+# function runtransition!(transition::Transition)
+#
+# end
 
 
 

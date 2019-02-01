@@ -61,9 +61,12 @@ connect!,setdelay,getdelay
 abstract type AbstractWorkflow <: AbstractPlasmoGraph end
 abstract type AbstractDispatchNode <: AbstractPlasmoNode end
 abstract type AbstractCommunicationEdge  <: AbstractPlasmoEdge end
+
+
+#NOTE: Remove.  A Channel would be a collection of edges between two nodes
 abstract type AbstractChannel  end
 
-
+abstract type AbstractAttribute end
 abstract type AbstractEvent end
 abstract type AbstractSignal end
 abstract type AbstractStateManager end
