@@ -1,23 +1,23 @@
 #############################################
 # State Manager
 #############################################
+#local_time::Number
+#initial_signal::Union{Nothing,AbstractSignal}
 mutable struct StateManager <: AbstractStateManager
-    states::Vector{State}            #possible states
+    valid_states::Vector{State}            #possible states
     current_state::State             #current state
-    signals::Vector{AbstractSignal}  #signal the manager recognizes
+    valid_signals::Vector{AbstractSignal}  #signal the manager recognizes
     transition_map::Dict{Tuple{State,AbstractSignal},State} , # Transition}             #Allowable transitions for this state manager
     action_map::Dict{Tuple{State,AbstractSignal},Action}
-    return_signal_map::Dict{AbstractSignal,SignalTarget}
+    broadcast_map::Dict{AbstractSignal,SignalTarget}
     suppressed_signals::Vector{AbstractSignal}
-    #local_time::Number
-    #initial_signal::Union{Nothing,AbstractSignal}
 end
 
 #Constructor
 StateManager() = StateManager(State[],State(),Signal[],Dict{Tuple{State,AbstractSignal},Transition}(),nothing,Signal[],0)
 
 getsignals(SM::StateManager) = SM.signals
-getinitialsignal(SM::StateManager) = SM.initial_signal
+#getinitialsignal(SM::StateManager) = SM.initial_signal
 getstates(SM::StateManager) = SM.states
 gettransitions(SM::StateManager) = collect(values(SM.transition_map))
 gettransition(SM::StateManager,state::State,signal::AbstractSignal) = SM.transition_map[tuple(state,signal)]
@@ -31,42 +31,40 @@ addstate!(SM::StateManager,state::Symbol) = addstate!(SM,State(state))
 suppresssignal!(SM::StateManager,signal::Signal) = push!(SM.suppressed_signals,signal)
 unsuppresssignal!(SM::StateManager,signal::Signal) = filter!(x -> x != signal,SM.suppressed_signals)
 
-function setstate(SM::StateManager,state::State)
-    @assert state in SM.states
-    SM.current_state = state
-end
-
-setstate(SM::StateManager,state::Symbol) = setstate(SM,State(state))
-
+# Add valid states
 function addstates!(SM::StateManager,states::Vector{State})
     append!(SM.states,states)
 end
-
 function addstates!(SM::StateManager,states::Vector{Symbol})
     states = [State(state) for state in states]
     append!(SM.states,states)
 end
 
-function setstates(SM::StateManager,states::Vector{State})
+# Set current state
+function setcurrentstate(SM::StateManager,state::State)
+    @assert state in SM.states
+    SM.current_state = state
+end
+setstate(SM::StateManager,state::Symbol) = setstate(SM,State(state))
+
+# Set valid states
+function setvalidstates(SM::StateManager,states::Vector{State})
     @assert SM.current_state in states
     SM.states = states
 end
-
-function setstates(SM::StateManager,states::Vector{Symbol})
+function setvalidstates(SM::StateManager,states::Vector{Symbol})
     states = [State(state) for state in states]
     @assert SM.current_state in states
     SM.states = states
 end
 
-function setinitialsignal(SM::StateManager,signal::AbstractSignal)
-    SM.initial_signal = signal
-end
+
+const Transition = Tuple{State,AbstractSignal,State}
 
 function addtransition!(SM::StateManager,state1::State,signal::AbstractSignal,state2::State;action = TransitionAction(),targets = SignalTarget[])
-    transition = Transition(state1,signal,state2,action,targets)
-    addtransition!(SM,transition)
-    #SM.transition_map[tuple(state1,signal)] = transition
-    return transition
+    SM.transition_map[tuple(state,signal)] = state2
+    SM.action_map[tuple(state,signal)] = action
+    SM.broadcast_map[tuple(state,signal)] = targets
 end
 
 function addtransition!(SM::StateManager,transition::Transition)
@@ -77,6 +75,11 @@ function addtransition!(SM::StateManager,transition::Transition)
     return transition
 end
 
+function addbroadcasttarget!(SM::StateManager,state1::State,signal::AbstractSignal,output_target::SignalTarget)
+    if !(target in transition.output_signal_targets)
+        push!(transition.output_signal_targets,target)
+    end
+end
 
 function addbroadcasttarget!(transition::Transition,target::SignalTarget)
     if !(target in transition.output_signal_targets)
@@ -84,28 +87,15 @@ function addbroadcasttarget!(transition::Transition,target::SignalTarget)
     end
 end
 
-function runtransition!(SM::StateManager,transition::Transition,triggering_signal::AbstractSignal)
-    current_state = getcurrentstate(SM)
-    if current_state == transition.starting_state
-        new_state = transition.new_state
-        setstate(SM,new_state)
-        result = run!(transition.action,triggering_signal)
-        return result  #returns signals
-    else
-        #NOTE Return something more helpful
-        return nothing
-    end
+function runtransition!(SM::StateManager,input_signal::Signal)
+    start_state = getcurrentstate(SM)
+    new_state = SM.transition_map[start_state,input_signal])
+    setstate(SM,new_state)
+    action = SM.action_map[start_state,input_signal]
+    return_signal = run!(action)
+    return return_signal
 end
 
-function runtransition!(SM::StateManager,transition::Transition,triggering_signal::AbstractSignal)
-    current_state = getcurrentstate(SM)
-    if current_state == transition.starting_state
-        new_state = transition.new_state
-        setstate(SM,new_state)
-        result = run!(transition.action,triggering_signal)
-        return result  #returns signals
-    else
-        #NOTE Return something more helpful
-        return nothing
-    end
-end
+# function setinitialsignal(SM::StateManager,signal::AbstractSignal)
+#     SM.initial_signal = signal
+# end

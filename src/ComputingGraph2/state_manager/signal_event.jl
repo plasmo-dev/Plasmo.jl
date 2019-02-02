@@ -15,13 +15,6 @@ SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget) = SignalE
 SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget,priority::Int64) = SignalEvent(time,signal,target,priority,0,Nullable(Any),1)
 
 
-#@enum event_status idle = 1 scheduled = 2 complete = 3 error = 4
-
-# set_idle(event::AbstractEvent) = event.status = idle
-# set_scheduled(event::AbstractEvent) = event.status = scheduled
-# set_complete(event::AbstractEvent) = event.status = complete
-# set_error(event::AbstractEvent) = event.status = error
-
 #Abstract Event functions
 gettime(event::AbstractEvent) = event.time
 getlocaltime(event::AbstractEvent) = 0
@@ -37,3 +30,10 @@ function call!(squeue::AbstractSignalQueue,signal_event::AbstractEvent; priority
     signal_event.status = complete
     return result
 end
+
+#@enum event_status idle = 1 scheduled = 2 complete = 3 error = 4
+
+# set_idle(event::AbstractEvent) = event.status = idle
+# set_scheduled(event::AbstractEvent) = event.status = scheduled
+# set_complete(event::AbstractEvent) = event.status = complete
+# set_error(event::AbstractEvent) = event.status = error

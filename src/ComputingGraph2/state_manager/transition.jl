@@ -26,16 +26,16 @@ function run!(action::TransitionAction) = action.result = action.func(action.arg
 #############################################
 # Transition
 #############################################
-mutable struct Transition
-    starting_state::State
-    input_signal::AbstractSignal
-    new_state::State
-    action::TransitionAction
-#    return_signal_targets::Vector{SignalTarget}
-end
-Transition() =  Transition(State(),Signal(),State(),TransitionAction(),SignalTarget[])
-gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
-settransitionaction(transition::Transition,action::TransitionAction) = transition.action = action
+# mutable struct Transition
+#     starting_state::State
+#     input_signal::AbstractSignal
+#     new_state::State
+#     action::TransitionAction
+# #    return_signal_targets::Vector{SignalTarget}
+# end
+# Transition() =  Transition(State(),Signal(),State(),TransitionAction(),SignalTarget[])
+# gettransitionfunction(transition::Transition) = transition.action  #return a dispatch function
+# settransitionaction(transition::Transition,action::TransitionAction) = transition.action = action
 
 # function runtransition!(transition::Transition)
 #
