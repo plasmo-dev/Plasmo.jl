@@ -1,36 +1,3 @@
-##########################
-# Priority Value
-##########################
-struct EventPriorityValue
-    time::Float64
-    global_priority::Int           #smaller value means higher priority
-    local_priority::Float64        #local_time::Float64    #local_time is too specific
-    id::Int                 #each key should be unique
-end
-
-#Order:
-#0. Time -- Lower times come first
-#1. Global Priority: All equal by default, can change accordingly
-#2. Local Priority
-#3. ID: all dispatch functions are unique.  Use this as a tie-breaker for serial processing
-function isless(val1::EventPriorityValue,val2::EventPriorityValue) :: Bool
-    #check times.  sooner time comes first
-    if val1.time < val2.time
-        return true
-    #if equal times, but different priorities
-    elseif val1.time == val2.time && val1.priority < val2.priority
-        return true
-    #if time and types are equal, use priority
-elseif val1.time == val2.time &&  val1.priority  == val2.priority #&& val1.local_time < val2.local_time
-        return true
-    #if everything is equal, use id numbers
-elseif val1.time == val2.time && val1.priority == val2.priority && val1.id < val2.id # &&val1.local_time == val2.local_time && val1.id < val2.id
-        return true
-    else
-        return false
-    end
-end
-
 mutable struct SignalQueue <: AbstractSignalQueue
     time::Float64
     global_priority_map::Dict{Symbol,Int}
@@ -48,10 +15,6 @@ function evaluate_signal!(queue::SignalQueue,signal::AbstractSignal,target::Sign
     SM = getstatemanager(target)
 
     signal in SM.suppressed_signals && return nothing
-    # if (signal in SM.suppressed_signals)
-    #     return nothing
-    # end
-
     if !(signal in getsignals(SM)) #Check if the signal isn't recognized
         warn("signal $signal not recognized by target $SM")
         return nothing
@@ -112,9 +75,9 @@ function setpriority(signal_event::AbstractEvent,signal::AbstractSignal;priority
     end
 end
 
-function setlocaltime(signal_event::AbstractEvent,local_time::Number)
-    signal_event.localtime = local_time
-end
+# function setlocaltime(signal_event::AbstractEvent,local_time::Number)
+#     signal_event.localtime = local_time
+# end
 
 #Schedule a signal to occur
 function queuesignal!(queue::SignalQueue,signal_event::AbstractEvent)

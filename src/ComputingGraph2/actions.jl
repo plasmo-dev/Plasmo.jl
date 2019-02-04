@@ -1,85 +1,70 @@
 ##########################################################
-# Define Transition Actions for a Workflow
-# The Manager will broadcast the signal to the queue
+# Define Transition Actions for a Computing Graph
+# Returned signals will be queued in its Signal Queue
 ##########################################################
 
 #################################
 # Node Actions
 #################################
-#Schedule a node to run given a delay
-function schedule_node_task(node_task::NodeTask,delay::Float64)
-    #delay = getscheduledelay(node_task)
-    #signal_now = Signal(:scheduled,node_task)
-    delayed_signal = Signal(:execute,node_task)
-    return [Pair(signal_now,0),Pair(delayed_signal,delay)]
+#Schedule a node to run given a delay #delay = getscheduledelay(node_task)  #signal_now = Signal(:scheduled,node_task)
+function schedule_node_task(graph::AbstractComputingGraph,node_task::NodeTask,delay::Float64)
+    execute_signal = Signal(:execute,node_task)
+    queuesignal!(graph,execute_signal,now(graph) + delay)
+    #return ReturnSignal(execute_signal,delay)
 end
-
-#NOTE Just queue tasks 
-function schedule_node_task_during_synchronize(signal::AbstractSignal,node::AbstractDispatchNode,node_task::NodeTask)
-    #Put the execute signal in the node queue.  This signal will get evaluated after synchronization
-    push!(node.signal_queue,Signal(:execute,node_task))
-    return [Pair(Signal(:signal_queued),0)]
-end
-
-function pop_node_queue(signal::AbstractSignal,node::AbstractDispatchNode)
-    if !isempty(node.signal_queue)
-        return_signal = shift!(node.signal_queue)
-        return [Pair(return_signal,0)]
-    else
-        return [Pair(Signal(:nothing),0)]
-    end
-end
-
-#Run a node task
-# function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode)
-#     #try
-#         run!(node.node_task)  #run the computation task
-#         setattribute(node,:result,get(node.node_task.result))
-#         node.state_manager.local_time = now(workflow) + node.compute_time
-#         return [Pair(Signal(:complete),0)]
-#     #catch #which error?
-#         return [Pair(Signal(:error),0)]
-#     #end
-# end
 
 function queue_node_task(node_task::NodeTask)
+    node = getnode(node_task)
+    queuetask!(node,node_task)
+    return ReturnSignal()
 end
 
-function execute_node_task(workflow::AbstractWorkflow,node::AbstractDispatchNode,node_task::NodeTask)
-#try
-    run!(node_task)
-    result_attribute = getworkflowattribute(node,getlabel(node_task))
-    updateattribute(result_attribute,node_task.result)        #updates local value
-    node.local_time = now(workflow) + node_task.compute_time
+#Put the execute signal in the node queue.  This signal will get evaluated after synchronization
+#push!(node.signal_queue,Signal(:execute,node_task))
+#return [Pair(Signal(:signal_queued),0)]
 
-    if node.history != nothing
-        push!(node.history,(now(workflow),node_task.label,node_task.compute_time))
+function execute_node_task(graph::AbstractComputingGraph,node_task::NodeTask)
+    try
+        run!(node_task)     #could update node local attributes
+        result_attribute = getworkflowattribute(node,getlabel(node_task))
+        updateattribute(result_attribute,node_task.result)        #updates local value
+
+        #Advance the node local time
+        node.local_time = now(graph) + getcomputetime(node_task)
+
+        if node.history != nothing
+            push!(node.history,(now(graph),node_task.label,node_task.compute_time))
+        end
+        return ReturnSignal(Signal(:finalize,node_task),getcomputetime(node_task))  #[Pair(Signal(:complete,node_task),0)]
+    catch #which error?
+        return ReturnSignal(Signal(:error,node_task),0)     #[Pair(Signal(:error,node_task),0)]
     end
-    return [Pair(Signal(:complete,node_task),0)]
-#catch #which error?
-    return [Pair(Signal(:error,node_task),0)]
-#end
+end
+
+function execute_next_task(graph::AbstractComputingGraph,node::ComputeNode)
+    node_task = next_task(node)
+    run!(node_task)
 end
 
 #Finalize node task results
-function finalize_node_task(node::AbstractDispatchNode,node_task::NodeTask)
-    compute_time = getcomputetime(node_task)
-    return_signals = Vector{Pair{Signal,Float64}}()
-
+function finalize_node_task(node_task::NodeTask)
+    finalize_time = getfinalizetime(node_task)      #Time spent in finalize state
+    return_signals = Vector{ReturnSignal}()
+    node = getnode(node_task)
     #for (key,attribute) in getattributes(node)
-    #TODO attribute update detection
-    for attribute in node.updated_attributes
-        if isoutconnected(attribute)
-            push!(return_signals,Pair(Signal(:synchronize_attribute,attribute),compute_time))
+    for attribute in node.updated_attributes  #NOTE Could try to instead do attribute update detection
+        if istrigger(attribute) || if isoutconnected(attribute) #if the attribute can trigger tasks or be sent to other nodes
+        #if isoutconnected(attribute)
+            push!(return_signals,ReturnSignal(:attribute_updated,attribute),finalize_time)
         end
     end
-    node.updated_attributes = Attribute[]
-    push!(return_signals,Pair(Signal(:synchronized,node_task),compute_time))
+    node.updated_attributes = Attribute[] #reset updated attributes
+    push!(return_signals,ReturnSignal(:back_to_idle,finalize_time))
     return return_signals
 end
 
 #Synchronize a node attribute
-function synchronize_attribute(signal::AbstractSignal,attribute::Attribute)
+function finalize_attribute(attribute::Attribute)
     attribute.global_value = attribute.local_value
     return [Pair(Signal(:attribute_updated,attribute),0)]
 end
@@ -143,4 +128,35 @@ end
 # function receive_attribute_while_synchronizing(signal::DataSignal,node::AbstractDispatchNode,attribute::Attribute)
 #     push!(node.signal_queue,signal)
 #     return [Pair(Signal(:attribute_received,attribute),0)]
+# end
+
+#NOTE: Shouldn't need this anymore
+# function pop_node_queue(signal::AbstractSignal,node::AbstractDispatchNode)
+#     if !isempty(node.signal_queue)
+#         return_signal = shift!(node.signal_queue)
+#         return [Pair(return_signal,0)]
+#     else
+#         return [Pair(Signal(:nothing),0)]
+#     end
+# end
+
+# Run a node task
+# function run_node_task(signal::AbstractSignal,workflow::AbstractWorkflow,node::AbstractDispatchNode)
+#     #try
+#         run!(node.node_task)  #run the computation task
+#         setattribute(node,:result,get(node.node_task.result))
+#         node.state_manager.local_time = now(workflow) + node.compute_time
+#         return [Pair(Signal(:complete),0)]
+#     #catch #which error?
+#         return [Pair(Signal(:error),0)]
+#     #end
+# end
+
+# #NOTE Just queue tasks
+# function execute_node_task_during_synchronize(node_task::NodeTask)
+#     node = getnode(node_task)
+#     #Put the execute signal in the node queue.  This signal will get evaluated after synchronization
+#
+#     push!(node.signal_queue,Signal(:execute,node_task))
+#     return [Pair(Signal(:signal_queued),0)]
 # end

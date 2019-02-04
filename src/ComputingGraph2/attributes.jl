@@ -2,17 +2,16 @@
 mutable struct NodeAttribute <: AbstractAttribute
     node::AbstractDispatchNode
     label::Symbol
-    local_value::Any   #local to the node
-    global_value::Any
+    local_value::Any    #local to the node
+    global_value::Any   #updated globally
     out_edges::Vector{AbstractCommunicationEdge}
     in_edges::Vector{AbstractCommunicationEdge}
 end
-Attribute(node::AbstractDispatchNode) = Attribute(node,gensym(),nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
-Attribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
-Attribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node,label,object,object,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+NodeAttribute(node::AbstractDispatchNode) = Attribute(node,gensym(),nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+NodeAttribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+NodeAttribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node,label,object,object,Vector{AbstractChannel}(),Vector{AbstractChannel}())
 
 # ==(attribute1::Attribute,attribute2::Attribute) = (attribute1.node == attribute2.node && attribute1.label == attribute2.label)
-
 #Attribute(node::AbstractDispatchNode,object::Any) = Attribute(node,gensym(),object,object)
 
 getnode(attribute::Attribute) = attribute.node
@@ -29,7 +28,21 @@ end
 isoutconnected(attribute::Attribute) = length(attribute.out_channels) > 0
 isinconnected(attribute::Attribute) = length(attribute.in_channels) > 0
 
-function string(attribute::Attribute)
+
+#A workflow node attribute.  Has local and global values to manage time synchronization
+mutable struct EdgeAttribute <: AbstractAttribute
+    edge::AbstractCommunicationEdge
+    label::Symbol
+    value::Any
+end
+Attribute(node::AbstractDispatchNode) = Attribute(node,gensym(),nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+Attribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+Attribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node,label,object,object,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+
+
+
+
+function string(attribute::AbstractAttribute)
     string(attribute.label)
 end
 print(io::IO, attribute::Attribute) = print(io, string(attribute))

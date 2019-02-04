@@ -1,7 +1,6 @@
-#include("../../src/PlasmoWorkflows2/PlasmoWorkflows.jl")
-using Plasmo.PlasmoWorkflows
+using Plasmo
 
-#some actions
+#some example actions
 function turn_on(signal::AbstractSignal,delay::Number)
     println("turned on")
     return [Pair(Signal(:turned_on),delay)]
@@ -19,7 +18,7 @@ function already_on(signal::AbstractSignal)
 end
 
 #Evaluates signals, tracks the event queue clock
-coordinator = SignalCoordinator()
+queue = SignalQueue()
 
 #State Machine 1
 manager1 = StateManager()
@@ -59,10 +58,10 @@ schedulesignal(coordinator,Signal(:turn_on),manager2,3)
 schedulesignal(coordinator,Signal(:turn_on),manager1,4)
 schedulesignal(coordinator,Signal(:turn_on),manager2,4)
 
-step(coordinator)
-step(coordinator)
-step(coordinator)
-step(coordinator)
+step(queue)
+step(queue)
+step(queue)
+step(queue)
 
 true
 #some syntax ideas

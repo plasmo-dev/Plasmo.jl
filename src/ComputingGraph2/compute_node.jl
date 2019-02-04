@@ -1,65 +1,54 @@
-#A discrete node gets scheduled on edge triggering
+#signal_queue::Vector{AbstractSignal}
+#history::Union{Nothing,Vector{Tuple}}
+#priority::Int                                  # Priority of signals this node produces
+
 mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     basenode::BasePlasmoNode
-    attributes::Dict{Symbol,Attribute}
-    #priority::Int                                  #Priority of signals this node produces
-    node_tasks::Dict{Symbol,NodeTask}               #the actual function (tasks) to call
-    state_manager::StateManager
-
-    task_triggers::Dict{Attribute,NodeTask}         #action_triggers
-
-    task_results::Dict{NodeTask,Attribute}
+    state_manager::StateManager                     # Underlying state manager
+    attributes::Dict{Symbol,Attribute}              #
+    node_tasks::Dict{Symbol,NodeTask}               # Tasks this node can run
+    task_triggers::Dict{AbstractSignal,NodeTask}    # Signals can trigger tasks
+    task_results::Dict{NodeTask,Attribute}          # Result attribute for a task
 
     updated_attributes::Vector{Attribute}
-    #signal_queue::Vector{AbstractSignal}
-    #history::Union{Nothing,Vector{Tuple}}
+
+    task_queue::DataStructures.PriorityQueue{NodeTask,TaskPriority} # Node contains a queue of tasks to execute
 
     function DispatchNode()
         node = new()
         node.basenode = BasePlasmoNode()
         node.state_manager = StateManager()
-        #result_attribute = Attribute(node,:result)
         node.attributes = Dict{Symbol,Attribute}()
-        #node.last_result = nothing
-        #node.local_time = 0
         node.node_tasks = Dict{Symbol,NodeTask}()
-
         node.action_triggers = Dict{Attribute,NodeTask}()
         node.task_results = Dict{NodeTask,Attribute}()
         node.updated_attributes = Attribute[]
-
-        node.signal_queue = AbstractSignal[]
         node.history = nothing
-        #setstates(node.state_manager,[:null,:idle,:scheduled,:computing,:synchronizing,:error,:inactive])
         addstates!(node.state_manager,[:idle,:inactive,:error])
         setstate(node.state_manager,:idle)
-        # suppresssignal!(node.state_manager,Signal(:nothing))
-        # suppresssignal!(node.state_manager,Signal(:signal_queued))
         return node
     end
 end
-PlasmoGraphBase.create_node(graph::Workflow) = DispatchNode()
+PlasmoGraphBase.create_node(graph::ComputingGraph) = DispatchNode()
 
 #Dispatch node runs when it gets communication updates
-function add_dispatch_node!(graph::ComutingGraph;store_history = true)#;continuous = false)
+function addnode!(graph::ComutingGraph;store_history = true)#;continuous = false)
     node = add_node!(graph)
     store_history == true && (node.history = Vector{Tuple}())
-    addtransition!(node,State(:idle),Signal(:error),State(:error))
-    addtransition!(node,State(:idle),Signal(:off),State(:inactive))
-    #Set suppressed signals by default
-    #suppresssignal!(state_manager,Signal(:scheduled,:Any))
+    addtransition!(node,State(:Any),Signal(:error),State(:error))
+    addtransition!(node,State(:Any),Signal(:off),State(:inactive))
     return node
 end
 
 addtransition!(node::DispatchNode) = addtransition!(node.state_manager,state1::State,signal::AbstractSignal,state2::State)
 
-function addnodetask!(workflow::Workflow,node::DispatchNode,label::Symbol,func::Function;args = (),kwargs = Dict(),compute_time = 0.0,schedule_delay = 0.0,continuous = false,triggered_by_attributes = Vector{Attribute}())
+function addnodetask!(graph::ComputingGraph,node::DispatchNode,label::Symbol,func::Function;args = (),kwargs = Dict(),compute_time = 0.0,schedule_delay = 0.0,continuous = false,triggered_by_attributes = Vector{Attribute}())
     node_task = NodeTask(label,func,args = args,kwargs = kwargs,compute_time = compute_time,schedule_delay = schedule_delay)
-    addnodetask!(workflow,node,node_task,continuous = continuous,triggered_by_attributes = triggered_by_attributes)
+    addnodetask!(graph,node,node_task,continuous = continuous,triggered_by_attributes = triggered_by_attributes)
     return node_task
 end
 
-function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;continuous = false,triggered_by_attributes = Vector{Attribute}())
+function addnodetask!(graph::ComputingGraph,node::DispatchNode,node_task::NodeTask;continuous = false,triggered_by_attributes = Vector{Attribute}())
     state_manager = getstatemanager(node)
 
     #Add task states
@@ -73,7 +62,7 @@ function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;
     addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:idle), action = TransitionAction(schedule_node_task,[node_task]))  #no target for produced signal (so it won't schedule)
 
     # addtransition!(state_manager,State(:scheduled,node_task),Signal(:execute,node_task),State(:computing,node_task),
-    # action = TransitionAction(run_node_task,[workflow,node,node_task]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
+    # action = TransitionAction(run_node_task,[graph,node,node_task]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
 
     addtransition!(state_manager,State(:idle),Signal(:execute,node_task),State(:executing,node_task),
     action = TransitionAction(execute_node_task,[graph,node,node_task]),targets = [node.state_manager])
@@ -85,11 +74,11 @@ function addnodetask!(workflow::Workflow,node::DispatchNode,node_task::NodeTask;
     action = TransitionAction(pop_node_queue,[node]),targets = [node.state_manager])  #Node is complete
 
     #Create a task result attribute
-    result_attribute = addworkflowattribute!(node,Symbol(string(node_task.label)))
+    result_attribute = addattribute!(node,Symbol(string(node_task.label)))
     node.task_results[node_task] = result_attribute
 
     #Add attribute transition for this task
-    for workflow_attribute in getworkflowattributes(node)
+    for workflow_attribute in getattributes(node)
         addtransition!(node.state_manager,State(:synchronizing,node_task),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing,node_task),
         action = TransitionAction(synchronize_attribute, [workflow_attribute]))#targets = update_notify_targets)
     end
@@ -152,7 +141,7 @@ function make_continuous!(node::DispatchNode,node_task::NodeTask)
 end
 
 #Add an attribute.  Update node transitions for when attributes are added.
-function addworkflowattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[])#,execute_on_receive = true)
+function addattribute!(node::DispatchNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[])#,execute_on_receive = true)
     workflow_attribute = Attribute(node,label,attribute)
     node.attributes[label] = workflow_attribute
 
@@ -178,20 +167,11 @@ function addworkflowattribute!(node::DispatchNode,label::Symbol,attribute::Any; 
     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
     return workflow_attribute
 end
-addworkflowattribute!(node::DispatchNode,label::Symbol;update_notify_targets = SignalTarget[]) = addworkflowattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
+addattribute!(node::DispatchNode,label::Symbol;update_notify_targets = SignalTarget[]) = addattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
 
-# function addattribute!(node::DispatchNode,label::Symbol; update_notify_targets = SignalTarget[])
-#     workflow_attribute = Attribute(node,label)
-#     node.attributes[label] = workflow_attribute
-#     addtransition!(node.state_manager,State(:synchronizing),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
-#     addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
-#     addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
-#     #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
-# end
-
-function addworkflowattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
+function addattributes!(node::DispatchNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
     for (key,value) in att_dict
-        addworkflowattribute!(node,key,value,execute_on_receive = execute_on_receive)
+        addattribute!(node,key,value,execute_on_receive = execute_on_receive)
     end
 end
 
@@ -203,9 +183,9 @@ function addtrigger!(node::DispatchNode,node_task::NodeTask,workflow_attribute::
 end
 
 
-getworkflowattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
-getworkflowattributes(node::DispatchNode) = values(node.attributes)
-setworkflowattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
+getattribute(node::DispatchNode,label::Symbol) = node.attributes[label]
+getattributes(node::DispatchNode) = values(node.attributes)
+setattribute(node::DispatchNode,label::Symbol,value::Any) = node.attributes[label].local_value = value
 
 
 
@@ -238,10 +218,10 @@ gettransition(node::AbstractDispatchNode, state::State,signal::Signal) = gettran
 gettransitions(node::AbstractDispatchNode) = gettransitions(node.state_manager)
 getcurrentstate(node::AbstractDispatchNode) = getcurrentstate(node.state_manager)
 
-
+#TODO: Make sure this works
 function getindex(node::DispatchNode,sym::Symbol)
     if sym in keys(node.attributes)
-        return getworkflowattribute(node,sym)
+        return getattribute(node,sym)
     elseif sym in keys(node.basenode.attributes)
         return getattribute(node,sym)
     else
@@ -249,19 +229,10 @@ function getindex(node::DispatchNode,sym::Symbol)
     end
 end
 
-##########################
-#Node Task
-##########################
-# set_node_task(node::AbstractDispatchNode,func::Function) = node.node_task = DispatchFunction(func)
-# set_node_task_arguments(node::AbstractDispatchNode,args::Vector{Any}) = node.node_task.args = args
-# set_node_task_arguments(node::AbstractDispatchNode,arg::Any) = node.node_task.args = [arg]
-# set_node_task_kwargs(node::AbstractDispatchNode,kwargs::Dict{Any,Any}) = node.node_task.kwargs = kwargs
-# set_node_compute_time(node::AbstractDispatchNode,time::Float64) = node.compute_time = time
-
 ########################################
 #Connect Nodes with Communication Edges
 ########################################
-function connect!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;send_attribute_updates = true,comm_delay = 0,schedule_delay = 0,continuous = false,start_time = 0)
+function connect!(workflow::ComputingGraph,attribute1::Attribute,attribute2::Attribute;send_attribute_updates = true,comm_delay = 0,schedule_delay = 0,continuous = false,start_time = 0)
     #is_connected(workflow,dnode1,dnode2) && throw("communication edge already exists between these nodes")
 
     #Default connection behavior
