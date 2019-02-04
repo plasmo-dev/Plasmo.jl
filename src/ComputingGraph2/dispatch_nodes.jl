@@ -3,10 +3,10 @@ mutable struct DispatchNode <: AbstractDispatchNode  #A Dispatch node
     basenode::BasePlasmoNode
     attributes::Dict{Symbol,Attribute}
     #priority::Int                                  #Priority of signals this node produces
-    node_tasks::Dict{Symbol,NodeTask}              #the actual function (tasks) to call
+    node_tasks::Dict{Symbol,NodeTask}               #the actual function (tasks) to call
     state_manager::StateManager
 
-    task_triggers::Dict{Attribute,NodeTask} #action_triggers
+    task_triggers::Dict{Attribute,NodeTask}         #action_triggers
 
     task_results::Dict{NodeTask,Attribute}
 

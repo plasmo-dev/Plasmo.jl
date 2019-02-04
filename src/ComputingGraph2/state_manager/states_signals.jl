@@ -2,7 +2,7 @@ struct State
     label::Symbol
     value::Any
 end
-State() = State(:null,nothing)
+State() = State(:nothing,nothing)
 State(label::Symbol) = State(label,nothing)
 #State(label::Symbol) = State(label)
 #TODO Define an ANY state
@@ -11,16 +11,25 @@ State(label::Symbol) = State(label,nothing)
 #Signal for mapping behaviors
 struct Signal <: AbstractSignal
     label::Symbol
-    value::Any  #Attribute, or other value to compare on
-    data::Any
+    value::Any      #Attribute, or other value to compare on
+    data::Any       #data associated with the signal
 end
 Signal(sym::Symbol) = Signal(sym,nothing,nothing)
-Signal() = Signal(:null,nothing,nothing)
+Signal() = Signal(:nothing,nothing,nothing)
 
+# A return signal gets returned from an Action
 struct ReturnSignal <: AbstractSignal
     label::Symbol
     value::Any
+    delay::Float64
+    #IDEA: A return signal could specify its broadcast targets
 end
+
+==(signal1::AbstractSignal,signal2::AbstractSignal) = (signal1.label == signal2.label && signal1.value == signal2.value)
+getlabel(signal::AbstractSignal) = signal.label
+getvalue(signal::AbstractSignal) = signal.value
+getdata(signal::AbstractSignal) = signal.data
+getdata(signal::ReturnSignal) = nothing
 
 # #A signal carrying information
 # mutable struct DataSignal <: AbstractSignal
@@ -32,9 +41,6 @@ end
 # #NOTE Just use a convert method here?
 # Signal(signal::DataSignal) = Signal(signal.label,signal.value)  #Convert data signal to a signal
 
-==(signal1::AbstractSignal,signal2::AbstractSignal) = (signal1.label == signal2.label && signal1.value == signal2.value)
-getlabel(signal::AbstractSignal) = signal.label
-getvalue(signal::AbstractSignal) = signal.value
-getdata(signal::AbstractSignal) = signal.data
+
 # getdata(signal::AbstractSignal) = nothing
 # getdata(signal::DataSignal) = signal.data

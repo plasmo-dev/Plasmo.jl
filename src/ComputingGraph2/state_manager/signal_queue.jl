@@ -36,7 +36,8 @@ mutable struct SignalQueue <: AbstractSignalQueue
     global_priority_map::Dict{Symbol,Int}
     queue::DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue} #the event queue
 end
-SignalQueue() = SignalQueue(0,DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue}())
+SignalQueue() = SignalQueue(0,Dict{Symbol,Int}(),DataStructures.PriorityQueue{AbstractEvent,EventPriorityValue}())
+
 now(queue::SignalQueue) = queue.time
 getcurrenttime(queue::SignalQueue) = now(queue)
 getqueue(queue::SignalQueue) = queue.queue
@@ -57,7 +58,7 @@ function evaluate_signal!(queue::SignalQueue,signal::AbstractSignal,target::Sign
     end
 
     #check_signal = Signal(signal)   #Convert data signal to a simple signal
-    check_signal = signal
+    input_signal = signal
     #if !(tuple(SM.current_state,check_signal) in keys(SM.transition_map))  #Or if it's not suppressed
     if !(hastransition(SM,check_signal))
         warn("no transition for $(SM.current_state) + $signal on $SM")
@@ -66,15 +67,18 @@ function evaluate_signal!(queue::SignalQueue,signal::AbstractSignal,target::Sign
 
     #action = SM.action_map[SM.current_state,check_signal]
     #transition = SM.transition_map[SM.current_state,check_signal]
-    new_state = SM.transition_map[SM.current_state,check_signal]
+    current_state = SM.current_state
+    new_state = SM.transition_map[SM.current_state,input_signal]
     #signal_pairs = runtransition!(SM,transition,signal)    #run the transition action.  Returns vector of return signals
     return_signals = runtransition!(SM,transition)
+    source = SM
     #Now queue return signals if there are any
     for return_signal in return_signals
-        for target in transition.output_signal_targets
-            signal = signal_pair.first
-            delay = signal_pair.second
-            schedulesignal(queue,signal,target,now(queue) + delay,local_time = getlocaltime(target))#,priority_map = priority_map)
+        #for target in transition.output_signal_targets
+        for target in SM.broadcast_map[tuple(current_state,input_signal)]
+            signal = Signal(return_signal)
+            delay = return_signal.delay
+            queuesignal!(queue,signal,source,target,now(queue) + delay,local_time = getlocaltime(target))#,priority_map = priority_map)
         end
     end
 end
@@ -113,12 +117,28 @@ function setlocaltime(signal_event::AbstractEvent,local_time::Number)
 end
 
 #Schedule a signal to occur
-function schedulesignal(queue::SignalQueue,signal_event::AbstractEvent)
+function queuesignal!(queue::SignalQueue,signal_event::AbstractEvent)
     id = length(queue.queue) + 1
     priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(signal_event),getlocaltime(signal_event),id)
     DataStructures.enqueue!(queue.queue,signal_event,priority_value)
     signal_event.status = scheduled
 end
+
+function queuesignal!(queue::SignalQueue,signal::AbstractSignal,target::SignalTarget,time::Number;local_time = 0,priority_map = Dict())
+    signal_event = SignalEvent(Float64(time),signal,target)
+    #TODO Generalize these functions
+    setpriority(signal_event,signal,priority_map = priority_map)
+    setlocaltime(signal_event,local_time)
+
+    schedulesignal(queue,signal_event)
+end
+
+# function schedulesignal(queue::SignalQueue,signal_event::AbstractEvent)
+#     id = length(queue.queue) + 1
+#     priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(signal_event),getlocaltime(signal_event),id)
+#     DataStructures.enqueue!(queue.queue,signal_event,priority_value)
+#     signal_event.status = scheduled
+# end
 
 function schedulesignal(queue::SignalQueue,signal::AbstractSignal,target::SignalTarget,time::Number;local_time = 0,priority_map = Dict())
     signal_event = SignalEvent(Float64(time),signal,target)

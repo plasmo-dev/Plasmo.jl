@@ -1,5 +1,6 @@
 # A Node Task
 mutable struct NodeTask
+    node::DispatchNode
     label::Symbol
     func::Function                   #the function to call
     args::Vector{Any}                #the function args

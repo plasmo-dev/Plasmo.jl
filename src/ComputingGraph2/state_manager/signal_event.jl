@@ -5,29 +5,29 @@
 mutable struct SignalEvent <: AbstractEvent
     time::Float64          #the event schedule time
     signal::AbstractSignal
+    source::AbstractStateManager
     target::SignalTarget
     priority::Int
-    #localtime::Float64     #Local time of the target
     result::Any            #the result after evaluating the signal
     #status::event_status   #the event status
+    #localtime::Float64     #Local time of the target
 end
 SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget) = SignalEvent(time,signal,target,0,0,Nullable(Any),1)  #idle by default
 SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget,priority::Int64) = SignalEvent(time,signal,target,priority,0,Nullable(Any),1)
 
-
 #Abstract Event functions
 gettime(event::AbstractEvent) = event.time
-getlocaltime(event::AbstractEvent) = 0
 getpriority(event::AbstractEvent) = event.priority
 
 
-getlocaltime(sigevent::SignalEvent) = sigevent.localtime
+#getlocaltime(sigevent::SignalEvent) = sigevent.localtime
 
 #Call a signal event (run its functions with its arguments)
+#TODO Consider dropping event result and status
 function call!(squeue::AbstractSignalQueue,signal_event::AbstractEvent; priority_map = Dict())
-    result = evaluate_signal!(squeue,signal_event.signal,signal_event.target)#,priority_map = priority_map)  #call the node dispatch function
+    result = evaluate_signal!(squeue,signal_event.signal,signal_event.target) #,priority_map = priority_map)  #call the node dispatch function
     signal_event.result = result
-    signal_event.status = complete
+    #signal_event.status = complete
     return result
 end
 
@@ -37,3 +37,4 @@ end
 # set_scheduled(event::AbstractEvent) = event.status = scheduled
 # set_complete(event::AbstractEvent) = event.status = complete
 # set_error(event::AbstractEvent) = event.status = error
+#getlocaltime(event::AbstractEvent) = 0
