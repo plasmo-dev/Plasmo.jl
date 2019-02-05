@@ -36,14 +36,14 @@ function evaluate_signal!(queue::SignalQueue,signal::AbstractSignal,target::Sign
     return_signals = runtransition!(SM,transition)
     source = SM
     #Now queue return signals if there are any
-    for return_signal in return_signals
-        #for target in transition.output_signal_targets
-        for target in SM.broadcast_map[tuple(current_state,input_signal)]
-            signal = Signal(return_signal)
-            delay = return_signal.delay
-            queuesignal!(queue,signal,source,target,now(queue) + delay,local_time = getlocaltime(target))#,priority_map = priority_map)
-        end
-    end
+    # for return_signal in return_signals
+    #     #for target in transition.output_signal_targets
+    #     for target in SM.broadcast_map[tuple(current_state,input_signal)]
+    #         signal = Signal(return_signal)
+    #         delay = return_signal.delay
+    #         queuesignal!(queue,signal,source,target,now(queue) + delay,local_time = getlocaltime(target))#,priority_map = priority_map)
+    #     end
+    # end
 end
 
 function getnexttime(queue::SignalQueue)
@@ -81,8 +81,11 @@ end
 
 #Schedule a signal to occur
 function queuesignal!(queue::SignalQueue,signal_event::AbstractEvent)
+
     id = length(queue.queue) + 1
-    priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(signal_event),getlocaltime(signal_event),id)
+    priority_value = EventPriorityValue(gettime(signal_event)),getglobalpriority(signal_event),getlocalpriority(signal_event),id)
+    #priority_value = EventPriorityValue(round(gettime(signal_event),5),getpriority(signal_event),getlocaltime(signal_event),id)
+
     DataStructures.enqueue!(queue.queue,signal_event,priority_value)
     signal_event.status = scheduled
 end
@@ -92,8 +95,7 @@ function queuesignal!(queue::SignalQueue,signal::AbstractSignal,target::SignalTa
     #TODO Generalize these functions
     setpriority(signal_event,signal,priority_map = priority_map)
     setlocaltime(signal_event,local_time)
-
-    schedulesignal(queue,signal_event)
+    queuesignal!(queue,signal_event)
 end
 
 # function schedulesignal(queue::SignalQueue,signal_event::AbstractEvent)

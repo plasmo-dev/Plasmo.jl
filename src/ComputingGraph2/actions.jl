@@ -1,6 +1,5 @@
 ##########################################################
 # Define Transition Actions for a Computing Graph
-# Returned signals will be queued in its Signal Queue
 ##########################################################
 
 #################################
@@ -9,102 +8,119 @@
 #Schedule a node to run given a delay #delay = getscheduledelay(node_task)  #signal_now = Signal(:scheduled,node_task)
 function schedule_node_task(graph::AbstractComputingGraph,node_task::NodeTask,delay::Float64)
     execute_signal = Signal(:execute,node_task)
-    queuesignal!(graph,execute_signal,now(graph) + delay)
-    #return ReturnSignal(execute_signal,delay)
+    node = getnode(node_task)
+    queuesignal!(queue,signal,nothing,node,now(graph) + delay,custom_priority = getlocaltime(node))#,priority_map = priority_map)
 end
 
 function queue_node_task(node_task::NodeTask)
     node = getnode(node_task)
-    queuetask!(node,node_task)
-    return ReturnSignal()
+    queuetask!(node,node_task)  #No signals queued
 end
-
-#Put the execute signal in the node queue.  This signal will get evaluated after synchronization
-#push!(node.signal_queue,Signal(:execute,node_task))
-#return [Pair(Signal(:signal_queued),0)]
 
 function execute_node_task(graph::AbstractComputingGraph,node_task::NodeTask)
     try
-        run!(node_task)     #could update node local attributes
-        result_attribute = getworkflowattribute(node,getlabel(node_task))
+        run!(node_task)     #Run the task.  This might update attributes (locally)
+        result_attribute = getattribute(node,getlabel(node_task))
         updateattribute(result_attribute,node_task.result)        #updates local value
+        node = getnode(node_task)
 
         #Advance the node local time
         node.local_time = now(graph) + getcomputetime(node_task)
 
-        if node.history != nothing
-            push!(node.history,(now(graph),node_task.label,node_task.compute_time))
+        if graph.history_on == true
+            push!(node.history,(now(graph),node_task.label,getcomputetime(node_task)))
         end
-        return ReturnSignal(Signal(:finalize,node_task),getcomputetime(node_task))  #[Pair(Signal(:complete,node_task),0)]
+
+        finalize_signal = Signal(:finalize,node_task)
+        queuesignal!(graph,finalize_signal,node,node,now(graph) + getcomputetime(node_task))
     catch #which error?
-        return ReturnSignal(Signal(:error,node_task),0)     #[Pair(Signal(:error,node_task),0)]
+        queuesignal!(graph,Signal(:error,node_task),node,node,now(graph) + geterrortime(node_task))
     end
 end
 
 function execute_next_task(graph::AbstractComputingGraph,node::ComputeNode)
-    node_task = next_task(node)
-    run!(node_task)
+    node_task = next_task!(node)        #pop the next task from the node task queue
+    execute_node_task(graph,node_task)
+end
+
+function reexecute_node_task(graph::AbstractComputingGraph,node_task::NodeTask)
+    try
+        #remove finalize signal from queue
+        node.local_time = now(graph) - getcomputetime(node_task) #reset node local time
+
+        run!(node_task)     #Run the task.  This might update attributes (locally)
+        result_attribute = getattribute(node,getlabel(node_task))
+        updateattribute(result_attribute,node_task.result)        #updates local value
+        node = getnode(node_task)
+        #Advance the node local time
+        node.local_time = now(graph) + getcomputetime(node_task)
+
+        if graph.history_on == true
+            push!(node.history,(now(graph),node_task.label,getcomputetime(node_task)))
+        end
+
+        finalize_signal = Signal(:finalize,node_task)
+        queuesignal!(graph,finalize_signal,node,node,now(graph) + getcomputetime(node_task))
+    catch #which error?
+        queuesignal!(graph,Signal(:error,node_task),node,node,now(graph) + geterrortime(node_task))
+    end
 end
 
 #Finalize node task results
-function finalize_node_task(node_task::NodeTask)
+function finalize_node_task(graph::AbstractComputingGraph,node_task::NodeTask)
     finalize_time = getfinalizetime(node_task)      #Time spent in finalize state
-    return_signals = Vector{ReturnSignal}()
     node = getnode(node_task)
-    #for (key,attribute) in getattributes(node)
+    queuesignal!(graph,Signal(:back_to_idle),now(graph) + finalize_time)
     for attribute in node.updated_attributes  #NOTE Could try to instead do attribute update detection
+        finalize_attribute(attribute)
         if istrigger(attribute) || if isoutconnected(attribute) #if the attribute can trigger tasks or be sent to other nodes
-        #if isoutconnected(attribute)
-            push!(return_signals,ReturnSignal(:attribute_updated,attribute),finalize_time)
+            #if isoutconnected(attribute)
+            update_signal = Signal(:attribute_updated,attribute)
+            update_targets = getbroadcasttargets(node,update_signal)
+            for target in update_targets
+                queuesignal!(graph,update_signal,target,node,now(graph) + finalize_time)
+            end
         end
     end
     node.updated_attributes = Attribute[] #reset updated attributes
-    push!(return_signals,ReturnSignal(:back_to_idle,finalize_time))
-    return return_signals
 end
 
-#Synchronize a node attribute
 function finalize_attribute(attribute::Attribute)
     attribute.global_value = attribute.local_value
-    return [Pair(Signal(:attribute_updated,attribute),0)]
 end
 
 ##############################
 # Edge actions
 ##############################
 #Send an attribute value from source to destination
-function communicate(signal::AbstractSignal,workflow::AbstractWorkflow,channel::AbstractChannel)
-    from_attribute = channel.from_attribute
-    to_attribute= channel.to_attribute
-    return_signals = Vector{Pair{AbstractSignal,Float64}}()
+function communicate(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge)
+    from_attribute = edge.from_attribute
+    to_attribute= edge.to_attribute
 
-    comm_sent_signal = Pair(Signal(:comm_sent,from_attribute),0)
-    push!(return_signals,comm_sent_signal)
+    #Queue attribute data on the edge
+    push!(edge.attribute_pipeline,EdgeAttribute(from_attribute.value,now(graph)+edge.delay))
 
-    comm_received_signal = Pair(DataSignal(:comm_received,to_attribute,getglobalvalue(from_attribute)),channel.delay)
-    push!(return_signals,comm_received_signal)
-
-    if channel.history != nothing
-        push!(channel.history,(now(workflow),channel.delay))
+    if is_sendtrigger(from_attribute)
+        sent_signal = Signal(:attribute_sent,from_attribute)
+        targets = getbroadcasttargets(edge,sent_signal)
+        for target in targets
+            queuesignal!(graph,sent_signal,target,edge,now(graph))
+        end
     end
 
-    return return_signals
+    receive_target = to_attribute
+    recieve_signal = Signal(:attribute_received,to_attribute)
+    queuesignal!(graph,receive_signal,receive_target,edge,now(graph) + edge.delay)
+
+    if graph.history_on == true
+        push!(edge.history,(now(graph),edge.delay))
+    end
 end
 
 function schedule_communicate(signal::AbstractSignal,channel::AbstractChannel)
     delayed_signal = Signal(:communicate)
     return [Pair(delayed_signal,channel.schedule_delay)]
 end
-
-#Action for receiving an attribute
-#attribute gets updated with value from signal
-# function receive_attribute(signal::DataSignal,attribute::Attribute)
-#     #value = getdata(signal)
-#
-#     attribute.local_value = value
-#     attribute.global_value = value
-#     return [Pair(Signal(:attribute_received,attribute),0)]
-# end
 
 #Update node attribute with received attribute
 function receive_attribute(edge_attribute::Attribute)
@@ -159,4 +175,14 @@ end
 #
 #     push!(node.signal_queue,Signal(:execute,node_task))
 #     return [Pair(Signal(:signal_queued),0)]
+# end
+
+#Action for receiving an attribute
+#attribute gets updated with value from signal
+# function receive_attribute(signal::DataSignal,attribute::Attribute)
+#     #value = getdata(signal)
+#
+#     attribute.local_value = value
+#     attribute.global_value = value
+#     return [Pair(Signal(:attribute_received,attribute),0)]
 # end

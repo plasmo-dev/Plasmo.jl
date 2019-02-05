@@ -1,24 +1,36 @@
-mutable struct Channel <: AbstractChannel
+# mutable struct Channel <: AbstractChannel
+#     state_manager::StateManager
+#     from_attribute::Attribute
+#     to_attribute::Attribute
+#     attribute_queue::
+#     delay::Float64           #communication delay
+#     schedule_delay::Float64
+#     priority::Int            #signal priority (might make this event specific)
+#     history::Union{Nothing,Vector{Tuple}}
+# end
+# Channel(from_attribute::Attribute,to_attribute::Attribute) = Channel(StateManager(),from_attribute,to_attribute,0,0,0,nothing)
+# Channel(from_attribute::Attribute,to_attribute::Attribute,delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,delay,0,0,nothing)
+# Channel(from_attribute::Attribute,to_attribute::Attribute,comm_delay::Float64,schedule_delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,comm_delay,schedule_delay,0,nothing)
+
+##########################
+# Communication Edges
+#########################
+mutable struct CommunicationEdge <: AbstractCommunicationEdge
     state_manager::StateManager
     from_attribute::Attribute
     to_attribute::Attribute
+    attribute_pipeline::
     delay::Float64           #communication delay
     schedule_delay::Float64
     priority::Int            #signal priority (might make this event specific)
     history::Union{Nothing,Vector{Tuple}}
 end
-Channel(from_attribute::Attribute,to_attribute::Attribute) = Channel(StateManager(),from_attribute,to_attribute,0,0,0,nothing)
-Channel(from_attribute::Attribute,to_attribute::Attribute,delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,delay,0,0,nothing)
-Channel(from_attribute::Attribute,to_attribute::Attribute,comm_delay::Float64,schedule_delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,comm_delay,schedule_delay,0,nothing)
-
-##########################
-# Communication Edges
-#########################
 #An edge that communicates attributes between nodes
 struct CommunicationEdge <: AbstractCommunicationEdge
     baseedge::BasePlasmoEdge    #using the Plasmo interface, a communication edge has all the usual edge functions
-    channels::Vector{Channel}   #this could also be accomplished with a multi-graph
-    #state_manager::StateManager  #Will use when I code a MultiGraph
+    state_manager::StateManager  #Will use when I code a MultiGraph
+    attributes
+    channel::Channel   #Channel containing this edge
 end
 
 function CommunicationEdge()

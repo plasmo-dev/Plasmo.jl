@@ -39,6 +39,15 @@ Attribute(node::AbstractDispatchNode) = Attribute(node,gensym(),nothing,nothing,
 Attribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
 Attribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node,label,object,object,Vector{AbstractChannel}(),Vector{AbstractChannel}())
 
+#A workflow node attribute.  Has local and global values to manage time synchronization
+mutable struct EdgeAttribute <: AbstractAttribute
+    edge::AbstractCommunicationEdge
+    label::Symbol
+    value::Any
+end
+EdgeAttribute(edge::AbstractCommunicationEdge) = Attribute(node,gensym(),nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+EdgeAttribute(node::AbstractDispatchNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractChannel}(),Vector{AbstractChannel}())
+EdgeAttribute(node::AbstractDispatchNode,label::Symbol,object::Any) = Attribute(node,label,object,object,Vector{AbstractChannel}(),Vector{AbstractChannel}())
 
 
 

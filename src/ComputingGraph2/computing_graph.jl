@@ -3,8 +3,13 @@ mutable struct ComputingGraph <: AbstractComputingGraph
     basegraph::BasePlasmoGraph
     signalqueue::SignalQueue
 end
-ComutingGraph() =  ComutingGraph(BasePlasmoGraph(DiGraph),SignalQueue())
-#getcoordinator(workflow::AbstractWorkflow) = workflow.coordinator
+function ComputingGraph()
+    graph = new()
+    graph.basegraph = BasePlasmoGraph(MultiGraph)
+    graph.signalqueue = SignalQueue()
+    return graph
+end
+
 getqueue(graph::AbstractComputingGraph) = getqueue(graph.signalqueue)
 getcurrenttime(graph::AbstractComputingGraph) = getcurrenttime(graph.signalqueue)
 now(graph::AbstractComputingGraph) = now(graph.signalqueue)

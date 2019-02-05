@@ -17,21 +17,24 @@ end
 Signal(sym::Symbol) = Signal(sym,nothing,nothing)
 Signal() = Signal(:nothing,nothing,nothing)
 
-# A return signal gets returned from an Action
-struct ReturnSignal <: AbstractSignal
-    label::Symbol
-    value::Any
-    data::Any
-    delay::Float64
-    #IDEA: A return signal could specify its broadcast targets
-end
-ReturnSignal(signal::Signal,delay::Float64) = ReturnSignal(signal.label,signal.value,signal.data,delay)
-
 ==(signal1::AbstractSignal,signal2::AbstractSignal) = (signal1.label == signal2.label && signal1.value == signal2.value)
 getlabel(signal::AbstractSignal) = signal.label
 getvalue(signal::AbstractSignal) = signal.value
 getdata(signal::AbstractSignal) = signal.data
-getdelay(signal::ReturnSignal) = signal.delay
+
+
+# # A return signal gets returned from an Action
+# struct ReturnSignal <: AbstractSignal
+#     label::Symbol
+#     value::Any
+#     data::Any
+#     delay::Float64
+#     #IDEA: A return signal could specify its broadcast targets
+# end
+# ReturnSignal(signal::Signal,delay::Float64) = ReturnSignal(signal.label,signal.value,signal.data,delay)
+
+
+#getdelay(signal::ReturnSignal) = signal.delay
 
 # #A signal carrying information
 # mutable struct DataSignal <: AbstractSignal

@@ -8,7 +8,7 @@ mutable struct TransitionAction
     func::Function                                  #the function to call
     args::Vector{Any}                               #the function args
     kwargs::Dict{Symbol,Any}                        #possible kwargs
-    result::Vector{Pair{AbstractSignal,Float64}}    #action returns a signal and time delay
+    #result::Vector{Pair{AbstractSignal,Float64}}    #action returns a signal and time delay
 end
 
 #Constructor
@@ -16,7 +16,8 @@ TransitionAction(func::Function) = TransitionAction(func,[],Dict(),Vector{Pair{S
 TransitionAction(func::Function,args::Vector) = TransitionAction(func,args,Dict(),Vector{Pair{Signal,Float64}}())
 
 #Run transition action
-function run!(action::TransitionAction) = action.result = action.func(action.args...,action.kwargs...)  #run a transition action
+function run!(action::TransitionAction) = action.func(action.args...,action.kwargs...)  #run a transition action
+#function run!(action::TransitionAction) = action.result = action.func(action.args...,action.kwargs...)  #run a transition action
 
 #############################################
 # State Manager
