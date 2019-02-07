@@ -19,73 +19,93 @@ mutable struct CommunicationEdge <: AbstractCommunicationEdge
     state_manager::StateManager
     from_attribute::Attribute
     to_attribute::Attribute
-    attribute_pipeline::
-    delay::Float64           #communication delay
-    schedule_delay::Float64
-    priority::Int            #signal priority (might make this event specific)
-    history::Union{Nothing,Vector{Tuple}}
-end
-#An edge that communicates attributes between nodes
-struct CommunicationEdge <: AbstractCommunicationEdge
-    baseedge::BasePlasmoEdge    #using the Plasmo interface, a communication edge has all the usual edge functions
-    state_manager::StateManager  #Will use when I code a MultiGraph
-    attributes
-    channel::Channel   #Channel containing this edge
+    attribute_pipeline::Vector{EdgeAttribute}
+    delay::Float64                       #communication delay
+    send_triggers::Vector{Signal}
+
+    #schedule_delay::Float64
+    #priority::Int            #signal priority (might make this event specific)
+    history::Vector{Tuple}
 end
 
 function CommunicationEdge()
     baseedge = BasePlasmoEdge()
-    channels = Channel[]
     return CommunicationEdge(baseedge,channels)
 end
 PlasmoGraphBase.create_edge(graph::Workflow) = CommunicationEdge()   #PlasmoGraphBase edge construction
 
-getchannels(edge::AbstractCommunicationEdge) = edge.channels
+#getchannels(edge::AbstractCommunicationEdge) = edge.channels
 getdelay(edge::AbstractCommunicationEdge,channel::Int) = edge.channels[channel].delay
-getdelay(channel::Channel) = channel.delay
-isactive(channel::Channel) = channel.state_manager.state == State(:active)
-getsignals(channel::Channel) = getsignals(channel.state_manager)
-getinitialsignal(channel::AbstractChannel) = getinitialsignal(channel.state_manager)
-setinitialsignal(channel::AbstractChannel,signal::AbstractSignal) = setinitialsignal(channel.state_manager,signal)
-setinitialsignal(channel::AbstractChannel,signal::Symbol) = setinitialsignal(channel.state_manager,Signal(signal))
-getstatemanager(channel::AbstractChannel) = channel.state_manager
+getdelay(channel::CommunicationEdge) = channel.delay
+isactive(channel::CommunicationEdge) = channel.state_manager.state == State(:active)
+getsignals(channel::CommunicationEdge) = getsignals(channel.state_manager)
+getinitialsignal(channel::AbstractCommunicationEdge) = getinitialsignal(channel.state_manager)
+setinitialsignal(channel::AbstractCommunicationEdge,signal::AbstractSignal) = setinitialsignal(channel.state_manager,signal)
+setinitialsignal(channel::AbstractCommunicationEdge,signal::Symbol) = setinitialsignal(channel.state_manager,Signal(signal))
+getstatemanager(channel::AbstractCommunicationEdge) = channel.state_manager
 
-getstates(channel::AbstractChannel) = getstates(channel.state_manager)
-gettransitions(channel::AbstractChannel) = gettransitions(channel.state_manager)
-getcurrentstate(channel::AbstractChannel) = getcurrentstate(channel.state_manager)
-getlocaltime(channel::AbstractChannel) = channel.state_manager.local_time
+getstates(channel::AbstractCommunicationEdge) = getstates(channel.state_manager)
+gettransitions(channel::AbstractCommunicationEdge) = gettransitions(channel.state_manager)
+getcurrentstate(channel::AbstractCommunicationEdge) = getcurrentstate(channel.state_manager)
+getlocaltime(channel::AbstractCommunicationEdge) = channel.state_manager.local_time
 
-function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0,store_history = true)
-    channel = Channel(from_attribute,to_attribute,comm_delay,schedule_delay)
-    setstates(channel.state_manager,[:null,:active,:inactive,:error])
-    setstate(channel.state_manager,:active)
-    push!(edge.channels,channel)
-    store_history == true && (channel.history = Vector{Tuple}())
-    return channel
-end
+# function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0,store_history = true)
+#     channel = Channel(from_attribute,to_attribute,comm_delay,schedule_delay)
+#     setstates(channel.state_manager,[:null,:active,:inactive,:error])
+#     setstate(channel.state_manager,:active)
+#     push!(edge.channels,channel)
+#     store_history == true && (channel.history = Vector{Tuple}())
+#     return channel
+# end
 
 setdelay(edge::AbstractCommunicationEdge,channel::Int,delay::Float64) = edge.channels[channel].delay = delay
 
 #dispatch edge communicates when it receives attribute updates
-function add_dispatch_edge!(workflow::Workflow,attribute1::Attribute,attribute2::Attribute;send_attribute_updates = true, comm_delay = 0,continuous = false, schedule_delay = 0,start_time = 0)
-    edge = add_edge!(workflow,getnode(attribute1),getnode(attribute2))
-    channel = addchannel!(edge,attribute1,attribute2,comm_delay = Float64(comm_delay),schedule_delay = Float64(schedule_delay))
+function add_edge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2::Attribute;
+    send_attribute_updates = true, delay = 0,send_on_signals = AttributeSignal[],send_wait = 0, start_time = 0)
 
+    edge = add_edge!(graph,getnode(attribute1),getnode(attribute2))
+    edge.send_triggers = send_on_signals
+
+
+    edge_manager = getstatemanager(edge)
     destination_node = getnode(attribute2)
-    suppresssignal!(destination_node.state_manager,Signal(:comm_sent,attribute1))
 
-    if send_attribute_updates == true
-        addtransition!(channel.state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active),action = TransitionAction(communicate,[workflow,channel]), targets = [destination_node.state_manager])
-    end
-
-    if continuous == true
-        addtransition!(channel.state_manager,State(:active), Signal(:comm_sent,attribute1), State(:active), action = TransitionAction(schedule_communicate,[channel]),targets = [channel.state_manager])
-        schedulesignal(workflow,Signal(:communicate),channel,start_time)
-        suppresssignal!(channel.state_manager,Signal(:comm_received,attribute2))
+    for signal in edge.send_triggers
+        t1 = addtransition!(edge_manager,State(:idle),signal,State(:communicating))
+        t2 = addtransition!(edge_manager,State(:communicating),signal,State(:communicating))
+        action = TransitionAction(schedule_communicate,[graph,edge,send_wait]))
+        setaction(edge_manager,t1,action)
+        setaction(edge_manager,t2,action)
     end
 
     #run communication when given :communicate signal
-    addtransition!(channel.state_manager,State(:active), Signal(:communicate), State(:active), action = TransitionAction(communicate,[workflow,channel]), targets = [channel.state_manager,destination_node.state_manager])
+    t3 = addtransition!(edge_manager,State(:idle), Signal(:communicate), State(:communicating)
+    t4 = addtransition!(edge_manager,State(:communicating),Signal(:communicate),State(:communicating))
+    action = TransitionAction(communicate,[graph,edge])
+    setaction(t3,action)
+    setaction(t4,action)
 
-    return channel
+    return edge
 end
+
+#schedulesignal(workflow,Signal(:communicate),channel,start_time)
+# communicate in response to a send signal
+# if continuous == true
+#     comm_signal = sent(attribute1)
+#
+#     addtransition!(edge_manager,State(:idle),comm_signal,State(:communicating))
+#     action = TransitionAction(schedule_communicate,[graph,edge,schedule_delay]))
+#     addaction!(edge_manager,State(:idle),comm_signal)
+#
+#     schedulesignal(workflow,Signal(:communicate),channel,start_time)
+#     queuesignal!(graph,Signal(:communicate),edge,nothing,start_time)
+#
+#     #suppresssignal!(channel.state_manager,Signal(:comm_received,attribute2))
+# end
+
+#TODO send attribute data when it updates
+# if send_attribute_updates == true
+#     addtransition!(edge.state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active),
+#     action = TransitionAction(communicate,[workflow,channel]), targets = [destination_node.state_manager])
+# end

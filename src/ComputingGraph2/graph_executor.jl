@@ -30,8 +30,8 @@ advance(workflow::Workflow,executor::AbstractExecutor) = advance(workflow.coordi
 #     while getcurrenttime(workflow) <= time
 #         step()
 
-function run!(executor::SerialExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent;priority_map = workflow_priority_map)
+function run!(executor::SerialExecutor,queue::SignalQueue,signal_event::AbstractEvent)#;priority_map = workflow_priority_map)
     #task = @schedule call!(workflow,event)
-    task = run!(coordinator,signal_event,priority_map = priority_map)
+    task = run!(queue,signal_event)#,priority_map = priority_map)
     return task
 end

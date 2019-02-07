@@ -218,19 +218,3 @@ function copy(basegraph::BasePlasmoGraph)
     end
     return new_base_graph
 end
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#

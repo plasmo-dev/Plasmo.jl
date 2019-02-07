@@ -15,7 +15,7 @@ end
 
 # A Node Task
 mutable struct NodeTask
-    node::DispatchNode
+    node::DispatchNode               #Having a pointer back to the node is convenient for defining actions
     label::Symbol
     func::Function                   #the function to call
     args::Vector{Any}                #the function args
@@ -28,17 +28,13 @@ end
 NodeTask(node::DispatchNode,func::Function) =  NodeTask(node,Symbol("nodetask"*string(gensym())),func,[],Dict(),nothing,0.0)#,0.0)
 NodeTask(label::Symbol,func::Function;args = [],kwargs = Dict(),compute_time = 0.0,schedule_delay = 0.0) = NodeTask(label,func,args,kwargs,nothing,compute_time,schedule_delay)
 
-
 execute!(node_task::NodeTask) = node_task.result = node_task.func(node_task.args...,node_task.kwargs...)
 getresult(node_task::NodeTask) = node_task.result
 getlabel(node_task::NodeTask) = node_task.label
 
 getcomputetime(nodetask::NodeTask) = nodetask.compute_time
-
-#NOTE: Getting rid of schedule delay
-getscheduledelay(nodetask::NodeTask) = nodetask.schedule_delay
 setcomputetime(nodetask::NodeTask,compute_time::Float64) = nodetask.compute_time = compute_time
-setscheduledelay(nodetask::NodeTask,delay::Float64) = nodetask.schedule_delay = delay
+
 
 function string(node_task::NodeTask)
     string(node_task.label)*"("*string(node_task.func)*")"
@@ -54,3 +50,8 @@ show(io::IO, node_task::NodeTask) = print(io,node_task)
 # set_node_task_arguments(node::AbstractDispatchNode,arg::Any) = node.node_task.args = [arg]
 # set_node_task_kwargs(node::AbstractDispatchNode,kwargs::Dict{Any,Any}) = node.node_task.kwargs = kwargs
 # set_node_compute_time(node::AbstractDispatchNode,time::Float64) = node.compute_time = time
+
+
+#NOTE: Getting rid of schedule delay
+#getscheduledelay(nodetask::NodeTask) = nodetask.schedule_delay
+#setscheduledelay(nodetask::NodeTask,delay::Float64) = nodetask.schedule_delay = delay
