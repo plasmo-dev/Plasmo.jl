@@ -299,3 +299,6 @@ function connect!(workflow::ComputingGraph,attribute1::Attribute,attribute2::Att
 
     return comm_channel
 end
+
+# function getgraph(node::ComputeNode)
+#     index = node.basenode.indices

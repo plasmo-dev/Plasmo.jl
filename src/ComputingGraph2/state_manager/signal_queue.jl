@@ -32,9 +32,11 @@ function evaluate_signal!(queue::SignalQueue,signal::AbstractSignal,target::Sign
     #transition = SM.transition_map[SM.current_state,check_signal]
     current_state = SM.current_state
     new_state = SM.transition_map[SM.current_state,input_signal]
+
+    
     #signal_pairs = runtransition!(SM,transition,signal)    #run the transition action.  Returns vector of return signals
-    return_signals = runtransition!(SM,transition)
-    source = SM
+    #return_signals = runtransition!(SM,transition)
+    #source = SM
     #Now queue return signals if there are any
     # for return_signal in return_signals
     #     #for target in transition.output_signal_targets

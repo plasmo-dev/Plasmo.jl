@@ -1,10 +1,11 @@
 #Define a transition
 const Transition = Tuple{State,AbstractSignal,State}
 
+abstract type AbstractTransitionAction
 #############################################
 # Transition Action
 #############################################
-mutable struct TransitionAction
+mutable struct TransitionAction <: AbstractTransitionAction
     func::Function                                  #the function to call
     args::Vector{Any}                               #the function args
     kwargs::Dict{Symbol,Any}                        #possible kwargs

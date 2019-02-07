@@ -21,12 +21,10 @@ mutable struct CommunicationEdge <: AbstractCommunicationEdge
     to_attribute::Attribute
     attribute_pipeline::Vector{EdgeAttribute}
     delay::Float64                       #communication delay
-    send_triggers::Vector{Signal}
-
-    #schedule_delay::Float64
-    #priority::Int            #signal priority (might make this event specific)
     history::Vector{Tuple}
 end
+#schedule_delay::Float64
+#priority::Int            #signal priority (might make this event specific)
 
 function CommunicationEdge()
     baseedge = BasePlasmoEdge()
@@ -48,15 +46,6 @@ getstates(channel::AbstractCommunicationEdge) = getstates(channel.state_manager)
 gettransitions(channel::AbstractCommunicationEdge) = gettransitions(channel.state_manager)
 getcurrentstate(channel::AbstractCommunicationEdge) = getcurrentstate(channel.state_manager)
 getlocaltime(channel::AbstractCommunicationEdge) = channel.state_manager.local_time
-
-# function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0,store_history = true)
-#     channel = Channel(from_attribute,to_attribute,comm_delay,schedule_delay)
-#     setstates(channel.state_manager,[:null,:active,:inactive,:error])
-#     setstate(channel.state_manager,:active)
-#     push!(edge.channels,channel)
-#     store_history == true && (channel.history = Vector{Tuple}())
-#     return channel
-# end
 
 setdelay(edge::AbstractCommunicationEdge,channel::Int,delay::Float64) = edge.channels[channel].delay = delay
 
@@ -108,4 +97,13 @@ end
 # if send_attribute_updates == true
 #     addtransition!(edge.state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active),
 #     action = TransitionAction(communicate,[workflow,channel]), targets = [destination_node.state_manager])
+# end
+
+# function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0,store_history = true)
+#     channel = Channel(from_attribute,to_attribute,comm_delay,schedule_delay)
+#     setstates(channel.state_manager,[:null,:active,:inactive,:error])
+#     setstate(channel.state_manager,:active)
+#     push!(edge.channels,channel)
+#     store_history == true && (channel.history = Vector{Tuple}())
+#     return channel
 # end
