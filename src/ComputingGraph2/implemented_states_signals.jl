@@ -5,7 +5,9 @@ state_inactive() = State(:inactive)
 state_any() = State(:any)
 
 #Node States
+state_executing() = State(:executing,nothing)
 state_executing(task::NodeTask) = State(:executing,task)
+state_finalizing() = State(:finalizing,nothing)
 state_finalizing(task::NodeTask) = State(:finalizing,task)
 
 #Node Signals

@@ -25,7 +25,8 @@ end
 
 #Schedule a node task to run given a delay
 function schedule_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask,delay::Float64)
-    execute_signal = Signal(:execute,node_task)
+    #execute_signal = Signal(:execute,node_task)
+    execute_signal = signal_execute(node_task)
     queue = getqueue(graph)
     queuesignal!(queue,execute_signal,node,now(graph) + delay,priority = getlocaltime(node))#,priority_map = priority_map)
 end
@@ -137,7 +138,7 @@ action_communicate() = EdgeAction(nothing,nothing,communicate,[],Dict{Symbol,Any
 
 
 function schedule_communicate(graph::AbstractComputingGraph,edge::AbstractCommunication,delay::Float64)
-    signal = Signal(:communicate)
+    signal = signal_communicate()
     queuesignal!(graph,signal,edge,nothing,now(graph) + delay)
 end
 action_schedule_communicate(delay::Float64) = EdgeAction(nothing,nothing,schedule_communicate,[delay],Dict{Symbol,Any}())
@@ -145,12 +146,20 @@ action_schedule_communicate(delay::Float64) = EdgeAction(nothing,nothing,schedul
 #Update node attribute with received attribute
 function receive_attribute(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge,edge_attribute::Attribute)
     node_attribute = getdestination(edge_attribute)
+    receive_node = getnode(node_attribute)
     value = getvalue(edge_attribute)
     node_attribute.local_value = value   #set local and global values to the received data
     node_attribute.global_value = value
-    if isreceivetrigger(node_attribute)  #if the node attribute can trigger a task
-        queuesignal!(received(node_attribute),getnode(node_attribute),edge,0)
+    if isreceivetrigger(node,node_attribute)  #if the node attribute can trigger a task
+        queuesignal!(graph,received(node_attribute),receive_node,edge,0)
     end
+
+    pop!(edge.attribute_pipeline,edge_attribute)
+
+    if isempty(edge.attribute_pipeline)
+        queuesignal!(graph,signal_all_received(),)
+    end
+
 end
 action_receive_attribute(attribute::EdgeAttribute) = EdgeAction(nothing,nothing,receive_attribute,[edge_attribute],Dict{Symbol,Any}())
 

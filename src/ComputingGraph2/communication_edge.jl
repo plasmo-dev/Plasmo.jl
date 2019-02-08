@@ -34,7 +34,7 @@ setdelay(edge::AbstractCommunicationEdge,delay::Float64) = edge.delay = delay
 
 #dispatch edge communicates when it receives attribute updates
 function add_edge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2::Attribute;
-    delay::Number = 0,start_time = 0,schedule_send_on = Signal[],send_delay::Number = 0.0)
+    delay::Number = 0,start_time = 0,send_on = Signal[],send_delay::Number = 0.0)
 
     delay = Float64(delay)
 
@@ -45,7 +45,7 @@ function add_edge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute
     destination_node = getnode(attribute2)
 
     for signal in edge.send_triggers
-        t1 = addtransition!(edge_manager,state_idle(),signal,state_communicating()))
+        addtransition!(edge_manager,state_idle(),signal,state_communicating(),action = action_schedule_communicate())
         t2 = addtransition!(edge_manager,State(:communicating),signal,State(:communicating))
         action = TransitionAction(schedule_communicate,[graph,edge,send_wait]))
         setaction(edge_manager,t1,action)
@@ -58,6 +58,9 @@ function add_edge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute
     action = TransitionAction(communicate,[graph,edge])
     setaction(t3,action)
     setaction(t4,action)
+
+    push!(attribute1.out_edges,edge)
+    push!(attribute2.in_edges,edge)
 
     return edge
 end

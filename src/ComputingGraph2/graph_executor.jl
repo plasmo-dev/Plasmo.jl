@@ -16,8 +16,6 @@ execute!(graph::ComputingGraph) = execute!(graph,SerialExecutor())
 step(graph::ComputingGraph,executor::AbstractExecutor) = step(graph.signal_queue,executor)
 step(graph::ComputingGraph) = step(graph.signal_queue)
 
-#TODO
-advance(graph::ComputingGraph,executor::AbstractExecutor) = advance(graph.signalqueue,executor)
 function advance(graph::ComputingGraph,executor::AbstractExecutor,time::Number)
     @assert Float64(time) > 0 && now(graph) <= time
     while now(graph) <= Float64(time)

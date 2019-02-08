@@ -3,16 +3,15 @@
 #priority::Int                                  # Priority of signals this node produces
 mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
     basenode::BasePlasmoNode
-    state_manager::StateManager                     # Underlying state manager
+    state_manager::StateManager                      # Underlying state manager
 
-    attributes::Vector{NodeAttribute}
+    attributes::Vector{NodeAttribute}                # All node computing attributes
     attribute_map::Dict{Symbol,NodeAttribute}
 
     node_tasks::Vector{NodeTask}                     #  Tasks this node can run
-    node_tasks::Dict{Symbol,NodeTask}                #
+    node_task_map::Dict{Symbol,NodeTask}             #
 
     task_result_attributes::Dict{NodeTask,Attribute} # Result attribute for a task
-
     local_attributes_updated::Vector{Attribute}      # attributes with updated local values
     history::Vector{Tuple}
 
@@ -25,9 +24,9 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
         node.attributes = Dict{Symbol,Attribute}()
         node.node_tasks = Dict{Symbol,NodeTask}()
         node.attribute_triggers = Dict{Signal,NodeTask}()
-        node.task_queue = DataStructures.PriorityQueue
+        node.task_queue = DataStructures.PriorityQueue{NodeTask,Int64}()
         node.task_results = Dict{NodeTask,Attribute}()
-        node.updated_attributes = Attribute[]
+        node.local_attribute_updates = NodeAttribute[]
         node.history =  Vector{Tuple}()
         addstates!(node.state_manager,[state_idle(),state_error(),state_inactive()])
         setstate(node.state_manager,state_idle())
@@ -47,6 +46,7 @@ function addnode!(graph::ComutingGraph)#;continuous = false)
     addtransition!(node,state_any(),signal_inactive(),state_inactive())
     return node
 end
+
 addtransition!(node::ComputeNode,state1::State,signal::AbstractSignal,state2::State;action::{Union{Nothing,NodeAction}} = nothing) = addtransition!(node.state_manager,state1,signal,state2,action = action)
 
 function queuenodetask!(node_task::NodeTask)
@@ -100,44 +100,49 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTas
     node.node_tasks[getlabel(node_task)] = node_task
 end
 
-function next_task!(node::ComputeNode)
-    task = getnextask!(node.task_queue)
-    return task
-end
+next_task(node::ComputeNode) = peek(node.task_queue)
+next_task!(node::ComputeNode) = dequeue!(node.task_queue)
 
 #Add an attribute.  Update node transitions for when attributes are added.
-function addattribute!(node::ComputeNode,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
+function addcomputeattribute!(node::ComputeNode,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
     attribute = NodeAttribute(node,label,value)
     node.attributes[label] = attribute
     return attribute
 end
-addattribute!(node::ComputeNode,label::Symbol) = addattribute!(node,label,nothing)
+addcomputeattribute!(node::ComputeNode,label::Symbol) = addcomputeattribute!(node,label,nothing)
 
-function addattributes!(node::ComputeNode,values::Dict{Symbol,Any})
+function addcomputeattributes!(node::ComputeNode,values::Dict{Symbol,Any})
     for (key,value) in values
         addattribute!(node,key,value)
     end
 end
 
-function addtrigger!(node::ComputeNode,node_task::NodeTask,attribute::Attribute)
-    node.action_triggers[workflow_attribute] = node_task
-    unsuppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
-    #addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
-    addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:idle), action = TransitionAction(schedule_node_task,[node_task]),targets = [node.state_manager])
+
+function addtasktrigger!(node::ComputeNode,node_task::NodeTask,signal::Signal)
+    push!(node.task_triggers[node_task],signal)
+
+    #execute if in idle
+    addtransition!(node,state_idle(),signal,state_executing(node_task), action = action_execute_node_task(node_task)
+
+    #queue if executing
+    addtransition!(node,state_executing(),signal,state_executing(), action = action_queue_node_task(node_task))
+
+    #queue if finalizing
+    addtransition!(node,state_finalizing(),signal,state_finalizing(),action = action_queue_node_task(node_task))
 end
 
 
-getattribute(node::ComputeNode,label::Symbol) = node.attributes[label]
-getattributes(node::ComputeNode) = values(node.attributes)
+getcomputeattribute(node::ComputeNode,label::Symbol) = node.attribute_map[label]
+getcomputeattributes(node::ComputeNode) = node.attributes
 
-function setvalue(node::ComputeNode,label::Symbol,value::Any)
-    attribute = node.attributes[label]
+function setglobalvalue(node::ComputeNode,label::Symbol,value::Any)
+    attribute = node.attribute_map[label]
     attribute.local_value = value
     attribute.global_value = value
 end
 
-getnodetasks(node::ComputeNode) = values(node.node_tasks)
-getnodetask(node::ComputeNode,label::Symbol) = node.node_tasks[label]
+getnodetasks(node::ComputeNode) = node.node_tasks
+getnodetask(node::ComputeNode,label::Symbol) = node.node_task_map[label]
 
 getnoderesult(node::ComputeNode,node_task::NodeTask) = node.task_results[node_task]
 getnoderesult(node::ComputeNode,label::Symbol) = node.task_results[getnodetask(node,label)]
@@ -160,7 +165,7 @@ getcurrentstate(node::AbstractComputeNode) = getcurrentstate(node.state_manager)
 #TODO: Make sure this works
 function getindex(node::ComputeNode,sym::Symbol)
     if sym in keys(node.attributes)
-        return getattribute(node,sym)
+        return getcomputeattribute(node,sym)
     elseif sym in keys(node.basenode.attributes)
         return getattribute(node,sym)
     else
@@ -175,15 +180,15 @@ end
 #Connect Node Attributes
 ########################################
 #NOTE: Might be able to replace with just add_edge!
-function connect!(graph::ComputingGraph,attribute1::Attribute,attribute2::Attribute)#;send_attribute_updates = true,comm_delay = 0,schedule_delay = 0,continuous = false,start_time = 0)
-    #is_connected(workflow,dnode1,dnode2) && throw("communication edge already exists between these nodes")
-    edge = add_edge!(graph,attribute1,attribute2)
-
-    push!(attribute1.out_edges,edge)
-    push!(attribute2.in_edges,edge)
-
-    return edge
-end
+# function connect!(graph::ComputingGraph,attribute1::Attribute,attribute2::Attribute)#;send_attribute_updates = true,comm_delay = 0,schedule_delay = 0,continuous = false,start_time = 0)
+#     #is_connected(workflow,dnode1,dnode2) && throw("communication edge already exists between these nodes")
+#     edge = add_edge!(graph,attribute1,attribute2)
+#
+#     push!(attribute1.out_edges,edge)
+#     push!(attribute2.in_edges,edge)
+#
+#     return edge
+# end
 
 # function getgraph(node::ComputeNode)
 #     index = node.basenode.indices

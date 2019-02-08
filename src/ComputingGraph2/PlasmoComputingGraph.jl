@@ -62,17 +62,13 @@ abstract type AbstractComputingGraph <: AbstractPlasmoGraph end
 abstract type AbstractComputeNode <: AbstractPlasmoNode end
 abstract type AbstractCommunicationEdge  <: AbstractPlasmoEdge end
 
-
-# #NOTE: Remove.  A Channel would be a collection of edges between two nodes
-# abstract type AbstractChannel  end
-
 abstract type AbstractAttribute end
 abstract type AbstractEvent end
 abstract type AbstractSignal end
 abstract type AbstractStateManager end
 abstract type AbstractSignalQueue end
 
-const SignalTarget = Union{AbstractStateManager,AbstractComputeNode}   #A node can be a target
+const SignalTarget = Union{AbstractStateManager,AbstractComputeNode,AbstractCommunicationEdge}   #A node can be a target
 
 #State Manager and Coordination
 include("state_manager/signal_event.jl")
@@ -107,13 +103,3 @@ include("dispatch_nodes.jl")
 include("workflow_executor.jl")
 
 end # module
-
-
-# #Events can be: Event, Condition, Delay, Communicate, etc...
-# abstract type AbstractWorkflowEvent <: AbstractEvent end   #General Events
-# abstract type AbstractNodeEvent <: AbstractEvent end       #Events triggered by nodes
-# abstract type AbstractEdgeEvent <: AbstractEvent end
-
-# function gettransitionactions()
-#     return schedule_node,run_node_task
-# end

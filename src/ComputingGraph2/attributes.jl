@@ -6,7 +6,6 @@ mutable struct NodeAttribute <: AbstractAttribute
     global_value::Any   #updated globally
     out_edges::Vector{AbstractCommunicationEdge}
     in_edges::Vector{AbstractCommunicationEdge}
-
     # update_triggers::Vector{NodeTask}    #attribute updates can trigger tasks
     # send_triggers::Vector{NodeTask}      #attribute sent can trigger tasks
     # receive_triggers::Vector{NodeTask}   #attribute received can trigger tasks
@@ -27,7 +26,10 @@ getvalue(attribute::NodeAttribute) = getlocalvalue(attribute)
 #Update attribute values
 function setvalue(attribute::NodeAttribute,value::Any)
     attribute.local_value = value
-    push!(attribute.node.updated_attributes,attribute)
+    node = getnode(attribute)
+    if !(attribute in node.local_attributes_updated)
+        push!(node.updated_attributes,attribute)
+    end
 end
 
 function finalizevalue(attribute::NodeAttribute)
