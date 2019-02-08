@@ -31,11 +31,7 @@ end
 # :communicate => 5,
 # :execute => 6)
 
-#Signals
-updated(attribute::NodeAttribute) = Signal(:updated,attribute)
-received(attribute::NodeAttribute) = Signal(:received,attribute)
-sent(attribute::NodeAttribute) = Signal(:sent,attribute)
-#send(attribute::NodeAttribute) = Signal(:send,attribute)
+
 
 getqueue(graph::AbstractComputingGraph) = getqueue(graph.signalqueue)
 getcurrenttime(graph::AbstractComputingGraph) = getcurrenttime(graph.signalqueue)

@@ -1,17 +1,19 @@
 #signal_queue::Vector{AbstractSignal}
 #history::Union{Nothing,Vector{Tuple}}
 #priority::Int                                  # Priority of signals this node produces
-
 mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
     basenode::BasePlasmoNode
     state_manager::StateManager                     # Underlying state manager
-    attributes::Dict{Symbol,Attribute}              #
-    node_tasks::Dict{Symbol,NodeTask}               # Tasks this node can run
 
-    task_triggers::Dict{AbstractSignal,NodeTask}    # Signals can trigger tasks
-    task_result_attributes::Dict{NodeTask,Attribute}          # Result attribute for a task
+    attributes::Vector{NodeAttribute}
+    attribute_map::Dict{Symbol,NodeAttribute}
 
-    updated_attributes::Vector{Attribute}
+    node_tasks::Vector{NodeTask}                     #  Tasks this node can run
+    node_tasks::Dict{Symbol,NodeTask}                #
+#   task_triggers::Dict{AbstractSignal,NodeTask}    # Signals can trigger tasks
+    task_result_attributes::Dict{NodeTask,Attribute} # Result attribute for a task
+
+    local_attributes_updated::Vector{Attribute}      # attributes with updated local values
     history::Vector{Tuple}
 
     task_queue::DataStructures.PriorityQueue{NodeTask,TaskPriority} # Node contains a queue of tasks to execute
@@ -26,8 +28,8 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
         node.task_results = Dict{NodeTask,Attribute}()
         node.updated_attributes = Attribute[]
         node.history =  Vector{Tuple}()
-        addstates!(node.state_manager,[:idle,:inactive,:error])
-        setstate(node.state_manager,:idle)
+        addstates!(node.state_manager,[state_idle(),state_error(),state_inactive()])
+        setstate(node.state_manager,state_idle())
         return node
     end
 end
@@ -36,37 +38,41 @@ PlasmoGraphBase.create_node(graph::ComputingGraph) = ComputeNode()
 #Dispatch node runs when it gets communication updates
 function addnode!(graph::ComutingGraph)#;continuous = false)
     node = add_node!(graph)
-    addtransition!(node,State(:Any),Signal(:error),State(:error))
-    addtransition!(node,State(:Any),Signal(:off),State(:inactive))
+    addtransition!(node,state_any(),signal_error(),state_error()))
+    addtransition!(node,state_any(),signal_inactive(),state_inactive())
     return node
 end
 addtransition!(node::ComputeNode) = addtransition!(node.state_manager,state1::State,signal::AbstractSignal,state2::State)
 
 function queue_node_task(node_task::NodeTask)
     node = getnode(node_task)
-    queuetask!(node,node_task)  #No signals queued
+    queuetask!(node,node_task)
 end
 
+
+#Add node tasks to compute nodes
+
 function addnodetask!(graph::ComputingGraph,node::ComputeNode,label::Symbol,func::Function;args = (),kwargs = Dict(),
-    compute_time = 0.0,continuous = false,triggered_by = Vector{Signal}())  #can be triggered by attribute signals
+    compute_time::Float64 = 0.0,triggered_by = Vector{Signal}())  #can be triggered by attribute signals
 
     node_task = NodeTask(label,func,args = args,kwargs = kwargs,compute_time = compute_time,schedule_delay = schedule_delay)
+
     addnodetask!(graph,node,node_task,continuous = continuous,triggered_by_attributes = triggered_by_attributes)
     return node_task
 end
 
-function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTask;continuous = false,triggered_by_attributes = Vector{Attribute}())
+function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTask;triggered_by::Vector{Signal} = Vector{Signal}())
     state_manager = getstatemanager(node)
 
     #Add task states
     #addstates!(node.state_manager,[State(:scheduled,node_task),State(:computing,node_task),State(:synchronizing,node_task)])
-    addstates!(node.state_manager,[State(:computing,node_task),State(:synchronizing,node_task)])
+    addstates!(node,executing(node_task),finalizing(node_task))
     #Set suppressed signals by default
-    suppresssignal!(state_manager,Signal(:scheduled,node_task))
+    #suppresssignal!(state_manager,Signal(:scheduled,node_task))
 
     #Add the node transitions for this task
     #addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:scheduled,node_task), action = TransitionAction(schedule_node_task,[node_task]))  #no target for produced signal (so it won't schedule)
-    addtransition!(state_manager,State(:idle),Signal(:schedule,node_task),State(:idle), action = TransitionAction(schedule_node_task,[node_task]))  #no target for produced signal (so it won't schedule)
+    addtransition!(node,state_any(),signal_schedule(node_task),state_any(),action = action_schedule_node_task(node_task))  #no target for produced signal (so it won't schedule)
 
     # addtransition!(state_manager,State(:scheduled,node_task),Signal(:execute,node_task),State(:computing,node_task),
     # action = TransitionAction(run_node_task,[graph,node,node_task]),targets = [node.state_manager])  #no target for produced signal (so it won't schedule)
@@ -153,33 +159,13 @@ function make_continuous!(node::ComputeNode,node_task::NodeTask)
 end
 
 #Add an attribute.  Update node transitions for when attributes are added.
-function addattribute!(node::ComputeNode,label::Symbol,attribute::Any; update_notify_targets = SignalTarget[])#,execute_on_receive = true)
-    workflow_attribute = Attribute(node,label,attribute)
-    node.attributes[label] = workflow_attribute
-
-    #Attribute can be updated when a node is in a synchronizing state for any task
-    for node_task in getnodetasks(node)
-        addtransition!(node.state_manager,State(:synchronizing,node_task),Signal(:synchronize_attribute,workflow_attribute),State(:synchronizing,node_task), action = TransitionAction(synchronize_attribute, [workflow_attribute]),targets = update_notify_targets)
-    end
-
-    #TODO Signal Suppression
-    #Ignore received attributes that don't trigger actions.  Suppress by default.
-    suppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
-
-    #NOTE Old way of setting up attribute triggers
-    #If true, schedule the node's task when it receives an attribute
-    # if execute_on_receive == true
-    #     addtransition!(node.state_manager,State(:idle),Signal(:attribute_received,workflow_attribute),State(:scheduled), action = TransitionAction(schedule_node,[node]),targets = [node.state_manager])
-    # else
-    #     suppresssignal!(node.state_manager,Signal(:attribute_received,workflow_attribute))
-    # end
-
-    #Update an attribute manually from the idle state
-    addtransition!(node.state_manager,State(:idle),Signal(:update_attribute,workflow_attribute),State(:idle), action = TransitionAction(update_attribute,[workflow_attribute]),targets = update_notify_targets)
-    #suppresssignal!(node.state_manager,Signal(:comm_sent,workflow_attribute))
-    return workflow_attribute
+function addattribute!(node::ComputeNode,label::Symbol,attribute::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
+    attribute = NodeAttribute(node,label,attribute)
+    node.attributes[label] = attribute
+    return attribute
 end
-addattribute!(node::ComputeNode,label::Symbol;update_notify_targets = SignalTarget[]) = addattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
+addattribute!(node::ComputeNode,label::Symbol) = addattribute!(node,label,nothing)
+#addattribute!(node::ComputeNode,label::Symbol;update_notify_targets = SignalTarget[]) = addattribute!(node,label,nothing,update_notify_targets = update_notify_targets)
 
 function addattributes!(node::ComputeNode,att_dict::Dict{Symbol,Any};execute_on_receive = true)
     for (key,value) in att_dict

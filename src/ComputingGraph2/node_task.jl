@@ -22,7 +22,6 @@ mutable struct NodeTask
     kwargs::Dict{Any,Any}
     result::Union{Any,Nothing}       #the result after calling the event
     compute_time::Float64
-    #schedule_delay::Float64         #NOTE: Trying to find a better way to deal with task-specific data
 end
 #NodeTask() = NodeTask(Symbol("nodetask"*string(gensym())),() -> nothing,[],Dict(),nothing,0.0,0.0)
 NodeTask(node::DispatchNode,func::Function) =  NodeTask(node,Symbol("nodetask"*string(gensym())),func,[],Dict(),nothing,0.0)#,0.0)
@@ -34,7 +33,6 @@ getlabel(node_task::NodeTask) = node_task.label
 
 getcomputetime(nodetask::NodeTask) = nodetask.compute_time
 setcomputetime(nodetask::NodeTask,compute_time::Float64) = nodetask.compute_time = compute_time
-
 
 function string(node_task::NodeTask)
     string(node_task.label)*"("*string(node_task.func)*")"

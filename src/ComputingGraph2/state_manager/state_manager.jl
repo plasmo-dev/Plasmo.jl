@@ -17,6 +17,9 @@ TransitionAction(func::Function,args::Vector) = TransitionAction(func,args,Dict(
 
 #Run transition action
 function run_action!(action::TransitionAction) = action.func(action.args...,action.kwargs...)  #run a transition action
+getarguments(action::AbstractTransitionAction) = action.args
+getkwarguments(action::AbstractTransitionAction) = action.kwargs
+
 #function run!(action::TransitionAction) = action.result = action.func(action.args...,action.kwargs...)  #run a transition action
 
 #############################################
@@ -30,9 +33,9 @@ mutable struct StateManager <: AbstractStateManager
     valid_signals::Vector{AbstractSignal}                                     #state manager recognizes these signals
     transition_map::Dict{Tuple{State,AbstractSignal},State} , # Transition}           x^+ = f(x,u)
     action_map::Dict{Tuple{State,AbstractSignal},Union{Nothing,TransitionAction}}     #eta^+ = g(eta)
-    broadcast_map::Dict{AbstractSignal,Vector{SignalTarget}}                          #y^+ = h(g)
-    suppressed_signals::Vector{AbstractSignal}                                #ignore these signals
     active_signals::Vector{SignalEvent}                                       #vector of signal events this state manager has to evaluate
+    #broadcast_map::Dict{AbstractSignal,Vector{SignalTarget}}                          #y^+ = h(g)  #NOTE.  Probably removing
+    #suppressed_signals::Vector{AbstractSignal}                                #ignore these signals
 end
 
 #Constructor

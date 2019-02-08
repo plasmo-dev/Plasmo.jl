@@ -89,6 +89,8 @@ include("node_task.jl")
 #Workflow Attributes
 include("attribute.jl")
 
+include("implemented_states_signals.jl")
+
 #Node and Edge Transition Actions
 include("actions.jl")
 

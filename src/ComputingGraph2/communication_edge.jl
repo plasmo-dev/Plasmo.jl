@@ -1,17 +1,3 @@
-# mutable struct Channel <: AbstractChannel
-#     state_manager::StateManager
-#     from_attribute::Attribute
-#     to_attribute::Attribute
-#     attribute_queue::
-#     delay::Float64           #communication delay
-#     schedule_delay::Float64
-#     priority::Int            #signal priority (might make this event specific)
-#     history::Union{Nothing,Vector{Tuple}}
-# end
-# Channel(from_attribute::Attribute,to_attribute::Attribute) = Channel(StateManager(),from_attribute,to_attribute,0,0,0,nothing)
-# Channel(from_attribute::Attribute,to_attribute::Attribute,delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,delay,0,0,nothing)
-# Channel(from_attribute::Attribute,to_attribute::Attribute,comm_delay::Float64,schedule_delay::Float64) = Channel(StateManager(),from_attribute,to_attribute,comm_delay,schedule_delay,0,nothing)
-
 ##########################
 # Communication Edges
 #########################
@@ -76,6 +62,16 @@ function add_edge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute
     setaction(t4,action)
 
     return edge
+end
+
+function addattribute!(edge::CommunicationEdge,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
+    attribute = EdgeAttribute(edge,label,attribute)
+    push!(edge.attribute_pipeline,attribute)
+    return attribute
+end
+
+function removeattribute!(edge::CommunicationEdge,attribute::EdgeAttribute)
+    filter!(x->x != attribute,edge.attribute_pipeline)
 end
 
 #schedulesignal(workflow,Signal(:communicate),channel,start_time)

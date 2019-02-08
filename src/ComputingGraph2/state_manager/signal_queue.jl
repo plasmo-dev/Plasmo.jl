@@ -14,26 +14,27 @@ function evaluate_signal!(queue::SignalQueue,signal::AbstractSignal,target::Sign
 
     SM = getstatemanager(target)
 
-    signal in SM.suppressed_signals && return nothing
+    #signal in SM.suppressed_signals && return nothing
     if !(signal in getsignals(SM)) #Check if the signal isn't recognized
         warn("signal $signal not recognized by target $SM")
         return nothing
     end
 
     #check_signal = Signal(signal)   #Convert data signal to a simple signal
-    input_signal = signal
+    #input_signal = signal
     #if !(tuple(SM.current_state,check_signal) in keys(SM.transition_map))  #Or if it's not suppressed
-    if !(hastransition(SM,check_signal))
+    if !(hastransition(SM,signal))
         warn("no transition for $(SM.current_state) + $signal on $SM")
         return nothing
     end
 
     #action = SM.action_map[SM.current_state,check_signal]
     #transition = SM.transition_map[SM.current_state,check_signal]
-    current_state = SM.current_state
-    new_state = SM.transition_map[SM.current_state,input_signal]
+    # current_state = SM.current_state
+    # new_state = SM.transition_map[SM.current_state,signal]
 
-    
+    runtransition!(SM,signal)
+
     #signal_pairs = runtransition!(SM,transition,signal)    #run the transition action.  Returns vector of return signals
     #return_signals = runtransition!(SM,transition)
     #source = SM

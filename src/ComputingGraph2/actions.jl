@@ -59,30 +59,6 @@ function execute_next_task(graph::AbstractComputingGraph,node::ComputeNode)
 end
 action_execute_next_task() = NodeAction(nothing,nothing,execute_next_task,[],Dict{Symbol,Any}())
 
-# function reexecute_node_task(graph::AbstractComputingGraph,node_task::NodeTask)
-#     try
-#         #remove finalize signal from queue
-#         node.local_time = now(graph) - getcomputetime(node_task) #reset node local time
-#
-#         execute!(node_task)     #Run the task.  This might update attributes (locally)
-#         result_attribute = getattribute(node,getlabel(node_task))
-#         updateattribute(result_attribute,node_task.result)        #updates local value
-#         node = getnode(node_task)
-#         #Advance the node local time
-#         node.local_time = now(graph) + getcomputetime(node_task)
-#
-#         if graph.history_on == true
-#             push!(node.history,(now(graph),node_task.label,getcomputetime(node_task)))
-#         end
-#
-#         #finalize_signal = Signal(:finalize,node_task)
-#         finalize_signal = finalize(node_task)
-#         queuesignal!(graph,finalize_signal,node,node,now(graph) + getcomputetime(node_task))
-#     catch #which error?
-#         queuesignal!(graph,Signal(:error,node_task),node,node,now(graph) + geterrortime(node_task))
-#     end
-# end
-
 #Finalize node task results
 function finalize_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask)
     finalize_time = getfinalizetime(node_task)      #Time spent in finalize state
@@ -108,9 +84,9 @@ action_finalize_node_task(node_task::NodeTask) = NodeAction(nothing,nothing,fina
 #################################
 # Node Actions
 #################################
-mutable struct NodeAction <: AbstractTransitionAction
+mutable struct EdgeAction <: AbstractTransitionAction
     graph::Union{Nothing,AbstractComputingGraph}
-    node::Union{Nothing,AbstractCommunicationEdge}
+    edge::Union{Nothing,AbstractCommunicationEdge}
     func::Function                                  #the function to call
     args::Vector{Any}                               #arguments after graph and node
     kwargs::Dict{Symbol,Any}                        #possible kwargs
@@ -134,13 +110,15 @@ function communicate(graph::AbstractComputingGraph,edge::AbstractCommunicationEd
     from_attribute = edge.from_attribute
     to_attribute= edge.to_attribute
 
+    edge_attribute = addattribute!(edge,getvalue(from_attribute))  #this will add it to the pipeline
     #Queue attribute data on the edge
-    push!(edge.attribute_pipeline,EdgeAttribute(from_attribute.value,now(graph)+edge.delay))
+    #push!(edge.attribute_pipeline,EdgeAttribute(from_attribute.value,now(graph)+edge.delay))
 
     if issendtrigger(from_attribute)
         #sent_signal = Signal(:attribute_sent,from_attribute)
         sent_signal = sent(from_attribute)
-        targets = getbroadcasttargets(edge,sent_signal)
+        #targets = getbroadcasttargets(edge,sent_signal)
+        targets = from_attribute.send_triggers
         for target in targets
             queuesignal!(graph,sent_signal,target,edge,now(graph))
         end
@@ -165,15 +143,41 @@ end
 action_schedule_communicate(delay::Float64) = EdgeAction(nothing,nothing,schedule_communicate,[delay],Dict{Symbol,Any}())
 
 #Update node attribute with received attribute
-function receive_attribute(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge,edge_packet::Attribute)
-    node_attribute = get_destination(edge_attribute)
-    value = getvalue(edge_packet)
-    node_attribute.local_value = value
+function receive_attribute(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge,edge_attribute::Attribute)
+    node_attribute = getdestination(edge_attribute)
+    value = getvalue(edge_attribute)
+    node_attribute.local_value = value   #set local and global values to the received data
     node_attribute.global_value = value
-    if isreceivetrigger(node_attribute)
+    if isreceivetrigger(node_attribute)  #if the node attribute can trigger a task
         queuesignal!(received(node_attribute),getnode(node_attribute),edge,0)
     end
 end
+action_receive_attribute(attribute::EdgeAttribute) = EdgeAction(nothing,nothing,receive_attribute,[edge_attribute],Dict{Symbol,Any}())
+
+# TODO
+# function reexecute_node_task(graph::AbstractComputingGraph,node_task::NodeTask)
+#     try
+#         #remove finalize signal from queue
+#         node.local_time = now(graph) - getcomputetime(node_task) #reset node local time
+#
+#         execute!(node_task)     #Run the task.  This might update attributes (locally)
+#         result_attribute = getattribute(node,getlabel(node_task))
+#         updateattribute(result_attribute,node_task.result)        #updates local value
+#         node = getnode(node_task)
+#         #Advance the node local time
+#         node.local_time = now(graph) + getcomputetime(node_task)
+#
+#         if graph.history_on == true
+#             push!(node.history,(now(graph),node_task.label,getcomputetime(node_task)))
+#         end
+#
+#         #finalize_signal = Signal(:finalize,node_task)
+#         finalize_signal = finalize(node_task)
+#         queuesignal!(graph,finalize_signal,node,node,now(graph) + getcomputetime(node_task))
+#     catch #which error?
+#         queuesignal!(graph,Signal(:error,node_task),node,node,now(graph) + geterrortime(node_task))
+#     end
+# end
 
 #function receive_attribute(attribute::Attribute,value::Any)
 # function update_attribute(signal::DataSignal,attribute::Attribute)
@@ -182,9 +186,6 @@ end
 #     attribute.global_value = value
 #     #return [Pair(Signal(:attribute_updated,attribute),0)]
 # end
-
-
-
 
 #Action for receiving an attribute
 # function receive_attribute_while_synchronizing(signal::DataSignal,node::AbstractDispatchNode,attribute::Attribute)
