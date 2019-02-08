@@ -6,6 +6,7 @@ mutable struct CommunicationEdge <: AbstractCommunicationEdge
     from_attribute::Attribute
     to_attribute::Attribute
     attribute_pipeline::Vector{EdgeAttribute}
+    send_triggers::Vector{Signal}
     delay::Float64                       #communication delay
     history::Vector{Tuple}
 end
@@ -19,35 +20,32 @@ end
 PlasmoGraphBase.create_edge(graph::Workflow) = CommunicationEdge()   #PlasmoGraphBase edge construction
 
 #getchannels(edge::AbstractCommunicationEdge) = edge.channels
-getdelay(edge::AbstractCommunicationEdge,channel::Int) = edge.channels[channel].delay
-getdelay(channel::CommunicationEdge) = channel.delay
-isactive(channel::CommunicationEdge) = channel.state_manager.state == State(:active)
-getsignals(channel::CommunicationEdge) = getsignals(channel.state_manager)
-getinitialsignal(channel::AbstractCommunicationEdge) = getinitialsignal(channel.state_manager)
-setinitialsignal(channel::AbstractCommunicationEdge,signal::AbstractSignal) = setinitialsignal(channel.state_manager,signal)
-setinitialsignal(channel::AbstractCommunicationEdge,signal::Symbol) = setinitialsignal(channel.state_manager,Signal(signal))
-getstatemanager(channel::AbstractCommunicationEdge) = channel.state_manager
+getdelay(edge::AbstractCommunicationEdge) = edge.delay
+iscommunicating(edge::CommunicationEdge) = edge.state_manager.state == state_communicating()
+getsignals(edge::CommunicationEdge) = getsignals(edge.state_manager)
+getstatemanager(edge::AbstractCommunicationEdge) = edge.state_manager
 
-getstates(channel::AbstractCommunicationEdge) = getstates(channel.state_manager)
-gettransitions(channel::AbstractCommunicationEdge) = gettransitions(channel.state_manager)
-getcurrentstate(channel::AbstractCommunicationEdge) = getcurrentstate(channel.state_manager)
-getlocaltime(channel::AbstractCommunicationEdge) = channel.state_manager.local_time
+getstates(edge::AbstractCommunicationEdge) = getstates(edge.state_manager)
+gettransitions(edge::AbstractCommunicationEdge) = gettransitions(edge.state_manager)
+getcurrentstate(edge::AbstractCommunicationEdge) = getcurrentstate(edge.state_manager)
+getlocaltime(edge::AbstractCommunicationEdge) = edge.local_time
 
-setdelay(edge::AbstractCommunicationEdge,channel::Int,delay::Float64) = edge.channels[channel].delay = delay
+setdelay(edge::AbstractCommunicationEdge,delay::Float64) = edge.delay = delay
 
 #dispatch edge communicates when it receives attribute updates
 function add_edge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2::Attribute;
-    send_attribute_updates = true, delay = 0,send_on_signals = AttributeSignal[],send_wait = 0, start_time = 0)
+    delay::Number = 0,start_time = 0,schedule_send_on = Signal[],send_delay::Number = 0.0)
+
+    delay = Float64(delay)
 
     edge = add_edge!(graph,getnode(attribute1),getnode(attribute2))
-    edge.send_triggers = send_on_signals
-
+    edge.send_triggers = send_on
 
     edge_manager = getstatemanager(edge)
     destination_node = getnode(attribute2)
 
     for signal in edge.send_triggers
-        t1 = addtransition!(edge_manager,State(:idle),signal,State(:communicating))
+        t1 = addtransition!(edge_manager,state_idle(),signal,state_communicating()))
         t2 = addtransition!(edge_manager,State(:communicating),signal,State(:communicating))
         action = TransitionAction(schedule_communicate,[graph,edge,send_wait]))
         setaction(edge_manager,t1,action)
@@ -64,13 +62,16 @@ function add_edge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute
     return edge
 end
 
-function addattribute!(edge::CommunicationEdge,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
-    attribute = EdgeAttribute(edge,label,attribute)
+#setaction(edge,transition,schedule_communicate,delay)
+
+
+function addcomputingattribute!(edge::CommunicationEdge,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
+    attribute = EdgeAttribute(edge,label,value)
     push!(edge.attribute_pipeline,attribute)
     return attribute
 end
 
-function removeattribute!(edge::CommunicationEdge,attribute::EdgeAttribute)
+function removecomputingattribute!(edge::CommunicationEdge,attribute::EdgeAttribute)
     filter!(x->x != attribute,edge.attribute_pipeline)
 end
 

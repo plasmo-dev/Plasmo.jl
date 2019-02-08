@@ -1,17 +1,12 @@
-struct TaskPriority
-    priority::Int
-    id::Int                 #each key should be unique
-end
-
-function isless(val1::TaskPriority,val2::TaskPriority) :: Bool
-    if val1.priority < val2.priority
-        return true
-    elseif val1.priority == val2.priority && val1.id < val2.id
-        return true
-    else
-        return false
-    end
-end
+# function isless(val1::TaskPriority,val2::TaskPriority) :: Bool
+#     if val1.priority < val2.priority
+#         return true
+#     elseif val1.priority == val2.priority && val1.id < val2.id
+#         return true
+#     else
+#         return false
+#     end
+# end
 
 # A Node Task
 mutable struct NodeTask
@@ -31,6 +26,7 @@ execute!(node_task::NodeTask) = node_task.result = node_task.func(node_task.args
 getresult(node_task::NodeTask) = node_task.result
 getlabel(node_task::NodeTask) = node_task.label
 
+mincomputetime() = 1e-12
 getcomputetime(nodetask::NodeTask) = nodetask.compute_time
 setcomputetime(nodetask::NodeTask,compute_time::Float64) = nodetask.compute_time = compute_time
 

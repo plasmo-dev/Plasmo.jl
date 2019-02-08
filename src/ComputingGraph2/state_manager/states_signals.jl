@@ -21,17 +21,3 @@ Signal() = Signal(:nothing,nothing,nothing)
 getlabel(signal::AbstractSignal) = signal.label
 getvalue(signal::AbstractSignal) = signal.value
 getdata(signal::AbstractSignal) = signal.data
-
-# #A signal carrying information
-# mutable struct DataSignal <: AbstractSignal
-#     label::Symbol
-#     value::Any              #Attribute, or other value, or even an Array
-#     data::Any               #Data the signal may carry.  Can be passed to transition actions.
-# end
-#
-# #NOTE Just use a convert method here?
-# Signal(signal::DataSignal) = Signal(signal.label,signal.value)  #Convert data signal to a signal
-
-
-# getdata(signal::AbstractSignal) = nothing
-# getdata(signal::DataSignal) = signal.data
