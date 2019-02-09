@@ -18,7 +18,7 @@ function addaction!(graph::ComputingGraph,node::ComputeNode,signal::Signal,state
     node.state_manager.action_map[(signal,state)] = action
 end
 
-function run_action!(action::NodeAction)
+function runaction!(action::NodeAction)
     (action.graph != nothing && action.node != nothing) || throw(error("Node action not assigned to a node"))
     action.func(action.graph,action.node,action.args...,action.kwargs...)
 end
@@ -28,7 +28,7 @@ function schedule_node_task(graph::AbstractComputingGraph,node::AbstractComputeN
     #execute_signal = Signal(:execute,node_task)
     execute_signal = signal_execute(node_task)
     queue = getqueue(graph)
-    queuesignal!(queue,execute_signal,node,now(graph) + delay,priority = getlocaltime(node))#,priority_map = priority_map)
+    queuesignal!(queue,execute_signal,node,now(graph) + delay,priority = getlocaltime(node))
 end
 action_schedule_node_task(node_task::NodeTask,delay::Float64) = NodeAction(nothing,nothing,schedule_node_task,[node_task,delay],Dict{Symbol,Any}())
 
@@ -39,7 +39,7 @@ function execute_node_task(graph::AbstractComputingGraph,node::AbstractComputeNo
         setvalue(result_attribute,node_task.result)        #updates local value
 
         #Advance the node local time
-        advance_node_time(node,now(graph + getcomputetime(node_task)))
+        advancenodetime!(node,now(graph + getcomputetime(node_task)))
         #node.local_time = now(graph) + getcomputetime(node_task)
 
         if graph.history_on == true
@@ -99,7 +99,7 @@ function addaction!(graph::ComputingGraph,edge::CommunicationEdge,signal::Signal
     edge.state_manager.action_map[(signal,state)] = action
 end
 
-function run_action!(action::EdgeAction)
+function runaction!(action::EdgeAction)
     (action.graph != nothing && action.edge != nothing) || throw(error("Edge action not assigned to a node"))
     action.func(action.graph,action.edge,action.args...,action.kwargs...)
 end
@@ -116,9 +116,8 @@ function communicate(graph::AbstractComputingGraph,edge::AbstractCommunicationEd
     #push!(edge.attribute_pipeline,EdgeAttribute(from_attribute.value,now(graph)+edge.delay))
 
     if issendtrigger(from_attribute)
-        #sent_signal = Signal(:attribute_sent,from_attribute)
         sent_signal = sent(from_attribute)
-        #targets = getbroadcasttargets(edge,sent_signal)
+        #targets = getbroadcasttargets(edge,sent_signal)  #NOTE: Think about potentially using some kind of broadcast mapping
         targets = from_attribute.send_triggers
         for target in targets
             queuesignal!(graph,sent_signal,target,edge,now(graph))
@@ -126,7 +125,6 @@ function communicate(graph::AbstractComputingGraph,edge::AbstractCommunicationEd
     end
 
     receive_target = to_attribute
-    #recieve_signal = Signal(:attribute_received,to_attribute)
     receive_signal = receive(edge_attribute)
     queuesignal!(graph,receive_signal,receive_target,edge,now(graph) + edge.delay)
 
@@ -154,15 +152,15 @@ function receive_attribute(graph::AbstractComputingGraph,edge::AbstractCommunica
         queuesignal!(graph,received(node_attribute),receive_node,edge,0)
     end
 
-    pop!(edge.attribute_pipeline,edge_attribute)
-
+    removecomputeattribute!(edge::CommunicationEdge,attribute::EdgeAttribute)
     if isempty(edge.attribute_pipeline)
-        queuesignal!(graph,signal_all_received(),)
+        queuesignal!(graph,signal_all_received(),edge,edge,0)  #Signal that all attributes were received
     end
 
 end
 action_receive_attribute(attribute::EdgeAttribute) = EdgeAction(nothing,nothing,receive_attribute,[edge_attribute],Dict{Symbol,Any}())
 
+################################################################################################
 # TODO
 # function reexecute_node_task(graph::AbstractComputingGraph,node_task::NodeTask)
 #     try
@@ -187,6 +185,7 @@ action_receive_attribute(attribute::EdgeAttribute) = EdgeAction(nothing,nothing,
 #         queuesignal!(graph,Signal(:error,node_task),node,node,now(graph) + geterrortime(node_task))
 #     end
 # end
+########################################################################################################
 
 #function receive_attribute(attribute::Attribute,value::Any)
 # function update_attribute(signal::DataSignal,attribute::Attribute)

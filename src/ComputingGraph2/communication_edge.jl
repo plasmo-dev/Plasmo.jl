@@ -2,22 +2,30 @@
 # Communication Edges
 #########################
 mutable struct CommunicationEdge <: AbstractCommunicationEdge
+    baseedge::BasePlasmoEdge
     state_manager::StateManager
-    from_attribute::Attribute
-    to_attribute::Attribute
+    from_attribute::Union{Nothing,NodeAttribute}
+    to_attribute::Union{Nothing,NodeAttribute}
     attribute_pipeline::Vector{EdgeAttribute}
     send_triggers::Vector{Signal}
     delay::Float64                       #communication delay
     history::Vector{Tuple}
+    #local_time::Float64
 end
-#schedule_delay::Float64
-#priority::Int            #signal priority (might make this event specific)
 
 function CommunicationEdge()
-    baseedge = BasePlasmoEdge()
-    return CommunicationEdge(baseedge,channels)
+    edge = new()
+    edge.baseedge = BasePlasmoEdge()
+    edge.state_manager = StateManager()
+    edge.from_attribute = nothing
+    edge.to_attribute = nothing
+    edge.attribute_pipeline = Vector{EdgeAttribute}()
+    edge.send_triggers = Vector{Signal}()
+    edge.delay = 0.0
+    edge.history = Vector{Tuple}()
+    return edge
 end
-PlasmoGraphBase.create_edge(graph::Workflow) = CommunicationEdge()   #PlasmoGraphBase edge construction
+PlasmoGraphBase.create_edge(graph::ComputingGraph) = CommunicationEdge()   #PlasmoGraphBase edge construction
 
 #getchannels(edge::AbstractCommunicationEdge) = edge.channels
 getdelay(edge::AbstractCommunicationEdge) = edge.delay
@@ -28,39 +36,34 @@ getstatemanager(edge::AbstractCommunicationEdge) = edge.state_manager
 getstates(edge::AbstractCommunicationEdge) = getstates(edge.state_manager)
 gettransitions(edge::AbstractCommunicationEdge) = gettransitions(edge.state_manager)
 getcurrentstate(edge::AbstractCommunicationEdge) = getcurrentstate(edge.state_manager)
-getlocaltime(edge::AbstractCommunicationEdge) = edge.local_time
+#getlocaltime(edge::AbstractCommunicationEdge) = edge.local_time
 
 setdelay(edge::AbstractCommunicationEdge,delay::Float64) = edge.delay = delay
 
 #dispatch edge communicates when it receives attribute updates
-function add_edge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2::Attribute;
-    delay::Number = 0,start_time = 0,send_on = Signal[],send_delay::Number = 0.0)
+function addedge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2::Attribute;
+    delay::Number = 0,send_on = Signal[],send_delay::Number = 0.0)
 
     delay = Float64(delay)
 
     edge = add_edge!(graph,getnode(attribute1),getnode(attribute2))
+    edge.from_attribute = attribute1
+    edge.to_attribute = attribute2
     edge.send_triggers = send_on
-
-    edge_manager = getstatemanager(edge)
-    destination_node = getnode(attribute2)
-
-    for signal in edge.send_triggers
-        addtransition!(edge_manager,state_idle(),signal,state_communicating(),action = action_schedule_communicate())
-        t2 = addtransition!(edge_manager,State(:communicating),signal,State(:communicating))
-        action = TransitionAction(schedule_communicate,[graph,edge,send_wait]))
-        setaction(edge_manager,t1,action)
-        setaction(edge_manager,t2,action)
-    end
-
-    #run communication when given :communicate signal
-    t3 = addtransition!(edge_manager,State(:idle), Signal(:communicate), State(:communicating)
-    t4 = addtransition!(edge_manager,State(:communicating),Signal(:communicate),State(:communicating))
-    action = TransitionAction(communicate,[graph,edge])
-    setaction(t3,action)
-    setaction(t4,action)
+    edge.delay = delay
 
     push!(attribute1.out_edges,edge)
     push!(attribute2.in_edges,edge)
+
+    #communication actions
+    addtransition!(edge,state_idle(), signal_communicate(), state_communicating();action = action_communicate())
+    addtransition!(edge,state_communicating(),signal_communicate(),state_communicating())
+
+    #schedule communication actions
+    for signal in edge.send_triggers
+        addtransition!(edge,state_idle(),signal,state_communicating(),action = action_schedule_communicate(send_delay))
+        addtransition!(edge,state_communicating(),signal,state_communicating(),action = action_schedule_communicate(send_delay))
+    end
 
     return edge
 end
@@ -68,13 +71,13 @@ end
 #setaction(edge,transition,schedule_communicate,delay)
 
 
-function addcomputingattribute!(edge::CommunicationEdge,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
+function addcomputeattribute!(edge::CommunicationEdge,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
     attribute = EdgeAttribute(edge,label,value)
     push!(edge.attribute_pipeline,attribute)
     return attribute
 end
 
-function removecomputingattribute!(edge::CommunicationEdge,attribute::EdgeAttribute)
+function removecomputeattribute!(edge::CommunicationEdge,attribute::EdgeAttribute)
     filter!(x->x != attribute,edge.attribute_pipeline)
 end
 
@@ -107,3 +110,6 @@ end
 #     store_history == true && (channel.history = Vector{Tuple}())
 #     return channel
 # end
+
+#schedule_delay::Float64
+#priority::Int            #signal priority (might make this event specific)

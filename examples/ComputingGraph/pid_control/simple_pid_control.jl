@@ -97,7 +97,7 @@ addattributes!(pid_node1,Dict(:yset => 2,:K=>15,:tauI=>1,:tauD=>0.01,:error_hist
 addnodetask!(graph,pid_node1,:control_law,calc_pid_controller,triggered_by = signal_received(pid_node1[:y]))
 
 #e1 will continuously send x --> y (every 0.01 time units)
-e1 = connect!(graph,ode_node[:x],pid_node1[:y],delay = 0.01,frequency = 0.01)
+e1 = connect!(graph,ode_node[:x],pid_node1[:y],delay = 0.01,send_on = sent(ode_node[:x]),send_delay = 0.01)
 
 #setaction(e1,transition,schedule_communicate(frequency))
 

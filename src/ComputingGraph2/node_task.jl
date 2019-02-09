@@ -10,7 +10,7 @@
 
 # A Node Task
 mutable struct NodeTask
-    node::DispatchNode               #Having a pointer back to the node is convenient for defining actions
+    #node::DispatchNode               #Having a pointer back to the node was convenient for defining actions
     label::Symbol
     func::Function                   #the function to call
     args::Vector{Any}                #the function args
@@ -19,7 +19,8 @@ mutable struct NodeTask
     compute_time::Float64
 end
 #NodeTask() = NodeTask(Symbol("nodetask"*string(gensym())),() -> nothing,[],Dict(),nothing,0.0,0.0)
-NodeTask(node::DispatchNode,func::Function) =  NodeTask(node,Symbol("nodetask"*string(gensym())),func,[],Dict(),nothing,0.0)#,0.0)
+#NodeTask(node::DispatchNode,func::Function) =  NodeTask(node,Symbol("nodetask"*string(gensym())),func,[],Dict(),nothing,0.0)#,0.0)
+NodeTask(func::Function) =  NodeTask(Symbol("nodetask"*string(gensym())),func,[],Dict(),nothing,0.0)#,0.0)
 NodeTask(label::Symbol,func::Function;args = [],kwargs = Dict(),compute_time = 0.0,schedule_delay = 0.0) = NodeTask(label,func,args,kwargs,nothing,compute_time,schedule_delay)
 
 execute!(node_task::NodeTask) = node_task.result = node_task.func(node_task.args...,node_task.kwargs...)

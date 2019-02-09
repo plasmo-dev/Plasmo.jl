@@ -6,9 +6,11 @@ mutable struct NodeAttribute <: AbstractAttribute
     global_value::Any   #updated globally
     out_edges::Vector{AbstractCommunicationEdge}
     in_edges::Vector{AbstractCommunicationEdge}
-    # update_triggers::Vector{NodeTask}    #attribute updates can trigger tasks
-    # send_triggers::Vector{NodeTask}      #attribute sent can trigger tasks
-    # receive_triggers::Vector{NodeTask}   #attribute received can trigger tasks
+
+    #Signals corresponding to an attribute can trigger tasks or communication
+    update_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}    #attribute updates can trigger tasks or communication
+    send_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}      #attribute sent can trigger tasks or communication
+    receive_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}   #attribute received can trigger tasks or communication
 end
 NodeAttribute(node::AbstractComputeNode) = NodeAttribute(node,gensym(),nothing,nothing,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())
 NodeAttribute(node::AbstractComputeNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())

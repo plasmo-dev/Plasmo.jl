@@ -100,6 +100,20 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTas
     node.node_tasks[getlabel(node_task)] = node_task
 end
 
+function addtasktrigger!(node::ComputeNode,node_task::NodeTask,signal::Signal)
+    push!(node.task_triggers[node_task],signal)
+
+    #execute if in idle
+    addtransition!(node,state_idle(),signal,state_executing(node_task), action = action_execute_node_task(node_task)
+
+    #queue if executing
+    addtransition!(node,state_executing(),signal,state_executing(), action = action_queue_node_task(node_task))
+
+    #queue if finalizing
+    addtransition!(node,state_finalizing(),signal,state_finalizing(),action = action_queue_node_task(node_task))
+end
+
+
 next_task(node::ComputeNode) = peek(node.task_queue)
 next_task!(node::ComputeNode) = dequeue!(node.task_queue)
 
@@ -113,22 +127,8 @@ addcomputeattribute!(node::ComputeNode,label::Symbol) = addcomputeattribute!(nod
 
 function addcomputeattributes!(node::ComputeNode,values::Dict{Symbol,Any})
     for (key,value) in values
-        addattribute!(node,key,value)
+        addcomputeattribute!(node,key,value)
     end
-end
-
-
-function addtasktrigger!(node::ComputeNode,node_task::NodeTask,signal::Signal)
-    push!(node.task_triggers[node_task],signal)
-
-    #execute if in idle
-    addtransition!(node,state_idle(),signal,state_executing(node_task), action = action_execute_node_task(node_task)
-
-    #queue if executing
-    addtransition!(node,state_executing(),signal,state_executing(), action = action_queue_node_task(node_task))
-
-    #queue if finalizing
-    addtransition!(node,state_finalizing(),signal,state_finalizing(),action = action_queue_node_task(node_task))
 end
 
 

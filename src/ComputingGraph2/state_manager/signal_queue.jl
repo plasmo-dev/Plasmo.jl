@@ -93,7 +93,7 @@ function queuesignal!(queue::SignalQueue,signal_event::AbstractEvent)
     signal_event.status = scheduled
 end
 
-function queuesignal!(queue::SignalQueue,signal::AbstractSignal,target::SignalTarget,time::Number;local_time = 0,priority_map = Dict())
+function queuesignal!(queue::SignalQueue,signal::AbstractSignal,target::SignalTarget,time::Number)#;local_time = 0,priority_map = Dict())
     signal_event = SignalEvent(Float64(time),signal,target)
     #TODO Generalize these functions
     setpriority(signal_event,signal,priority_map = priority_map)
