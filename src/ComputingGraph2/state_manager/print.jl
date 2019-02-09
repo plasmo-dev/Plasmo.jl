@@ -21,8 +21,8 @@ print(io::IO, signalevent::SignalEvent) = print(io, string(signalevent))
 show(io::IO, signalevent::SignalEvent) = print(io,signalevent)
 
 
-function string(manager::StateManager)
-    "State Manager: "*string(manager.current_state)
+function string(target::SignalTarget)
+    "Manager: "*string(getstate(target))
 end
 print(io::IO,manager::StateManager) = print(io, string(manager))
 show(io::IO,manager::StateManager) = print(io,manager)
