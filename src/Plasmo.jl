@@ -12,9 +12,9 @@ using Reexport
 include("PlasmoGraphBase/PlasmoGraphBase.jl")
 @reexport using .PlasmoGraphBase
 
-include("ModelGraph/PlasmoModelGraph.jl")
-@reexport using .PlasmoModelGraph
+# include("ModelGraph/PlasmoModelGraph.jl")
+# @reexport using .PlasmoModelGraph
 
-# include("ComputingGraph/PlasmoComputingGraph.jl")
-# @reexport using .PlasmoComputingGraph
+include("ComputingGraph2/PlasmoComputingGraph.jl")
+@reexport using .PlasmoComputingGraph
 end

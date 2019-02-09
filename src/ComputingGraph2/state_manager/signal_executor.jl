@@ -56,7 +56,7 @@ end
 function step(squeue::SignalQueue)
     isempty(squeue.queue) && throw(QueueComplete("Queue is Empty"))
     (signal_event, priority_key) = DataStructures.peek(squeue.queue)
-    DataStructures.dequeue!(squeue.queue))   #Dequeue the event function
+    DataStructures.dequeue!(squeue.queue)   #Dequeue the event function
     squeue.time = priority_key.time
     run!(squeue,signal_event)
 end
@@ -81,12 +81,12 @@ function step(squeue::SignalQueue,executor::AbstractExecutor)
 
  end
 
-function advance(coordinator::SignalCoordinator,executor::AbstractExecutor,time::Number;priority_map = Dict())
-    while coordinator.time <= time
+function advance(squeue::SignalQueue,executor::AbstractExecutor,time::Number)
+    while squeue.time <= time
         try
-            step(coordinator,executor,priority_map = priority_map)             #step through the priority queue
-            if coordinator.time >= executor.final_time && coordinator.time != 0
-                throw(StopWorkflow())
+            step(squeue,executor)
+            if squeue.time >= executor.final_time && squeue.time != 0
+                throw(StopQueue())
             end
         catch err
             if isa(err,QueueComplete)

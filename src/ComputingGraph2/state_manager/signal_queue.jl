@@ -13,11 +13,11 @@ getqueue(queue::SignalQueue) = queue.queue
 function evaluate_signal!(queue::SignalQueue,signal::AbstractSignal,target::SignalTarget)
     manager = getstatemanager(target)
     if !(signal in getvalidsignals(manager)) #Check if the signal isn't recognized
-        warn("signal $signal not recognized by target $target")
+        @warn("signal $signal not recognized by target $target in state $(getstate(target))")
         return nothing
     end
-    if !(hastransition(manager,signal))
-        warn("no transition for $(getstate(target)) + $signal on $target")
+    if !(hastransition(manager,getstate(target),signal))
+        @warn("no transition for $(getstate(target)) + $signal on $target")
         return nothing
     end
     runtransition!(manager,signal)
@@ -60,7 +60,7 @@ end
 function queuesignal!(squeue::SignalQueue,signal_event::AbstractSignalEvent)
     id = length(squeue.queue) + 1
     priority_value = SignalPriorityValue(gettime(signal_event),getglobalpriority(squeue,signal_event),getsecondarypriority(signal_event),id)
-    DataStructures.enqueue!(queue.queue,signal_event,priority_value)
+    DataStructures.enqueue!(squeue.queue,signal_event,priority_value)
 
     target = getstatemanager(signal_event.target)
     push!(target.active_signals,signal_event)
@@ -69,15 +69,15 @@ end
 #Methods for different arguments
 function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,target::SignalTarget,time::Number)
     signal_event = SignalEvent(Float64(time),signal,target)
-    queuesignal!(queue,signal_event)
+    queuesignal!(squeue,signal_event)
 end
 
 function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,source::SignalTarget,target::SignalTarget,time::Number)
     signal_event = SignalEvent(Float64(time),signal,source,target)
-    queuesignal!(queue,signal_event)
+    queuesignal!(squeue,signal_event)
 end
 
 function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,source::SignalTarget,target::SignalTarget,time::Number,priority::Number)
     signal_event = SignalEvent(Float64(time),signal,source,target,priority)
-    queuesignal!(queue,signal_event)
+    queuesignal!(squeue,signal_event)
 end
