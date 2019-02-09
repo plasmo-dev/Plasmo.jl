@@ -8,8 +8,8 @@ pyplot()
 function run_ode_simulation(graph::ComputingGraph,node::ComputeNode)
     a = 1.01; b1 = 1.0;
 
-    t_start = Float64(now(graph))   #the node's current time
-    t_next = Float64(nexttime(graph))  #look it up on the queue
+    t_start = Float64(now(graph))       #the node's current time
+    t_next = Float64(nexttime(graph))   #look it up on the queue
 
     if t_next - t_start <= 0
         return true
@@ -47,7 +47,7 @@ function calc_pid_controller(graph::ComputingGraph,node::ComputeNode)
     error_history = node[:error_history]  #need error history for integral term
     u_history = node[:u_history]
 
-    current_time = getcurrenttime(workflow)
+    current_time = now(graph)
 
     if current_time > 10
         setvalue(node[:yset],1)
@@ -83,26 +83,26 @@ graph = ComputingGraph()
 
 #Add the node for the ode simulation
 ode_node = addnode!(graph)      #, continuous = true, schedule_delay = 0)   #dispatch node that will reschedule on synchronization
-addcomputingattribute!(ode_node,:x,0.0)
-addcomputingattribute!(ode_node,:u1,0.0)
-addcomputingattributes!(ode_node,Dict(:x0 => 0.0,:x_history => Vector{Pair}(),:u1 => 0.0, :x => 0.0))
-sim_task = addnodetask!(graph,ode_node,:run_simulation,run_ode_simulation,triggered_by = updated(ode_node[:x]))  #this will make the task run continuously
+addcomputeattribute!(ode_node,:x,0.0)
+addcomputeattribute!(ode_node,:u1,0.0)
+addcomputeattributes!(ode_node,Dict(:x0 => 0.0,:x_history => Vector{Pair}(),:u1 => 0.0, :x => 0.0))
+sim_task = addnodetask!(graph,ode_node,:run_simulation,run_ode_simulation,triggered_by = signal_updated(ode_node[:x]))  #this will make the task run continuously
 queuesignal!(graph,signal_execute_task(sim_task),ode_node,0)
 
 #Add the node to do PID calculation
 pid_node1 = addnode!(graph)
-addcomputingattribute!(pid_node1,:u,0)
-addcomputingattribute!(pid_node1,:y,0)
-addattributes!(pid_node1,Dict(:yset => 2,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:u_history => Vector{Pair}()))
+addcomputeattribute!(pid_node1,:u,0)
+addcomputeattribute!(pid_node1,:y,0)
+addcomputeattributes!(pid_node1,Dict(:yset => 2,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:u_history => Vector{Pair}()))
 addnodetask!(graph,pid_node1,:control_law,calc_pid_controller,triggered_by = signal_received(pid_node1[:y]))
 
 #e1 will continuously send x --> y (every 0.01 time units)
-e1 = connect!(graph,ode_node[:x],pid_node1[:y],delay = 0.01,send_on = sent(ode_node[:x]),send_delay = 0.01)
+e1 = connect!(graph,ode_node[:x],pid_node1[:y],delay = 0.01,send_on = signal_sent(ode_node[:x]),send_delay = 0.01)
 
 #setaction(e1,transition,schedule_communicate(frequency))
 
 #e2 will send u --> u1 when u is updated
-e2 = connect!(graph,pid_node1[:u],ode_node[:u1],delay = 0.01)
+e2 = connect!(graph,pid_node1[:u],ode_node[:u1],delay = 0.01,send_on = signal_updated(pid_node1[:u]))
 
 #execute the workflow
 executor = SerialExecutor(20)  #creates a termination event at time 20

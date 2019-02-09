@@ -10,7 +10,7 @@ mutable struct CommunicationEdge <: AbstractCommunicationEdge
     send_triggers::Vector{Signal}
     delay::Float64                       #communication delay
     history::Vector{Tuple}
-    #local_time::Float64
+    local_time::Float64
 end
 
 function CommunicationEdge()
@@ -22,6 +22,7 @@ function CommunicationEdge()
     edge.attribute_pipeline = Vector{EdgeAttribute}()
     edge.send_triggers = Vector{Signal}()
     edge.delay = 0.0
+    edge.local_time = 0.0
     edge.history = Vector{Tuple}()
     return edge
 end
@@ -29,20 +30,21 @@ PlasmoGraphBase.create_edge(graph::ComputingGraph) = CommunicationEdge()   #Plas
 
 #getchannels(edge::AbstractCommunicationEdge) = edge.channels
 getdelay(edge::AbstractCommunicationEdge) = edge.delay
-iscommunicating(edge::CommunicationEdge) = edge.state_manager.state == state_communicating()
-getsignals(edge::CommunicationEdge) = getsignals(edge.state_manager)
+getlocaltime(edge::AbstractCommunicationEdge) = edge.local_time
+getstate(edge::AbstractCommunicationEdge) = getstate(edge.state_manager)
+iscommunicating(edge::CommunicationEdge) = getstate(edge) == state_communicating()
+getvalidsignals(edge::CommunicationEdge) = getvalidsignals(edge.state_manager)
 getstatemanager(edge::AbstractCommunicationEdge) = edge.state_manager
 
-getstates(edge::AbstractCommunicationEdge) = getstates(edge.state_manager)
+getvalidstates(edge::AbstractCommunicationEdge) = getvalidstates(edge.state_manager)
 gettransitions(edge::AbstractCommunicationEdge) = gettransitions(edge.state_manager)
-getcurrentstate(edge::AbstractCommunicationEdge) = getcurrentstate(edge.state_manager)
-#getlocaltime(edge::AbstractCommunicationEdge) = edge.local_time
+#getcurrentstate(edge::AbstractCommunicationEdge) = getcurrentstate(edge.state_manager)
 
 setdelay(edge::AbstractCommunicationEdge,delay::Float64) = edge.delay = delay
 
 #dispatch edge communicates when it receives attribute updates
 function addedge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2::Attribute;
-    delay::Number = 0,send_on = Signal[],send_delay::Number = 0.0)
+    delay::Number = 0,send_on::Vector{Signal} = Signal[],send_delay::Number = 0.0)
 
     delay = Float64(delay)
 
@@ -54,6 +56,13 @@ function addedge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2
 
     push!(attribute1.out_edges,edge)
     push!(attribute2.in_edges,edge)
+
+    #Notify attribute that it triggers this edge
+    for signal in send_on
+        label = signal.label
+        attribute = signal.value
+        attribute.triggers[label] = edge
+    end
 
     #communication actions
     addtransition!(edge,state_idle(), signal_communicate(), state_communicating();action = action_communicate())
@@ -67,9 +76,6 @@ function addedge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2
 
     return edge
 end
-
-#setaction(edge,transition,schedule_communicate,delay)
-
 
 function addcomputeattribute!(edge::CommunicationEdge,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
     attribute = EdgeAttribute(edge,label,value)

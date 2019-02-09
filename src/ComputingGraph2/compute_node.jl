@@ -131,7 +131,6 @@ function addcomputeattributes!(node::ComputeNode,values::Dict{Symbol,Any})
     end
 end
 
-
 getcomputeattribute(node::ComputeNode,label::Symbol) = node.attribute_map[label]
 getcomputeattributes(node::ComputeNode) = node.attributes
 
@@ -150,7 +149,7 @@ getnoderesult(node::ComputeNode,label::Symbol) = node.task_results[getnodetask(n
 ###########################
 # Node functions
 ###########################
-getlocaltime(node::AbstractComputeNode) = node.state_manager.local_time
+getlocaltime(node::AbstractComputeNode) = node.local_time
 #getlastresult(node::AbstractComputeNode) = node.last_result
 
 #Node State Manager

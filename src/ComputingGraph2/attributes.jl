@@ -8,9 +8,11 @@ mutable struct NodeAttribute <: AbstractAttribute
     in_edges::Vector{AbstractCommunicationEdge}
 
     #Signals corresponding to an attribute can trigger tasks or communication
-    update_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}    #attribute updates can trigger tasks or communication
-    send_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}      #attribute sent can trigger tasks or communication
-    receive_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}   #attribute received can trigger tasks or communication
+    signal_triggers::Dict{Symbol,Union{NodeTask,AbstractCommunicationEdge}}
+
+    # update_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}    #attribute updates can trigger tasks or communication
+    # send_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}      #attribute sent can trigger tasks or communication
+    # receive_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}   #attribute received can trigger tasks or communication
 end
 NodeAttribute(node::AbstractComputeNode) = NodeAttribute(node,gensym(),nothing,nothing,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())
 NodeAttribute(node::AbstractComputeNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())
@@ -40,10 +42,16 @@ end
 
 isoutconnected(attribute::NodeAttribute) = length(attribute.out_channels) > 0
 isinconnected(attribute::NodeAttribute) = length(attribute.in_channels) > 0
-isupdatetrigger(attribute::NodeAttribute) = length(attribute.update_triggers) > 0
-issendtrigger(attribute::NodeAttribute) = length(attribute.send_triggers) > 0
-isreceivetrigger(attribute::NodeAttribute) = length(attribute.receive_triggers) > 0
+# isupdatetrigger(attribute::NodeAttribute) = length(attribute.update_triggers) > 0
+# issendtrigger(attribute::NodeAttribute) = length(attribute.send_triggers) > 0
+# isreceivetrigger(attribute::NodeAttribute) = length(attribute.receive_triggers) > 0
+isupdatetrigger(attribute::NodeAttribute) = length(attribute.triggers[:attribute_updated]) > 0
+issendtrigger(attribute::NodeAttribute) = length(attribute.triggers[:attribute_sent]) > 0
+isreceivetrigger(attribute::NodeAttribute) = length(attribute.triggers[:attribute_received]) > 0
 
+updatetargets(attribute::NodeAttribute) = attribute.triggers[:attribute_updated]
+sendtargets(attribute::NodeAttribute) = attribute.triggers[:attribute_sent]
+receivetargets(attribute::NodeAttribute) = attribute.triggers[:attribute_received]
 #A workflow node attribute.  Has local and global values to manage time synchronization
 mutable struct EdgeAttribute <: AbstractAttribute
     edge::AbstractCommunicationEdge
