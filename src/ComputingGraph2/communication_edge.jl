@@ -68,6 +68,10 @@ function addedge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2
     addtransition!(edge,state_idle(), signal_communicate(), state_communicating();action = action_communicate())
     addtransition!(edge,state_communicating(),signal_communicate(),state_communicating())
 
+    #NOTE: Need to add schedule_communicate signal
+    # addtransition!(edge,state_idle(),signal_schedule_communicate(),state_communicating(),action = action_schedule_communicate(send_delay))
+    # addtransition!(edge,state_communicating(),signal,state_communicating(),action = action_schedule_communicate(send_delay))
+
     #schedule communication actions
     for signal in edge.send_triggers
         addtransition!(edge,state_idle(),signal,state_communicating(),action = action_schedule_communicate(send_delay))
@@ -76,6 +80,8 @@ function addedge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2
 
     return edge
 end
+
+const connect! = addedge!
 
 function addcomputeattribute!(edge::CommunicationEdge,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
     attribute = EdgeAttribute(edge,label,value)
@@ -86,36 +92,3 @@ end
 function removecomputeattribute!(edge::CommunicationEdge,attribute::EdgeAttribute)
     filter!(x->x != attribute,edge.attribute_pipeline)
 end
-
-#schedulesignal(workflow,Signal(:communicate),channel,start_time)
-# communicate in response to a send signal
-# if continuous == true
-#     comm_signal = sent(attribute1)
-#
-#     addtransition!(edge_manager,State(:idle),comm_signal,State(:communicating))
-#     action = TransitionAction(schedule_communicate,[graph,edge,schedule_delay]))
-#     addaction!(edge_manager,State(:idle),comm_signal)
-#
-#     schedulesignal(workflow,Signal(:communicate),channel,start_time)
-#     queuesignal!(graph,Signal(:communicate),edge,nothing,start_time)
-#
-#     #suppresssignal!(channel.state_manager,Signal(:comm_received,attribute2))
-# end
-
-#TODO send attribute data when it updates
-# if send_attribute_updates == true
-#     addtransition!(edge.state_manager,State(:active), Signal(:attribute_updated,attribute1), State(:active),
-#     action = TransitionAction(communicate,[workflow,channel]), targets = [destination_node.state_manager])
-# end
-
-# function addchannel!(edge::AbstractCommunicationEdge,from_attribute::Attribute,to_attribute::Attribute;comm_delay = 0,schedule_delay = 0,store_history = true)
-#     channel = Channel(from_attribute,to_attribute,comm_delay,schedule_delay)
-#     setstates(channel.state_manager,[:null,:active,:inactive,:error])
-#     setstate(channel.state_manager,:active)
-#     push!(edge.channels,channel)
-#     store_history == true && (channel.history = Vector{Tuple}())
-#     return channel
-# end
-
-#schedule_delay::Float64
-#priority::Int            #signal priority (might make this event specific)

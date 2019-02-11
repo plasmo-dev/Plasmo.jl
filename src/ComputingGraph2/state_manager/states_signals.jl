@@ -15,6 +15,7 @@ struct Signal <: AbstractSignal
     data::Any       #data associated with the signal
 end
 Signal(sym::Symbol) = Signal(sym,:nothing,nothing)
+Signal(sym::Symbol,value::Any) = Signal(sym,value,nothing)
 Signal() = Signal(:nothing,:nothing,nothing)
 
 ==(signal1::AbstractSignal,signal2::AbstractSignal) = (signal1.label == signal2.label && signal1.value == signal2.value) || (signal1.label == signal2.label && signal1.value == nothing) || (signal1.label == signal2.label && signal2.value == nothing)

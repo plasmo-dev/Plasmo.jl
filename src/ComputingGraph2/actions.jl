@@ -7,6 +7,7 @@
 mutable struct NodeAction <: AbstractTransitionAction
     graph::Union{Nothing,AbstractComputingGraph}
     node::Union{Nothing,AbstractComputeNode}
+    #transition::Transition
     func::Function                                  #the function to call
     args::Vector{Any}                               #arguments after graph and node
     kwargs::Dict{Symbol,Any}                        #possible kwargs
@@ -30,6 +31,7 @@ function schedule_node_task(graph::AbstractComputingGraph,node::AbstractComputeN
     queuesignal!(queue,execute_signal,node,nothing,now(graph) + delay,secondary_priority = getlocaltime(node))
 end
 action_schedule_node_task(node_task::NodeTask,delay::Float64) = NodeAction(nothing,nothing,schedule_node_task,[node_task,delay],Dict{Symbol,Any}())
+action_schedule_node_task(node_task::NodeTask) = NodeAction(nothing,nothing,schedule_node_task,[node_task,node_task.schedule_delay],Dict{Symbol,Any}())
 
 function execute_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask)
     try

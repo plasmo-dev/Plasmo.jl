@@ -22,6 +22,7 @@ function ComputingGraph()
 end
 
 getqueue(graph::AbstractComputingGraph) = getqueue(graph.signalqueue)
+stop_graph() = stop_queue()
 getcurrenttime(graph::AbstractComputingGraph) = getcurrenttime(graph.signalqueue)
 now(graph::AbstractComputingGraph) = now(graph.signalqueue)
 

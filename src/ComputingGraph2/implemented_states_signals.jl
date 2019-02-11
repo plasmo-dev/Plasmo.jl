@@ -11,6 +11,9 @@ state_finalizing() = State(:finalizing,nothing)
 state_finalizing(task::NodeTask) = State(:finalizing,task)
 
 #Node Signals
+#signal_schedule(task::NodeTask,schedule_delay::Float64) = Signal(:schedule,task,schedule_delay)
+signal_schedule(task::NodeTask) = Signal(:schedule,task)
+
 signal_execute(task::NodeTask) = Signal(:execute,task)
 signal_finalize(task::NodeTask) = Signal(:finalize,task)
 signal_back_to_idle() = Signal(:back_to_idle)

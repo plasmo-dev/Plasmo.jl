@@ -6,6 +6,7 @@ abstract type AbstractTransitionAction end
 # Transition Action
 #############################################
 mutable struct TransitionAction <: AbstractTransitionAction
+    #transition::Transition
     func::Function                                  #the function to call
     args::Vector{Any}                               #the function args
     kwargs::Dict{Symbol,Any}                        #possible kwargs
@@ -16,9 +17,12 @@ TransitionAction(func::Function) = TransitionAction(func,[],Dict())
 TransitionAction(func::Function,args::Vector) = TransitionAction(func,args,Dict())
 
 #Run transition action
-run_action!(action::TransitionAction) = action.func(action.args...,action.kwargs...)  #run a transition action
+function run_action!(action::TransitionAction)
+    action.func(action.args...,action.kwargs...)  #run a transition action
+end
 getarguments(action::AbstractTransitionAction) = action.args
 getkwarguments(action::AbstractTransitionAction) = action.kwargs
+gettransition(action::AbstractTransitionAction) = action.transition
 
 #############################################
 # State Manager
