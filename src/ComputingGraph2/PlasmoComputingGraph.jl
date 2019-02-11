@@ -14,9 +14,9 @@ StateManager,SignalQueue,State,Signal,Transition,TransitionAction,
 
 addstate!,addsignal!,addtransition!,setstate,setaction,
 
-getsignals,getstates,getcurrentstate,gettransitions,gettransition,getaction,
+getvalidsignals,getstates,getstate,getcurrentstate,gettransitions,gettransition,getaction,
 
-step,advance,execute!queuesignal!,
+step,advance,execute!,queuesignal!,
 
 
 #Computing Graph Objects
@@ -26,19 +26,25 @@ ComputingGraph, ComputeNode, CommunicationEdge,NodeAttribute,
 getqueue,stop_graph,
 
 #NodeTask
-addnodetask!,getnodetask,getnodetasks,setcomputetime,
+addnodetask!,getnodetask,getnodetasks,setcomputetime,getnoderesult,
 
 #Compute Attributes
 addcomputeattribute!,getcomputeattribute,getcomputeattributes,getlocalvalue,getglobalvalue,getvalue,setvalue,
 
 #Compute Nodes
-addnode!,addtrigger!,
+addnode!,addtasktrigger!,
 
 #Communication Edges
-addedge!,setdelay,getdelay,iscommunicating,
+addedge!,setdelay,getdelay,iscommunicating,connect!,
 
 #  Time access
-now,getcurrenttime,getnexttime,getnexteventtime,getlocaltime
+now,getcurrenttime,getnexttime,getnexteventtime,getlocaltime,
+
+# Exported signal shortcuts
+signal_error,signal_inactive,signal_schedule,signal_execute,signal_finalize,signal_back_to_idle,
+signal_communicate,signal_all_received,signal_updated,signal_received,signal_sent,
+
+state_any,state_inactive
 
 abstract type AbstractComputingGraph <: AbstractPlasmoGraph end
 abstract type AbstractComputeNode <: AbstractPlasmoNode end

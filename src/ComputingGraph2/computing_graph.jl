@@ -1,26 +1,18 @@
-# global_priority_map = Dict(
-# :synchronize_attribute => 0,
-# :synchronized => 1,
-# :attribute_updated => 2,
-# :comm_sent => 3,
-# :comm_received => 4,
-# :attribute_received => 5,
-# :communicate => 5,
-# :execute => 6)
-
 #Computing Graph
 mutable struct ComputingGraph <: AbstractComputingGraph
     basegraph::BasePlasmoGraph
     signalqueue::SignalQueue
+    history_on::Bool
 end
 function ComputingGraph()
     basegraph = BasePlasmoGraph(MultiGraph)
-    signal_priority_order =[signal_finalize(),signal_updated(),signal_sent(),signal_received(),signal_communicate(),signal_execute()]
+    signal_priority_order =[signal_finalize(),signal_updated(),signal_back_to_idle(),signal_sent(),signal_received(),signal_communicate(),signal_execute()]
     signalqueue = SignalQueue()
     signalqueue.signal_priority_order = signal_priority_order
-    return ComputingGraph(basegraph,signalqueue)
+    return ComputingGraph(basegraph,signalqueue,true)
 end
 
+getsignalqueue(graph::AbstractComputingGraph) = graph.signalqueue
 getqueue(graph::AbstractComputingGraph) = getqueue(graph.signalqueue)
 stop_graph() = stop_queue()
 getcurrenttime(graph::AbstractComputingGraph) = getcurrenttime(graph.signalqueue)
@@ -45,7 +37,13 @@ function getnextsignaltime(graph::ComputingGraph)
 end
 
 call!(graph::ComputingGraph,signal_event::SignalEvent) = call!(graph.signal_queue,signal_event)
-queuesignal!(graph::ComputingGraph,signal::AbstractSignal,target::SignalTarget,time::Float64) = queuesignal!(getqueue(graph),signal,target,time,secondary_priority = getlocaltime(target))
+
+#Queue Signal methods for computing graph
+queuesignal!(graph::ComputingGraph,signal::AbstractSignal,target::SignalTarget,time::Number;source = nothing) =
+                    queuesignal!(getsignalqueue(graph),signal,target,time,source = source,priority = getlocaltime(target))
+
+
+#queuesignal!(graph::ComputingGraph,signal::Signal,source::ComputeNode,target::ComputeNode,time::Number) = queuesignal!(getsignalqueue(graph),signal,source,target,time,priority = getlocaltime(target))
 
 # function schedulesignal(workflow::Workflow,signal::AbstractSignal,target::Union{AbstractDispatchNode,AbstractChannel},time::Number)
 #     schedulesignal(workflow.coordinator,signal,getstatemanager(target),time,local_time = getlocaltime(target)#,priority_map = workflow_priority_map)

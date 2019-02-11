@@ -6,10 +6,10 @@ abstract type AbstractTransitionAction end
 # Transition Action
 #############################################
 mutable struct TransitionAction <: AbstractTransitionAction
-    #transition::Transition
     func::Function                                  #the function to call
     args::Vector{Any}                               #the function args
     kwargs::Dict{Symbol,Any}                        #possible kwargs
+    #transition::Transition
 end
 
 #Constructor
@@ -17,7 +17,7 @@ TransitionAction(func::Function) = TransitionAction(func,[],Dict())
 TransitionAction(func::Function,args::Vector) = TransitionAction(func,args,Dict())
 
 #Run transition action
-function run_action!(action::TransitionAction)
+function runaction!(action::TransitionAction)
     action.func(action.args...,action.kwargs...)  #run a transition action
 end
 getarguments(action::AbstractTransitionAction) = action.args
@@ -48,6 +48,7 @@ function StateManager()
 end
 
 getstatemanager(SM::StateManager) = SM
+getstring(SM::StateManager) = "Manager"
 
 getvalidsignals(target::SignalTarget) = getstatemanager(target).valid_signals
 getstates(target::SignalTarget) = getstatemanager(target).valid_states
@@ -91,6 +92,9 @@ end
 
 function addtransition!(target::SignalTarget,state1::State,signal::AbstractSignal,state2::State; action::Union{Nothing,AbstractTransitionAction} = nothing)
     SM = getstatemanager(target)
+    addstate!(SM,state1)
+    addsignal!(SM,signal)
+    addstate!(SM,state2)
     SM.transition_map[tuple(state1,signal)] = state2
     if action != nothing
         SM.action_map[tuple(state1,signal)] = action
@@ -98,19 +102,19 @@ function addtransition!(target::SignalTarget,state1::State,signal::AbstractSigna
     return tuple(state1,signal,state2)
 end
 
-function addtransition!(target::SignalTarget,transition::Transition)
-    SM = getstatemanager(target)
-    addstate!(SM,transition[1])
-    addsignal!(SM,transition[2])
-    addstate!(SM,transition[3])
-    SM.transition_map[tuple(transition[1],transition[2])] = transition[3]
+function addtransition!(target::SignalTarget,transition::Transition;action::Union{Nothing,AbstractTransitionAction} = nothing)
+    transition = addtransition!(target,transition[1],transition[2],transition[3],action = action)
     return transition
 end
 
 function hastransition(target::SignalTarget,state1::State,signal::AbstractSignal)
     SM = getstatemanager(target)
+    
     return haskey(SM.transition_map,tuple(state1,signal))
 end
+
+# function addaction!(target::SignalTarget,)
+# end
 
 function setaction(target::SignalTarget,transition::Transition,action::AbstractTransitionAction)
     SM = getstatemanager(target)
@@ -130,7 +134,7 @@ function runtransition!(target::SignalTarget,input_signal::Signal)
         setstate(SM,new_state)
         if hasaction(SM,start_state,input_signal)
             action = SM.action_map[start_state,input_signal]
-            run_action!(action)
+            runaction!(action)
         end
     else
         error("Target has no transition for state: $(start_state) with signal $(input_signal)")

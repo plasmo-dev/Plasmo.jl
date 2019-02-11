@@ -1,13 +1,3 @@
-# function isless(val1::TaskPriority,val2::TaskPriority) :: Bool
-#     if val1.priority < val2.priority
-#         return true
-#     elseif val1.priority == val2.priority && val1.id < val2.id
-#         return true
-#     else
-#         return false
-#     end
-# end
-
 # A Node Task
 mutable struct NodeTask
     #node::DispatchNode               #Having a pointer back to the node was convenient for defining actions
@@ -49,8 +39,3 @@ show(io::IO, node_task::NodeTask) = print(io,node_task)
 # set_node_task_arguments(node::AbstractDispatchNode,arg::Any) = node.node_task.args = [arg]
 # set_node_task_kwargs(node::AbstractDispatchNode,kwargs::Dict{Any,Any}) = node.node_task.kwargs = kwargs
 # set_node_compute_time(node::AbstractDispatchNode,time::Float64) = node.compute_time = time
-
-
-#NOTE: Getting rid of schedule delay
-#getscheduledelay(nodetask::NodeTask) = nodetask.schedule_delay
-#setscheduledelay(nodetask::NodeTask,delay::Float64) = nodetask.schedule_delay = delay

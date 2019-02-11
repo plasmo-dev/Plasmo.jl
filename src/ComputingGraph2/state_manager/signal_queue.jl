@@ -69,17 +69,17 @@ function queuesignal!(squeue::SignalQueue,signal_event::AbstractSignalEvent)
 end
 
 #Methods for different arguments
-function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,target::SignalTarget,time::Number)
-    signal_event = SignalEvent(Float64(time),signal,target)
+function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,target::SignalTarget,time::Number;source = nothing,priority::Number = 0.0)
+    signal_event = SignalEvent(Float64(time),signal,source,target,Float64(priority))
     queuesignal!(squeue,signal_event)
 end
-
-function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,source::SignalTarget,target::SignalTarget,time::Number)
-    signal_event = SignalEvent(Float64(time),signal,source,target)
-    queuesignal!(squeue,signal_event)
-end
-
-function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,source::SignalTarget,target::SignalTarget,time::Number,priority::Number)
-    signal_event = SignalEvent(Float64(time),signal,source,target,priority)
-    queuesignal!(squeue,signal_event)
-end
+#
+# function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,source::SignalTarget,target::SignalTarget,time::Number)
+#     signal_event = SignalEvent(Float64(time),signal,source,target)
+#     queuesignal!(squeue,signal_event)
+# end
+#
+# function queuesignal!(squeue::SignalQueue,signal::AbstractSignal,source::SignalTarget,target::SignalTarget,time::Number,priority::Number)
+#     signal_event = SignalEvent(Float64(time),signal,source,target,priority)
+#     queuesignal!(squeue,signal_event)
+# end

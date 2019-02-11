@@ -19,6 +19,8 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
 
     history::Vector{Tuple}
 
+    local_time::Float64
+
     function ComputeNode()
         node = new()
         node.basenode = BasePlasmoNode()
@@ -38,6 +40,7 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
         node.task_queue = DataStructures.PriorityQueue{NodeTask,Int64}()
 
         node.history =  Vector{Tuple}()
+        node.local_time = Float64(0)
         addstates!(node,[state_idle(),state_error(),state_inactive()])
         setstate(node,state_idle())
         return node
@@ -57,7 +60,7 @@ function addnode!(graph::ComputingGraph)#;continuous = false)
     return node
 end
 
-addtransition!(node::ComputeNode,state1::State,signal::AbstractSignal,state2::State;action::Union{Nothing,NodeAction} = nothing) = addtransition!(node.state_manager,state1,signal,state2,action = action)
+#addtransition!(node::ComputeNode,state1::State,signal::AbstractSignal,state2::State;action::Union{Nothing,NodeAction} = nothing) = addtransition!(node.state_manager,state1,signal,state2,action = action)
 
 #Add node tasks to compute nodes
 function addnodetask!(graph::ComputingGraph,node::ComputeNode,label::Symbol,func::Function;args = (),kwargs = Dict(),
@@ -77,24 +80,24 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTas
     #Add the node transitions for this task
     #schedule a task
     #NOTE: Thinking of an easy way to pass signal inputs to the action arguments
-    addtransition!(node,state_any(),signal_schedule(node_task),state_any(),action = action_schedule_node_task(node_task))  #this will use the node_task delay by default
+    addtransition!(node,state_any(),signal_schedule(node_task),state_any(),action = action_schedule_node_task(graph,node,node_task))  #this will use the node_task delay by default
 
     #execute from idle
-    addtransition!(node,state_idle(),signal_execute(node_task),state_executing(node_task),action = action_execute_node_task(node_task))
+    addtransition!(node,state_idle(),signal_execute(node_task),state_executing(node_task),action = action_execute_node_task(graph,node,node_task))
 
     #queue task if currently busy
-    addtransition!(node,state_executing(),signal_execute(node_task),state_executing(),action = action_queue_node_task(node_task))
-    addtransition!(node,state_finalizing(),signal_execute(node_task),state_finalizing(),action = action_queue_node_task(node_task))
+    addtransition!(node,state_executing(),signal_execute(node_task),state_executing(),action = action_queue_node_task(graph,node,node_task))
+    addtransition!(node,state_finalizing(),signal_execute(node_task),state_finalizing(),action = action_queue_node_task(graph,node,node_task))
 
     #finalize a task
-    addtransition!(node,state_executing(node_task),signal_finalize(node_task),state_finalizing(node_task),action = action_finalize_node_task(node_task))
+    addtransition!(node,state_executing(node_task),signal_finalize(node_task),state_finalizing(node_task),action = action_finalize_node_task(graph,node,node_task))
 
     #back to idle, queue the next task
-    addtransition!(node,state_finalizing(node_task),signal_back_to_idle(),state_idle(),action = action_execute_next_task())
+    addtransition!(node,state_finalizing(node_task),signal_back_to_idle(),state_idle(),action = action_execute_next_task(graph,node))
 
     #Create a task result attribute
     result_attribute = addcomputeattribute!(node,Symbol(string(node_task.label)))
-    node.task_results[node_task] = result_attribute
+    node.task_result_attributes[node_task] = result_attribute
 
     for signal in triggered_by
         addtasktrigger!(node,node_task,signal,trigger_delay)
@@ -103,21 +106,30 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTas
     node.node_task_map[getlabel(node_task)] = node_task
 end
 
-function addtasktrigger!(node::ComputeNode,node_task::NodeTask,signal::Signal;trigger_delay = 0.0)  #attribute signal
+function addtasktrigger!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTask,signal::Signal;trigger_delay = 0.0)  #attribute signal
     node.attribute_triggers[signal] = node_task
     label = signal.label
     attribute = signal.value
-    attribute.triggers[label] = node
-    addtransition!(node,state_any(),signal,state_any(),action = action_schedule_node_task(node_task,trigger_delay))
+    push!(attribute.signal_triggers[label],node_task)
+
+    #TODO Get the state_any() stuff to work
+    addtransition!(node,state_any(),signal,state_any(),action = action_schedule_node_task(graph,node,node_task,trigger_delay))
 end
 
 next_task(node::ComputeNode) = peek(node.task_queue)
-next_task!(node::ComputeNode) = dequeue!(node.task_queue)
-
+function next_task!(node::ComputeNode)
+    if isempty(node.task_queue)
+        return nothing
+    else
+        task = DataStructures.dequeue!(node.task_queue)
+        return task
+    end
+end
 #Add an attribute.  Update node transitions for when attributes are added.
 function addcomputeattribute!(node::ComputeNode,label::Symbol,value::Any)#; update_notify_targets = SignalTarget[])   #,execute_on_receive = true)
     attribute = NodeAttribute(node,label,value)
-    node.attributes[label] = attribute
+    push!(node.attributes,attribute)
+    node.attribute_map[label] = attribute
     return attribute
 end
 addcomputeattribute!(node::ComputeNode,label::Symbol) = addcomputeattribute!(node,label,nothing)
@@ -137,17 +149,22 @@ function setglobalvalue(node::ComputeNode,label::Symbol,value::Any)
     attribute.global_value = value
 end
 
+getstring(node::ComputeNode) = "Compute Node: "*string(collect(values(node.basenode.indices))[1])
+
 getnodetasks(node::ComputeNode) = node.node_tasks
 getnodetask(node::ComputeNode,label::Symbol) = node.node_task_map[label]
 
-getnoderesult(node::ComputeNode,node_task::NodeTask) = node.task_results[node_task]
-getnoderesult(node::ComputeNode,label::Symbol) = node.task_results[getnodetask(node,label)]
+getnoderesult(node::ComputeNode,node_task::NodeTask) = node.task_result_attributes[node_task]
+getnoderesult(node::ComputeNode,label::Symbol) = node.task_result_attributes[getnodetask(node,label)]
 
 ###########################
 # Node functions
 ###########################
 getlocaltime(node::AbstractComputeNode) = node.local_time
-
+function advancenodetime!(node::AbstractComputeNode,time::Number)
+    @assert time >= node.local_time
+    node.local_time = time
+end
 #Node State Manager
 getvalidsignals(node::ComputeNode) = getvalidsignals(node.state_manager)
 getstatemanager(node::AbstractComputeNode) = node.state_manager
@@ -159,7 +176,7 @@ getcurrentstate(node::AbstractComputeNode) = getcurrentstate(node.state_manager)
 
 #TODO: Make sure these work
 function Base.getindex(node::ComputeNode,sym::Symbol)
-    if sym in keys(node.attributes)
+    if sym in keys(node.attribute_map)
         return getcomputeattribute(node,sym)
     elseif sym in keys(node.basenode.attributes)
         return getattribute(node,sym)

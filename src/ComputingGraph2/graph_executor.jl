@@ -13,8 +13,8 @@ SerialExecutor(time) = SerialExecutor(Dict{AbstractDispatchNode,Int}(),time)
 execute!(graph::ComputingGraph,executor::AbstractExecutor) = execute!(graph.signalqueue,executor)
 execute!(graph::ComputingGraph) = execute!(graph,SerialExecutor())
 
-step(graph::ComputingGraph,executor::AbstractExecutor) = step(graph.signal_queue,executor)
-step(graph::ComputingGraph) = step(graph.signal_queue)
+step(graph::ComputingGraph,executor::AbstractExecutor) = step(graph.signalqueue,executor)
+step(graph::ComputingGraph) = step(graph.signalqueue)
 
 function advance(graph::ComputingGraph,executor::AbstractExecutor,time::Number)
     @assert Float64(time) > 0 && now(graph) <= time

@@ -6,7 +6,7 @@ State() = State(:nothing,:nothing)
 State(label::Symbol) = State(label,:nothing)
 #State(label::Symbol) = State(label)
 #TODO Define an ANY state
-==(state1::State,state2::State) = ((state1.label == state2.label && state1.value == state2.value) || state1.label == :Any || state2.label == :Any)
+==(state1::State,state2::State) = ((state1.label == state2.label && state1.value == state2.value) || state1.label == :any || state2.label == :any)
 
 #Signal for mapping behaviors
 struct Signal <: AbstractSignal

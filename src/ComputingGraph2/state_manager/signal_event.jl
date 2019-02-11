@@ -18,13 +18,13 @@ function isless(val1::SignalPriorityValue,val2::SignalPriorityValue) :: Bool
     if val1.time < val2.time
         return true
     #if equal times, but different priorities
-elseif val1.time == val2.time && val1.secondary_priority < val2.secondary_priority
+elseif val1.time == val2.time && val1.global_priority < val2.global_priority
         return true
     #if time and types are equal, use priority
-elseif val1.time == val2.time &&  val1.secondary_priority  == val2.secondary_priority #&& val1.local_time < val2.local_time
+elseif val1.time == val2.time &&  val1.global_priority  == val2.global_priority && val1.secondary_priority < val2.secondary_priority
         return true
     #if everything is equal, use id numbers
-elseif val1.time == val2.time && val1.secondary_priority == val2.secondary_priority && val1.id < val2.id # &&val1.local_time == val2.local_time && val1.id < val2.id
+elseif val1.time == val2.time && val1.global_priority == val2.global_priority && val1.secondary_priority == val2.secondary_priority && val1.id < val2.id # &&val1.local_time == val2.local_time && val1.id < val2.id
         return true
     else
         return false
@@ -43,7 +43,7 @@ mutable struct SignalEvent <: AbstractSignalEvent
 end
 SignalEvent(time::Float64,signal::AbstractSignal,target::SignalTarget) = SignalEvent(time,signal,nothing,target,Float64(0))
 SignalEvent(time::Float64,signal::AbstractSignal,source::SignalTarget,target::SignalTarget) = SignalEvent(time,signal,source,target,Float64(0))
-SignalEvent(time::Float64,signal::AbstractSignal,source::SignalTarget,target::SignalTarget,priority::Number) = SignalEvent(time,signal,source,target,Float64(priority))
+#SignalEvent(time::Float64,signal::AbstractSignal,source::SignalTarget,target::SignalTarget,priority::Number) = SignalEvent(time,signal,source,target,Float64(priority))
 
 #Abstract Event functions
 gettime(signalevent::AbstractSignalEvent) = signalevent.time
