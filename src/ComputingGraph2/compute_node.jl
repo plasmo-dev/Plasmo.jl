@@ -9,49 +9,55 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
     node_tasks::Vector{NodeTask}                     # Compute Tasks this node can run
     node_task_map::Dict{Symbol,NodeTask}             # map for referencing
 
-    task_result_attributes::Dict{NodeTask,Attribute} # Result attribute for a task
-    local_attributes_updated::Vector{Attribute}      # attributes with updated local values
-    history::Vector{Tuple}
+    task_result_attributes::Dict{NodeTask,NodeAttribute} # Result attribute for a task
+
+    attribute_triggers::Dict{Signal,NodeTask}
+
+    local_attributes_updated::Vector{NodeAttribute}      # attributes with updated local values
 
     task_queue::DataStructures.PriorityQueue{NodeTask,Int64} # Node contains a queue of tasks to execute
+
+    history::Vector{Tuple}
 
     function ComputeNode()
         node = new()
         node.basenode = BasePlasmoNode()
         node.state_manager = StateManager()
-        node.attributes = Dict{Symbol,Attribute}()
-        node.node_tasks = Dict{Symbol,NodeTask}()
+
+        node.attributes = Vector{NodeAttribute}()
+        node.attribute_map = Dict{Symbol,NodeAttribute}()
+
+        node.node_tasks = Vector{NodeTask}()
+        node.node_task_map = Dict{Symbol,NodeTask}()
+
+        node.task_result_attributes = Dict{NodeTask,NodeAttribute}()
+
         node.attribute_triggers = Dict{Signal,NodeTask}()
+        node.local_attributes_updated = NodeAttribute[]
+
         node.task_queue = DataStructures.PriorityQueue{NodeTask,Int64}()
-        node.task_results = Dict{NodeTask,Attribute}()
-        node.local_attribute_updates = NodeAttribute[]
+
         node.history =  Vector{Tuple}()
-        addstates!(node.state_manager,[state_idle(),state_error(),state_inactive()])
-        setstate(node.state_manager,state_idle())
+        addstates!(node,[state_idle(),state_error(),state_inactive()])
+        setstate(node,state_idle())
         return node
     end
 end
 PlasmoGraphBase.create_node(graph::ComputingGraph) = ComputeNode()
 
 #Dispatch node runs when it gets communication updates
-function addnode!(graph::ComutingGraph)#;continuous = false)
+function addnode!(graph::ComputingGraph)#;continuous = false)
     node = add_node!(graph)
 
     #error
-    addtransition!(node,state_any(),signal_error(),state_error()))   #action --> cancel signals
+    addtransition!(node,state_any(),signal_error(),state_error())   #action --> cancel signals
 
     #inactive
     addtransition!(node,state_any(),signal_inactive(),state_inactive())  #action --> cancel signals
     return node
 end
 
-addtransition!(node::ComputeNode,state1::State,signal::AbstractSignal,state2::State;action::{Union{Nothing,NodeAction}} = nothing) = addtransition!(node.state_manager,state1,signal,state2,action = action)
-
-function queuenodetask!(node_task::NodeTask)
-    node = getnode(node_task)
-    priority = length(node.task_queue)
-    enqueue!(node.task_queue,node_task,priority)
-end
+addtransition!(node::ComputeNode,state1::State,signal::AbstractSignal,state2::State;action::Union{Nothing,NodeAction} = nothing) = addtransition!(node.state_manager,state1,signal,state2,action = action)
 
 #Add node tasks to compute nodes
 function addnodetask!(graph::ComputingGraph,node::ComputeNode,label::Symbol,func::Function;args = (),kwargs = Dict(),
@@ -66,7 +72,7 @@ end
 function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTask;triggered_by::Vector{Signal} = Vector{Signal}(),trigger_delay::Float64 = 0.0)
 
     #Add task states
-    addstates!(node,state_executing(node_task),state_finalizing(node_task))
+    addstates!(node,[state_executing(node_task),state_finalizing(node_task)])
 
     #Add the node transitions for this task
     #schedule a task
@@ -87,7 +93,7 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTas
     addtransition!(node,state_finalizing(node_task),signal_back_to_idle(),state_idle(),action = action_execute_next_task())
 
     #Create a task result attribute
-    result_attribute = addattribute!(node,Symbol(string(node_task.label)))
+    result_attribute = addcomputeattribute!(node,Symbol(string(node_task.label)))
     node.task_results[node_task] = result_attribute
 
     for signal in triggered_by

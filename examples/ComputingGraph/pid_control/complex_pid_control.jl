@@ -1,7 +1,6 @@
 #Simple control example with multiple channels, sampling rates, and delays
 using DifferentialEquations
-using PlasmoWorkflows
-using PlasmoGraphBase
+using Plasmo
 
 #A function which solves an ode given a workflow and dispatch node
 #This is a bit convuluted.  Continuous Functions will probably be a special kind of event

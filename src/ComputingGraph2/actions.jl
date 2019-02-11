@@ -13,7 +13,7 @@ mutable struct NodeAction <: AbstractTransitionAction
     kwargs::Dict{Symbol,Any}                        #possible kwargs
 end
 
-function addaction!(graph::ComputingGraph,node::ComputeNode,signal::Signal,state::State,action::NodeAction)
+function addaction!(graph::AbstractComputingGraph,node::AbstractComputeNode,signal::Signal,state::State,action::NodeAction)
     action.graph = graph
     action.node = node
     node.state_manager.action_map[(signal,state)] = action
@@ -33,6 +33,7 @@ end
 action_schedule_node_task(node_task::NodeTask,delay::Float64) = NodeAction(nothing,nothing,schedule_node_task,[node_task,delay],Dict{Symbol,Any}())
 action_schedule_node_task(node_task::NodeTask) = NodeAction(nothing,nothing,schedule_node_task,[node_task,node_task.schedule_delay],Dict{Symbol,Any}())
 
+#Execute a node task
 function execute_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask)
     try
         execute!(node_task)     #Run the task.  This might update attributes (locally)
@@ -54,7 +55,15 @@ function execute_node_task(graph::AbstractComputingGraph,node::AbstractComputeNo
 end
 action_execute_node_task(node_task::NodeTask) = NodeAction(nothing,nothing,execute_node_task,[node_task],Dict{Symbol,Any}())
 
-function execute_next_task(graph::AbstractComputingGraph,node::ComputeNode)
+#Queue a node task
+function queue_node_task(graph::AbstractComputingGraph,node::ComputeNode,node_task::NodeTask)
+    priority = length(node.task_queue)
+    enqueue!(node.task_queue,node_task,priority)
+end
+action_queue_node_task(node_task) = NodeAction(nothing,nothing,queue_node_task,[node_task],Dict{Symbol,Any}())
+
+#Execute the next task
+function execute_next_task(graph::AbstractComputingGraph,node::AbstractComputeNode)
     node_task = next_task!(node)        #pop the next task from the node task queue
     execute_node_task(graph,node,node_task)
 end
@@ -89,7 +98,7 @@ mutable struct EdgeAction <: AbstractTransitionAction
     kwargs::Dict{Symbol,Any}                        #possible kwargs
 end
 
-function addaction!(graph::ComputingGraph,edge::CommunicationEdge,signal::Signal,state::State,action::NodeAction)
+function addaction!(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge,signal::Signal,state::State,action::NodeAction)
     action.graph = graph
     action.edge = edge
     edge.state_manager.action_map[(signal,state)] = action
@@ -130,14 +139,14 @@ end
 action_communicate() = EdgeAction(nothing,nothing,communicate,[],Dict{Symbol,Any}())
 
 
-function schedule_communicate(graph::AbstractComputingGraph,edge::AbstractCommunication,delay::Float64)
+function schedule_communicate(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge,delay::Float64)
     signal = signal_communicate()
     queuesignal!(graph,signal,edge,nothing,now(graph) + delay)
 end
 action_schedule_communicate(delay::Float64) = EdgeAction(nothing,nothing,schedule_communicate,[delay],Dict{Symbol,Any}())
 
 #Update node attribute with received attribute
-function receive_attribute(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge,edge_attribute::Attribute)
+function receive_attribute(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge,edge_attribute::EdgeAttribute)
     node_attribute = getdestination(edge_attribute)
     receive_node = getnode(node_attribute)
     value = getvalue(edge_attribute)
@@ -150,7 +159,7 @@ function receive_attribute(graph::AbstractComputingGraph,edge::AbstractCommunica
         end
     end
 
-    removecomputeattribute!(edge::CommunicationEdge,attribute::EdgeAttribute)
+    removecomputeattribute!(edge::AbstractCommunicationEdge,attribute::EdgeAttribute)
     if isempty(edge.attribute_pipeline)
         queuesignal!(graph,signal_all_received(),edge,edge,0)  #Signal that all attributes were received
     end

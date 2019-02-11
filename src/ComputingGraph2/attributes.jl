@@ -9,14 +9,10 @@ mutable struct NodeAttribute <: AbstractAttribute
 
     #Signals corresponding to an attribute can trigger tasks or communication
     signal_triggers::Dict{Symbol,Union{NodeTask,AbstractCommunicationEdge}}
-
-    # update_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}    #attribute updates can trigger tasks or communication
-    # send_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}      #attribute sent can trigger tasks or communication
-    # receive_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}   #attribute received can trigger tasks or communication
 end
 NodeAttribute(node::AbstractComputeNode) = NodeAttribute(node,gensym(),nothing,nothing,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())
-NodeAttribute(node::AbstractComputeNode,label::Symbol) = Attribute(node,label,nothing,nothing,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())
-NodeAttribute(node::AbstractComputeNode,label::Symbol,value::Any) = Attribute(node,label,value,value,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())
+NodeAttribute(node::AbstractComputeNode,label::Symbol) = NodeAttribute(node,label,nothing,nothing,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())
+NodeAttribute(node::AbstractComputeNode,label::Symbol,value::Any) = NodeAttribute(node,label,value,value,Vector{AbstractCommunicationEdge}(),Vector{AbstractCommunicationEdge}())
 
 # ==(attribute1::Attribute,attribute2::Attribute) = (attribute1.node == attribute2.node && attribute1.label == attribute2.label)
 #Attribute(node::AbstractComputeNode,object::Any) = Attribute(node,gensym(),object,object)
@@ -42,9 +38,7 @@ end
 
 isoutconnected(attribute::NodeAttribute) = length(attribute.out_channels) > 0
 isinconnected(attribute::NodeAttribute) = length(attribute.in_channels) > 0
-# isupdatetrigger(attribute::NodeAttribute) = length(attribute.update_triggers) > 0
-# issendtrigger(attribute::NodeAttribute) = length(attribute.send_triggers) > 0
-# isreceivetrigger(attribute::NodeAttribute) = length(attribute.receive_triggers) > 0
+
 isupdatetrigger(attribute::NodeAttribute) = length(attribute.triggers[:attribute_updated]) > 0
 issendtrigger(attribute::NodeAttribute) = length(attribute.triggers[:attribute_sent]) > 0
 isreceivetrigger(attribute::NodeAttribute) = length(attribute.triggers[:attribute_received]) > 0
@@ -60,11 +54,19 @@ mutable struct EdgeAttribute <: AbstractAttribute
 end
 EdgeAttribute(edge::AbstractCommunicationEdge) = EdgeAttribute(edge,)
 EdgeAttribute(edge::AbstractCommunicationEdge,label::Symbol) = EdgeAttribute(edge,label,nothing)
-EdgeAttribute(edge::AbstractCommunicationEdge,label::Symbol,value::Any) = EdgeAttribute(edge,label,value)
+#EdgeAttribute(edge::AbstractCommunicationEdge,label::Symbol,value::Any) = EdgeAttribute(edge,label,value)
 
 
 function string(attribute::AbstractAttribute)
     string(attribute.label)
 end
-print(io::IO, attribute::Attribute) = print(io, string(attribute))
-show(io::IO, attribute::Attribute) = print(io,attribute)
+print(io::IO, attribute::AbstractAttribute) = print(io, string(attribute))
+show(io::IO, attribute::AbstractAttribute) = print(io,attribute)
+
+# isupdatetrigger(attribute::NodeAttribute) = length(attribute.update_triggers) > 0
+# issendtrigger(attribute::NodeAttribute) = length(attribute.send_triggers) > 0
+# isreceivetrigger(attribute::NodeAttribute) = length(attribute.receive_triggers) > 0
+
+# update_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}    #attribute updates can trigger tasks or communication
+# send_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}      #attribute sent can trigger tasks or communication
+# receive_triggers::Vector{Union{NodeTask,AbstractCommunicationEdge}}   #attribute received can trigger tasks or communication

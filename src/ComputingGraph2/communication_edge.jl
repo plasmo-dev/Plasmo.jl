@@ -43,7 +43,7 @@ gettransitions(edge::AbstractCommunicationEdge) = gettransitions(edge.state_mana
 setdelay(edge::AbstractCommunicationEdge,delay::Float64) = edge.delay = delay
 
 #dispatch edge communicates when it receives attribute updates
-function addedge!(graph::AbstractComputingGraph,attribute1::Attribute,attribute2::Attribute;
+function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attribute2::NodeAttribute;
     delay::Number = 0,send_on::Vector{Signal} = Signal[],send_delay::Number = 0.0)
 
     delay = Float64(delay)

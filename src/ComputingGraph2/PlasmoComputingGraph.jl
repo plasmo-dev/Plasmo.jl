@@ -62,13 +62,14 @@ include("state_manager/print.jl")
 
 #Computing Graph Interface
 
-include("implemented_states_signals.jl")
-
 #Node Tasks
-include("node_task.jl")
+include("node_tasks.jl")
 
 #Compute Attributes
 include("attributes.jl")
+
+#Signal shortcuts
+include("implemented_states_signals.jl")
 
 #Transition Actions
 include("actions.jl")
@@ -77,13 +78,13 @@ include("actions.jl")
 include("computing_graph.jl")
 
 #Communication Edges
-include("communication_edges.jl")
+include("communication_edge.jl")
 
 #Compute Nodes
-include("compute_nodes.jl")
+include("compute_node.jl")
 
 #Execution
-include("workflow_executor.jl")
+include("graph_executor.jl")
 
 end # module
 

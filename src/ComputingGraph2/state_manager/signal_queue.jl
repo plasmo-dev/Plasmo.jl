@@ -5,6 +5,8 @@ mutable struct SignalQueue <: AbstractSignalQueue
 end
 SignalQueue() = SignalQueue(0.0,Vector{AbstractSignal}(),DataStructures.PriorityQueue{AbstractSignalEvent,SignalPriorityValue}())
 
+#SignalQueue(priority_order::Vector{AbstractSignal}) = SignalQueue(0.0,priority_order,DataStructures.PriorityQueue{AbstractSignalEvent,SignalPriorityValue}())
+
 now(queue::SignalQueue) = queue.time
 getcurrenttime(queue::SignalQueue) = now(queue)
 getqueue(queue::SignalQueue) = queue.queue

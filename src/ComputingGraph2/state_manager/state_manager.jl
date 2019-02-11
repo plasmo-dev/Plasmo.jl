@@ -48,31 +48,35 @@ function StateManager()
 end
 
 getstatemanager(SM::StateManager) = SM
-getvalidsignals(SM::StateManager) = SM.valid_signals
-getstates(SM::StateManager) = SM.valid_states
-getstate(SM::StateManager) = SM.current_state
-getcurrentstate(SM::StateManager) = SM.current_state
 
-addsignal!(SM::StateManager,signal::AbstractSignal) = signal in SM.valid_signals ? nothing : push!(SM.valid_signals,signal)
-addsignal!(SM::StateManager,signal::Symbol) = addsignal!(SM,Signal(signal))
-addstate!(SM::StateManager,state::State) = state in SM.valid_states ? nothing : push!(SM.valid_states,state)
-addstate!(SM::StateManager,state::Symbol) = addstate!(SM,State(state))
+getvalidsignals(target::SignalTarget) = getstatemanager(target).valid_signals
+getstates(target::SignalTarget) = getstatemanager(target).valid_states
+getstate(target::SignalTarget) = getstatemanager(target).current_state
+getcurrentstate(SM::StateManager) = getstatemanager(target).current_state
+
+addsignal!(target::SignalTarget,signal::AbstractSignal) = signal in getstatemanager(target).valid_signals ? nothing : push!(getstatemanager(target).valid_signals,signal)
+addsignal!(target::SignalTarget,signal::Symbol) = addsignal!(getstatemanager(target),Signal(signal))
+addstate!(target::SignalTarget,state::State) = state in getstatemanager(target).valid_states ? nothing : push!(getstatemanager(target).valid_states,state)
+addstate!(target::SignalTarget,state::Symbol) = addstate!(getstatemanager(target),State(state))
 
 # Add valid states
-function addstates!(SM::StateManager,states::Vector{State})
+function addstates!(target::SignalTarget,states::Vector{State})
+    SM = getstatemanager(target)
     append!(SM.valid_states,states)
 end
-function addstates!(SM::StateManager,states::Vector{Symbol})
+function addstates!(target::SignalTarget,states::Vector{Symbol})
+    SM = getstatemanager(target)
     states = [State(state) for state in states]
     append!(SM.valid_states,states)
 end
 
 # Set current state
-function setstate(SM::StateManager,state::State)
+function setstate(target::SignalTarget,state::State)
+    SM = getstatemanager(target)
     @assert state in SM.valid_states
     SM.current_state = state
 end
-setstate(SM::StateManager,state::Symbol) = setstate(SM,State(state))
+setstate(target::SignalTarget,state::Symbol) = setstate(getstatemanager(target),State(state))
 
 # Set valid states
 function setvalidstates(SM::StateManager,states::Vector{State})

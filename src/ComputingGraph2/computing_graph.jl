@@ -14,11 +14,11 @@ mutable struct ComputingGraph <: AbstractComputingGraph
     signalqueue::SignalQueue
 end
 function ComputingGraph()
-    graph = new()
-    graph.basegraph = BasePlasmoGraph(MultiGraph)
-    global_priority_order =[signal_finalize(),signal_updated(),signal_sent(),signal_received(),signal_communicate(),signal_execute()]
-    graph.signalqueue = SignalQueue(global_priority_order)
-    return graph
+    basegraph = BasePlasmoGraph(MultiGraph)
+    signal_priority_order =[signal_finalize(),signal_updated(),signal_sent(),signal_received(),signal_communicate(),signal_execute()]
+    signalqueue = SignalQueue()
+    signalqueue.signal_priority_order = signal_priority_order
+    return ComputingGraph(basegraph,signalqueue)
 end
 
 getqueue(graph::AbstractComputingGraph) = getqueue(graph.signalqueue)

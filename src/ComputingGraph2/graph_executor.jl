@@ -22,10 +22,3 @@ function advance(graph::ComputingGraph,executor::AbstractExecutor,time::Number)
         step(graph,executor)
     end
 end
-
-
-# function run!(executor::SerialExecutor,queue::SignalQueue,signal_event::AbstractEvent)
-#     task = run!(queue,signal_event)
-#     #NOTE: Alternative execution mechanism task = @schedule call!(workflow,event)
-#     return task
-# end
