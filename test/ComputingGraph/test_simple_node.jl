@@ -8,13 +8,14 @@ end
 
 function simple_func2(graph::ComputingGraph,node::ComputeNode)
     println("Running simple_func2 at t = $(now(graph))")
+    setvalue(node[:x],10)
     return "test"
 end
 
-#Create the workflow
+#Create the graph
 graph = ComputingGraph()
 
-#Add the first workflow node
+#Add the first graph node
 n1 = addnode!(graph)
 task1 = addnodetask!(graph,n1,:task1,simple_func1,args = ["hello from $n1"],compute_time = 1.0)
 
@@ -29,22 +30,23 @@ result_attribute = getnoderesult(n1,task1)
 edge1 = connect!(graph,result_attribute,n2[:x],delay = 1,send_on = signal_updated(result_attribute))
 
 queuesignal!(graph,signal_execute(task1),n1,0)
-#schedulesignal(workflow,DataSignal(:update_attribute,w2[:x],10),w2,6)
+#schedulesignal(graph,DataSignal(:update_attribute,w2[:x],10),w2,6)
 
 #TEST STEP BY STEP
-step(graph)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
-# step(workflow)
+# step(graph)
+# getqueue(graph)
+# step(graph)
+# step(graph)
+# step(graph)
+# step(graph)
+# step(graph)
+# step(graph)
+# step(graph)
+# step(graph)
 
-# execute!(workflow)
+execute!(graph)
 #
-# @assert getglobalvalue(result) == 5
-# @assert getglobalvalue(w2[:x]) == 10
+@assert getglobalvalue(result_attribute) == 5
+@assert getglobalvalue(n2[:x]) == 10
 
 true

@@ -1,5 +1,4 @@
-#include("../../src/PlasmoWorkflows/PlasmoWorkflows.jl")
-using Plasmo.PlasmoWorkflows
+using Plasmo
 
 function simple_func1(workflow::Workflow,x::String)
     println("Running simple_func1 at t = $(getcurrenttime(workflow))")

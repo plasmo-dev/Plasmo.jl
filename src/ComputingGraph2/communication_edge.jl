@@ -74,6 +74,7 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
     #communication actions
     addtransition!(edge,state_idle(), signal_communicate(), state_communicating(),action = action_communicate(graph,edge))
     addtransition!(edge,state_communicating(),signal_communicate(),state_communicating(),action = action_communicate(graph,edge))
+    addtransition!(edge,state_communicating(),signal_all_received(),state_idle())
 
     #TODO addselftransition!
     addtransition!(edge,state_any(),signal_receive(),state_any(),action = action_receive_attribute(graph,edge))

@@ -81,6 +81,9 @@ function step(squeue::SignalQueue,executor::AbstractExecutor)
 
  end
 
+run!(executor::SimpleExecutor,squeue::SignalQueue,signal_event::AbstractEvent) = evaluate_signal!(squeue,signal_event)
+
+
 function advance(squeue::SignalQueue,executor::AbstractExecutor,time::Number)
     while squeue.time <= time
         try
