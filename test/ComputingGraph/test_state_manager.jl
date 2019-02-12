@@ -1,12 +1,12 @@
 using Plasmo
 
 #some example actions
-function turn_on(squeue::SignalQueue,manager::StateManager,delay::Number)
+function turn_on(input_signal::Signal,squeue::SignalQueue,manager::StateManager,delay::Number)
     println("turned on")
     queuesignal!(squeue,Signal(:turned_on),manager,delay)
 end
 
-function turn_off(squeue::SignalQueue,manager::StateManager,signal::AbstractSignal,delay::Number)
+function turn_off(input_signal::Signal,squeue::SignalQueue,manager::StateManager,signal::AbstractSignal,delay::Number)
     println("received signal",signal)
     println("turned off")
     queuesignal!(squeue,Signal(:turned_off),manager,delay)

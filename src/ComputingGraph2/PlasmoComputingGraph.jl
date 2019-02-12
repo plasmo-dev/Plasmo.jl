@@ -42,9 +42,9 @@ now,getcurrenttime,getnexttime,getnexteventtime,getlocaltime,
 
 # Exported signal shortcuts
 signal_error,signal_inactive,signal_schedule,signal_execute,signal_finalize,signal_back_to_idle,
-signal_communicate,signal_all_received,signal_updated,signal_received,signal_sent,
+signal_communicate,signal_all_received,signal_updated,signal_received,signal_sent,signal_receive,
 
-state_any,state_inactive
+state_idle,state_any,state_inactive
 
 abstract type AbstractComputingGraph <: AbstractPlasmoGraph end
 abstract type AbstractComputeNode <: AbstractPlasmoNode end

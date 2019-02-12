@@ -75,6 +75,8 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
     addtransition!(edge,state_idle(), signal_communicate(), state_communicating(),action = action_communicate(graph,edge))
     addtransition!(edge,state_communicating(),signal_communicate(),state_communicating(),action = action_communicate(graph,edge))
 
+    #TODO addselftransition!
+    addtransition!(edge,state_any(),signal_receive(),state_any(),action = action_receive_attribute(graph,edge))
     #NOTE: Need to add schedule_communicate signal
     # addtransition!(edge,state_idle(),signal_schedule_communicate(),state_communicating(),action = action_schedule_communicate(send_delay))
     # addtransition!(edge,state_communicating(),signal,state_communicating(),action = action_schedule_communicate(send_delay))
@@ -93,8 +95,8 @@ const connect! = addedge!
 function addcomputeattribute!(graph::AbstractComputingGraph,edge::CommunicationEdge,value::Any)
     attribute = EdgeAttribute(edge,value)
     push!(edge.attribute_pipeline,attribute)
-    addtransition!(edge,state_idle(),signal_receive(attribute),state_communicating(),action = action_receive_attribute(graph,edge,attribute))
-    addtransition!(edge,state_communicating(),signal_receive(attribute),state_communicating(),action = action_receive_attribute(graph,edge,attribute))
+    #addtransition!(edge,state_idle(),signal_receive(attribute),state_communicating(),action = action_receive_attribute(graph,edge,attribute))
+    #addtransition!(edge,state_communicating(),signal_receive(attribute),state_communicating(),action = action_receive_attribute(graph,edge,attribute))
     return attribute
 end
 

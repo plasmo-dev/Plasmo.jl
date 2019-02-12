@@ -17,8 +17,8 @@ TransitionAction(func::Function) = TransitionAction(func,[],Dict())
 TransitionAction(func::Function,args::Vector) = TransitionAction(func,args,Dict())
 
 #Run transition action
-function runaction!(action::TransitionAction)
-    action.func(action.args...,action.kwargs...)  #run a transition action
+function runaction!(input_signal::Signal,action::TransitionAction)
+    action.func(input_signal,action.args...,action.kwargs...)  #run a transition action
 end
 getarguments(action::AbstractTransitionAction) = action.args
 getkwarguments(action::AbstractTransitionAction) = action.kwargs
@@ -109,8 +109,16 @@ end
 
 function hastransition(target::SignalTarget,state1::State,signal::AbstractSignal)
     SM = getstatemanager(target)
-    
-    return haskey(SM.transition_map,tuple(state1,signal))
+    #return haskey(SM.transition_map,tuple(state1,signal))
+    if haskey(SM.transition_map,tuple(state1,signal))
+        return true
+    elseif haskey(SM.transition_map,tuple(State(:any),signal))
+        return true
+    elseif haskey(SM.transition_map,tuple(State(:any),Signal(signal.label,:nothing)))
+        return true
+    else
+        return false
+    end
 end
 
 # function addaction!(target::SignalTarget,)
@@ -129,12 +137,30 @@ end
 function runtransition!(target::SignalTarget,input_signal::Signal)
     SM = getstatemanager(target)
     start_state = getstate(SM)
-    if hastransition(SM,start_state,input_signal)
+
+    #Use actual start state and input signal
+    if haskey(SM.transition_map,tuple(start_state,input_signal))
         new_state = SM.transition_map[start_state,input_signal]
         setstate(SM,new_state)
         if hasaction(SM,start_state,input_signal)
             action = SM.action_map[start_state,input_signal]
-            runaction!(action)
+            runaction!(input_signal,action)
+        end
+
+    #use :any start state and input signal
+    elseif haskey(SM.transition_map,tuple(State(:any),input_signal))
+        start_state = State(:any)
+        if hasaction(SM,State(:any),input_signal)
+            action = SM.action_map[start_state,input_signal]
+            runaction!(input_signal,action)
+        end
+
+    #Use :any start state and generic input signal
+    elseif haskey(SM.transition_map,tuple(State(:any),Signal(input_signal.label,:nothing)))
+        start_state = State(:any)
+        if hasaction(SM,State(:any),Signal(input_signal.label,:nothing))
+            action = SM.action_map[start_state,Signal(input_signal.label,:nothing)]
+            runaction!(input_signal,action)
         end
     else
         error("Target has no transition for state: $(start_state) with signal $(input_signal)")

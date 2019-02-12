@@ -113,6 +113,7 @@ function addtasktrigger!(graph::ComputingGraph,node::ComputeNode,node_task::Node
     push!(attribute.signal_triggers[label],node_task)
 
     #TODO Get the state_any() stuff to work
+    #addtransition!(node,state_any(),signal,state_any(),action = action_schedule_node_task(graph,node,node_task,trigger_delay))
     addtransition!(node,state_any(),signal,state_any(),action = action_schedule_node_task(graph,node,node_task,trigger_delay))
 end
 

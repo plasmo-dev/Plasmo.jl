@@ -18,7 +18,6 @@ graph = ComputingGraph()
 n1 = addnode!(graph)
 task1 = addnodetask!(graph,n1,:task1,simple_func1,args = ["hello from $n1"],compute_time = 1.0)
 
-
 #Add the second compute node
 n2 = addnode!(graph)
 task2 = addnodetask!(graph,n2,:task2,simple_func2,args = [graph,n2])
@@ -30,7 +29,7 @@ result_attribute = getnoderesult(n1,task1)
 edge1 = connect!(graph,result_attribute,n2[:x],delay = 1,send_on = signal_updated(result_attribute))
 
 queuesignal!(graph,signal_execute(task1),n1,0)
-# schedulesignal(workflow,DataSignal(:update_attribute,w2[:x],10),w2,6)
+#schedulesignal(workflow,DataSignal(:update_attribute,w2[:x],10),w2,6)
 
 #TEST STEP BY STEP
 step(graph)
