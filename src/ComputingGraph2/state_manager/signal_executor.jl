@@ -35,7 +35,7 @@ function execute!(queue::SignalQueue,executor::AbstractExecutor)#;priority_map =
             step(queue,executor)  #step through the priority queue
 
             if queue.time >= executor.final_time && queue.time != 0
-                throw(QueueComplete())
+                throw(QueueComplete("QueueComplete"))
             end
 
             #TODO Check termination conditions
@@ -80,9 +80,6 @@ function step(squeue::SignalQueue,executor::AbstractExecutor)
     #wait(task)  #maybe drop this
 
  end
-
-run!(executor::SimpleExecutor,squeue::SignalQueue,signal_event::AbstractEvent) = evaluate_signal!(squeue,signal_event)
-
 
 function advance(squeue::SignalQueue,executor::AbstractExecutor,time::Number)
     while squeue.time <= time

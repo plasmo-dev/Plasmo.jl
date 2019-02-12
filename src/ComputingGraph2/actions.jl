@@ -96,6 +96,9 @@ function finalize_node_task(input_signal::Signal,graph::AbstractComputingGraph,n
             update_signal = signal_updated(attribute)
             update_targets = updatetargets(attribute)
             for target in update_targets
+                if isa(target,NodeTask)
+                    target = getnode(target)
+                end
                 queuesignal!(graph,update_signal,target,now(graph) + finalize_time,source = node) #NOTE: Might not need finalize time here.  Could just do the update.
             end
         end

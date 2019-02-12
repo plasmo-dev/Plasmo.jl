@@ -141,7 +141,9 @@ function runtransition!(target::SignalTarget,input_signal::Signal)
     #Use actual start state and input signal
     if haskey(SM.transition_map,tuple(start_state,input_signal))
         new_state = SM.transition_map[start_state,input_signal]
-        setstate(SM,new_state)
+        if new_state !== State(:any)
+            setstate(SM,new_state)
+        end
         if hasaction(SM,start_state,input_signal)
             action = SM.action_map[start_state,input_signal]
             runaction!(input_signal,action)

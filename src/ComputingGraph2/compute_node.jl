@@ -72,7 +72,13 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,label::Symbol,func
     return node_task
 end
 
-function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTask;triggered_by::Vector{Signal} = Vector{Signal}(),trigger_delay::Float64 = 0.0)
+function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTask;triggered_by::Union{Signal,Vector{Signal}} = Vector{Signal}(),trigger_delay::Float64 = 0.0)
+
+    if !isa(triggered_by,Vector)
+        triggered_by = [triggered_by]
+    end
+
+    node_task.node = node
 
     #Add task states
     addstates!(node,[state_executing(node_task),state_finalizing(node_task)])
@@ -100,7 +106,7 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTas
     node.task_result_attributes[node_task] = result_attribute
 
     for signal in triggered_by
-        addtasktrigger!(node,node_task,signal,trigger_delay)
+        addtasktrigger!(graph,node,node_task,signal,trigger_delay = trigger_delay)
     end
     push!(node.node_tasks,node_task)
     node.node_task_map[getlabel(node_task)] = node_task
