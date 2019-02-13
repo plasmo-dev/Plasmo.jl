@@ -70,8 +70,7 @@ action_execute_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode
 
 #Queue a node task
 function queue_node_task(input_signal::Signal,graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask)
-    priority = length(node.task_queue)
-    enqueue!(node.task_queue,node_task,priority)
+    DataStructures.enqueue!(node.task_queue,node_task)
 end
 action_queue_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,node_task) = NodeAction(graph,node,queue_node_task,[node_task],Dict{Symbol,Any}())
 
@@ -79,7 +78,8 @@ action_queue_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,n
 function execute_next_task(input_signal::Signal,graph::AbstractComputingGraph,node::AbstractComputeNode)
     node_task = next_task!(node)        #pop the next task from the node task queue
     if node_task != nothing
-        execute_node_task(input_signal,graph,node,node_task)
+        schedule_node_task(input_signal,graph,node,node_task,0.0)
+        #execute_node_task(input_signal,graph,node,node_task)
     else
         nothing
     end
@@ -143,6 +143,7 @@ function communicate(input_signal::Signal,graph::AbstractComputingGraph,edge::Ab
     end
 
     #receive_target = getnode(to_attribute)
+    #println("Queueing receive signal")
     receive_signal = signal_receive(edge_attribute)
     queuesignal!(graph,receive_signal,edge,now(graph) + edge.delay,source = edge)
 

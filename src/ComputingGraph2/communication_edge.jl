@@ -54,6 +54,7 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
     end
 
     delay = Float64(delay)
+    send_delay = Float64(send_delay)
 
     edge = add_edge!(graph,getnode(attribute1),getnode(attribute2))
     edge.from_attribute = attribute1
@@ -65,10 +66,13 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
     push!(attribute2.in_edges,edge)
 
     #Notify attribute that it triggers this edge
-    for signal in send_on
+    for signal in edge.send_triggers
         label = signal.label
-        attribute = signal.value
-        push!(attribute.signal_triggers[label],edge)
+        value = signal.value
+        if isa(value,NodeAttribute)
+            attribute = value
+            push!(attribute.signal_triggers[label],edge)
+        end
     end
 
     #communication actions

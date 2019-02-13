@@ -40,6 +40,7 @@ signal_all_received() = Signal(:all_received)
 signal_updated() = Signal(:updated,:nothing)
 signal_received() = Signal(:received,:nothing)
 signal_sent() = Signal(:sent,:nothing)
+#signal_communicated() = Signal(:communicated,nothing)
 
 
 signal_receive() = Signal(:receive) #receive an edge attribute

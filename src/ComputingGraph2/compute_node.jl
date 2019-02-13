@@ -1,4 +1,4 @@
-                              # Priority of signals this node produces
+# Priority of signals this node produces
 mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
     basenode::BasePlasmoNode
     state_manager::StateManager                      # Underlying state manager
@@ -15,7 +15,7 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
 
     local_attributes_updated::Vector{NodeAttribute}      # attributes with updated local values
 
-    task_queue::DataStructures.PriorityQueue{NodeTask,Int64} # Node contains a queue of tasks to execute
+    task_queue::DataStructures.Queue{NodeTask} # Node contains a queue of tasks to execute
 
     history::Vector{Tuple}
 
@@ -37,7 +37,7 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
         node.attribute_triggers = Dict{Signal,NodeTask}()
         node.local_attributes_updated = NodeAttribute[]
 
-        node.task_queue = DataStructures.PriorityQueue{NodeTask,Int64}()
+        node.task_queue = DataStructures.Queue{NodeTask}()
 
         node.history =  Vector{Tuple}()
         node.local_time = Float64(0)
@@ -198,7 +198,7 @@ function Base.setindex!(node::ComputeNode,value::Any,sym::Symbol)
     elseif sym in keys(node.basenode.attributes)
         return setattribute(node,sym,value)
     else
-        error("node does not have attribute $sym")
+        node.basenode.attributes[sym] = value
     end
 end
 
