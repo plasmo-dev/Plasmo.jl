@@ -184,6 +184,8 @@ function addattributes!(node::AbstractPlasmoNode,dict::Dict)
     merge!(basenode.attributes,dict)
 end
 
+#Base.setindex!(node::AbstractPlasmoNode,attribute::Symbol,value) = setattribute(node,attribute,value)
+
 getattribute(graph::AbstractPlasmoGraph,attribute::Symbol) = getbasegraph(graph).attributes[attribute]
 hasattribute(graph::AbstractPlasmoGraph,attribute::Symbol) = haskey(getbasegraph(graph).attributes,attribute)
 getattribute(node::AbstractPlasmoNode,attribute::Symbol) = getbasenode(node).attributes[attribute]

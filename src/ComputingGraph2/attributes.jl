@@ -46,6 +46,7 @@ function setvalue(attribute::NodeAttribute,value::Any)
     if !(attribute in node.local_attributes_updated)
         push!(node.local_attributes_updated,attribute)
     end
+    return attribute
 end
 
 function finalizevalue(attribute::NodeAttribute)

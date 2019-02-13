@@ -63,7 +63,7 @@ end
 #addtransition!(node::ComputeNode,state1::State,signal::AbstractSignal,state2::State;action::Union{Nothing,NodeAction} = nothing) = addtransition!(node.state_manager,state1,signal,state2,action = action)
 
 #Add node tasks to compute nodes
-function addnodetask!(graph::ComputingGraph,node::ComputeNode,label::Symbol,func::Function;args = (),kwargs = Dict(),
+function addnodetask!(graph::ComputingGraph,node::ComputeNode,label::Symbol,func::Function;args = [],kwargs = Dict(),
     compute_time::Float64 = mincomputetime(),triggered_by = Vector{Signal}(),trigger_delay = 0.0)  #can be triggered by attribute signals
 
     node_task = NodeTask(label,func,args = args,kwargs = kwargs,compute_time = compute_time)
@@ -192,11 +192,11 @@ function Base.getindex(node::ComputeNode,sym::Symbol)
     end
 end
 
-function Base.setindex(node::ComputeNode,sym::Symbol,value::Any)
-    if sym in keys(node.attributes)
-        setvalue(node.attributes[sym],value)
+function Base.setindex!(node::ComputeNode,value::Any,sym::Symbol)
+    if sym in keys(node.attribute_map)
+        setvalue(node.attribute_map[sym],value)
     elseif sym in keys(node.basenode.attributes)
-        return setattribute(node.basenode.attributes[:sym],value)
+        return setattribute(node,sym,value)
     else
         error("node does not have attribute $sym")
     end
