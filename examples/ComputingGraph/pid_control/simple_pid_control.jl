@@ -38,7 +38,7 @@ function run_ode_simulation(graph::ComputingGraph,node::ComputeNode)
     push!(node[:x_history],Pair(t_next,x))
     #node[:x_history] = x_history
 
-    setcomputetime(getnodetask(node,:run_simulation),round(t_next - t_start ,digits = 8))
+    setcomputetime(getnodetask(node,:run_simulation),round(t_next - t_start ,digits = 12))
 end
 
 #Calculate a PID control law
@@ -99,7 +99,7 @@ pid_node1 = addnode!(graph)
 addcomputeattribute!(pid_node1,:u,0)
 addcomputeattribute!(pid_node1,:y,0)
 addattributes!(pid_node1,Dict(:yset => 2,:K=>15,:tauI=>1,:tauD=>0.01,:error_history => Vector{Pair}(),:u_history => Vector{Pair}()))
-addnodetask!(graph,pid_node1,:control_law,calc_pid_controller,args = [graph,pid_node1],triggered_by = signal_received(pid_node1[:y]),compute_time = 0.01)
+addnodetask!(graph,pid_node1,:control_law,calc_pid_controller,args = [graph,pid_node1],triggered_by = signal_received(pid_node1[:y]))#,compute_time = 0.01)
 
 #e1 will continuously send x --> y (every 0.01 time units)
 e1 = connect!(graph,ode_node[:x],pid_node1[:y],delay = 0.01,send_on = signal_sent(ode_node[:x]),send_delay = 0.01)
