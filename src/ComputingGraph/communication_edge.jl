@@ -65,6 +65,13 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
     push!(attribute1.out_edges,edge)
     push!(attribute2.in_edges,edge)
 
+    #error
+    addtransition!(edge,state_any(),signal_error(),state_error())   #action --> cancel signals
+
+    #inactive
+    addtransition!(edge,state_any(),signal_inactive(),state_inactive())  #action --> cancel signals
+
+
     #Notify attribute that it triggers this edge
     for signal in edge.send_triggers
         label = signal.label
@@ -75,12 +82,15 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
         end
     end
 
+
+
     #communication actions
     addtransition!(edge,state_idle(), signal_communicate(), state_communicating(),action = action_communicate(graph,edge))
     addtransition!(edge,state_communicating(),signal_communicate(),state_communicating(),action = action_communicate(graph,edge))
     addtransition!(edge,state_communicating(),signal_all_received(),state_idle())
 
     #TODO Think of adding simpler self-transitions. addselftransition!
+    #signal_receive(attribute)?
     addtransition!(edge,state_any(),signal_receive(),state_any(),action = action_receive_attribute(graph,edge))
 
     #NOTE: Need to add schedule_communicate signal

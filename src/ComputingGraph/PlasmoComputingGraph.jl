@@ -38,7 +38,7 @@ addnode!,addtasktrigger!,
 addedge!,setdelay,getdelay,iscommunicating,connect!,
 
 #  Time access
-now,getcurrenttime,getnexttime,getnexteventtime,getlocaltime,
+now,getcurrenttime,getnexttime,getnextsignaltime,getlocaltime,
 
 # Exported signal shortcuts
 signal_error,signal_inactive,signal_schedule,signal_execute,signal_finalize,signal_back_to_idle,

@@ -76,13 +76,17 @@ action_queue_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,n
 
 #Execute the next task
 function execute_next_task(input_signal::Signal,graph::AbstractComputingGraph,node::AbstractComputeNode)
+    #Check for tasks to resume
+    #node_task = resume_task!(node)
+    #if node_task == nothing
+        #Check for queued tasks
     node_task = next_task!(node)        #pop the next task from the node task queue
     if node_task != nothing
         schedule_node_task(input_signal,graph,node,node_task,0.0)
-        #execute_node_task(input_signal,graph,node,node_task)
     else
         nothing
     end
+    #end
 end
 action_execute_next_task(graph::AbstractComputingGraph,node::AbstractComputeNode) = NodeAction(graph,node,execute_next_task,[],Dict{Symbol,Any}())
 
@@ -106,6 +110,20 @@ function finalize_node_task(input_signal::Signal,graph::AbstractComputingGraph,n
     node.local_attributes_updated = NodeAttribute[] #reset updated attribute list
 end
 action_finalize_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask) = NodeAction(graph,node,finalize_node_task,[node_task],Dict{Symbol,Any}())
+
+
+function suspend_node_task(input_signal::Signal,graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask)
+    #suspend the node task and keep track of when it suspended
+    DataStructures.enqueue!(node.suspend_queue,node_task,now(graph))
+
+    #remove finalize signal
+end
+
+function resume_node_task()
+    #re-add finalize signal
+
+end
+
 
 ##############################
 # Edge actions
@@ -189,9 +207,6 @@ function receive_attribute(attribute_signal::Signal,graph::AbstractComputingGrap
     end
 end
 action_receive_attribute(graph::AbstractComputingGraph,edge::AbstractCommunicationEdge) = EdgeAction(graph,edge,receive_attribute,[],Dict{Symbol,Any}())
-
-function suspend_node_task(input_signal::Signal,graph::AbstractComputingGraph,node::AbstractComputeNode)
-end
 
 ################################################################################################
 # TODO

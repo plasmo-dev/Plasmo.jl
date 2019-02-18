@@ -21,11 +21,12 @@ now(graph::AbstractComputingGraph) = now(graph.signalqueue)
 function getnexttime(graph::ComputingGraph)
     queue = getqueue(graph)
     times = unique(sort([val.time for val in values(queue)]))
-    if length(times) == 1
-        next_time = times[1]
-    else
-        next_time = times[2]    #this will be the next time currently in the queue
-    end
+    # if length(times) == 1
+    #     next_time = times[1]
+    # else
+    #     next_time = times[2]    #this will be the next time currently in the queue
+    # end
+    next_time = times[1]
     return next_time
 end
 
