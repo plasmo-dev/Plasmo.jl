@@ -1,8 +1,14 @@
-struct StopWorkflow <: Exception
+struct QueueComplete <: Exception
   value :: Any
 end
-StopWorkflow() = StopWorkflow(nothing)
-stop_workflow(event::AbstractEvent) = throw(StopWorkflow(value(event)))
+QueueComplete() = QueueComplete(nothing)
+
+struct QueueStopped <: Exception
+  value :: Any
+end
+QueueStopped() = QueueStopped(nothing)
+stop_queue() = QueueStopped()
+#stop_workflow(event::AbstractEvent) = throw(StopWorkflow(value(event)))
 
 ##########################
 # Executors
@@ -10,99 +16,100 @@ stop_workflow(event::AbstractEvent) = throw(StopWorkflow(value(event)))
 abstract type AbstractExecutor end
 
 ###########################
-#Serial executor just schedules tasks in the priority queue
+#Simple executor just schedules tasks in the priority queue
 ###########################
 mutable struct SimpleExecutor <: AbstractExecutor
-    final_time::Number
+    final_time::Float64
 end
-SimpleExecutor() = SimpleExecutor(0)
-#SimpleExecutor(time) = SimpleExecutor(time)
+SimpleExecutor() = SimpleExecutor(Float64(200))
+SimpleExecutor(time::Number) = SimpleExecutor(Float64(time))
+
+#Run signal events
+run!(executor::SimpleExecutor,squeue::SignalQueue,signal_event::AbstractSignalEvent) = evaluate_signal!(squeue,signal_event)
+run!(squeue::SignalQueue,signal_event::AbstractSignalEvent) = evaluate_signal!(squeue,signal_event)
 
 #This is the main execution method for an executor
-function execute!(coordinator::SignalCoordinator,executor::AbstractExecutor;priority_map = Dict())  #this should be on the graph really
+function execute!(queue::SignalQueue,executor::AbstractExecutor)#;priority_map = Dict())  #this should be on the graph really
     while true
         try
-            step(coordinator,executor,priority_map = priority_map)             #step through the priority queue
+            step(queue,executor)  #step through the priority queue
 
-            # if isa(result,StopWorkflow())
-            #     throw(result)
-            # end
-
-            if coordinator.time >= executor.final_time && coordinator.time != 0
-                throw(StopWorkflow())
+            if queue.time >= executor.final_time && queue.time != 0
+                throw(QueueComplete("QueueComplete"))
             end
 
             #TODO Check termination conditions
 
         catch err
-            if isa(err,StopWorkflow)
+            if isa(err,QueueComplete)
                 println(err)
                 println("Execution complete: ",err.value)
                 break
             else
-                println("Found error")
+                println("Signal Queue Terminated for unknown reason")
                 rethrow(err)
             end
         end
     end
 end
 
-function step(coordinator::SignalCoordinator;priority_map = Dict())
-    isempty(getqueue(coordinator)) && throw(StopWorkflow("Queue is Empty"))
-    (signal_event, priority_key) = DataStructures.peek(coordinator.queue)
-    #Dequeue the event function
-    DataStructures.dequeue!(getqueue(coordinator))
-    coordinator.time = priority_key.time
-    task = run!(coordinator,signal_event,priority_map = priority_map)
+function step(squeue::SignalQueue)
+    isempty(squeue.queue) && throw(QueueComplete("Queue is Empty"))
+    (signal_event, priority_key) = DataStructures.peek(squeue.queue)
+    DataStructures.dequeue!(squeue.queue)   #Dequeue the event function
+    squeue.time = priority_key.time
+    run!(squeue,signal_event)
 end
 
 #run the next item in the schedule with the given executor
-function step(coordinator::SignalCoordinator,executor::AbstractExecutor;priority_map = Dict())
-    isempty(getqueue(coordinator)) && throw(StopWorkflow("Queue is Empty"))
-    #isempty(workflow.queue) && error("Queue is empty")
+function step(squeue::SignalQueue,executor::AbstractExecutor)
+    isempty(squeue.queue) && throw(QueueComplete("Queue is Empty"))
+
     #look at what's coming next
-    (signal_event, priority_key) = DataStructures.peek(coordinator.queue)
+    (signal_event, priority_key) = DataStructures.peek(squeue.queue)
 
     #Dequeue the event function
-    DataStructures.dequeue!(getqueue(coordinator))
+    DataStructures.dequeue!(squeue.queue)
 
     #Set the workflow time to the current event's time
-    coordinator.time = priority_key.time
+    squeue.time = priority_key.time
 
-    #for now, make this block until I figure out how to parallelize
-    task = run!(executor,coordinator,signal_event,priority_map = priority_map)
-
+    #NOTE A different executor might have to do synchronization
+    run!(executor,squeue,signal_event)
 
     #wait(task)  #maybe drop this
+
  end
 
-function advance(coordinator::SignalCoordinator,executor::AbstractExecutor,time::Number;priority_map = Dict())
-    while coordinator.time <= time
+function advance(squeue::SignalQueue,executor::AbstractExecutor,time::Number)
+    while squeue.time <= time
         try
-            step(coordinator,executor,priority_map = priority_map)             #step through the priority queue
-            if coordinator.time >= executor.final_time && coordinator.time != 0
-                throw(StopWorkflow())
+            step(squeue,executor)
+            if squeue.time >= executor.final_time && squeue.time != 0
+                throw(StopQueue())
             end
         catch err
-            if isa(err,StopWorkflow)
+            if isa(err,QueueComplete)
                 println(err)
                 println("Execution complete: ",err.value)
                 break
             else
-                println("Found error")
+                println("Signal Queue Terminated for unknown reason")
                 rethrow(err)
             end
         end
     end
 end
 
-function run!(executor::SimpleExecutor,coordinator::SignalCoordinator,signal_event::AbstractEvent;priority_map = Dict())
-    #task = @schedule call!(workflow,event)
-    task = call!(coordinator,signal_event,priority_map = priority_map)
-    return task
-end
 
-function run!(coordinator::SignalCoordinator,signal_event::AbstractEvent;priority_map = Dict())
-    task = call!(coordinator,signal_event,priority_map = priority_map)
-    return task
-end
+
+# function run!(squeue::SignalQueue,signal_event::AbstractEvent)
+#     task = evaluate_signal!(squeue,signal_event)
+#     return task
+# end
+
+# function run!(executor::SimpleExecutor,squeue::SignalQueue,signal_event::AbstractSignalEvent)
+#     #task = @schedule call!(squeue,signal_event)
+#     task = evaluate_signal!(squeue,signal_event)
+#     return task
+# end

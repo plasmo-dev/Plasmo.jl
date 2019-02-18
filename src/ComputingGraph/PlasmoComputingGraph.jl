@@ -1,113 +1,97 @@
 module PlasmoComputingGraph
 
-#include("../PlasmoGraphBase/PlasmoGraphBase.jl")
 using ..PlasmoGraphBase
-import ..PlasmoGraphBase:create_node,create_edge,add_edge!,addattributes!#,getattribute,getattributes,
+import ..PlasmoGraphBase:create_node,create_edge,add_edge!,addattributes!
 
-import LightGraphs.DiGraph
 import DataStructures
 import Base:isless,step,==,show,print,string,getindex
 
 
-#State manager functions
-export AbstractSignal,AbstractEvent,SerialExecutor,
+export AbstractSignal,SerialExecutor,
 
-StateManager,SignalCoordinator,SignalEvent,
+#State Manager objects
+StateManager,SignalQueue,State,Signal,Transition,TransitionAction,
 
-State,Signal,DataSignal,Transition,TransitionAction,
+addstate!,addsignal!,addtransition!,setstate,setaction,
 
-addstate!,addsignal!,addtransition!,addbroadcasttarget!,
+getvalidsignals,getstates,getstate,getcurrentstate,gettransitions,gettransition,getaction,
 
-setstate,schedulesignal,step,advance,
-
-getsignals,getstates,getinitialsignal,getcurrentstate,gettransitionfunction,gettransitions,gettransition,
+step,advance,execute!,queuesignal!,
 
 
-#WORKFLOWS
+#Computing Graph Objects
+ComputingGraph, ComputeNode, CommunicationEdge,NodeAttribute,
 
-Workflow, DispatchNode, CommunicationEdge,Attribute, StopWorkflow,
+#Computing Graph functions
+getqueue,stop_graph,
 
-#Workflow functions
+#NodeTask
+addnodetask!,getnodetask,getnodetasks,setcomputetime,getnoderesult,
 
-initialize,
+#Compute Attributes
+addcomputeattribute!,getcomputeattribute,getcomputeattributes,getlocalvalue,getglobalvalue,getvalue,setvalue,
 
-add_dispatch_node!,add_continuous_node!,
-
-set_node_task,set_node_task_arguments,set_node_compute_time,
-
-addnodetask!,getnodetask,getnodetasks,setcomputetime,
-
-#Attributes
-addworkflowattribute!,
-
-getworkflowattribute,setworkflowattribute,
-
-getworkflowattributes,
-
-getlocalvalue,getglobalvalue,getvalue,getnoderesult,
-
-updateattribute,
-
-#Workflow
-getcurrenttime,getnexttime,getnexteventtime,initialize,execute!,getqueue,
-
-#Dispatch Nodes
-set_node_function,set_node_compute_time,set_node_function_arguments,set_node_function_kwargs,
-getresult,setinputs,getlocaltime,setinitialsignal,getlabel,addtrigger!,
+#Compute Nodes
+addnode!,addtasktrigger!,
 
 #Communication Edges
-connect!,setdelay,getdelay
+addedge!,setdelay,getdelay,iscommunicating,connect!,
 
+#  Time access
+now,getcurrenttime,getnexttime,getnexteventtime,getlocaltime,
 
-abstract type AbstractWorkflow <: AbstractPlasmoGraph end
-abstract type AbstractDispatchNode <: AbstractPlasmoNode end
+# Exported signal shortcuts
+signal_error,signal_inactive,signal_schedule,signal_execute,signal_finalize,signal_back_to_idle,
+signal_communicate,signal_all_received,signal_updated,signal_received,signal_sent,signal_receive,
+
+state_idle,state_any,state_inactive
+
+abstract type AbstractComputingGraph <: AbstractPlasmoGraph end
+abstract type AbstractComputeNode <: AbstractPlasmoNode end
 abstract type AbstractCommunicationEdge  <: AbstractPlasmoEdge end
-abstract type AbstractChannel  end
 
-
-abstract type AbstractEvent end
+abstract type AbstractAttribute end
+abstract type AbstractSignalEvent end
 abstract type AbstractSignal end
 abstract type AbstractStateManager end
-abstract type AbstractSignalCoordinator end
+abstract type AbstractSignalQueue end
 
-const SignalTarget = AbstractStateManager
-# #Events can be: Event, Condition, Delay, Communicate, etc...
-# abstract type AbstractWorkflowEvent <: AbstractEvent end   #General Events
-# abstract type AbstractNodeEvent <: AbstractEvent end       #Events triggered by nodes
-# abstract type AbstractEdgeEvent <: AbstractEvent end
+const SignalTarget = Union{AbstractStateManager,AbstractComputeNode,AbstractCommunicationEdge}   #A node can be a target
 
-#State Manager and Coordination
+#State Manager Backend
+include("state_manager/states_signals.jl")
 include("state_manager/signal_event.jl")
 include("state_manager/state_manager.jl")
-include("state_manager/signal_coordinator.jl")
+include("state_manager/signal_queue.jl")
 include("state_manager/signal_executor.jl")
-include("state_manager/signal_print.jl")
+include("state_manager/print.jl")
 
-#Computation Graph
+#Computing Graph Interface
 
 #Node Tasks
-include("node_task.jl")
+include("node_tasks.jl")
 
-#Workflow Attributes
-include("attribute.jl")
+#Compute Attributes
+include("attributes.jl")
 
-#Node and Edge Transition Actions
+#Signal shortcuts
+include("implemented_states_signals.jl")
+
+#Transition Actions
 include("actions.jl")
 
-#The workflow Graph
-include("workflow_graph.jl")
-#
-#Edges for communication between nodes
-include("communication_edges.jl")
-#
-#Discrete and continuous dispatch nodes
-include("dispatch_nodes.jl")
-#
-# #Workflow execution
-include("workflow_executor.jl")
+#The Computing Graph
+include("computing_graph.jl")
 
-# function gettransitionactions()
-#     return schedule_node,run_node_task
-# end
+#Communication Edges
+include("communication_edge.jl")
+
+#Compute Nodes
+include("compute_node.jl")
+
+#Execution
+include("graph_executor.jl")
 
 end # module
+
+#set_node_task,set_node_task_arguments,
