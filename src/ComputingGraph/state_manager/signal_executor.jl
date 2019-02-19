@@ -61,6 +61,15 @@ function step(squeue::SignalQueue)
     run!(squeue,signal_event)
 end
 
+function debug_step(squeue::SignalQueue)
+    isempty(squeue.queue) && throw(QueueComplete("Queue is Empty"))
+    (signal_event, priority_key) = DataStructures.peek(squeue.queue)
+    println(signal_event)
+    DataStructures.dequeue!(squeue.queue)   #Dequeue the event function
+    squeue.time = priority_key.time
+    run!(squeue,signal_event)
+end
+
 #run the next item in the schedule with the given executor
 function step(squeue::SignalQueue,executor::AbstractExecutor)
     isempty(squeue.queue) && throw(QueueComplete("Queue is Empty"))

@@ -16,6 +16,8 @@ execute!(graph::ComputingGraph) = execute!(graph,SerialExecutor())
 step(graph::ComputingGraph,executor::AbstractExecutor) = step(graph.signalqueue,executor)
 step(graph::ComputingGraph) = step(graph.signalqueue)
 
+debug_step(graph::ComputingGraph) = debug_step(graph.signalqueue)
+
 run!(executor::SerialExecutor,squeue::SignalQueue,signal_event::SignalEvent) = evaluate_signal!(squeue,signal_event)
 
 function advance(graph::ComputingGraph,executor::AbstractExecutor,time::Number)

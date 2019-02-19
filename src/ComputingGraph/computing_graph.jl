@@ -6,7 +6,8 @@ mutable struct ComputingGraph <: AbstractComputingGraph
 end
 function ComputingGraph()
     basegraph = BasePlasmoGraph(MultiGraph)
-    signal_priority_order =[signal_finalize(),signal_updated(),signal_back_to_idle(),signal_sent(),signal_received(),signal_communicate(),signal_execute()]
+    #signal_priority_order =[signal_finalize(),signal_back_to_idle(),signal_receive(),signal_updated(),signal_sent(),signal_received(),signal_communicate(),signal_execute()]
+    signal_priority_order =[signal_finalize(),signal_updated(),signal_back_to_idle(),signal_sent(),signal_received(),signal_communicate(),signal_receive(),signal_execute()]
     signalqueue = SignalQueue()
     signalqueue.signal_priority_order = signal_priority_order
     return ComputingGraph(basegraph,signalqueue,true)

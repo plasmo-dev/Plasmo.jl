@@ -16,7 +16,7 @@ addstate!,addsignal!,addtransition!,setstate,setaction,
 
 getvalidsignals,getstates,getstate,getcurrentstate,gettransitions,gettransition,getaction,
 
-step,advance,execute!,queuesignal!,
+step,debug_step,advance,execute!,queuesignal!,
 
 
 #Computing Graph Objects

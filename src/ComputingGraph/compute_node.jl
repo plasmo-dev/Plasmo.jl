@@ -15,7 +15,8 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
 
     local_attributes_updated::Vector{NodeAttribute}      # attributes with updated local values
 
-    task_queue::DataStructures.Queue{NodeTask} # Node contains a queue of tasks to execute
+    task_queue::DataStructures.Queue{NodeTask}          # Node contains a queue of tasks to execute
+    suspend_queue::DataStructures.Queue{NodeTask}       # Queue of tasks that can be resumed
 
     history::Vector{Tuple}
 
@@ -38,6 +39,7 @@ mutable struct ComputeNode <: AbstractComputeNode  #A Dispatch node
         node.local_attributes_updated = NodeAttribute[]
 
         node.task_queue = DataStructures.Queue{NodeTask}()
+        node.suspend_queue = DataStructures.Queue{NodeTask}()
 
         node.history =  Vector{Tuple}()
         node.local_time = Float64(0)

@@ -65,12 +65,15 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
     push!(attribute1.out_edges,edge)
     push!(attribute2.in_edges,edge)
 
+    #TODO Correctly
     #error
     addtransition!(edge,state_any(),signal_error(),state_error())   #action --> cancel signals
 
     #inactive
-    addtransition!(edge,state_any(),signal_inactive(),state_inactive())  #action --> cancel signals
-
+    addtransition!(edge,state_idle(),signal_inactive(),state_inactive())  #action --> cancel signals
+    addtransition!(edge,state_communicating(),signal_inactive(),state_inactive())
+    addtransition!(edge,state_all_received(),signal_inactive(),state_inactive())
+    #####################################################
 
     #Notify attribute that it triggers this edge
     for signal in edge.send_triggers

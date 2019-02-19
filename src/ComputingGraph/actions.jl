@@ -111,18 +111,20 @@ function finalize_node_task(input_signal::Signal,graph::AbstractComputingGraph,n
 end
 action_finalize_node_task(graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask) = NodeAction(graph,node,finalize_node_task,[node_task],Dict{Symbol,Any}())
 
-
-function suspend_node_task(input_signal::Signal,graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask)
-    #suspend the node task and keep track of when it suspended
-    DataStructures.enqueue!(node.suspend_queue,node_task,now(graph))
-
-    #remove finalize signal
-end
-
-function resume_node_task()
-    #re-add finalize signal
-
-end
+#
+# function suspend_current_task(input_signal::Signal,graph::AbstractComputingGraph,node::AbstractComputeNode,node_task::NodeTask)
+#     #suspend the node task and keep track of when it suspended
+#     DataStructures.enqueue!(node.suspend_queue,node_task)
+#
+#     #remove finalize signal
+#
+#     #execute
+#     execute_node_task(input_signal,graph,node,node_task)
+# end
+#
+# function resume_node_task(input_signal::Signal,graph::AbstractComputingGraph,node::AbstractComputeNode)
+#     #re-add finalize signal
+# end
 
 
 ##############################
@@ -187,6 +189,9 @@ function receive_attribute(attribute_signal::Signal,graph::AbstractComputingGrap
     node_attribute = edge.to_attribute
     receive_node = getnode(node_attribute)
     value = getvalue(edge_attribute)
+
+#    println("receiving ",value," on",node_attribute.node)
+
     node_attribute.local_value = value   #set local and global values to the received data
     node_attribute.global_value = value
     if isreceivetrigger(node_attribute)  #if the node attribute can trigger a task
