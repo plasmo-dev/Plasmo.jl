@@ -31,8 +31,8 @@ mutable struct StateManager <: AbstractStateManager
     valid_states::Vector{State}                                                       #possible states
     current_state::State                                                              #current state
     valid_signals::Vector{AbstractSignal}                                             #state manager recognizes these signals
-    transition_map::Dict{Tuple{State,AbstractSignal},State}                                   #x^+ = f(x,u)
-    action_map::Dict{Tuple{State,AbstractSignal},Vector{Union{Nothing,AbstractTransitionAction}}}     #eta^+ = g(eta)
+    transition_map::Dict{Tuple{State,AbstractSignal},State}                                             #x^+ = f(x,u)
+    action_map::Dict{Tuple{State,AbstractSignal},Vector{Union{Nothing,AbstractTransitionAction}}}       #eta^+ = g(eta)
     active_signals::Vector{SignalEvent}                                               #vector of signal events this state manager has to evaluate
 end
 
@@ -149,6 +149,8 @@ function hasaction(target::SignalTarget,state1::State,signal::AbstractSignal)
     return haskey(SM.action_map,tuple(state1,signal))
 end
 
+
+#TODO Figure out a better way to determine if a state manager has a transition
 function runtransition!(target::SignalTarget,input_signal::Signal)
     SM = getstatemanager(target)
     start_state = getstate(SM)
@@ -164,6 +166,13 @@ function runtransition!(target::SignalTarget,input_signal::Signal)
             for action in actions
                 runaction!(input_signal,action)
             end
+        elseif haskey(SM.action_map,tuple(start_state,Signal(input_signal.label)))
+            actions = SM.action_map[start_state,Signal(input_signal.label)]
+            for action in actions
+                runaction!(input_signal,action)
+            end
+        else
+            @warn "no action for $input_signal on $target 1"
         end
 
     #use generic start state and input signal
@@ -179,6 +188,15 @@ function runtransition!(target::SignalTarget,input_signal::Signal)
             for action in actions
                 runaction!(input_signal,action)
             end
+
+        elseif haskey(SM.action_map,tuple(State(start_state.label),Signal(input_signal.label)))
+            actions = SM.action_map[State(start_state.label),Signal(input_signal.label)]
+            for action in actions
+                runaction!(input_signal,action)
+            end
+
+        else
+            @warn "no action for $input_signal on $target 2"
         end
 
     #use :any start state and input signal
@@ -189,6 +207,14 @@ function runtransition!(target::SignalTarget,input_signal::Signal)
             for action in actions
                 runaction!(input_signal,action)
             end
+        elseif haskey(SM.action_map,tuple(State(start_state.label),Signal(input_signal.label)))
+            actions = SM.action_map[State(start_state.label),Signal(input_signal.label)]
+            for action in actions
+                runaction!(input_signal,action)
+            end
+
+        else
+            @warn "no action for $input_signal on $target 3"
         end
 
     #Use :any start state and generic input signal
@@ -199,6 +225,13 @@ function runtransition!(target::SignalTarget,input_signal::Signal)
             for action in actions
                 runaction!(input_signal,action)
             end
+        elseif haskey(SM.action_map,tuple(State(:any),Signal(input_signal.label)))
+            actions = SM.action_map[State(:any),Signal(input_signal.label)]
+            for action in actions
+                runaction!(input_signal,action)
+            end
+        else
+            @warn "no action for $input_signal on $target 4"
         end
     else
         error("Target has no transition for state: $(start_state) with signal $(input_signal)")
