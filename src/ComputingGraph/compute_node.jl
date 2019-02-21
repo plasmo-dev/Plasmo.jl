@@ -55,10 +55,11 @@ function addnode!(graph::ComputingGraph)#;continuous = false)
     node = add_node!(graph)
 
     #error
-    addtransition!(node,state_any(),signal_error(),state_error())   #action --> cancel signals
+    #addtransition!(node,state_any(),signal_error(),state_error())   #action --> cancel signals
 
     #inactive
-    addtransition!(node,state_any(),signal_inactive(),state_inactive())  #action --> cancel signals
+    #addtransition!(node,state_any(),signal_inactive(),state_inactive())  #action --> cancel signals
+    addtransition!(node,state_idle(),signal_inactive(),state_inactive())  #action --> cancel signals
     return node
 end
 
@@ -87,6 +88,9 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTas
 
     #Add the node transitions for this task
     #schedule a task
+    addtransition!(node,state_executing(),signal_inactive(),state_inactive())
+    addtransition!(node,state_finalizing(),signal_inactive(),state_inactive())
+
     #NOTE: Thinking of an easy way to pass signal inputs to the action arguments
     addtransition!(node,state_any(),signal_schedule(node_task),state_any(),action = action_schedule_node_task(graph,node,node_task))  #this will use the node_task delay by default
 

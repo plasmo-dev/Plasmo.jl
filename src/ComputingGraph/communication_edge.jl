@@ -85,8 +85,6 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
         end
     end
 
-
-
     #communication actions
     addtransition!(edge,state_idle(), signal_communicate(), state_communicating(),action = action_communicate(graph,edge))
     addtransition!(edge,state_communicating(),signal_communicate(),state_communicating(),action = action_communicate(graph,edge))
