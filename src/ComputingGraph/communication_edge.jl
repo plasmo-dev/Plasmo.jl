@@ -92,7 +92,7 @@ function addedge!(graph::AbstractComputingGraph,attribute1::NodeAttribute,attrib
 
     #TODO Think of adding simpler self-transitions. addselftransition!
     #signal_receive(attribute)?
-    addtransition!(edge,state_any(),signal_receive(),state_any(),action = action_receive_attribute(graph,edge))
+    addtransition!(edge,state_any(),signal_receive(),nothing,action = action_receive_attribute(graph,edge))
 
     #NOTE: Need to add schedule_communicate signal
     # addtransition!(edge,state_idle(),signal_schedule_communicate(),state_communicating(),action = action_schedule_communicate(send_delay))

@@ -2,7 +2,7 @@
 state_idle() = State(:idle)
 state_error() = State(:error)
 state_inactive() = State(:inactive)
-state_any() = State(:any)
+
 
 #Node States
 state_executing() = State(:executing,:nothing)

@@ -55,7 +55,7 @@ function addnode!(graph::ComputingGraph)#;continuous = false)
     node = add_node!(graph)
 
     #error
-    #addtransition!(node,state_any(),signal_error(),state_error())   #action --> cancel signals
+    addtransition!(node,state_any(),signal_error(),state_error())   #action --> cancel signals
 
     #inactive
     #addtransition!(node,state_any(),signal_inactive(),state_inactive())  #action --> cancel signals
@@ -92,14 +92,14 @@ function addnodetask!(graph::ComputingGraph,node::ComputeNode,node_task::NodeTas
     addtransition!(node,state_finalizing(),signal_inactive(),state_inactive())
 
     #NOTE: Thinking of an easy way to pass signal inputs to the action arguments
-    addtransition!(node,state_any(),signal_schedule(node_task),state_any(),action = action_schedule_node_task(graph,node,node_task))  #this will use the node_task delay by default
+    addtransition!(node,state_any(),signal_schedule(node_task),nothing,action = action_schedule_node_task(graph,node,node_task))  #this will use the node_task delay by default
 
     #execute from idle
     addtransition!(node,state_idle(),signal_execute(node_task),state_executing(node_task),action = action_execute_node_task(graph,node,node_task))
 
     #queue task if currently busy
-    addtransition!(node,state_executing(),signal_execute(node_task),state_executing(),action = action_queue_node_task(graph,node,node_task))
-    addtransition!(node,state_finalizing(),signal_execute(node_task),state_finalizing(),action = action_queue_node_task(graph,node,node_task))
+    addtransition!(node,state_executing(),signal_execute(node_task),nothing,action = action_queue_node_task(graph,node,node_task))
+    addtransition!(node,state_finalizing(),signal_execute(node_task),nothing,action = action_queue_node_task(graph,node,node_task))
 
     #finalize a task
     addtransition!(node,state_executing(node_task),signal_finalize(node_task),state_finalizing(node_task),action = action_finalize_node_task(graph,node,node_task))
@@ -126,7 +126,7 @@ function addtasktrigger!(graph::ComputingGraph,node::ComputeNode,node_task::Node
 
     #TODO Get the state_any() stuff to work
     #addtransition!(node,state_any(),signal,state_any(),action = action_schedule_node_task(graph,node,node_task,trigger_delay))
-    addtransition!(node,state_any(),signal,state_any(),action = action_schedule_node_task(graph,node,node_task,trigger_delay))
+    addtransition!(node,state_any(),signal,nothing,action = action_schedule_node_task(graph,node,node_task,trigger_delay))
 end
 
 next_task(node::ComputeNode) = peek(node.task_queue)

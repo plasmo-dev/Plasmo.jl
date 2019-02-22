@@ -6,7 +6,9 @@ State() = State(:nothing,:nothing)
 State(label::Symbol) = State(label,:nothing)
 #State(label::Symbol) = State(label)
 #TODO Define an ANY state
-==(state1::State,state2::State) = ((state1.label == state2.label && state1.value == state2.value) || state1.label == :any || state2.label == :any)
+==(state1::State,state2::State) = ((state1.label == state2.label && state1.value == state2.value) || state1 == :any || state2.label == :any)
+
+state_any() = State(:any)
 
 #Signal for mapping behaviors
 struct Signal <: AbstractSignal
@@ -23,3 +25,8 @@ Signal() = Signal(:nothing,:nothing,nothing)
 getlabel(signal::AbstractSignal) = signal.label
 getvalue(signal::AbstractSignal) = signal.value
 getdata(signal::AbstractSignal) = signal.data
+
+struct TransitionPair
+    state::State
+    signal::Signal
+end
