@@ -3,8 +3,8 @@ using Plasmo
 function simple_func1(graph::ComputingGraph,count::NodeAttribute,s::String)
     println("Running simple_func1 at t = $(now(graph))")
     println(s)
-    setvalue(count,getvalue(count) + 1)
-    return getvalue(count)
+    Plasmo.PlasmoComputingGraph.setvalue(count,getlocalvalue(count) + 1)
+    return getlocalvalue(count)
 end
 
 function simple_func2(graph::ComputingGraph,node::ComputeNode)

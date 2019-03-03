@@ -8,7 +8,8 @@ end
 
 function simple_func2(graph::ComputingGraph,node::ComputeNode)
     println("Running simple_func2 at t = $(now(graph))")
-    setvalue(node[:x],10)
+    #setvalue(node[:x],10)
+    node[:x] = 10
     return "test"
 end
 

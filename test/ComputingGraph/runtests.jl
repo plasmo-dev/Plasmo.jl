@@ -1,10 +1,12 @@
-using Base.Test
+using Test
 
-#Test the graph functionality
-println("Testing Workflow Functions")
+println("Testing State Manager Functions")
+@test include("test_state_manager.jl")
 
-println("Testing Simple Workflow")
+println("Testing Computing Graph Functions")
+
+println("Testing Simple Computing Graph")
 @test include("test_simple_node.jl")
 
-println("Testing Continuous Workflow")
+println("Testing Continuous Node")
 @test include("test_continuous_node.jl")
