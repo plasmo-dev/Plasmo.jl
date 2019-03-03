@@ -133,7 +133,7 @@ end
 
 #Topology functions (LightGraphs extensions)
 src(graph::AbstractPlasmoGraph,edge::AbstractPlasmoEdge) = src(graph.basegraph,edge.baseedge)           #source node of a Plasmo Edge
-dst(graph::AbstractPlasmoGraph,baseedge::AbstractPlasmoEdge) = dst(graph.basegraph,edge.baseedge)       #destination node of a Plasmo Edge
+dst(graph::AbstractPlasmoGraph,edge::AbstractPlasmoEdge) = dst(graph.basegraph,edge.baseedge)          #destination node of a Plasmo Edge
 src(graph::AbstractPlasmoGraph,edge::LightGraphs.AbstractEdge) = src(graph.basegraph,LightGraphs.src(edge.baseedge))  #source node of a Plasmo Edge
 dst(graph::AbstractPlasmoGraph,edge::LightGraphs.AbstractEdge) = dst(graph.basegraph,LightGraphs.dst(edge.baseedge))  #destination node of a Plasmo Edge
 
@@ -183,6 +183,8 @@ function addattributes!(node::AbstractPlasmoNode,dict::Dict)
     basenode = getbasenode(node)
     merge!(basenode.attributes,dict)
 end
+
+#Base.setindex!(node::AbstractPlasmoNode,attribute::Symbol,value) = setattribute(node,attribute,value)
 
 getattribute(graph::AbstractPlasmoGraph,attribute::Symbol) = getbasegraph(graph).attributes[attribute]
 hasattribute(graph::AbstractPlasmoGraph,attribute::Symbol) = haskey(getbasegraph(graph).attributes,attribute)

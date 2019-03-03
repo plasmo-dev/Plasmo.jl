@@ -17,6 +17,9 @@ export AbstractPlasmoGraph, AbstractPlasmoNode, AbstractPlasmoEdge,
 #HyperGraph Object
 HyperGraph, HyperEdge,
 
+#MultiGraph Object
+MultiGraph,MultiEdge,
+
 #BasePlasmoGraph
 BasePlasmoGraph, BasePlasmoNode, BasePlasmoEdge,
 
@@ -39,6 +42,8 @@ abstract type AbstractPlasmoNode end
 abstract type AbstractPlasmoEdge end
 
 include("hypergraph.jl")
+
+include("multigraph.jl")
 
 include("node_edge_sets.jl")
 
