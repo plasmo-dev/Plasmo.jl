@@ -37,12 +37,13 @@ master = Model()
 #Add the master model to the graph
 master_node = add_node!(graph,master)
 
-scenm=Array{JuMP.Model}(Ns)
-scen_nodes = Array{ModelNode}(Ns)
+scenm=Array{JuMP.Model}(undef,Ns)
+scen_nodes = Array{ModelNode}(undef,Ns)
 owned = []
 s = 1
 #split scenarios between processors
 for j in 1:Ns
+    global s
     if round(Int, floor((s-1)/SPP)) == rank
         push!(owned, s)
         #get scenario model and append to parent node
@@ -66,7 +67,7 @@ end
 if rank == 0
     println("Solving with PIPS-NLP")
 end
-pipsnlp_solve(graph,master_node,scen_nodes)
+pipsnlp_solve(graph,1,collect(2:Ns+1))
 
 if rank == 0
     @show getobjectivevalue(graph)
