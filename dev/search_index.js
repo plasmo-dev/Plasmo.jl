@@ -21,7 +21,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Introduction",
     "title": "Installation",
     "category": "section",
-    "text": "Plasmo.jl is a Julia package developed for Julia 1.0. From Julia, Plasmo is installed by using the built-in package manager:import Pkg\nPkg.clone(\"https://github.com/jalving/Plasmo.jl\")or alternatively from the Julia 1.0 package manager, just do] add https://github.com/jalving/Plasmo.jlPlasmo.jl uses JuMP as modeling interface which can be installed withimport Pkg\nPkg.add(\"JuMP\")or using the Julia package manager] add JuMP"
+    "text": "Plasmo.jl is a Julia package developed for Julia 1.0. From Julia, Plasmo is installed by using the built-in package manager:import Pkg\nPkg.add(\"Plasmo.jl\")or alternatively from the Julia 1.0 package manager, just do] add PlasmoPlasmo.jl uses JuMP as modeling interface which can be installed withimport Pkg\nPkg.add(\"JuMP\")or using the Julia package manager] add JuMP"
 },
 
 {
