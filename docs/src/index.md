@@ -11,13 +11,13 @@ Plasmo.jl is a [Julia](https://julialang.org) package developed for Julia 1.0.
 From Julia, Plasmo is installed by using the built-in package manager:
 ```julia
 import Pkg
-Pkg.clone("https://github.com/jalving/Plasmo.jl")
+Pkg.add("Plasmo.jl")
 ```
 
 or alternatively from the Julia 1.0 package manager, just do
 
 ```
-] add https://github.com/jalving/Plasmo.jl
+] add Plasmo
 ```
 Plasmo.jl uses [JuMP](https://github.com/JuliaOpt/JuMP.jl) as modeling interface which can be installed with
 

@@ -19,7 +19,8 @@ Additional examples can be found in the [examples](https://github.com/jalving/Pl
 ## Installation
 
 ```julia
-Pkg.clone("https://github.com/jalving/Plasmo.jl")
+using Pkg
+Pkg.add("Plasmo.jl")
 ```
 
 ## Simple Example
