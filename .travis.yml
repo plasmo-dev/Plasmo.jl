@@ -23,6 +23,7 @@ jobs:
       script:
         - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Metis.jl.git")'
         - julia -e 'using Pkg; Pkg.add("Ipopt"); Pkg.add("GLPKMathProgInterface")'
+        - julia -e 'using Pkg; Pkg.add("JuMP"); Pkg.pin(PackageSpec(name = "JuMP", version = "0.18.5"))'
         - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Plasmo.jl.git") ; Pkg.test("Plasmo",coverage=true)'
 
       after_success:
