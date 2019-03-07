@@ -9,12 +9,12 @@
    xmlns:inkscape="http://www.inkscape.org/namespaces/inkscape"
    xml:space="preserve"
    version="1.1"
-   viewBox="0 0 760.66663 139.84955"
+   viewBox="0 0 731.95166 129.82627"
    id="svg4217"
    inkscape:version="0.92.3 (2405546, 2018-03-11)"
    sodipodi:docname="plasmo.svg"
-   width="760.66663"
-   height="139.84956"><sodipodi:namedview
+   width="731.95166"
+   height="129.82628"><sodipodi:namedview
    pagecolor="#ffffff"
    bordercolor="#666666"
    borderopacity="1"
@@ -28,8 +28,8 @@
    id="namedview4243"
    showgrid="false"
    inkscape:zoom="0.70710678"
-   inkscape:cx="515.9495"
-   inkscape:cy="116.16767"
+   inkscape:cx="621.26935"
+   inkscape:cy="243.79311"
    inkscape:window-x="0"
    inkscape:window-y="0"
    inkscape:window-maximized="1"
@@ -234,7 +234,6 @@
 
 
 
-
 <text
    inkscape:transform-center-y="3.602439"
    inkscape:transform-center-x="72.048781"
@@ -248,7 +247,6 @@
      x="255.69113"
      id="tspan4849-0"
      sodipodi:role="line">l</tspan></text>
-
 
 
 
@@ -266,7 +264,6 @@
 
 
 
-
 <text
    id="text4847-5"
    y="110.46484"
@@ -278,7 +275,6 @@
      x="385.20239"
      id="tspan4849-1"
      sodipodi:role="line">s</tspan></text>
-
 
 
 
@@ -296,7 +292,6 @@
 
 
 
-
 <text
    id="text4847-2"
    y="110.46484"
@@ -311,16 +306,18 @@
 
 
 
-
-<text
-   id="text4847-2-5"
-   y="113.84956"
-   x="626.89709"
-   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;line-height:0%;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum, Bold';text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
-   xml:space="preserve"><tspan
-     style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:125px;line-height:10000%;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum, Bold Italic';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start"
-     y="113.84956"
-     x="626.89709"
-     id="tspan4849-7-0"
-     sodipodi:role="line">.jl</tspan></text>
-</svg>
+<flowRoot
+   xml:space="preserve"
+   id="flowRoot4145"
+   style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12px;line-height:125%;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;stroke-width:1px;stroke-linecap:butt;stroke-linejoin:miter;stroke-opacity:1"
+   transform="matrix(8,0,0,8,-966.01771,1301.8219)"><flowRegion
+     id="flowRegion4147"
+     style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12px;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start"><rect
+       id="rect4149"
+       width="95.459419"
+       height="86.974136"
+       x="199.40411"
+       y="-159.93916"
+       style="font-style:normal;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12px;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum, Bold';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start" /></flowRegion><flowPara
+     id="flowPara4151"
+     style="font-style:italic;font-variant:normal;font-weight:bold;font-stretch:normal;font-size:12px;font-family:'TeX Gyre Bonum';-inkscape-font-specification:'TeX Gyre Bonum, Bold Italic';font-variant-ligatures:normal;font-variant-caps:normal;font-variant-numeric:normal;font-feature-settings:normal;text-align:start;writing-mode:lr-tb;text-anchor:start">.jl</flowPara></flowRoot></svg>
