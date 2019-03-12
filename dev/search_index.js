@@ -321,19 +321,35 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "documentation/graphanalysis/#Metis.partition-Tuple{ModelGraph,Int64}",
+    "location": "documentation/graphanalysis/#Community-Detection-1",
     "page": "Graph Analysis",
-    "title": "Metis.partition",
-    "category": "method",
-    "text": "partition(graph::ModelGraph,n_parts::Int64;alg = :KWAY) –> Vector{Vector{Int64}}\n\nReturn a graph partition containing a vector of a vectors of node indices.\n\n\n\n\n\n"
+    "title": "Community Detection",
+    "category": "section",
+    "text": "Graph community detection algorithms can also be used to generate graph partitions, although they do not necessarily return partitions of a selected size.   The current supported community detection algorithms are as follows:"
 },
 
 {
-    "location": "documentation/graphanalysis/#LightGraphs.label_propagation-Tuple{ModelGraph}",
+    "location": "documentation/graphanalysis/#Label-propagation-1",
     "page": "Graph Analysis",
-    "title": "LightGraphs.label_propagation",
-    "category": "method",
-    "text": "LightGraphs.label_propagation(graph::ModelGraph)\n\nReturn partitions corresponding to detected communities using the LightGraphs label propagation algorithm.\n\n\n\n\n\n"
+    "title": "Label propagation",
+    "category": "section",
+    "text": "using LightGraphs\ncommunities = LightGraphs.label_propagation(graph)"
+},
+
+{
+    "location": "documentation/graphanalysis/#Bethe-Hessian-1",
+    "page": "Graph Analysis",
+    "title": "Bethe Hessian",
+    "category": "section",
+    "text": "using CommunityDetection\ncommunities = CommunityDetection.community_detection_bethe(graph)"
+},
+
+{
+    "location": "documentation/graphanalysis/#Louvain-Fast-Unfolding-Algorithm-1",
+    "page": "Graph Analysis",
+    "title": "Louvain Fast Unfolding Algorithm",
+    "category": "section",
+    "text": "For now, you will need to clone a forked version of the CommunityDetection.jl package to use the fast unfolding algorithm.using Pkg\nPkg.clone(\"https://github.com/jalving/CommunityDetection.jl.git\")\nusing CommunityDetection\ncommunities = CommunityDetection.community_detection_louvain(graph)"
 },
 
 {
@@ -341,7 +357,7 @@ var documenterSearchIndex = {"docs": [
     "page": "Graph Analysis",
     "title": "Methods",
     "category": "section",
-    "text": "Metis.partition(graph::ModelGraph,n_parts::Int64)\nLightGraphs.label_propagation(graph::ModelGraph)"
+    "text": "Metis.partition(graph::ModelGraph,n_parts::Int64)\nLightGraphs.label_propagation(graph::ModelGraph)\nCommunityDetection.community_detection_nback\nCommunityDetection.community_detection_bethe\nCommunityDetection.community_detection_louvain"
 },
 
 {
