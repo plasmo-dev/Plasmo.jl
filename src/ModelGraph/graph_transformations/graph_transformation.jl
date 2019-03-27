@@ -27,7 +27,6 @@ function getunipartitegraph(graph::ModelGraph)
     end
 
     #Add the edges between nodes
-    #TODO Handle hierachical structures
     for edge in getedges(graph)
         hyperedge = getindex(graph,edge)
         vertices = hyperedge.vertices
@@ -46,6 +45,31 @@ function getunipartitegraph(graph::ModelGraph)
             end
         end
     end
+
+    #Add edges from subgraphs to the unipartite graph
+    for subgraph in getsubgraphlist(graph)
+        for edge in getedges(subgraph)
+            hyperedge = getindex(subgraph,edge)
+            vertices = hyperedge.vertices       #these are indices in the subgraph
+            subgraph_nodes = [getnode(subgraph,i) for i in vertices]
+            graph_vertices = [getindex(graph,node) for node in subgraph_nodes]  #these are the vertices in the original graph (and hence, the ugraph)
+            for i = 1:length(graph_vertices)
+                node_from = getnode(ugraph,graph_vertices[i])
+                other_vertices = graph_vertices[i+1:end]
+                for j = 1:length(other_vertices)
+                    node_to = getnode(ugraph,other_vertices[j])
+                    new_edge = add_edge!(ugraph,node_from,node_to)
+                    new_index = getindex(ugraph,new_edge)
+                    if !haskey(ugraph.e_weights,new_index)
+                        ugraph.e_weights[new_index] = 1
+                    else
+                        ugraph.e_weights[new_index] += length(edge.linkconrefs)  #edge weights are number of link constraints
+                    end
+                end
+            end
+        end
+    end
+
     return ugraph
 end
 
