@@ -2,6 +2,7 @@
 
 using JuMP
 using Plasmo
+using PlasmoSolverInterface
 using MPI
 #using Cbc
 MPI.Init()
