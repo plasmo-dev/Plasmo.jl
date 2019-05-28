@@ -33,7 +33,7 @@ first_stage = Model()
 
 #add the master model to the graph
 n1 = add_node(graph,first_stage)
-scen_nodes = Array{ModelNode}(NS)
+scen_nodes = Array{ModelNode}(undef,NS)
 for s in 1:NS
     blk = Model()
     node = add_node(graph,blk)
