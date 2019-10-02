@@ -1,4 +1,4 @@
-![Logo](./docs/plasmo.svg)
+![Logo](./docs/plasmo3.svg)
 
 [![Build Status](https://travis-ci.org/jalving/Plasmo.jl.svg?branch=master)](https://travis-ci.org/jalving/Plasmo.jl)
 [![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
