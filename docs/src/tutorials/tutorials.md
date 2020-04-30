@@ -3,7 +3,6 @@
 ## Convert `ModelGraph` to JuMP `Model`
 
 ```julia
-using JuMP
 using Plasmo
 using Ipopt
 
