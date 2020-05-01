@@ -6,9 +6,9 @@ os:
   - linux
 julia:
   - 1.0.3
-matrix:
-  allow_failures:
-    - julia: nightly
+# matrix:
+#   allow_failures:
+#     - julia: nightly
 notifications:
   email: false
 
@@ -28,6 +28,7 @@ jobs:
         - julia --project=docs -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
         - julia --project=docs --color=yes docs/make.jl
       after_success: skip
+
 
 
         # - stage: "Test"

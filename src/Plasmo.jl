@@ -140,7 +140,7 @@ include("linkedge.jl")
 
 include("modelgraph.jl")
 
-include("nlp_extension.jl")
+# include("nlp_extension.jl")
 
 include("macros.jl")
 
