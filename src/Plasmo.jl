@@ -11,8 +11,8 @@ const MOI = MathOptInterface
 using Reexport
 @reexport using JuMP
 
-@reexport using PipsSolver
-@reexport using SchwarzSolver
+# @reexport using PipsSolver
+# @reexport using SchwarzSolver
 
 # using JuMP
 # macro exportall(pkg)
