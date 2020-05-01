@@ -2,8 +2,9 @@
 
 # Plasmo.jl - Platform for Scalable Modeling and Optimization
 
-Plasmo.jl is a modeling and optimization interface for constructing and solving optimization problems that exploits a graph-aware structure.
-The package provides modular model building for optimization problems and graph analysis capabilities that the enable the use of decomposition-based solvers.
+Plasmo.jl is an optimization framework that adopts a modular style to to construct and solve optimization problems.
+The package provides tools to build and manage complex model structures and offers partitioning capabilities that facilitate using
+or developing decomposition-based solvers.
 
 ## Installation
 

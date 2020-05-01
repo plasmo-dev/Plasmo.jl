@@ -20,7 +20,6 @@ addons:
 
 jobs:
   include:
-
     - stage: "Documentation"
       julia: 1.0
       os: linux

@@ -1,4 +1,4 @@
-using Documenter, Plasmo, JuMP, MathProgBase, LightGraphs, Metis
+using Documenter, Plasmo, JuMP, LightGraphs
 
 makedocs(sitename="Plasmo.jl - Platform for Scalable Modeling and Optimization", modules=[Plasmo],
         doctest=true,html_prettyurls = get(ENV, "CI", nothing) == "true",
@@ -6,11 +6,12 @@ makedocs(sitename="Plasmo.jl - Platform for Scalable Modeling and Optimization",
         pages = [
         "Introduction" => "index.md",
         "Quick Start" => "documentation/quickstart.md",
-        "ModelGraph" => "documentation/modelgraph.md",
-        "Graph Analysis" => "documentation/graphanalysis.md",
-        "Solvers" => "documentation/solvers/solvers.md",
-        "Tutorials" => "tutorials/tutorials.md",
-        "Low-Level Functions" => "low_level/baseplasmograph.md"]
+        "Modeling" => "documentation/modelgraph.md",
+        "Partitioning" => "documentation/partitioning.md",
+        "Manipulation" => "documentation/manipulation.md",
+        "Plotting" => "documentation/plotting.md",
+        "Solvers" => "documentation/solvers.md",
+        "Tutorials" => "tutorials/tutorials.md"]
         )
 
 deploydocs(

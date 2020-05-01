@@ -1,4 +1,1 @@
 ## Partitioning
-
-
-## Methods

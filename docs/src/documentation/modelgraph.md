@@ -98,19 +98,20 @@ The `ModelGraph` contains the following useful methods:
 ```@docs
 Plasmo.ModelGraph
 Plasmo.objective_value
-set_optimizer(mg::ModelGraph,optimizer::JuMP.OptimizerFactory)
+JuMP.set_optimizer(mg::ModelGraph,optimizer::JuMP.OptimizerFactory)
 ```
 ### ModelNode
 `ModelNode`s contain methods for managing their contained JuMP models.
 
 ```@docs
-Plasmo..ModelNode
-Plasmo.add_node!(graph::AbstractModelGraph,model::JuMP.AbstractModel)
+Plasmo.ModelNode
+Plasmo.@node(graph::ModelGraph)
 ```
 
-### LinkConstraints
+### Attributes
 ```@docs
+Plasmo.getnodes
+Plasmo.all_nodes
 Plasmo.getlinkconstraints
 Plasmo.all_linkconstraints
-
 ```

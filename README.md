@@ -2,6 +2,7 @@
 
 [![Build Status](https://travis-ci.org/jalving/Plasmo.jl.svg?branch=master)](https://travis-ci.org/jalving/Plasmo.jl)
 [![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
+[![coveralls](https://coveralls.io/repos/github/jalving/Plasmo.jl/badge.svg?branch=master)](https://coveralls.io/github/jalving/Plasmo.jl?branch=master)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://jalving.github.io/Plasmo.jl/dev/)
 
 # Plasmo.jl
@@ -38,6 +39,7 @@ graph = ModelGraph()
 @node(graph,n1)
 @node(graph,n2)
 
+#Add variables, constraints, and objective functions to nodes
 @variable(n1,0 <= x <= 2)
 @variable(n1,0 <= y <= 3)
 @constraint(n1,x+y <= 4)
@@ -46,29 +48,37 @@ graph = ModelGraph()
 @variable(n2,x)
 @NLnodeconstraint(n2,exp(x) >= 2)
 
-#Add a linkconstraint
+#Add a linkconstraint to couple modelnodes
 @linkconstraint(graph,n1[:x] == n2[:x])
 
-
+#Optimize with Ipopt
 ipopt = Ipopt.Optimizer
 optimize!(graph,ipopt)
 
+#Print solution values
 println("n1[:x]= ",value(n1,n1[:x]))
 println("n2[:x]= ",value(n2,n2[:x]))
 ```
 
 ## Acknowledgments
-This code is based on work supported by the U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357 as well as the DOE Office of Electricity Delivery and Energy Reliability’s Advanced Grid Research and Development program at Argonne National Laboratory.
+This code is based on work supported by the U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357 as well as the DOE Office of Electricity Delivery and Energy Reliability’s Advanced Grid Research and Development program at Argonne National Laboratory. The primary developer is Jordan Jalving (@jalving) with support from the following
+contributors.  
 
-## Citing Plasmo
-If you find Plasmo useful for your work, you may cite the following [manuscript](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
+* Victor Zavala (UW-Madison)
+* Yankai Cao (University of British Columbia)
+* Kibaek Kim (ANL)
+* Sungho Shin (UW-Madison)
+
+
+## Citing Plasmo.jl
+If you find Plasmo.jl useful for your work, you may cite the following [manuscript](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
 
 ```
 @article{Jalving2019,
 author = {Jalving, Jordan and Cao, Yankai and Zavala, Victor M},
 journal = {Computers {\&} Chemical Engineering},
 pages = {134--154},
-title = {{Graph-based modeling and simulation of complex systems}},
+title = {Graph-based modeling and simulation of complex systems},
 volume = {125},
 year = {2019},
 doi = {https://doi.org/10.1016/j.compchemeng.2019.03.009}
