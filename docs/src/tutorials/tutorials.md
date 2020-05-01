@@ -1,9 +1,8 @@
 # Tutorials
 
-## Convert `ModelGraph` to JuMP `Model`
+## MicroGrid Modeling
 
 ```julia
-using JuMP
 using Plasmo
 using Ipopt
 
