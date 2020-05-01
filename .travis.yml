@@ -29,15 +29,15 @@ jobs:
         - julia --project=docs --color=yes docs/make.jl
       after_success: skip
 
-
-
-        # - stage: "Test"
-        #   julia: 1.0.3
-        #   os: linux
-        #   script:
-        #     - julia -e 'using Pkg; Pkg.add("Ipopt"); Pkg.add("GLPKMathProgInterface")'
-        #     - julia -e 'using Pkg; Pkg.add("JuMP"); Pkg.pin(PackageSpec(name = "JuMP", version = "0.18.5"))'
-        #     - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Plasmo.jl.git") ; Pkg.test("Plasmo",coverage=true)'
-        #
-        #   after_success:
-        #       - julia -e 'if VERSION >= v"0.7.0-" using Pkg end; cd(Pkg.dir("Plasmo")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder()); Coveralls.submit(Coveralls.process_folder())';
+    # - stage: "Test"
+    # julia: 1.0.3
+    # os: linux
+    # script:
+    #   - julia -e 'using Pkg; Pkg.add("Ipopt"); Pkg.add("GLPKMathProgInterface")'
+    #   - julia -e 'using Pkg; Pkg.add("JuMP"); Pkg.pin(PackageSpec(name = "JuMP", version = "0.18.5"))'
+    #   - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Plasmo.jl.git") ; Pkg.test("Plasmo",coverage=true)'
+    #
+    # after_success:
+    #     - julia -e 'if VERSION >= v"0.7.0-" using Pkg end; cd(Pkg.dir("Plasmo")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder()); Coveralls.submit(Coveralls.process_folder())';
+    #
+    #
