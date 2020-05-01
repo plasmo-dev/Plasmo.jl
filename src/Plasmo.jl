@@ -23,11 +23,11 @@ import DataStructures.OrderedDict
 export
 
 #################################
-# MODELGRAPHS
+# MODELGRAPH
 ################################
 AbstractModelGraph, ModelGraph,
 
-#Nodes and Edges,
+#ModelNode and LinkEdge
 ModelNode,LinkEdge,
 
 getsubgraph,getsubgraphs,all_subgraphs,
@@ -119,6 +119,7 @@ clique_expansion, star_expansion,
 
 @NLnodeconstraint, @NLnodeobjective
 
+#TODO
 #@NLlinkconstraint,
 
 
@@ -151,7 +152,7 @@ include("copy.jl")
 
 include("solve.jl")              #Aggregate and solve with an MOI Solver
 
-include("utils.jl")
+#include("utils.jl")
 
 include("graph_interface.jl")
 

@@ -71,23 +71,6 @@ macro NLnodeobjective(node,args...)
     return esc(code)
 end
 
-
-# macro NLlinkconstraint(graph,args...)
-#     code = quote
-#         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-#         JuMP.@NLconstraint($graph,($(args...)))
-#     end
-#     return esc(code)
-# end
-#
-# macro NLgraphobjective(graph,args...)
-#     code = quote
-#         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
-#         JuMP.@NLobjective($graph,($(args...)))  #link model extends @constraint macro
-#     end
-#     return esc(code)
-# end
-
 #macro function helpers
 function _build_ref_sets(expr::Expr, cname)
     c = copy(expr)
@@ -152,3 +135,20 @@ function _get_name(c::Expr)
         return c.args[1]
     end
 end
+
+
+# macro NLlinkconstraint(graph,args...)
+#     code = quote
+#         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
+#         JuMP.@NLconstraint($graph,($(args...)))
+#     end
+#     return esc(code)
+# end
+#
+# macro NLgraphobjective(graph,args...)
+#     code = quote
+#         @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
+#         JuMP.@NLobjective($graph,($(args...)))  #link model extends @constraint macro
+#     end
+#     return esc(code)
+# end

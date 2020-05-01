@@ -145,7 +145,7 @@ function eval_objective_gradient(d::JuMP.NLPEvaluator, grad, x)
 end
 
 ###############################################################
-# JACOBIAN STRUCTURE FOR VISUALIZING BLOCK STRUCTURE
+# JACOBIAN STRUCTURE 
 ###############################################################
 function jump_jacobian_structure(m::JuMP.Model)
     d = JuMP.NLPEvaluator(m)
@@ -213,12 +213,6 @@ function jump_jacobian_structure(d::JuMP.NLPEvaluator)
         push!(jacobian_sparsity, (nlp_row + row - 1, column))
     end
 
-
-    # I = [jacobian_sparsity[i][1] for i = 1:length(jacobian_sparsity)]
-    # J = [jacobian_sparsity[i][2] for i = 1:length(jacobian_sparsity)]
-    # V = ones(length(jacobian_sparsity))
-    #
-    # return sparse(I,J,V)
     return jacobian_sparsity
 end
 
@@ -393,7 +387,6 @@ function eval_constraint_jacobian(d::JuMP.NLPEvaluator, jac_values, x)
 	@fill_constraint_jacobian con_data.quadratic_interval_constraints
     @fill_constraint_jacobian con_data.quadratic_eq_constraints
 
-    println("nonlinear now")
     nlp_values = view(jac_values, 1+offset:length(jac_values))
     MOI.eval_constraint_jacobian(d, nlp_values, x)
     return
