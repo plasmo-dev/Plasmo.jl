@@ -16,12 +16,16 @@ addons:
         - liblapack-dev
         - libblas-dev
 
-after_success:
-  - julia --project -e 'import Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder()); Coveralls.submit(Coveralls.process_folder())'
-
-
 jobs:
   include:
+    - stage: "Test"
+    julia: 1.0
+    os: linux
+    script:
+    - julia -e 'using Pkg; Pkg.build() ; Pkg.test(coverage=true)'
+    after_success:
+    - julia -e  'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder()); Coveralls.submit(Coveralls.process_folder())';
+
     - stage: "Documentation"
       julia: 1.0
       os: linux
@@ -32,14 +36,5 @@ jobs:
       after_success: skip
 
 
-    #
-    #- julia -e 'using Pkg; Pkg.add("Ipopt"); Pkg.add("GLPKMathProgInterface")'
-    # - stage: "Test"
-    # julia: 1.0
-    # os: linux
-    # script:
-    #
-    # - julia -e 'using Pkg; Pkg.clone("https://github.com/jalving/Plasmo.jl.git") ; Pkg.test("Plasmo",coverage=true)'
-    #
-    # after_success:
-    #   - julia -e  'using Pkg; cd(Pkg.dir("Plasmo")); Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder()); Coveralls.submit(Coveralls.process_folder())';
+
+          # - julia -e 'using Pkg; Pkg.add("Ipopt"); Pkg.add("GLPKMathProgInterface")'
