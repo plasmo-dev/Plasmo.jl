@@ -97,8 +97,6 @@ The `ModelGraph` contains the following useful methods:
 
 ```@docs
 Plasmo.ModelGraph
-Plasmo.objective_value
-JuMP.set_optimizer(mg::ModelGraph,optimizer::JuMP.OptimizerFactory)
 ```
 ### ModelNode
 `ModelNode`s contain methods for managing their contained JuMP models.
