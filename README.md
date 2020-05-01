@@ -63,6 +63,7 @@ This code is based on work supported by the U.S. Department of Energy (DOE), Off
 ## Citing Plasmo
 If you find Plasmo useful for your work, you may cite the following [manuscript](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
 
+```
 @article{Jalving2019,
 author = {Jalving, Jordan and Cao, Yankai and Zavala, Victor M},
 journal = {Computers {\&} Chemical Engineering},
@@ -72,3 +73,4 @@ volume = {125},
 year = {2019},
 doi = {https://doi.org/10.1016/j.compchemeng.2019.03.009}
 }
+```
