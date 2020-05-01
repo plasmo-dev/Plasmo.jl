@@ -22,8 +22,8 @@ jobs:
       os: linux
       script:
         - julia -e 'using Pkg;  Pkg.build(); Pkg.test(coverage=true)'
-    # after_success:
-    # - julia -e  'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder()); Coveralls.submit(Coveralls.process_folder())'
+    after_success:
+    - julia -e  'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(Codecov.process_folder()); Coveralls.submit(Coveralls.process_folder())'
 
     # - stage: "Documentation"
     #   julia: 1.0
