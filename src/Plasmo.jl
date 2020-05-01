@@ -8,11 +8,17 @@ using SparseArrays
 using MathOptInterface
 const MOI = MathOptInterface
 
-using JuMP
-macro exportall(pkg)
-    Expr(:export, names(JuMP)...)
-end
-@exportall JuMP
+using Reexport
+@reexport using JuMP
+
+# @reexport using PipsSolver
+# @reexport using SchwarzSolver
+
+# using JuMP
+# macro exportall(pkg)
+#     Expr(:export, names(JuMP)...)
+# end
+# @exportall JuMP
 
 import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 import Base: ==,show,print,string,getindex,copy
@@ -140,7 +146,7 @@ include("linkedge.jl")
 
 include("modelgraph.jl")
 
-include("nlp_extension.jl")
+# include("nlp_extension.jl")
 
 include("macros.jl")
 
