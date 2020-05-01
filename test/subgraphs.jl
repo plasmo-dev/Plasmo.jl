@@ -29,9 +29,9 @@ end
 @linkconstraint(mg,n0[:x] == ng1[1][:x])
 @linkconstraint(mg,n0[:x] == ng2[1][:x])
 
-@assert num_nodes(mg) == 1
-@assert length(all_nodes(mg)) == 11
-@assert num_linkedges(mg) == 2
-@assert num_all_linkedges(mg) == 4
+@test num_nodes(mg) == 1
+@test length(all_nodes(mg)) == 11
+@test num_linkedges(mg) == 2
+@test num_all_linkedges(mg) == 4
 
 true

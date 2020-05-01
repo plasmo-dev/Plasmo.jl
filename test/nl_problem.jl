@@ -13,7 +13,6 @@ graph = ModelGraph()
 @NLnodeconstraint(n1,x^3+y <= 4)
 @objective(n1,Min,x)
 
-#Set a model on node 2
 
 vals = collect(1:5)
 grid = 1:3
@@ -25,7 +24,6 @@ grid = 1:3
 @objective(n2,Min,x)
 
 @variable(n3,x[1:5])
-
 @variable(n4,x <= 1)
 
 
@@ -36,10 +34,7 @@ grid = 1:3
 @linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])
 @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
-# ipopt = Ipopt.Optimizer
-# optimize!(graph,ipopt)
-#
-# #Query solution
-# @assert nodevalue(n2[:x]) ≈ 1
+
+node,ref = combine(graph)
 
 true

@@ -1,4 +1,4 @@
-function incidence_matrix(graph::ModelGraph)
+function LightGraphs.incidence_matrix(graph::ModelGraph)
     return sparse(graph)
 end
 

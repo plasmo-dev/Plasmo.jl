@@ -14,8 +14,7 @@ set_start_value(x[1],2)
 set_start_value(x[2],2)
 @NLnodeobjective(n2,Min,x[1]^3 + x[2]^2)
 
-new_node = combine(graph)
-# optimize!(graph,Ipopt.Optimizer)
-# @assert round(nodevalue(n2[:x][1]),digits=4) ≈ 2.1167
+new_node,ref = combine(graph)
+
 
 return true

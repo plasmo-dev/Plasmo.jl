@@ -1,4 +1,5 @@
 using Plasmo
+using Test
 
 mg = ModelGraph()
 @node(mg,n1)
@@ -15,8 +16,8 @@ end
 @linkconstraint(mg,n1[:x] == nodes[1][:x])
 @linkconstraint(mg,sum(nodes[i][:x] for i = 1:5) == 5)
 
-@assert num_nodes(mg) == 15
-@assert num_linkedges(mg) == 2
-@assert num_linkconstraints(mg) == 2
+@test num_nodes(mg) == 15
+@test num_linkedges(mg) == 2
+@test num_linkconstraints(mg) == 2
 
 true

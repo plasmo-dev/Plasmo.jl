@@ -34,7 +34,7 @@ function SparseArrays.sparse(hypergraph::HyperGraph)
     V = Int.(ones(length(I)))
     return SparseArrays.sparse(I,J,V)
 end
-incidence_matrix(hypergraph::HyperGraph) = SparseArrays.sparse(hypergraph)
+LightGraphs.incidence_matrix(hypergraph::HyperGraph) = SparseArrays.sparse(hypergraph)
 #TODO adjacency_matrix
 
 #HyperNode

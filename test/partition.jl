@@ -1,7 +1,7 @@
 using Plasmo
+using Test
 
 mg = ModelGraph()
-
 
 @node(mg,nodes[1:100])
 for node in nodes
@@ -17,11 +17,11 @@ node_vectors = [A[c,:] for c in 1:size(A,1)]
 
 partition = Partition(mg,node_vectors)
 
-@assert length(partition.subpartitions) == 20
+@test length(partition.subpartitions) == 20
 
-@assert num_nodes(mg) == 100
+@test num_nodes(mg) == 100
 
 make_subgraphs!(mg,partition)
 
-@assert num_nodes(mg) == 0
-@assert length(all_nodes(mg)) == 100
+@test num_nodes(mg) == 0
+@test length(all_nodes(mg)) == 100
