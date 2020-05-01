@@ -1,44 +1,33 @@
 # Simple Plasmo Example
 
-Plasmo.jl uses JuMP to create component models in a ModelGraph.  JuMP models are associated with nodes and can have their variables connected to other nodes (models) with linkconstraints.
-The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint between them and solving with Ipopt.
-
+Plasmo.jl uses modelnodes to construct modular optimization models that have their variables coupled to other modelnodes with linkconstraints.
+The below script demonstrates solving a nonlinear optimization problem containing two modelnodes with a simple linkconstraint with Ipopt.
 
 ```julia
-using JuMP
 using Plasmo
 using Ipopt
 
 graph = ModelGraph()
-setsolver(graph,IpoptSolver())
 
 #Add nodes to a ModelGraph
-n1 = add_node!(graph)
-n2 = add_node!(graph)
+@node(graph,n1)
+@node(graph,n2)
 
-#Create JuMP models
-m1 = Model()
-@variable(m1,0 <= x <= 2)
-@variable(m1,0 <= y <= 3)
-@constraint(m1,x+y <= 4)
-@objective(m1,Min,x)
+@variable(n1,0 <= x <= 2)
+@variable(n1,0 <= y <= 3)
+@constraint(n1,x+y <= 4)
+@objective(n1,Min,x)
 
-m2 = Model()
-@variable(m2,x)
-@NLconstraint(m2,exp(x) >= 2)
+@variable(n2,x)
+@NLnodeconstraint(n2,exp(x) >= 2)
 
-#Set JuMP models on nodes
-setmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1
-setmodel(n2,m2)
-
-#Link constraints take the same expressions as the JuMP @constraint macro
+#Add a linkconstraint
 @linkconstraint(graph,n1[:x] == n2[:x])
 
-#Get all of the link constraints in a graph
-links = getlinkconstraints(graph)
 
-solve(graph)
+ipopt = Ipopt.Optimizer
+optimize!(graph,ipopt)
 
-println("n1[:x]= ",JuMP.getvalue(n1[:x]))
-println("n2[:x]= ",JuMP.getvalue(n2[:x]))
+println("n1[:x]= ",value(n1,n1[:x]))
+println("n2[:x]= ",value(n2,n2[:x]))
 ```
