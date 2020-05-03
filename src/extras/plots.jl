@@ -6,7 +6,7 @@ using ColorTypes
 using Statistics
 
 #TODO other plotting options:  plot bipartite, node-pins, or clique-expansion
-function Plots.plot(graph::ModelGraph; node_labels = false, subgraph_colors = false,linewidth = 2.0,linealpha = 1.0, markersize = 30,labelsize = 20, markercolor = :grey,
+function Plots.plot(graph::ModelGraph; node_labels = false, subgraph_colors = false,node_colors = false,linewidth = 2.0,linealpha = 1.0, markersize = 30,labelsize = 20, markercolor = :grey,
     layout_options = Dict(:tol => 0.01,:C => 2, :K => 4, :iterations => 2),
     plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,
     :size => (800,800),:axis => nothing),line_options = Dict(:linecolor => :blue,:linewidth => linewidth,:linealpha => linealpha),annotate_options = Dict(:markercolor => :black))
@@ -23,15 +23,23 @@ function Plots.plot(graph::ModelGraph; node_labels = false, subgraph_colors = fa
         end
         i = 2
         for subgraph in getsubgraphs(graph)
-
             for node in all_nodes(subgraph)
                 push!(markercolor,cols[i])
             end
             i += 1
         end
+
+    elseif node_colors
+        cols = Colors.distinguishable_colors(length(all_nodes(graph)) + 1)
+        if cols[1] == colorant"black"
+            cols[1] = colorant"grey"
+        end
+        markercolor = cols[2:end]
     else
         markercolor = markercolor
     end
+
+
 
     hypergraph,hyper_map = gethypergraph(graph)
     clique_graph,clique_map = clique_expansion(hypergraph)
@@ -66,15 +74,21 @@ end
 
 rectangle(w, h, x, y) = Plots.Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
 
-function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph_colors = false)
+function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph_colors = false,node_colors = false)
 
     n_graphs = length(graph.subgraphs)
     if subgraph_colors
-        cols = Colors.distinguishable_colors(n_graphs)
+        cols = Colors.distinguishable_colors(n_graphs + 1)
         if cols[1] == colorant"black"
             cols[1] = colorant"grey"
         end
-        colors = cols
+        colors = cols[2:end]
+    elseif node_colors
+        cols = Colors.distinguishable_colors(length(all_nodes(graph)) + 1)
+        if cols[1] == colorant"black"
+            cols[1] = colorant"grey"
+        end
+        colors = cols[2:end]
     else
         colors = [colorant"grey" for _= 1:n_graphs]
     end
@@ -109,7 +123,7 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
 
     row = n_all_cons_total  - n_link_constraints #- height_initial
     #draw node blocks for this graph
-    for node in getnodes(graph)
+    for (i,node) in enumerate(getnodes(graph))
         height = num_constraints(node)
         row -= height
         #row_start,row_end = node_row_ranges[node]
@@ -120,7 +134,7 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
         row_end = row - height
         rec = rectangle(width,height,col_start,row_start)
 
-        Plots.plot!(plt,rec,opacity = 1.0,color = :grey)
+        Plots.plot!(plt,rec,opacity = 1.0,color = colors[i])
         if node_labels
             Plots.annotate!(plt,(col_start + width + col_start)/2,(row + height + row)/2,Plots.text(node.label,labelsize))
         end
@@ -308,11 +322,11 @@ function Plots.spy(graph::ModelGraph,subgraphs::Vector{ModelGraph};node_labels =
 
     n_graphs = length(subgraphs)
     if subgraph_colors
-        cols = Colors.distinguishable_colors(n_graphs)
+        cols = Colors.distinguishable_colors(n_graphs) + 1
         if cols[1] == colorant"black"
             cols[1] = colorant"grey"
         end
-        colors = cols
+        colors = cols[2:end]
     else
         colors = [colorant"grey" for _= 1:n_graphs]
     end
