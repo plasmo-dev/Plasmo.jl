@@ -83,15 +83,21 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
             cols[1] = colorant"grey"
         end
         colors = cols[2:end]
-    elseif node_colors
+    else
+        colors = [colorant"grey" for _= 1:n_graphs]
+    end
+
+    if node_colors
         cols = Colors.distinguishable_colors(length(all_nodes(graph)) + 1)
         if cols[1] == colorant"black"
             cols[1] = colorant"grey"
         end
-        colors = cols[2:end]
-    else
-        colors = [colorant"grey" for _= 1:n_graphs]
+        node_cols = cols[2:end]
     end
+    # else
+    #     node_cols = colorant"grey"
+    # end
+
 
     #Plot limits
     n_vars_total = num_all_variables(graph)
@@ -134,7 +140,11 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
         row_end = row - height
         rec = rectangle(width,height,col_start,row_start)
 
-        Plots.plot!(plt,rec,opacity = 1.0,color = colors[i])
+        if !(node_colors)
+            Plots.plot!(plt,rec,opacity = 1.0,color = :grey)
+        else
+            Plots.plot!(plt,rec,opacity = 1.0,color = node_cols[i])
+        end
         if node_labels
             Plots.annotate!(plt,(col_start + width + col_start)/2,(row + height + row)/2,Plots.text(node.label,labelsize))
         end
@@ -322,7 +332,7 @@ function Plots.spy(graph::ModelGraph,subgraphs::Vector{ModelGraph};node_labels =
 
     n_graphs = length(subgraphs)
     if subgraph_colors
-        cols = Colors.distinguishable_colors(n_graphs) + 1
+        cols = Colors.distinguishable_colors(n_graphs + 1) 
         if cols[1] == colorant"black"
             cols[1] = colorant"grey"
         end
