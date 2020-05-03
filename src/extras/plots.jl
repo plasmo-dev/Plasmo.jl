@@ -70,7 +70,6 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
 
     n_graphs = length(graph.subgraphs)
     if subgraph_colors
-
         cols = Colors.distinguishable_colors(n_graphs)
         if cols[1] == colorant"black"
             cols[1] = colorant"grey"
@@ -79,7 +78,6 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
     else
         colors = [colorant"grey" for _= 1:n_graphs]
     end
-
 
     #Plot limits
     n_vars_total = num_all_variables(graph)
@@ -151,7 +149,7 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
         end
 
     end
-    Plots.scatter!(plt,link_cols,link_rows,color = :blue);
+    Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect);
 
     row -= 1
     _plot_subgraphs!(graph,plt,node_col_ranges,row,node_labels = node_labels,labelsize = labelsize,colors = colors)
@@ -186,7 +184,7 @@ function _plot_subgraphs!(graph::ModelGraph,plt,node_col_ranges,row_start_graph;
                 push!(link_cols,col_start)
             end
         end
-        Plots.scatter!(plt,link_cols,link_rows,color = :blue);
+        Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect);
 
         if !(isempty(subgraph.modelnodes))
             subgraph_col_start = node_col_ranges[subgraph.modelnodes[1]][1]
@@ -218,7 +216,7 @@ function _plot_subgraphs!(graph::ModelGraph,plt,node_col_ranges,row_start_graph;
         subgraph_row_start = row_start_graph
 
         rec = rectangle(num_vars,num_cons,subgraph_col_start,subgraph_row_start)
-        Plots.plot!(plt,rec,opacity = 0.1,color = :black)
+        Plots.plot!(plt,rec,opacity = 0.1,color = colors[i])
 
     end
 end
@@ -306,11 +304,23 @@ function Plots.plot(graph::ModelGraph,subgraphs::Vector{ModelGraph}; node_labels
     return scat_plt
 end
 
-function Plots.spy(graph::ModelGraph,subgraphs::Vector{ModelGraph};node_labels = false,labelsize = 24)
+function Plots.spy(graph::ModelGraph,subgraphs::Vector{ModelGraph};node_labels = false,labelsize = 24,subgraph_colors = true)
+
+    n_graphs = length(subgraphs)
+    if subgraph_colors
+        cols = Colors.distinguishable_colors(n_graphs)
+        if cols[1] == colorant"black"
+            cols[1] = colorant"grey"
+        end
+        colors = cols
+    else
+        colors = [colorant"grey" for _= 1:n_graphs]
+    end
+
     #Plot limits
-    n_vars_total = num_all_variables(graph)
-    n_cons_total = num_all_constraints(graph)
-    n_linkcons_total = num_all_linkconstraints(graph)
+    n_vars_total = sum(num_variables.(subgraphs)) #+ sum(num_variables.(getnodes(graph))) #master
+    n_cons_total = sum(num_all_constraints.(subgraphs)) #+ sum(num_constraints.(getnodes(graph))) #+ num_linkconstraints(graph)
+    n_linkcons_total = sum(num_all_linkconstraints.(subgraphs)) #+ num_all_linkconstraints(graph)
 
     n_all_cons_total = n_cons_total + n_linkcons_total
 
@@ -324,56 +334,83 @@ function Plots.spy(graph::ModelGraph,subgraphs::Vector{ModelGraph};node_labels =
     plt = Plots.plot(;xlims = [0,n_vars_total],ylims = [0,n_all_cons_total],legend = false,framestyle = :box,xlabel = "Node Variables",ylabel = "Constraints",size = (800,800),
     guidefontsize = 24,tickfontsize = 18,grid = false,yticks = yticks)
 
-    #Need to map variables in each subgraph to indices in
+    row_start_graph = n_all_cons_total - 1
+    col_start_graph = 1
+    for i = 1:length(subgraphs)
+        subgraph = subgraphs[i]
+        #column data for subgraph
+        node_indices = Dict()
+        node_col_ranges = Dict()
 
-
-    #plot top level nodes, then start going down subgraphs
-    n_link_constraints = num_linkconstraints(graph)  #local links
-    col = 0
-    node_indices = Dict()
-    node_col_ranges = Dict()
-    for (i,node) in enumerate(all_nodes(graph))
-        node_indices[node] = i
-        node_col_ranges[node] = [col,col + num_variables(node)]
-        col += num_variables(node)
-    end
-
-    row = n_all_cons_total  - n_link_constraints #- height_initial
-    #draw node blocks for this graph
-    for node in getnodes(graph)
-        height = num_constraints(node)
-        row -= height
-        #row_start,row_end = node_row_ranges[node]
-        row_start = row
-        col_start,col_end = node_col_ranges[node]
-        width = col_end - col_start
-
-        row_end = row - height
-        rec = rectangle(width,height,col_start,row_start)
-
-        Plots.plot!(plt,rec,opacity = 1.0,color = :grey)
-        if node_labels
-            Plots.annotate!(plt,(col_start + width + col_start)/2,(row + height + row)/2,Plots.text(node.label,labelsize))
+        col = col_start_graph
+        for (i,node) in enumerate(all_nodes(subgraph))
+            node_indices[node] = i
+            node_col_ranges[node] = [col,col + num_variables(node)]
+            col += num_variables(node)
         end
-    end
 
-    #plot link constraints for highest level using rectangles
-    row = n_all_cons_total
-    recs = []
-    for link in getlinkconstraints(graph)
-        row -= 1
-        vars = keys(link.func.terms)
-        for var in vars
-            node = getnode(var)
+        #Now just plot columns of overlap nodes
+        nodes = all_nodes(subgraph)
+        overlap_nodes = Dict()
+        for j = 1:length(subgraphs)
+            if j != i
+                other_subgraph = subgraphs[j]
+                other_nodes = all_nodes(other_subgraph)
+                overlap = intersect(nodes,other_nodes)
+                overlap_nodes[j] = overlap
+            end
+        end
+                #plot local column overlap
+        link_rows = []
+        link_cols = []
+        row = row_start_graph
+        for link in getlinkconstraints(subgraph)
+            row -= 1
+            vars = keys(link.func.terms)
+            for var in vars
+                node = getnode(var)
+                col_start,col_end = node_col_ranges[node]
+                col_start = col_start + var.index.value - 1
+                push!(link_rows,row)
+                push!(link_cols,col_start)
+            end
+        end
+        Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect);
+
+        #draw node blocks for this graph
+        for node in getnodes(subgraph)
+            height = num_constraints(node)
+            row -= height
+            row_start = row
             col_start,col_end = node_col_ranges[node]
-            col_start = col_start + var.index.value - 1
+            width = col_end - col_start
 
-            rec = rectangle(1,1,col_start,row)
-            # push!(recs,rec)
-            Plots.plot!(plt,rec,opacity = 1.0,color = :blue);
+            rec = rectangle(width,height,col_start,row_start)
+            Plots.plot!(plt,rec,opacity = 1.0,color = colors[i])
+            if node_labels
+                Plots.annotate!(plt,(col_start + width + col_start)/2,(row + height + row)/2,Plots.text(node.label,labelsize))
+            end
         end
+
+        num_cons = num_all_constraints(subgraph) + num_all_linkconstraints(subgraph)
+        num_vars = num_all_variables(subgraph)
+
+        subgraph_plt_start = row
+        rec = rectangle(num_vars,num_cons,col_start_graph,subgraph_plt_start)
+        Plots.plot!(plt,rec,opacity = 0.1,color = colors[i])
+
+        #overlap rectanges
+        for (j,overlap) in overlap_nodes
+            for node in overlap
+                col_start,col_end = node_col_ranges[node]
+                rec = rectangle(num_variables(node),num_cons,col_start,subgraph_plt_start)
+                Plots.plot!(plt,rec,opacity = 0.1,color = colors[j])
+            end
+        end
+
+        col_start_graph = col
+        row_start_graph = row
     end
-    row -= 1
-    _plot_subgraphs!(graph,plt,node_col_ranges,row,node_labels = node_labels,labelsize = labelsize)
+
     return plt
 end
