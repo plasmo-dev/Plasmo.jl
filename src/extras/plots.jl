@@ -94,10 +94,7 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
         end
         node_cols = cols[2:end]
     end
-    # else
-    #     node_cols = colorant"grey"
-    # end
-
+    
 
     #Plot limits
     n_vars_total = num_all_variables(graph)
@@ -332,7 +329,7 @@ function Plots.spy(graph::ModelGraph,subgraphs::Vector{ModelGraph};node_labels =
 
     n_graphs = length(subgraphs)
     if subgraph_colors
-        cols = Colors.distinguishable_colors(n_graphs + 1) 
+        cols = Colors.distinguishable_colors(n_graphs + 1)
         if cols[1] == colorant"black"
             cols[1] = colorant"grey"
         end
