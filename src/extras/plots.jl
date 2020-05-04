@@ -74,7 +74,7 @@ end
 
 rectangle(w, h, x, y) = Plots.Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
 
-function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph_colors = false,node_colors = false)
+function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph_colors = false,node_colors = false,markersize = 1)
 
     n_graphs = length(graph.subgraphs)
     if subgraph_colors
@@ -94,7 +94,7 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
         end
         node_cols = cols[2:end]
     end
-    
+
 
     #Plot limits
     n_vars_total = num_all_variables(graph)
@@ -170,14 +170,14 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
         end
 
     end
-    Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect);
+    Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect,markersize = markersize);
 
     row -= 1
-    _plot_subgraphs!(graph,plt,node_col_ranges,row,node_labels = node_labels,labelsize = labelsize,colors = colors)
+    _plot_subgraphs!(graph,plt,node_col_ranges,row,node_labels = node_labels,labelsize = labelsize,colors = colors,markersize = markersize)
     return plt
 end
 
-function _plot_subgraphs!(graph::ModelGraph,plt,node_col_ranges,row_start_graph;node_labels = false,labelsize = 24,colors = nothing)
+function _plot_subgraphs!(graph::ModelGraph,plt,node_col_ranges,row_start_graph;node_labels = false,labelsize = 24,colors = nothing,markersize = 1)
     if colors == nothing
         colors = [colorant"grey" for _= 1:length(graph.subgraphs)]
     end
@@ -205,7 +205,7 @@ function _plot_subgraphs!(graph::ModelGraph,plt,node_col_ranges,row_start_graph;
                 push!(link_cols,col_start)
             end
         end
-        Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect);
+        Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect,markersize = markersize);
 
         if !(isempty(subgraph.modelnodes))
             subgraph_col_start = node_col_ranges[subgraph.modelnodes[1]][1]
