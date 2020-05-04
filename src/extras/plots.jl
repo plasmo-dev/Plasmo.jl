@@ -170,7 +170,7 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
         end
 
     end
-    Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect,markersize = markersize);
+    Plots.scatter!(plt,link_cols,link_rows,markersize = markersize,markercolor = :blue,markershape = :rect);
 
     row -= 1
     _plot_subgraphs!(graph,plt,node_col_ranges,row,node_labels = node_labels,labelsize = labelsize,colors = colors,markersize = markersize)
@@ -205,7 +205,7 @@ function _plot_subgraphs!(graph::ModelGraph,plt,node_col_ranges,row_start_graph;
                 push!(link_cols,col_start)
             end
         end
-        Plots.scatter!(plt,link_cols,link_rows,markersize = 1,markercolor = :blue,markershape = :rect,markersize = markersize);
+        Plots.scatter!(plt,link_cols,link_rows,markersize = markersize,markercolor = :blue,markershape = :rect);
 
         if !(isempty(subgraph.modelnodes))
             subgraph_col_start = node_col_ranges[subgraph.modelnodes[1]][1]
