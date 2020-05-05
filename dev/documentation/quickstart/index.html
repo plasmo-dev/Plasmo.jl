@@ -1,37 +1,27 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Quick Start · Plasmo.jl - Platform for Scalable Modeling and Optimization</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>Plasmo.jl - Platform for Scalable Modeling and Optimization</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">Introduction</a></li><li class="current"><a class="toctext" href>Quick Start</a><ul class="internal"></ul></li><li><a class="toctext" href="../modelgraph/">ModelGraph</a></li><li><a class="toctext" href="../graphanalysis/">Graph Analysis</a></li><li><a class="toctext" href="../solvers/solvers/">Solvers</a></li><li><a class="toctext" href="../../tutorials/tutorials/">Tutorials</a></li><li><a class="toctext" href="../../low_level/baseplasmograph/">Low-Level Functions</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Quick Start</a></li></ul><a class="edit-page" href="https://github.com/jalving/Plasmo.jl/blob/master/docs/src/documentation/quickstart.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Quick Start</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Simple-Plasmo-Example-1" href="#Simple-Plasmo-Example-1">Simple Plasmo Example</a></h1><p>Plasmo.jl uses JuMP to create component models in a ModelGraph.  JuMP models are associated with nodes and can have their variables connected to other nodes (models) with linkconstraints. The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint between them and solving with Ipopt.</p><pre><code class="language-julia">using JuMP
-using Plasmo
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Quick Start · Plasmo.jl - Platform for Scalable Modeling and Optimization</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link href="../../assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>Plasmo.jl - Platform for Scalable Modeling and Optimization</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="../../search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li><a class="toctext" href="../../">Introduction</a></li><li class="current"><a class="toctext" href>Quick Start</a><ul class="internal"></ul></li><li><a class="toctext" href="../modelgraph/">Modeling</a></li><li><a class="toctext" href="../partitioning/">Partitioning</a></li><li><a class="toctext" href="../manipulation/">Manipulation</a></li><li><a class="toctext" href="../plotting/">Plotting</a></li><li><a class="toctext" href="../solvers/">Solvers</a></li><li><a class="toctext" href="../../tutorials/tutorials/">Tutorials</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Quick Start</a></li></ul><a class="edit-page" href="https://github.com/jalving/Plasmo.jl/blob/master/docs/src/documentation/quickstart.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Quick Start</span><a class="fa fa-bars" href="#"></a></div></header><h1><a class="nav-anchor" id="Simple-Plasmo-Example-1" href="#Simple-Plasmo-Example-1">Simple Plasmo Example</a></h1><p>Plasmo.jl uses modelnodes to construct modular optimization models that have their variables coupled to other modelnodes with linkconstraints. The below script demonstrates solving a nonlinear optimization problem containing two modelnodes with a simple linkconstraint with Ipopt.</p><pre><code class="language-julia">using Plasmo
 using Ipopt
 
 graph = ModelGraph()
-setsolver(graph,IpoptSolver())
 
 #Add nodes to a ModelGraph
-n1 = add_node!(graph)
-n2 = add_node!(graph)
+@node(graph,n1)
+@node(graph,n2)
 
-#Create JuMP models
-m1 = Model()
-@variable(m1,0 &lt;= x &lt;= 2)
-@variable(m1,0 &lt;= y &lt;= 3)
-@constraint(m1,x+y &lt;= 4)
-@objective(m1,Min,x)
+@variable(n1,0 &lt;= x &lt;= 2)
+@variable(n1,0 &lt;= y &lt;= 3)
+@constraint(n1,x+y &lt;= 4)
+@objective(n1,Min,x)
 
-m2 = Model()
-@variable(m2,x)
-@NLconstraint(m2,exp(x) &gt;= 2)
+@variable(n2,x)
+@NLnodeconstraint(n2,exp(x) &gt;= 2)
 
-#Set JuMP models on nodes
-setmodel(n1,m1)     #set m1 to node 1.  Updates reference on m1
-setmodel(n2,m2)
-
-#Link constraints take the same expressions as the JuMP @constraint macro
+#Add a linkconstraint
 @linkconstraint(graph,n1[:x] == n2[:x])
 
-#Get all of the link constraints in a graph
-links = getlinkconstraints(graph)
 
-solve(graph)
+ipopt = Ipopt.Optimizer
+optimize!(graph,ipopt)
 
-println(&quot;n1[:x]= &quot;,JuMP.getvalue(n1[:x]))
-println(&quot;n2[:x]= &quot;,JuMP.getvalue(n2[:x]))</code></pre><footer><hr/><a class="previous" href="../../"><span class="direction">Previous</span><span class="title">Introduction</span></a><a class="next" href="../modelgraph/"><span class="direction">Next</span><span class="title">ModelGraph</span></a></footer></article></body></html>
+println(&quot;n1[:x]= &quot;,value(n1,n1[:x]))
+println(&quot;n2[:x]= &quot;,value(n2,n2[:x]))</code></pre><footer><hr/><a class="previous" href="../../"><span class="direction">Previous</span><span class="title">Introduction</span></a><a class="next" href="../modelgraph/"><span class="direction">Next</span><span class="title">Modeling</span></a></footer></article></body></html>
