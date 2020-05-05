@@ -154,25 +154,30 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
     link_rows = []
     link_cols = []
     for link in getlinkconstraints(graph)
-        row -= 1
+        #row -= 1
         vars = keys(link.func.terms)
         for var in vars
             node = getnode(var)
 
             col_start,col_end = node_col_ranges[node]
-            col_start = col_start + var.index.value - 1
+            col_start = col_start + var.index.value - 1 + 0.5
+
+
 
             #these are just points.
             #rec = rectangle(1,1,col_start,row)
-            push!(link_rows,row)
+            push!(link_rows,row - 0.5)
             push!(link_cols,col_start)
             # Plots.plot!(plt,rec,opacity = 1.0,color = :blue);
         end
-
+        row -= 1
     end
     Plots.scatter!(plt,link_cols,link_rows,markersize = markersize,markercolor = :blue,markershape = :rect);
 
-    row -= 1
+    if length(graph.modelnodes) > 0
+        row -= 1
+    end
+
     _plot_subgraphs!(graph,plt,node_col_ranges,row,node_labels = node_labels,labelsize = labelsize,colors = colors,markersize = markersize)
     return plt
 end
@@ -192,18 +197,19 @@ function _plot_subgraphs!(graph::ModelGraph,plt,node_col_ranges,row_start_graph;
         row = row_start_graph#
 
         for link in getlinkconstraints(subgraph)
-            row -= 1
+            #row -= 1
             #nodes = getnodes(link)
             vars = keys(link.func.terms)
             for var in vars
                 node = getnode(var)
                 col_start,col_end = node_col_ranges[node]
-                col_start = col_start + var.index.value - 1
+                col_start = col_start + var.index.value - 1 + 0.5
                 # rec = rectangle(1,1,col_start,row)
                 # Plots.plot!(plt,rec,opacity = 1.0,color = :blue)
-                push!(link_rows,row)
+                push!(link_rows,row - 0.5)
                 push!(link_cols,col_start)
             end
+            row -= 1
         end
         Plots.scatter!(plt,link_cols,link_rows,markersize = markersize,markercolor = :blue,markershape = :rect);
 
