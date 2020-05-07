@@ -61,7 +61,8 @@ println("n2[:x]= ",value(n2,n2[:x]))
 ```
 
 ## Acknowledgments
-This code is based on work supported by the U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357 as well as the DOE Office of Electricity Delivery and Energy Reliability’s Advanced Grid Research and Development program at Argonne National Laboratory. The primary developer is Jordan Jalving (@jalving) with support from the following
+This code is based on work supported by the U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357 as well as the DOE Office of Electricity Delivery and Energy Reliability’s Advanced Grid Research and Development program at Argonne National Laboratory. We acknowledge partial support from the National Science Foundation under award NSF-EECS-1609183.
+The primary developer is Jordan Jalving (@jalving) with support from the following
 contributors.  
 
 * Victor Zavala (UW-Madison)
