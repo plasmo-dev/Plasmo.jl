@@ -61,14 +61,18 @@ println("n2[:x]= ",value(n2,n2[:x]))
 ```
 
 ## Acknowledgments
-This code is based on work supported by the U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357 as well as the DOE Office of Electricity Delivery and Energy Reliability’s Advanced Grid Research and Development program at Argonne National Laboratory. We acknowledge partial support from the National Science Foundation under award NSF-EECS-1609183.
-The primary developer is Jordan Jalving (@jalving) with support from the following
-contributors.  
+This code is based on work supported by the following funding agencies:
 
-* Victor Zavala (UW-Madison)
+* U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357
+* DOE Office of Electricity Delivery and Energy Reliability’s Advanced Grid Research and Development program at Argonne National Laboratory
+* National Science Foundation under award NSF-EECS-1609183
+
+The primary developer is Jordan Jalving (@jalving) with support from the following contributors.  
+
+* Victor Zavala (University of Wisconsin-Madison)
 * Yankai Cao (University of British Columbia)
-* Kibaek Kim (ANL)
-* Sungho Shin (UW-Madison)
+* Kibaek Kim (Argonne National Laboratory)
+* Sungho Shin (University of Wisconsin-Madison)
 
 
 ## Citing Plasmo.jl
