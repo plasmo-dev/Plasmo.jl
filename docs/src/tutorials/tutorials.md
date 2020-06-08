@@ -1,3 +1,3 @@
 # Tutorials
 
-## MicroGrid Modeling
+## DC OPF

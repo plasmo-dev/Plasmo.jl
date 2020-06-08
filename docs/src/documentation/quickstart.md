@@ -7,11 +7,11 @@ The below script demonstrates solving a nonlinear optimization problem containin
 using Plasmo
 using Ipopt
 
-graph = ModelGraph()
+graph = OptiGraph()
 
 #Add nodes to a ModelGraph
-@node(graph,n1)
-@node(graph,n2)
+@optinode(graph,n1)
+@optinode(graph,n2)
 
 @variable(n1,0 <= x <= 2)
 @variable(n1,0 <= y <= 3)

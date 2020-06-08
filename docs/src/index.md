@@ -20,16 +20,6 @@ or alternatively from the Julia 1.0 package manager, just do
 ```
 ] add Plasmo
 ```
-Plasmo.jl uses [JuMP](https://github.com/JuliaOpt/JuMP.jl) as modeling interface which can be installed with
-
-```julia
-import Pkg
-Pkg.add("JuMP")
-```
-or using the Julia package manager
-```
-] add JuMP
-```
 
 ## Example Script
 
@@ -38,45 +28,35 @@ have their variables linked to other node variables using `LinkConstraints`.
 The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint and solving with Ipopt.
 
 ```julia
-using JuMP
 using Plasmo
 using Ipopt
 
-graph = ModelGraph()
-setsolver(graph,IpoptSolver())
+graph = OptiGraph()
 
-#Add nodes to a ModelGraph
-n1 = add_node!(graph)
-n2 = add_node!(graph)
+#Add OptiNodes to an OptiGraph
+n1 = @node(graph)
+n2 = @node(graph)
 
-#Create JuMP models
-m1 = Model()
-@variable(m1,0 <= x <= 2)
-@variable(m1,0 <= y <= 3)
-@constraint(m1,x+y <= 4)
-@objective(m1,Min,x)
+#Add node variables
+@variable(n1,0 <= x <= 2)
+@variable(n1,0 <= y <= 3)
+@constraint(n1,x+y <= 4)
+@objective(n1,Min,x)
 
-m2 = Model()
-@variable(m2,x)
-@NLconstraint(m2,exp(x) >= 2)
+@variable(n2,x)
+@NLnodeconstraint(n2,exp(x) >= 2)
 
-#Set JuMP models on nodes
-setmodel(n1,m1)     #set m1 to n1
-setmodel(n2,m2)
 
-#Link constraints take the same expressions as the JuMP @constraint macro
+#Link constraints
 @linkconstraint(graph,n1[:x] == n2[:x])
 
-#Get all of the link constraints in a model-graph
-links = getlinkconstraints(graph)
-
-solve(graph)
+ipopt = Ipopt.Optimizer
+optimize!(graph,ipopt)
 
 #Look at individual node solutions
-println("n1[:x]= ",JuMP.getvalue(n1[:x]))
-println("n2[:x]= ",JuMP.getvalue(n2[:x]))
+println("n1[:x]= ",value(n1,n1[:x]))
+println("n2[:x]= ",value(n2,n2[:x]))
 ```
-
 
 ## Contents
 
