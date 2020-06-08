@@ -24,12 +24,13 @@ function getpartitionlist(graph::OptiGraph,membership_vector::Vector{Int64},ref_
     unique_parts = sort(unique_parts)
     nparts = length(unique_parts)             #number of partitions
 
-    partitions = OrderedDict{Int64,Vector{Int64}}((k,[]) for k in unique_parts)
+    partitions = OrderedDict{Int64,Vector{OptiNode}}((k,[]) for k in unique_parts)
     for (vertex,part) in enumerate(membership_vector)
-        push!(partitions[part],getnode(graph,vertex))
+        push!(partitions[part],ref_map[vertex])
     end
     parts = collect(values(partitions))
-    return [getindex.(Ref(ref_map),parts[i] for i = 1:nparts)]
+    # return [getindex.(Ref(ref_map),parts[i] for i = 1:nparts)]
+    return parts
 end
 
 #this is really just closed neighbors
