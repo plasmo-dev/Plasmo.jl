@@ -121,14 +121,6 @@ var documenterSearchIndex = {"docs": [
 },
 
 {
-    "location": "documentation/modelgraph/#Plasmo.ModelGraph",
-    "page": "Modeling",
-    "title": "Plasmo.ModelGraph",
-    "category": "type",
-    "text": "ModelGraph()\n\nThe ModelGraph Type.  Represents a graph containing models (nodes) and the linkconstraints (edges) between them.\n\n\n\n\n\n"
-},
-
-{
     "location": "documentation/modelgraph/#ModelGraph-2",
     "page": "Modeling",
     "title": "ModelGraph",
