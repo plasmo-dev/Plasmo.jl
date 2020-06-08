@@ -12,13 +12,13 @@ The defining notion of the package is that it uses graph-based concepts to both 
 provides a natural interface to implement distributed optimization algorithms.
 
 ## Overview
-The core object in Plasmo.jl is the `ModelGraph` wherein a user can add `ModelNode`(s) which represent individual optimization problems. `ModelNode`(s) can be linked to each-other
-using linkconstraints, which induces the underlying distributed graph structure.  A modelgraph can also be embedded in another modelgraph to induce hierarchical structures.
-Such distributed and hierarchical structures provide a natural framework to harness distributed optimization solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
+The core object in Plasmo.jl is the `OPtiGraph` wherein a user can add `OptiNode`(s) which represent individual optimization problems. `OptiNode`(s) can be linked to each-other
+using linking constraints, which induces the underlying graph structure.  An `OptiGraph` can also be embedded in another `OptiGraph` to induce hierarchical structures.
+These hierarchical structures provide a natural framework to harness distributed optimization solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
 
 ## Documentation
 Documentation is available through [GitHub Pages](https://jalving.github.io/Plasmo.jl/dev).
-Additional examples can be found in the [examples](https://github.com/jalving/Plasmo.jl/tree/master/examples/ModelGraph) folder.
+Additional examples can be found in the [examples](https://github.com/jalving/Plasmo.jl/tree/master/examples/) folder.
 
 ## Installation
 
@@ -33,11 +33,11 @@ Pkg.add("Plasmo.jl")
 using Plasmo
 using Ipopt
 
-graph = ModelGraph()
+graph = OptiGraph()
 
 #Add nodes to a ModelGraph
-@node(graph,n1)
-@node(graph,n2)
+@optinode(graph,n1)
+@optinode(graph,n2)
 
 #Add variables, constraints, and objective functions to nodes
 @variable(n1,0 <= x <= 2)
