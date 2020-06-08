@@ -34,8 +34,8 @@ using Ipopt
 graph = OptiGraph()
 
 #Add OptiNodes to an OptiGraph
-n1 = @node(graph)
-n2 = @node(graph)
+@optinode(graph,n1)
+@optinode(graph,n2)
 
 #Add node variables
 @variable(n1,0 <= x <= 2)
