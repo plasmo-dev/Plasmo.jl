@@ -1,40 +1,30 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Introduction · Plasmo.jl - Platform for Scalable Modeling and Optimization</title><link href="https://cdnjs.cloudflare.com/ajax/libs/normalize/4.2.0/normalize.min.css" rel="stylesheet" type="text/css"/><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.6.3/css/font-awesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.12.0/styles/default.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.2.0/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link href="assets/documenter.css" rel="stylesheet" type="text/css"/></head><body><nav class="toc"><h1>Plasmo.jl - Platform for Scalable Modeling and Optimization</h1><select id="version-selector" onChange="window.location.href=this.value" style="visibility: hidden"></select><form class="search" id="search-form" action="search/"><input id="search-query" name="q" type="text" placeholder="Search docs"/></form><ul><li class="current"><a class="toctext" href>Introduction</a><ul class="internal"><li><a class="toctext" href="#Installation-1">Installation</a></li><li><a class="toctext" href="#Example-Script-1">Example Script</a></li><li><a class="toctext" href="#Contents-1">Contents</a></li><li><a class="toctext" href="#Index-1">Index</a></li></ul></li><li><a class="toctext" href="documentation/quickstart/">Quick Start</a></li><li><a class="toctext" href="documentation/modelgraph/">Modeling</a></li><li><a class="toctext" href="documentation/partitioning/">Partitioning</a></li><li><a class="toctext" href="documentation/manipulation/">Manipulation</a></li><li><a class="toctext" href="documentation/plotting/">Plotting</a></li><li><a class="toctext" href="documentation/solvers/">Solvers</a></li><li><a class="toctext" href="tutorials/tutorials/">Tutorials</a></li></ul></nav><article id="docs"><header><nav><ul><li><a href>Introduction</a></li></ul><a class="edit-page" href="https://github.com/jalving/Plasmo.jl/blob/master/docs/src/index.md"><span class="fa"></span> Edit on GitHub</a></nav><hr/><div id="topbar"><span>Introduction</span><a class="fa fa-bars" href="#"></a></div></header><p><img src="assets/plasmo.svg" alt="Plasmo logo"/></p><h1><a class="nav-anchor" id="Plasmo.jl-Platform-for-Scalable-Modeling-and-Optimization-1" href="#Plasmo.jl-Platform-for-Scalable-Modeling-and-Optimization-1">Plasmo.jl - Platform for Scalable Modeling and Optimization</a></h1><p>Plasmo.jl is an optimization framework that adopts a modular style to to construct and solve optimization problems. The package provides tools to build and manage complex model structures and offers partitioning capabilities that facilitate using or developing decomposition-based solvers.</p><h2><a class="nav-anchor" id="Installation-1" href="#Installation-1">Installation</a></h2><p>Plasmo.jl is a <a href="https://julialang.org">Julia</a> package developed for Julia 1.0. From Julia, Plasmo is installed by using the built-in package manager:</p><pre><code class="language-julia">import Pkg
-Pkg.add(&quot;Plasmo.jl&quot;)</code></pre><p>or alternatively from the Julia 1.0 package manager, just do</p><pre><code class="language-none">] add Plasmo</code></pre><p>Plasmo.jl uses <a href="https://github.com/JuliaOpt/JuMP.jl">JuMP</a> as modeling interface which can be installed with</p><pre><code class="language-julia">import Pkg
-Pkg.add(&quot;JuMP&quot;)</code></pre><p>or using the Julia package manager</p><pre><code class="language-none">] add JuMP</code></pre><h2><a class="nav-anchor" id="Example-Script-1" href="#Example-Script-1">Example Script</a></h2><p>Plasmo.jl uses JuMP to create component models in a <code>ModelGraph</code>, a graph wherein the nodes are component models.  JuMP models are associated with nodes and can have their variables linked to other node variables using <code>LinkConstraints</code>. The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint and solving with Ipopt.</p><pre><code class="language-julia">using JuMP
-using Plasmo
+Pkg.add(&quot;Plasmo.jl&quot;)</code></pre><p>or alternatively from the Julia 1.0 package manager, just do</p><pre><code class="language-none">] add Plasmo</code></pre><h2><a class="nav-anchor" id="Example-Script-1" href="#Example-Script-1">Example Script</a></h2><p>Plasmo.jl uses JuMP to create component models in a <code>ModelGraph</code>, a graph wherein the nodes are component models.  JuMP models are associated with nodes and can have their variables linked to other node variables using <code>LinkConstraints</code>. The below script demonstrates solving a nonlinear optimization problem containing two nodes with a simple link constraint and solving with Ipopt.</p><pre><code class="language-julia">using Plasmo
 using Ipopt
 
-graph = ModelGraph()
-setsolver(graph,IpoptSolver())
+graph = OptiGraph()
 
-#Add nodes to a ModelGraph
-n1 = add_node!(graph)
-n2 = add_node!(graph)
+#Add OptiNodes to an OptiGraph
+n1 = @node(graph)
+n2 = @node(graph)
 
-#Create JuMP models
-m1 = Model()
-@variable(m1,0 &lt;= x &lt;= 2)
-@variable(m1,0 &lt;= y &lt;= 3)
-@constraint(m1,x+y &lt;= 4)
-@objective(m1,Min,x)
+#Add node variables
+@variable(n1,0 &lt;= x &lt;= 2)
+@variable(n1,0 &lt;= y &lt;= 3)
+@constraint(n1,x+y &lt;= 4)
+@objective(n1,Min,x)
 
-m2 = Model()
-@variable(m2,x)
-@NLconstraint(m2,exp(x) &gt;= 2)
+@variable(n2,x)
+@NLnodeconstraint(n2,exp(x) &gt;= 2)
 
-#Set JuMP models on nodes
-setmodel(n1,m1)     #set m1 to n1
-setmodel(n2,m2)
 
-#Link constraints take the same expressions as the JuMP @constraint macro
+#Link constraints
 @linkconstraint(graph,n1[:x] == n2[:x])
 
-#Get all of the link constraints in a model-graph
-links = getlinkconstraints(graph)
-
-solve(graph)
+ipopt = Ipopt.Optimizer
+optimize!(graph,ipopt)
 
 #Look at individual node solutions
-println(&quot;n1[:x]= &quot;,JuMP.getvalue(n1[:x]))
-println(&quot;n2[:x]= &quot;,JuMP.getvalue(n2[:x]))</code></pre><h2><a class="nav-anchor" id="Contents-1" href="#Contents-1">Contents</a></h2><ul><li><a href="documentation/modelgraph/#ModelGraph-1">ModelGraph</a></li><ul><li><a href="documentation/modelgraph/#Constructor-1">Constructor</a></li><li><a href="documentation/modelgraph/#Adding-Nodes-1">Adding Nodes</a></li><li><a href="documentation/modelgraph/#Adding-LinkConstraints-1">Adding LinkConstraints</a></li><li><a href="documentation/modelgraph/#Subgraph-Structures-1">Subgraph Structures</a></li><li><a href="documentation/modelgraph/#Methods-1">Methods</a></li></ul></ul><h2><a class="nav-anchor" id="Index-1" href="#Index-1">Index</a></h2><ul></ul><footer><hr/><a class="next" href="documentation/quickstart/"><span class="direction">Next</span><span class="title">Quick Start</span></a></footer></article></body></html>
+println(&quot;n1[:x]= &quot;,value(n1,n1[:x]))
+println(&quot;n2[:x]= &quot;,value(n2,n2[:x]))</code></pre><h2><a class="nav-anchor" id="Contents-1" href="#Contents-1">Contents</a></h2><ul><li><a href="documentation/modelgraph/#OptiGraph-1">OptiGraph</a></li><ul><li><a href="documentation/modelgraph/#Constructor-1">Constructor</a></li><li><a href="documentation/modelgraph/#Adding-OptiNodes-1">Adding OptiNodes</a></li><li><a href="documentation/modelgraph/#Adding-LinkConstraints-1">Adding LinkConstraints</a></li><li><a href="documentation/modelgraph/#Subgraph-Structures-1">Subgraph Structures</a></li><li><a href="documentation/modelgraph/#Methods-1">Methods</a></li></ul></ul><h2><a class="nav-anchor" id="Index-1" href="#Index-1">Index</a></h2><ul><li><a href="documentation/modelgraph/#Plasmo.OptiGraph"><code>Plasmo.OptiGraph</code></a></li><li><a href="documentation/modelgraph/#Plasmo.OptiNode"><code>Plasmo.OptiNode</code></a></li></ul><footer><hr/><a class="next" href="documentation/quickstart/"><span class="direction">Next</span><span class="title">Quick Start</span></a></footer></article></body></html>
