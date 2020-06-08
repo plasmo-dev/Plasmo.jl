@@ -2,13 +2,13 @@
 # Model Nodes
 ##############################################################################
 """
-The ModelNode type
+The OptiNode type
 
-ModelNode()
+OptiNode()
 
-Creates an empty ModelNode.  Does not add it to a graph.
+Creates an empty OptiNode.  Does not add it to a graph.
 """
-mutable struct ModelNode <: JuMP.AbstractModel
+mutable struct OptiNode <: JuMP.AbstractModel
     #The model
     model::JuMP.AbstractModel
     nodevariable_index::Int64
@@ -31,8 +31,8 @@ end
 #############################################
 # Add Model Nodes
 ############################################
-function ModelNode()
-     node = ModelNode(JuMP.Model(),
+function OptiNode()
+     node = OptiNode(JuMP.Model(),
      0,
      OrderedDict{Int,JuMP.VariableRef}(),
      Dict{Int,String}(),
@@ -48,18 +48,18 @@ function ModelNode()
 end
 
 #############################################
-# ModelNode Management
+# OptiNode Management
 ############################################
 #Get the underlying JuMP Model on a node
-JuMP.value(node::ModelNode,vref::VariableRef) = node.variable_values[vref]
+JuMP.value(node::OptiNode,vref::VariableRef) = node.variable_values[vref]
 #nodevalue(vref::VariableRef) = vref.node.variable_values[vref]
-getmodel(node::ModelNode) = node.model
-getnodevariable(node::ModelNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
-JuMP.all_variables(node::ModelNode) = JuMP.all_variables(getmodel(node))
+getmodel(node::OptiNode) = node.model
+getnodevariable(node::OptiNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
+JuMP.all_variables(node::OptiNode) = JuMP.all_variables(getmodel(node))
 #getlinkvariable(var::JuMP.VariableRef) = getnode(var).parent_linkvariable_map[var].vref
 
-setattribute(node::ModelNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
-getattribute(node::ModelNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
+setattribute(node::OptiNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
+getattribute(node::OptiNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
 nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var]
 function nodevalue(expr::JuMP.GenericAffExpr)
     ret_value = 0.0
@@ -82,11 +82,11 @@ nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con]
 
 """
-set_model(node::ModelNode,m::AbstractModel)
+set_model(node::OptiNode,m::AbstractModel)
 
 Set the model on a node.  This will delete any link-constraints the node is currently part of
 """
-function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
+function set_model(node::OptiNode,m::JuMP.AbstractModel;preserve_links = false)
     !(is_set_to_node(m) && getmodel(node) == m) || error("Model $m is already asigned to another node")
     node.model = m
     m.ext[:modelnode] = node
@@ -98,18 +98,18 @@ function set_model(node::ModelNode,m::JuMP.AbstractModel;preserve_links = false)
 end
 @deprecate setmodel set_model
 """
-is_node_variable(node::ModelNode,var::AbstractJuMPScalar)
+is_node_variable(node::OptiNode,var::AbstractJuMPScalar)
 
-Check whether a JuMP variable belongs to a ModelNode
+Check whether a JuMP variable belongs to a OptiNode
 """
-is_node_variable(node::ModelNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
+is_node_variable(node::OptiNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
 is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext[:modelnode])
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
 
 #############################################
 # JuMP Extension
 ############################################
-function Base.getindex(node::ModelNode,symbol::Symbol)
+function Base.getindex(node::OptiNode,symbol::Symbol)
     if haskey(node.model.obj_dict,symbol)
         return getmodel(node)[symbol]#.vref
     else
@@ -117,16 +117,16 @@ function Base.getindex(node::ModelNode,symbol::Symbol)
     end
 end
 
-function Base.setindex!(node::ModelNode,value::Any,symbol::Symbol)
+function Base.setindex!(node::OptiNode,value::Any,symbol::Symbol)
     setattribute(node,symbol,value)
 end
 
-JuMP.object_dictionary(m::ModelNode) = m.model.obj_dict
-JuMP.variable_type(::ModelNode) = JuMP.VariableRef
-JuMP.constraint_type(::ModelNode) = JuMP.ConstraintRef
+JuMP.object_dictionary(m::OptiNode) = m.model.obj_dict
+JuMP.variable_type(::OptiNode) = JuMP.VariableRef
+JuMP.constraint_type(::OptiNode) = JuMP.ConstraintRef
 
 #Add a link variable to a ModelGraph.  We need to wrap the variable in our own LinkVariableRef to work with it in constraints
-function JuMP.add_variable(node::ModelNode, v::JuMP.AbstractVariable, name::String="")
+function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
     node.nodevariable_index += 1
     jump_vref = JuMP.add_variable(node.model,v,name) #add the variable to the node model
     node.nodevariables[node.nodevariable_index] = jump_vref
@@ -134,12 +134,12 @@ function JuMP.add_variable(node::ModelNode, v::JuMP.AbstractVariable, name::Stri
     return jump_vref
 end
 
-function JuMP.add_constraint(node::ModelNode, con::JuMP.AbstractConstraint, name::String="")
+function JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, name::String="")
     cref = JuMP.add_constraint(getmodel(node),con,name)
     return cref
 end
 
-function JuMP.num_constraints(node::ModelNode)
+function JuMP.num_constraints(node::OptiNode)
     m = getmodel(node)
     num_cons = 0
     for (func,set) in JuMP.list_of_constraint_types(m)
@@ -151,7 +151,7 @@ function JuMP.num_constraints(node::ModelNode)
     return num_cons
 end
 
-function num_linked_variables(node::ModelNode)
+function num_linked_variables(node::OptiNode)
 
     partial_link_eq = node.partial_linkeqconstraints
     partial_link_ineq = node.partial_linkineqconstraints
@@ -169,23 +169,23 @@ function num_linked_variables(node::ModelNode)
     return num_linked
 end
 
-function num_link_constraints(node::ModelNode)
+function num_link_constraints(node::OptiNode)
     return length(node.partial_link_eq + node.partial_link_ineq)
 end
 
 
-JuMP.objective_function(node::ModelNode) = JuMP.objective_function(getmodel(node))
-JuMP.objective_value(node::ModelNode) = JuMP.objective_value(getmodel(node))
-JuMP.objective_sense(node::ModelNode) = JuMP.objective_sense(getmodel(node))
-JuMP.num_variables(node::ModelNode) = JuMP.num_variables(getmodel(node))
-JuMP.set_optimizer(node::ModelNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
-JuMP.NLPEvaluator(node::ModelNode) = JuMP.NLPEvaluator(getmodel(node))
+JuMP.objective_function(node::OptiNode) = JuMP.objective_function(getmodel(node))
+JuMP.objective_value(node::OptiNode) = JuMP.objective_value(getmodel(node))
+JuMP.objective_sense(node::OptiNode) = JuMP.objective_sense(getmodel(node))
+JuMP.num_variables(node::OptiNode) = JuMP.num_variables(getmodel(node))
+JuMP.set_optimizer(node::OptiNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
+JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(getmodel(node))
 
-function JuMP.set_objective(modelnode::ModelNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
+function JuMP.set_objective(modelnode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     JuMP.set_objective(getmodel(modelnode),sense,func)
 end
 
-JuMP.termination_status(node::ModelNode) = JuMP.termination_status(getmodel(node))
+JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node))
 
 
 ##############################################
@@ -217,11 +217,11 @@ getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:modelnode]
 ###############################################
 # Printing
 ###############################################
-function string(node::ModelNode)
+function string(node::OptiNode)
     "Model Node w/ $(JuMP.num_variables(node)) Variable(s)"
 end
-print(io::IO,node::ModelNode) = print(io, string(node))
-show(io::IO,node::ModelNode) = print(io,node)
+print(io::IO,node::OptiNode) = print(io, string(node))
+show(io::IO,node::OptiNode) = print(io,node)
 
 
 

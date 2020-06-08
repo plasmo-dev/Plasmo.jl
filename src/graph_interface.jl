@@ -2,7 +2,7 @@
 #A hypergraph has topology functions and partitioning interfaces.
 
 #Create a hypergraph representation of a modelgraph
-function gethypergraph(graph::ModelGraph)
+function gethypergraph(graph::OptiGraph)
     hypergraph = HyperGraph()
     hyper_map = Dict()  #two-way mapping from hypergraph nodes to modelnodes and link_edges
 
@@ -26,9 +26,9 @@ function gethypergraph(graph::ModelGraph)
 end
 
 #Create a lightgraph Graph using a modelgraph
-function getcliquegraph(graph::ModelGraph)
+function getcliquegraph(graph::OptiGraph)
 end
 
 #Create a bipartite graph using a modelgraph
-function getbipartitegraph(graph::ModelGraph)
+function getbipartitegraph(graph::OptiGraph)
 end

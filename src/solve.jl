@@ -1,10 +1,10 @@
-JuMP.Model(modelgraph::ModelGraph;add_node_objectives = !(has_objective(model_graph))) = getmodel(aggregate(modelgraph,add_node_objectives = add_node_objectives))
+JuMP.Model(modelgraph::OptiGraph;add_node_objectives = !(has_objective(model_graph))) = getmodel(aggregate(modelgraph,add_node_objectives = add_node_objectives))
 
-function JuMP.optimize!(graph::ModelGraph,optimizer;kwargs...)
-    println("Converting ModelGraph to ModelNode...")
+function JuMP.optimize!(graph::OptiGraph,optimizer;kwargs...)
+    println("Converting OptiGraph to OptiNode...")
     modelnode,reference_map = combine(graph)
 
-    println("Optimizing ModelNode")
+    println("Optimizing OptiNode")
     JuMP.set_optimizer(modelnode,optimizer)
     status = JuMP.optimize!(modelnode)#,optimizer;kwargs...)
     #status = JuMP.termination_status(aggregate_model)
@@ -17,14 +17,14 @@ function JuMP.optimize!(graph::ModelGraph,optimizer;kwargs...)
     return status
 end
 
-function JuMP.optimize!(node::ModelNode,optimizer;kwargs...)
+function JuMP.optimize!(node::OptiNode,optimizer;kwargs...)
     JuMP.set_optimizer(node,optimizer)
     status = JuMP.optimize!(getmodel(node);kwargs...)
     return status
 end
 
 #TODO: Update node_variables
-JuMP.optimize!(node::ModelNode;kwargs...) = JuMP.optimize!(getmodel(node);kwargs...)
+JuMP.optimize!(node::OptiNode;kwargs...) = JuMP.optimize!(getmodel(node);kwargs...)
 
 # function JuMP.optimize!(graph::ModelGraph,optimizer::AbstractModelGraphOptimizer,kwargs...)
 #     optimizer_model = initialize_model(optimizer,graph)
@@ -33,7 +33,7 @@ JuMP.optimize!(node::ModelNode;kwargs...) = JuMP.optimize!(getmodel(node);kwargs
 #     return status
 # end
 
-function _copysolution!(modelgraph::ModelGraph,ref_map::CombinedMap)
+function _copysolution!(modelgraph::OptiGraph,ref_map::CombinedMap)
 
     #Node solutions
     for node in all_nodes(modelgraph)

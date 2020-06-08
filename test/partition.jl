@@ -1,9 +1,9 @@
 using Plasmo
 using Test
 
-mg = ModelGraph()
+mg = OptiGraph()
 
-@node(mg,nodes[1:100])
+@optinode(mg,nodes[1:100])
 for node in nodes
     @variable(node,x>=0)
 end

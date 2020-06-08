@@ -11,15 +11,6 @@ const MOI = MathOptInterface
 using Reexport
 @reexport using JuMP
 
-# @reexport using PipsSolver
-# @reexport using SchwarzSolver
-
-# using JuMP
-# macro exportall(pkg)
-#     Expr(:export, names(JuMP)...)
-# end
-# @exportall JuMP
-
 import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 import Base: ==,show,print,string,getindex,copy
 import LightGraphs:AbstractGraph,AbstractEdge,Graph
@@ -29,11 +20,12 @@ import DataStructures.OrderedDict
 export
 
 #################################
-# MODELGRAPH
+# OptiGraph
 ################################
-AbstractModelGraph, ModelGraph,
+AbstractOptiGraph, OptiGraph, ModelGraph,
 
 #ModelNode and LinkEdge
+OptiNode,OptiEdge,
 ModelNode,LinkEdge,
 
 getsubgraph,getsubgraphs,all_subgraphs,
@@ -61,21 +53,21 @@ AbstractGraphOptimizer,
 # solve handles
 optimize!,
 
-# ModelGraph checks
+# OptiGraph checks
 has_objective,has_NLobjective, has_NLlinkconstraints, has_subgraphs, has_model,
 
 num_linkconstraints, num_linkedges, num_nodes,
 
 num_all_linkedges, num_all_variables, num_all_constraints, num_all_linkconstraints,
 
-# ModelGraph getters
+# OptiGraph getters
 getlinkedge, getlinkedges, getmodel,
 
 incidence_matrix, getlinkconstraints, getattribute,
 
 all_linkconstraints,
 
-# ModelGraph setters
+# OptiGraph setters
 set_model, set_optimizer, reset_model, setattribute,
 
 # Variable functions
@@ -121,7 +113,7 @@ copy_graph,
 clique_expansion, star_expansion,
 
 #macros
-@node, @linkconstraint,
+@node, @optinode, @linkconstraint,
 
 @NLnodeconstraint, @NLnodeobjective
 
@@ -130,8 +122,8 @@ clique_expansion, star_expansion,
 
 
 #Abstract Types
-abstract type AbstractModelGraph <: JuMP.AbstractModel end
-abstract type AbstractLinkEdge end
+abstract type AbstractOptiGraph <: JuMP.AbstractModel end
+abstract type AbstractOptiEdge end
 abstract type AbstractLinkConstraintRef end
 abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
@@ -140,11 +132,11 @@ include("hypergraphs/hypergraph.jl")
 
 include("hypergraphs/projections.jl")
 
-include("modelnode.jl")
+include("optinode.jl")
 
-include("linkedge.jl")
+include("optiedge.jl")
 
-include("modelgraph.jl")
+include("optigraph.jl")
 
 # include("nlp_extension.jl")
 

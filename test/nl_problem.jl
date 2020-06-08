@@ -1,12 +1,12 @@
 using Plasmo
 
-graph = ModelGraph()
+graph = OptiGraph()
 
 #Add nodes to a GraphModel
-@node(graph,n1)
-@node(graph,n2)
-@node(graph,n3)
-@node(graph,n4)
+@optinode(graph,n1)
+@optinode(graph,n2)
+@optinode(graph,n3)
+@optinode(graph,n4)
 
 @variable(n1,0 <= x <= 2)
 @variable(n1,0 <= y <= 3)

@@ -25,7 +25,7 @@ mutable struct CombinedInfo
 end
 CombinedInfo() = CombinedInfo(CombinedNode[],ConstraintRef[],ConstraintRef[])
 
-#A JuMP model created from a combined ModelGraph
+#A JuMP model created from a combined OptiGraph
 function CombinedModel()
     m = JuMP.Model()
     m.ext[:CombinedInfo] = CombinedInfo()
@@ -60,11 +60,11 @@ getaggnodeconstraints(node::CombinedNode) = collect(keys(node.constraintmap))
 #############################################################################################
 """
     CombinedMap
-    Mapping between variable and constraint reference of a ModelGraph to an Combined Model.
+    Mapping between variable and constraint reference of a OptiGraph to an Combined Model.
     The reference of the combined model can be obtained by indexing the map with the reference of the corresponding original modelnode.
 """
 struct CombinedMap
-    combined_model::JuMP.AbstractModel                             #An combined model (Could be another ModelGraph)
+    combined_model::JuMP.AbstractModel                             #An combined model (Could be another OptiGraph)
     varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}                 #map variables in original modelgraph to combinedmodel
     conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}             #map constraints in original modelgraph to combinedmodel
     linkconstraintmap::Dict{LinkConstraint,JuMP.ConstraintRef}
@@ -97,9 +97,9 @@ end
 #############################################################################################
 # Combine Functions
 #############################################################################################
-@deprecate aggregate combine
 
-function combine(modelgraph::ModelGraph)
+
+function combine(modelgraph::OptiGraph)
     combined_model = CombinedModel()
     reference_map = CombinedMap(combined_model)
 
@@ -131,7 +131,7 @@ function combine(modelgraph::ModelGraph)
         JuMP.set_objective_sense(combined_model,JuMP.objective_sense(modelgraph))
     # elseif has_NLobjective(modelgraph)
     #     #TODO
-    #     error("NL graph objective not yet supported on a ModelGraph")
+    #     error("NL graph objective not yet supported on a OptiGraph")
     #     # dgraph = JuMP.NLPEvaluator(modelgraph)
     #     # MOI.initialize(dgraph,[:ExprGraph])
     #     # graph_obj = MOI.objective_expr(dgraph)
@@ -151,27 +151,29 @@ function combine(modelgraph::ModelGraph)
     #TODO ADD NLLINKCONSSTRAINTS
     # for nllinkconstraint in all_nl_linkconstraints(modelgraph)
     # end
-    modelnode = ModelNode()
+    modelnode = OptiNode()
     set_model(modelnode,combined_model)
     return modelnode,reference_map
 end
 
+const aggregate = combine
 
-function copy(node::ModelNode)
+
+function copy(node::OptiNode)
     node_model = getmodel(node)
     new_model = CombinedModel()
     reference_map = CombinedMap(new_model)
     node_ref_map = _add_to_combined_model!(new_model,node_model,reference_map)
-    new_node = ModelNode()
+    new_node = OptiNode()
     set_model(new_node,new_model)
     return new_node,reference_map
 end
 
-function combine(graph::ModelGraph,max_depth::Int64)  #0 means no subgraphs
-    println("Creating Combined ModelGraph with a maximum subgraph depth of $max_depth")
+function combine(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
+    println("Creating Combined OptiGraph with a maximum subgraph depth of $max_depth")
 
     sg_dict = Dict()
-    root_modelgraph = ModelGraph()
+    root_modelgraph = OptiGraph()
     reference_map = CombinedMap(root_modelgraph)  #old model graph => new modelgraph
     sg_dict[graph] = root_modelgraph
 
@@ -185,7 +187,7 @@ function combine(graph::ModelGraph,max_depth::Int64)  #0 means no subgraphs
             new_parent = sg_dict[parent]
             subs = getsubgraphs(parent)
             for sub in subs
-                new_subgraph = ModelGraph()
+                new_subgraph = OptiGraph()
                 add_subgraph!(new_parent,new_subgraph)
                 sg_dict[sub] = new_subgraph
             end
@@ -240,7 +242,7 @@ function combine(graph::ModelGraph,max_depth::Int64)  #0 means no subgraphs
 end
 
 #Modify graph by combining subgraphs
-#IDEA: Create new ModelGraph with subgraphs based on partition object.
+#IDEA: Create new OptiGraph with subgraphs based on partition object.
 #Group subgraphs together for solver interface
 function _add_to_combined_model!(combined_model::JuMP.Model,node_model::JuMP.Model,aggregation_map::CombinedMap)
 
@@ -335,7 +337,7 @@ function _add_to_combined_model!(combined_model::JuMP.Model,node_model::JuMP.Mod
 end
 
 #Creata new set of nodes on a modelgraph
-function _set_nodes(mg::ModelGraph,nodes::Vector{ModelNode})
+function _set_nodes(mg::OptiGraph,nodes::Vector{OptiNode})
     mg.modelnodes = nodes
     for (idx,node) in enumerate(mg.modelnodes)
         mg.node_idx_map[node] = idx
@@ -344,7 +346,7 @@ function _set_nodes(mg::ModelGraph,nodes::Vector{ModelNode})
 end
 
 #Create a new set of edges on a modelgraph
-function _set_edges(mg::ModelGraph,edges::Vector{LinkEdge})
+function _set_edges(mg::OptiGraph,edges::Vector{OptiEdge})
     mg.linkedges = edges
     link_idx = 0
     for (idx,linkedge) in enumerate(mg.linkedges)
@@ -353,8 +355,8 @@ function _set_edges(mg::ModelGraph,edges::Vector{LinkEdge})
     end
 end
 
-#Set combined model objective to sum of ModelGraph node objectives
-function _set_node_objectives!(modelgraph::ModelGraph,combined_model::JuMP.Model,reference_map::CombinedMap,has_nonlinear_objective::Bool)
+#Set combined model objective to sum of OptiGraph node objectives
+function _set_node_objectives!(modelgraph::OptiGraph,combined_model::JuMP.Model,reference_map::CombinedMap,has_nonlinear_objective::Bool)
     if has_nonlinear_objective
         graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
         for node in all_nodes(modelgraph)
@@ -375,7 +377,7 @@ function _set_node_objectives!(modelgraph::ModelGraph,combined_model::JuMP.Model
     end
 end
 
-function _set_node_objectives!(modelgraph::ModelGraph)
+function _set_node_objectives!(modelgraph::OptiGraph)
     #check for quadratic objectives
     if any(isa.(objective_function.(all_nodes(modelgraph)),Ref(GenericQuadExpr)))
         graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})
@@ -395,9 +397,9 @@ end
 
 
 # #TODO
-# function combine!(graph::ModelGraph,max_depth::Int64)
+# function combine!(graph::OptiGraph,max_depth::Int64)
 #     #similar to combine, but we don't make copies.  Subgraphs get swapped out for modelnodes
-#     println("Combining ModelGraph with a maximum subgraph depth of $max_depth")
+#     println("Combining OptiGraph with a maximum subgraph depth of $max_depth")
 #
 #     #iterate through depth until we get to last level.  last level is the leaf subgraphs
 #     depth = 0
@@ -428,7 +430,7 @@ end
 #     end
 #
 #     for parent in parents
-#         parent.subgraphs = ModelGraph[]
+#         parent.subgraphs = OptiGraph[]
 #         # for = 1:length(parent.subgraphs)
 #         #     deleteat!(parent.subgraphs,i) #delete the old subgraph
 #         # end

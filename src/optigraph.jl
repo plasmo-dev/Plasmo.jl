@@ -1,22 +1,22 @@
 ##############################################################################
-# ModelGraph
+# OptiGraph
 ##############################################################################
 """
-ModelGraph()
+OptiGraph()
 
-The ModelGraph Type.  Represents a graph containing models (nodes) and the linkconstraints (edges) between them.
+The OptiGraph Type.  Represents a graph containing models (nodes) and the linkconstraints (edges) between them.
 """
-mutable struct ModelGraph <: AbstractModelGraph
+mutable struct OptiGraph <: AbstractOptiGraph
 
     #Topology
-    modelnodes::Vector{ModelNode}                #Local model nodes
-    linkedges::Vector{LinkEdge}                  #Local link edges.  These can also connect nodes across subgraphs
-    node_idx_map::Dict{ModelNode,Int64}          #Local map of model nodes to indices
-    edge_idx_map::Dict{LinkEdge,Int64}           #Local map of link edges indices
-    subgraphs::Vector{AbstractModelGraph}        #Subgraphs contained in the model graph
+    modelnodes::Vector{OptiNode}                #Local model nodes
+    linkedges::Vector{OptiEdge}                  #Local link edges.  These can also connect nodes across subgraphs
+    node_idx_map::Dict{OptiNode,Int64}          #Local map of model nodes to indices
+    edge_idx_map::Dict{OptiEdge,Int64}           #Local map of link edges indices
+    subgraphs::Vector{AbstractOptiGraph}        #Subgraphs contained in the model graph
 
     #graphindex::Int64
-    linkedge_map::OrderedDict{Set,LinkEdge}      #Sets of vertices map to a linkedge
+    linkedge_map::OrderedDict{Set,OptiEdge}      #Sets of vertices map to a linkedge
 
     #Objective
     objective_sense::MOI.OptimizationSense
@@ -37,13 +37,13 @@ mutable struct ModelGraph <: AbstractModelGraph
     nlp_data::Union{Nothing,JuMP._NLPData}
 
     #Constructor
-    function ModelGraph()
-        modelgraph = new(Vector{ModelNode}(),
-                    Vector{LinkEdge}(),
-                    Dict{ModelNode,Int64}(),
-                    Dict{LinkEdge,Int64}(),
-                    Vector{ModelGraph}(),
-                    OrderedDict{OrderedSet,LinkEdge}(),
+    function OptiGraph()
+        modelgraph = new(Vector{OptiNode}(),
+                    Vector{OptiEdge}(),
+                    Dict{OptiNode,Int64}(),
+                    Dict{OptiEdge,Int64}(),
+                    Vector{OptiGraph}(),
+                    OrderedDict{OrderedSet,OptiEdge}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
                     nothing,
@@ -57,6 +57,7 @@ mutable struct ModelGraph <: AbstractModelGraph
     end
 end
 
+@deprecate ModelGraph OptiGraph
 
 ########################################################
 # ModelGraph Interface
@@ -64,14 +65,14 @@ end
 #################
 #Subgraphs
 #################
-function add_subgraph!(graph::ModelGraph,subgraph::ModelGraph)
+function add_subgraph!(graph::OptiGraph,subgraph::OptiGraph)
     push!(graph.subgraphs,subgraph)
     return graph
 end
-getsubgraphs(modelgraph::ModelGraph) = modelgraph.subgraphs
+getsubgraphs(modelgraph::OptiGraph) = modelgraph.subgraphs
 
 #Recursively grab subgraphs in the given modelgraph
-function all_subgraphs(modelgraph::ModelGraph)
+function all_subgraphs(modelgraph::OptiGraph)
     subgraphs = modelgraph.subgraphs
     for subgraph in subgraphs
         subgraphs = [subgraphs;all_subgraphs(subgraph)]
@@ -79,10 +80,10 @@ function all_subgraphs(modelgraph::ModelGraph)
     return subgraphs
 end
 #################
-#ModelNodes
+#OptiNodes
 #################
-function add_node!(graph::ModelGraph)
-    modelnode = ModelNode()
+function add_node!(graph::OptiGraph)
+    modelnode = OptiNode()
     push!(graph.modelnodes,modelnode)
     i = length(graph.modelnodes)
     modelnode.label = "$i"
@@ -90,23 +91,23 @@ function add_node!(graph::ModelGraph)
     return modelnode
 end
 
-function add_node!(graph::ModelGraph,m::JuMP.Model)
+function add_node!(graph::OptiGraph,m::JuMP.Model)
     node = add_node!(graph)
     set_model(node,m)
     return node
 end
 
-function add_node!(graph::ModelGraph,modelnode::ModelNode)
+function add_node!(graph::OptiGraph,modelnode::OptiNode)
     push!(graph.modelnodes,modelnode)
     graph.node_idx_map[modelnode] = length(graph.modelnodes)
     return modelnode
 end
 
-getnodes(graph::ModelGraph) = graph.modelnodes
-getnode(graph::ModelGraph,index::Int64) = graph.modelnodes[index]
+getnodes(graph::OptiGraph) = graph.modelnodes
+getnode(graph::OptiGraph,index::Int64) = graph.modelnodes[index]
 
 #Recursively collect nodes in a modelgraph from each of its subgraphs
-function all_nodes(graph::ModelGraph)
+function all_nodes(graph::OptiGraph)
     nodes = graph.modelnodes
     for subgraph in graph.subgraphs
         nodes = [nodes;all_nodes(subgraph)]
@@ -115,25 +116,25 @@ function all_nodes(graph::ModelGraph)
 end
 
 #Find a node from recursive collection of modelgraph nodes.
-function find_node(graph::ModelGraph,index::Int64)
+function find_node(graph::OptiGraph,index::Int64)
     nodes = all_nodes(graph)
     return nodes[index]
 end
 
-function Base.getindex(graph::ModelGraph,node::ModelNode)
+function Base.getindex(graph::OptiGraph,node::OptiNode)
     return graph.node_idx_map[node]
 end
 
 ###################################################
-#LinkEdges
+#OptiEdges
 ###################################################
-function add_link_edge!(graph::ModelGraph,modelnodes::Vector{ModelNode})
+function add_link_edge!(graph::OptiGraph,modelnodes::Vector{OptiNode})
     #Check for existing linkedge.  Return if edge already exists
     key = Set(modelnodes)
     if haskey(graph.linkedge_map,key)
         linkedge = graph.linkedge_map[key]
     else
-        linkedge = LinkEdge(modelnodes)
+        linkedge = OptiEdge(modelnodes)
         push!(graph.linkedges,linkedge)
         n_links = length(graph.linkedges)
         idx = n_links + 1
@@ -142,29 +143,29 @@ function add_link_edge!(graph::ModelGraph,modelnodes::Vector{ModelNode})
     end
     return linkedge
 end
-add_edge!(graph::ModelGraph,modelnodes::Vector{ModelNode}) = add_link_edge!(graph,modelnodes)
+add_edge!(graph::OptiGraph,modelnodes::Vector{OptiNode}) = add_link_edge!(graph,modelnodes)
 
-getedges(graph::ModelGraph) = graph.linkedges
-getedge(graph::ModelGraph,index::Int64) = graph.linkedges[index]
-function all_edges(graph::ModelGraph)
+getedges(graph::OptiGraph) = graph.linkedges
+getedge(graph::OptiGraph,index::Int64) = graph.linkedges[index]
+function all_edges(graph::OptiGraph)
     edges = getedges(graph)
     for subgraph in graph.subgraphs
         edges = [edges;all_edges(subgraph)]
     end
     return edges
 end
-getedge(graph::ModelGraph,nodes::OrderedSet{ModelNode}) = graph.linkedge_map[nodes]
+getedge(graph::OptiGraph,nodes::OrderedSet{OptiNode}) = graph.linkedge_map[nodes]
 
-function getedge(graph::ModelGraph,nodes::ModelNode...)
+function getedge(graph::OptiGraph,nodes::OptiNode...)
     s = Set(collect(nodes))
     return getlinkedge(graph,s)
 end
 
-function Base.getindex(graph::ModelGraph,linkedge::LinkEdge)
+function Base.getindex(graph::OptiGraph,linkedge::OptiEdge)
     return graph.edge_idx_map[linkedge]
 end
 
-# function getedge(graph::ModelGraph,vertices::Int...)
+# function getedge(graph::OptiGraph,vertices::Int...)
 #     s = Set(collect(vertices))
 #     return getlinkedge(graph,s)
 # end
@@ -173,31 +174,31 @@ end
 # Model Management
 ########################################################
 #is_master_model(model::JuMP.Model) = haskey(model.ext,:modelgraph)
-has_objective(graph::ModelGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
-has_NLobjective(graph::ModelGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
-has_subgraphs(graph::ModelGraph) = !(isempty(graph.subgraphs))
-has_NLlinkconstraints(graph::ModelGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
+has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
+has_NLobjective(graph::OptiGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
+has_subgraphs(graph::OptiGraph) = !(isempty(graph.subgraphs))
+has_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
 
-num_linkconstraints(graph::ModelGraph) = sum(num_linkconstraints.(graph.linkedges))  #length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
-num_NLlinkconstraints(graph::ModelGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
+num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.linkedges))  #length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
+num_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
 
-num_nodes(graph::ModelGraph) = length(graph.modelnodes)
-num_linkedges(graph::ModelGraph) = length(graph.linkedges)
-getnumnodes(graph::ModelGraph) = num_nodes(graph)
+num_nodes(graph::OptiGraph) = length(graph.modelnodes)
+num_linkedges(graph::OptiGraph) = length(graph.linkedges)
+getnumnodes(graph::OptiGraph) = num_nodes(graph)
 
-function num_all_nodes(graph::ModelGraph)
+function num_all_nodes(graph::OptiGraph)
     n_nodes = sum(num_nodes.(all_subgraphs(graph)))
     n_nodes += num_nodes(graph)
     return n_nodes
 end
 
-function num_all_linkedges(graph::ModelGraph)
+function num_all_linkedges(graph::OptiGraph)
     n_link_edges = sum(num_linkedges.(all_subgraphs(graph)))
     n_link_edges += num_linkedges(graph)
     return n_link_edges
 end
 
-function getlinkconstraints(graph::ModelGraph)
+function getlinkconstraints(graph::OptiGraph)
     links = LinkConstraint[]
     for ledge in graph.linkedges
         append!(links,collect(values(ledge.linkconstraints)))
@@ -206,7 +207,7 @@ function getlinkconstraints(graph::ModelGraph)
 end
 
 #Go through subgraphs and get all linkconstraints
-function all_linkconstraints(graph::ModelGraph)
+function all_linkconstraints(graph::OptiGraph)
     links = LinkConstraint[]
     for subgraph in all_subgraphs(graph)
         append!(links,getlinkconstraints(subgraph))
@@ -215,25 +216,25 @@ function all_linkconstraints(graph::ModelGraph)
     return links
 end
 
-function num_all_linkconstraints(graph::ModelGraph)
+function num_all_linkconstraints(graph::OptiGraph)
     return length(all_linkconstraints(graph))
 end
 
-function num_all_variables(graph::ModelGraph)
+function num_all_variables(graph::OptiGraph)
     n_node_variables = sum(JuMP.num_variables.(all_nodes(graph)))
     return n_node_variables
 end
 
-function num_all_constraints(graph::ModelGraph)
+function num_all_constraints(graph::OptiGraph)
     n_node_constraints = sum(JuMP.num_constraints.(all_nodes(graph)))
     return n_node_constraints
 end
 
-function JuMP.num_variables(graph::ModelGraph)
+function JuMP.num_variables(graph::OptiGraph)
     n_node_variables = sum(JuMP.num_variables.(getnodes(graph)))
     return n_node_variables
 end
-function JuMP.num_constraints(graph::ModelGraph)
+function JuMP.num_constraints(graph::OptiGraph)
     n_node_constraints = sum(JuMP.num_constraints.(getnodes(graph)))
     return n_node_constraints
 end
@@ -242,28 +243,28 @@ end
 ####################################
 # Objective
 ###################################
-JuMP.objective_function(graph::ModelGraph) = graph.objective_function
-JuMP.set_objective_function(graph::ModelGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
-JuMP.set_objective_function(graph::ModelGraph, func::JuMP.AbstractJuMPScalar) = graph.objective_function = func  #JuMP.set_objective_function(graph, func)
+JuMP.objective_function(graph::OptiGraph) = graph.objective_function
+JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
+JuMP.set_objective_function(graph::OptiGraph, func::JuMP.AbstractJuMPScalar) = graph.objective_function = func  #JuMP.set_objective_function(graph, func)
 
-function JuMP.set_objective(graph::ModelGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
+function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     graph.objective_sense = sense
     graph.objective_function = func
 end
 
-function JuMP.objective_value(graph::ModelGraph)
+function JuMP.objective_value(graph::OptiGraph)
     objective = JuMP.objective_function(graph)
     return nodevalue(objective)
     #return(value,graph,objective)
 end
 
 # nodevalue(lvref::LinkVariableRef) = JuMP.
-JuMP.object_dictionary(m::ModelGraph) = m.obj_dict
-JuMP.objective_sense(m::ModelGraph) = m.objective_sense
+JuMP.object_dictionary(m::OptiGraph) = m.obj_dict
+JuMP.objective_sense(m::OptiGraph) = m.objective_sense
 
 # Model Extras
-JuMP.show_constraints_summary(::IOContext,m::ModelGraph) = ""
-JuMP.show_backend_summary(::IOContext,m::ModelGraph) = ""
+JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
+JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
 
 #####################################################
 #  Link Constraints
@@ -271,7 +272,7 @@ JuMP.show_backend_summary(::IOContext,m::ModelGraph) = ""
 #####################################################
 
 
-function add_link_equality_constraint(graph::ModelGraph,con::JuMP.ScalarConstraint;name::String = "",eq_idx = graph.linkeqconstraint_index + 1)
+function add_link_equality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",eq_idx = graph.linkeqconstraint_index + 1)
     @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
 
     graph.linkeqconstraint_index += 1
@@ -300,7 +301,7 @@ function add_link_equality_constraint(graph::ModelGraph,con::JuMP.ScalarConstrai
     return cref
 end
 
-function add_link_inequality_constraint(graph::ModelGraph,con::JuMP.ScalarConstraint;name::String = "",ineq_idx = graph.linkineqconstraint_index + 1)
+function add_link_inequality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",ineq_idx = graph.linkineqconstraint_index + 1)
     @assert typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64}]
 
     graph.linkineqconstraint_index += 1
@@ -327,7 +328,7 @@ function add_link_inequality_constraint(graph::ModelGraph,con::JuMP.ScalarConstr
     return cref
 end
 
-function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name::String="")
+function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="")
     if isa(con.set,MOI.EqualTo)
         cref = add_link_equality_constraint(graph,con;name = name)
     else
@@ -337,7 +338,7 @@ function JuMP.add_constraint(graph::ModelGraph, con::JuMP.ScalarConstraint, name
 end
 
 #Add to a partial linkconstraint on a modelnode
-function _add_to_partial_linkeqconstraint!(node::ModelNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
+function _add_to_partial_linkeqconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
     @assert getnode(var) == node
     if haskey(node.partial_linkeqconstraints,index)
         linkcon = node.partial_linkeqconstraints[index]
@@ -352,7 +353,7 @@ function _add_to_partial_linkeqconstraint!(node::ModelNode,var::JuMP.VariableRef
 end
 
 #Add to a partial linkconstraint on a modelnode
-function _add_to_partial_linkineqconstraint!(node::ModelNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
+function _add_to_partial_linkineqconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
     @assert getnode(var) == node
     if haskey(node.partial_linkineqconstraints,index)
         linkcon = node.partial_linkineqconstraints[index]
@@ -366,13 +367,13 @@ function _add_to_partial_linkineqconstraint!(node::ModelNode,var::JuMP.VariableR
     end
 end
 
-function JuMP.add_constraint(graph::ModelGraph, con::JuMP.AbstractConstraint, name::String="")
-    error("Cannot add constraint $con. A ModelGraph currently only supports Scalar LinkConstraints")
+function JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, name::String="")
+    error("Cannot add constraint $con. An OptiGraph currently only supports Scalar LinkConstraints")
 end
 
 JuMP.owner_model(cref::LinkConstraintRef) = cref.linkedge
-# JuMP.constraint_type(::ModelGraph) = LinkConstraintRef
-JuMP.constraint_type(::ModelGraph) = LinkConstraintRef
+# JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
+JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
 JuMP.jump_function(constraint::LinkConstraint) = constraint.func
 JuMP.moi_set(constraint::LinkConstraint) = constraint.set
 JuMP.shape(::LinkConstraint) = JuMP.ScalarShape()
@@ -385,11 +386,11 @@ end
 JuMP.set_name(cref::LinkConstraintRef, s::String) = JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
 JuMP.name(con::LinkConstraintRef) =  JuMP.owner_model(con).linkconstraint_names[con.idx]
 
-function MOI.delete!(graph::ModelGraph, cref::LinkConstraintRef)
+function MOI.delete!(graph::OptiGraph, cref::LinkConstraintRef)
     delete!(graph.linkconstraints, cref.idx)
     delete!(graph.linkconstraint_names, cref.idx)
 end
-MOI.is_valid(graph::ModelGraph, cref::LinkConstraintRef) = cref.idx in keys(graph.linkconstraints)
+MOI.is_valid(graph::OptiGraph, cref::LinkConstraintRef) = cref.idx in keys(graph.linkconstraints)
 
 #######################################################
 # HIERARCHICAL CONSTRAINTS
@@ -400,12 +401,12 @@ MOI.is_valid(graph::ModelGraph, cref::LinkConstraintRef) = cref.idx in keys(grap
 #################################
 # Optimizer
 #################################
-set_optimizer(graph::ModelGraph,optimizer) = graph.optimizer = optimizer
+set_optimizer(graph::OptiGraph,optimizer) = graph.optimizer = optimizer
 
 ####################################
 #Print Functions
 ####################################
-function string(graph::ModelGraph)
+function string(graph::OptiGraph)
     """
     Model Graph:
     local nodes: $(getnumnodes(graph)), total nodes: $(length(all_nodes(graph)))
@@ -413,5 +414,5 @@ function string(graph::ModelGraph)
     local subgraphs: $(length(getsubgraphs(graph))), total subgraphs $(length(all_subgraphs(graph)))
     """
 end
-print(io::IO, graph::ModelGraph) = print(io, string(graph))
-show(io::IO,graph::ModelGraph) = print(io,graph)
+print(io::IO, graph::OptiGraph) = print(io, string(graph))
+show(io::IO,graph::OptiGraph) = print(io,graph)

@@ -6,7 +6,7 @@ using ColorTypes
 using Statistics
 
 #TODO other plotting options:  plot bipartite, node-pins, or clique-expansion
-function Plots.plot(graph::ModelGraph; node_labels = false, subgraph_colors = false,node_colors = false,linewidth = 2.0,linealpha = 1.0, markersize = 30,labelsize = 20, markercolor = :grey,
+function Plots.plot(graph::OptiGraph; node_labels = false, subgraph_colors = false,node_colors = false,linewidth = 2.0,linealpha = 1.0, markersize = 30,labelsize = 20, markercolor = :grey,
     layout_options = Dict(:tol => 0.01,:C => 2, :K => 4, :iterations => 2),
     plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,
     :size => (800,800),:axis => nothing),line_options = Dict(:linecolor => :blue,:linewidth => linewidth,:linealpha => linealpha),annotate_options = Dict(:markercolor => :black))
@@ -74,7 +74,7 @@ end
 
 rectangle(w, h, x, y) = Plots.Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
 
-function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph_colors = false,node_colors = false,markersize = 1)
+function Plots.spy(graph::OptiGraph;node_labels = false,labelsize = 24,subgraph_colors = false,node_colors = false,markersize = 1)
 
     n_graphs = length(graph.subgraphs)
     if subgraph_colors
@@ -182,7 +182,7 @@ function Plots.spy(graph::ModelGraph;node_labels = false,labelsize = 24,subgraph
     return plt
 end
 
-function _plot_subgraphs!(graph::ModelGraph,plt,node_col_ranges,row_start_graph;node_labels = false,labelsize = 24,colors = nothing,markersize = 1)
+function _plot_subgraphs!(graph::OptiGraph,plt,node_col_ranges,row_start_graph;node_labels = false,labelsize = 24,colors = nothing,markersize = 1)
     if colors == nothing
         colors = [colorant"grey" for _= 1:length(graph.subgraphs)]
     end
@@ -251,7 +251,7 @@ end
 
 #Overlap plots
 
-function Plots.plot(graph::ModelGraph,subgraphs::Vector{ModelGraph}; node_labels = false,linewidth = 2.0, linealpha = 1.0,markersize = 30,labelsize = 20, markercolor = :grey,
+function Plots.plot(graph::OptiGraph,subgraphs::Vector{OptiGraph}; node_labels = false,linewidth = 2.0, linealpha = 1.0,markersize = 30,labelsize = 20, markercolor = :grey,
     layout_options = Dict(:tol => 0.01,:C => 2, :K => 4, :iterations => 2), plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,
     :size => (800,800),:axis => nothing),line_options = Dict(:linecolor => :blue,:linewidth => linewidth,:linealpha => linealpha),annotate_options = Dict(:markercolor => :black))
 
@@ -331,7 +331,7 @@ function Plots.plot(graph::ModelGraph,subgraphs::Vector{ModelGraph}; node_labels
     return scat_plt
 end
 
-function Plots.spy(graph::ModelGraph,subgraphs::Vector{ModelGraph};node_labels = false,labelsize = 24,subgraph_colors = true)
+function Plots.spy(graph::OptiGraph,subgraphs::Vector{OptiGraph};node_labels = false,labelsize = 24,subgraph_colors = true)
 
     n_graphs = length(subgraphs)
     if subgraph_colors

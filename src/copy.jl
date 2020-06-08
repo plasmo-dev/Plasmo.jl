@@ -106,8 +106,8 @@ end
 
 
 #TODO
-function copy(mg::ModelGraph)
-    new_graph = ModelGraph()
+function copy(mg::OptiGraph)
+    new_graph = OptiGraph()
     for node in getnodes(mg)
         new_node,ref_map = copy(node)   #creates new _models.  Use ref map to reference old graph variables
         add_node!(new_graph,new_node)

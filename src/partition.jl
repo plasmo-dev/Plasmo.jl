@@ -4,12 +4,12 @@ abstract type AbstractPartition end
 ###########################################################################################################
 #Note that a Partition can contain subpartitions recursively
 mutable struct Partition <: AbstractPartition
-    modelnodes::Vector{ModelNode}   #hypernodes at this level
-    linkedges::Vector{LinkEdge}   #hyperedges at his level
+    modelnodes::Vector{OptiNode}   #hypernodes at this level
+    linkedges::Vector{OptiEdge}   #hyperedges at his level
     parent::Union{Nothing,AbstractPartition} #parent partition
     subpartitions::Vector{AbstractPartition}      #subpartitions
 end
-Partition() = Partition(Vector{ModelNode}(),Vector{LinkEdge}(),nothing,Vector{Partition}())
+Partition() = Partition(Vector{OptiNode}(),Vector{OptiEdge}(),nothing,Vector{Partition}())
 
 function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
     partition = Partition()
@@ -28,7 +28,12 @@ function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},
     return partition
 end
 
-function Partition(mg::ModelGraph,modelnode_vectors::Vector{Vector{ModelNode}})
+function Partition(graph::OptiGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
+    optinode_vectors = getpartitionlist(graph,node_membership_vector,ref_map)
+    return Partition(graph,optinode_vectors)
+end
+
+function Partition(mg::OptiGraph,modelnode_vectors::Vector{Vector{OptiNode}})
     partition = Partition()
     linkedge_vectors,cross_edges = identify_edges(mg,modelnode_vectors)
     @assert length(modelnode_vectors) == length(linkedge_vectors)
@@ -42,6 +47,8 @@ function Partition(mg::ModelGraph,modelnode_vectors::Vector{Vector{ModelNode}})
     end
     return partition
 end
+
+
 
 getnodes(partition::Partition) = partition.modelnodes
 getedges(partition::Partition) = partition.linkedges
@@ -66,9 +73,9 @@ function n_subpartitions(partition::Partition)
 end
 
 #Turn graph into subgraph-based structure
-function make_subgraphs!(graph::ModelGraph,partition::Partition)
+function make_subgraphs!(graph::OptiGraph,partition::Partition)
     root = partition
-    graph.subgraphs = ModelGraph[]
+    graph.subgraphs = OptiGraph[]
 
     mnodes = root.modelnodes
     ledges = root.linkedges
@@ -78,7 +85,7 @@ function make_subgraphs!(graph::ModelGraph,partition::Partition)
     subparts = root.subpartitions
     #Create subgraph structure from nodes and partition data
     for subpartition in subparts
-        subgraph = ModelGraph()
+        subgraph = OptiGraph()
         add_subgraph!(graph,subgraph)
         make_subgraphs!(subgraph,subpartition)
     end
@@ -90,7 +97,7 @@ end
 ####################################
 function string(partition::Partition)
     """
-    ModelGraph Partition w/ $(n_subpartitions(partition)) subpartitions
+        OptiGraph Partition w/ $(n_subpartitions(partition)) subpartitions
     """
 end
 print(io::IO, partition::Partition) = print(io, string(partition))

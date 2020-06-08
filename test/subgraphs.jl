@@ -1,17 +1,17 @@
 using Plasmo
 
-mg = ModelGraph()
+graph = OptiGraph()
 
-@node(mg,n0)
+@optinode(graph,n0)
 @variable(n0,x)
 
 sg1 = ModelGraph()
 sg2 = ModelGraph()
-add_subgraph!(mg,sg1)
-add_subgraph!(mg,sg2)
+add_subgraph!(graph,sg1)
+add_subgraph!(graph,sg2)
 
-@node(sg1,ng1[1:5])
-@node(sg2,ng2[1:5])
+@optinode(sg1,ng1[1:5])
+@optinode(sg2,ng2[1:5])
 
 for node in getnodes(sg1)
     @variable(node,0 <= x <= 2)
@@ -26,12 +26,12 @@ end
 @linkconstraint(sg1,sum(ng1[i][:x] for i = 1:5) <= 4)
 @linkconstraint(sg2,sum(ng2[i][:x] for i = 1:5) >= 4)
 
-@linkconstraint(mg,n0[:x] == ng1[1][:x])
-@linkconstraint(mg,n0[:x] == ng2[1][:x])
+@linkconstraint(graph,n0[:x] == ng1[1][:x])
+@linkconstraint(graph,n0[:x] == ng2[1][:x])
 
-@test num_nodes(mg) == 1
-@test length(all_nodes(mg)) == 11
-@test num_linkedges(mg) == 2
-@test num_all_linkedges(mg) == 4
+@test num_nodes(graph) == 1
+@test length(all_nodes(graph)) == 11
+@test num_linkedges(graph) == 2
+@test num_all_linkedges(graph) == 4
 
 true

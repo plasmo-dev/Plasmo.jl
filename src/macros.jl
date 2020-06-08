@@ -1,6 +1,7 @@
 using Base.Meta
 
-macro node(graph,args...)
+#deprecate
+macro optinode(graph,args...)
      _error(str...) = JuMP._macro_error(:node, args, str...)
 
     #@assert isa(esc(graph),ModelGraph)
@@ -26,7 +27,7 @@ macro node(graph,args...)
 
         # We now build the code to generate the modelnodes
         idxnodes, indices = _build_ref_sets(nodeexpr, node)
-        container_code = JuMP.Containers.generate_container(ModelNode,idxnodes,indices,:Auto)
+        container_code = JuMP.Containers.generate_container(OptiNode,idxnodes,indices,:Auto)
         macro_code = quote
             $name = $(container_code[1])
             if isa($name,JuMP.Containers.DenseAxisArray)
@@ -46,9 +47,17 @@ macro node(graph,args...)
     return esc(macro_code)
 end
 
+macro node(graph,args...)
+    code = quote
+        @warn "@node is deprecated.  Use @optinode for future applications"
+        @optinode($graph,$(args...))
+    end
+    return esc(code)
+end
+
 macro linkconstraint(graph,args...)
     code = quote
-        @assert isa($graph,AbstractModelGraph)  #Check the inputs are the correct types.  This needs to throw
+        @assert isa($graph,AbstractOptiGraph)  #Check the inputs are the correct types.  This needs to throw
         JuMP.@constraint($graph,($(args...)))   #this will call add_constraint(graph::ModelGraph)
     end
     return esc(code)
@@ -57,7 +66,7 @@ end
 #Wrap NLconstraint because NLconstraint extensions don't really work yet.  Easy to deprecate later.
 macro NLnodeconstraint(node,args...)
     code = quote
-        @assert isa($node,ModelNode)  #Check the inputs are the correct types.  This needs to throw
+        @assert isa($node,OptiNode)  #Check the inputs are the correct types.  This needs to throw
         JuMP.@NLconstraint((getmodel($node)),($(args...)))  #link model extends @constraint macro
     end
     return esc(code)
@@ -65,7 +74,7 @@ end
 
 macro NLnodeobjective(node,args...)
     code = quote
-        @assert isa($node,ModelNode)  #Check the inputs are the correct types.  This needs to throw
+        @assert isa($node,OptiNode)  #Check the inputs are the correct types.  This needs to throw
         JuMP.@NLobjective((getmodel($node)),($(args...)))  #link model extends @constraint macro
     end
     return esc(code)
