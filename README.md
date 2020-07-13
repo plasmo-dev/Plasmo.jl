@@ -1,9 +1,9 @@
 ![Logo](./docs/plasmo3.svg)
 
-[![Build Status](https://travis-ci.org/zavalab/Plasmo.jl.svg?branch=master)](https://travis-ci.org/jalving/Plasmo.jl)
-[![codecov](https://codecov.io/gh/zavalab/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
-[![coveralls](https://coveralls.io/repos/github/zavalab/Plasmo.jl/badge.svg?branch=master)](https://coveralls.io/github/jalving/Plasmo.jl?branch=master)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://jalving.github.io/Plasmo.jl/dev/)
+[![Build Status](https://travis-ci.org/zavalab/Plasmo.jl.svg?branch=master)](https://travis-ci.org/zavalab/Plasmo.jl)
+[![codecov](https://codecov.io/gh/zavalab/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/zavalab/Plasmo.jl)
+[![coveralls](https://coveralls.io/repos/github/zavalab/Plasmo.jl/badge.svg?branch=master)](https://coveralls.io/github/zavalab/Plasmo.jl?branch=master)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://zavalab.github.io/Plasmo.jl/dev/)
 
 # Plasmo.jl
 Plasmo.jl (Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework.  It builds upon
