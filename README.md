@@ -1,18 +1,18 @@
 ![Logo](./docs/plasmo3.svg)
 
-[![Build Status](https://travis-ci.org/jalving/Plasmo.jl.svg?branch=master)](https://travis-ci.org/jalving/Plasmo.jl)
-[![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
-[![coveralls](https://coveralls.io/repos/github/jalving/Plasmo.jl/badge.svg?branch=master)](https://coveralls.io/github/jalving/Plasmo.jl?branch=master)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://jalving.github.io/Plasmo.jl/dev/)
+[![Build Status](https://travis-ci.org/zavalab/Plasmo.jl.svg?branch=master)](https://travis-ci.org/zavalab/Plasmo.jl)
+[![codecov](https://codecov.io/gh/zavalab/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/zavalab/Plasmo.jl)
+[![coveralls](https://coveralls.io/repos/github/zavalab/Plasmo.jl/badge.svg?branch=master)](https://coveralls.io/github/zavalab/Plasmo.jl?branch=master)
+[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://zavalab.github.io/Plasmo.jl/dev/)
 
 # Plasmo.jl
 Plasmo.jl (Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework.  It builds upon
-JuMP and adopts a modular style to model optimization problems which facilitates creating distributed and hierarchical structures.
+JuMP and adopts a modular style to model optimization problems in a hierarchical fashion.
 The defining notion of the package is that it uses graph-based concepts to both construct and partition optimization problems which
 provides a natural interface to implement distributed optimization algorithms.
 
 ## Overview
-The core object in Plasmo.jl is the `OPtiGraph` wherein a user can add `OptiNode`(s) which represent individual optimization problems. `OptiNode`(s) can be linked to each-other
+The core object in Plasmo.jl is the `OptiGraph` wherein a user can add `OptiNodes` which represent individual optimization problems. `OptiNodes` can be linked to each-other
 using linking constraints, which induces the underlying graph structure.  An `OptiGraph` can also be embedded in another `OptiGraph` to induce hierarchical structures.
 These hierarchical structures provide a natural framework to harness distributed optimization solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
 
