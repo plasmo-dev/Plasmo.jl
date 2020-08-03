@@ -65,7 +65,7 @@ This code is based on work supported by the following funding agencies:
 
 * U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357
 * DOE Office of Electricity Delivery and Energy Reliability’s Advanced Grid Research and Development program at Argonne National Laboratory
-* National Science Foundation under award NSF-EECS-1609183
+* National Science Foundation under award NSF-EECS-1609183 and under award CBET-1748516
 
 The primary developer is Jordan Jalving (@jalving) with support from the following contributors.  
 
