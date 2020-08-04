@@ -24,7 +24,7 @@ Additional examples can be found in the [examples](https://github.com/jalving/Pl
 
 ```julia
 using Pkg
-Pkg.add("Plasmo.jl")
+Pkg.add("Plasmo")
 ```
 
 ## Simple Example
