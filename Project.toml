@@ -22,7 +22,7 @@ Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
-JuMP = "0.19 - 0.21"
+JuMP = "0.19, 0.20, 0.21"
 MathOptInterface = "~0.9"
 julia = "1"
 ColorTypes = "~0.10"
