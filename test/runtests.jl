@@ -8,7 +8,7 @@ using Test
 # end
 
 @testset "Core functions" begin
-    include("modelgraph.jl")
+    include("optigraph.jl")
     include("subgraphs.jl")
     include("partition.jl")
 end

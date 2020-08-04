@@ -5,8 +5,8 @@ graph = OptiGraph()
 @optinode(graph,n0)
 @variable(n0,x)
 
-sg1 = ModelGraph()
-sg2 = ModelGraph()
+sg1 = OptiGraph()
+sg2 = OptiGraph()
 add_subgraph!(graph,sg1)
 add_subgraph!(graph,sg2)
 
