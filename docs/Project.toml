@@ -2,6 +2,7 @@
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
 LightGraphs = "093fc24a-ae57-5d10-9952-331d41423f4d"
+Plasmo = "d3f7391f-f14a-50cc-bbe4-76a32d1bad3c"
 
 [compat]
 Documenter = "~0.20"

@@ -1,17 +1,16 @@
-# OptiGraph
+# Modeling
+In Plasmo.jl, the primary modeling object is called an `OptiGraph`. The `OptiGraph` extends the `JuMP.AbstractModel` abstract type to facilitate a modular graph-based modeling style
+ and provides and is composed of `OptiNodes` (which also
+extend `JuMP.AbstractModel`) which represent modular optimization problems.
+`OptiNodes` are connected by `OptiEdges` which encapsulate `LinkConstraints`.
 
-## Constructor
-The `OptiGraph` is the primary object for creating graph-based models in Plasmo.jl.  A `OptiGraph` extends the `JuMP.AbstractModel` and offers a collection of `OptiNode`s (which also
-extend `JuMP.AbstractModel`) which represent solvable optimization problems.
-`OptiNode`s are connected by `LinkConstraint`s over variables which induce underlying `LinkEdge`s.  s
-
-A `OptiGraph` does not require any arguments to construct:
+## Creating an OptiGraph
+An `OptiGraph` does not require any arguments to construct:
 
 ```julia
-mg = OptiGraph()
+optigraph = OptiGraph()
 ```
-
-A `OptiGraph` optimizer can be specified in the same way as in JuMP using `set_optimizer(::OptiGraph)`.  An optimizer can be any
+An `OptiGraph` optimizer can be specified in the same way as in JuMP using `set_optimizer(::OptiGraph)`.  An optimizer can be any
 JuMP compatible solver or a custom Plasmo.jl provided solver (see the solvers section).  
 For example, we could construct an `OptiGraph` that uses `Ipopt.Opimizer` from the Ipopt package:
 
@@ -43,7 +42,7 @@ for node in getnodes(mg)
     println(node)
 end
 ```
-will print the string for every node in the `OptiGraph` graph.  
+will print summary information for every node in `optigraph`.  
 
 
 Variables within a `OptiNode` can be accessed directly from their enclosing node.  
@@ -52,9 +51,9 @@ Variables within a `OptiNode` can be accessed directly from their enclosing node
 println(n1[:x])    #accesses variable x on jump_model
 ```
 
-## Adding LinkConstraints
+## Adding LinkConstraints (OptiEdges)
 
-`LinkConstraint`s are linear constraints that couple variables across different `OptiNode`s.  The simplest way to add `LinkConstraint`s
+`LinkConstraints` are linear constraints that couple variables across different `OptiNode`s.  The simplest way to add `LinkConstraint`s
 is to use the `@linkconstraint` macro.  This macro accepts the same input as a JuMP `@constraint` macro and creates linear constraints over multiple nodes within the same graph.
 
 ```julia
@@ -64,7 +63,7 @@ is to use the `@linkconstraint` macro.  This macro accepts the same input as a J
 ```
 
 
-## Subgraph Structures
+## Hierarchical Modeling with Subgraphs
 
 It is possible to create subgraphs within a `OptiGraph` object.  This is helpful when a user wants to develop to separate systems and link them together within
 a higher level graph.
@@ -91,25 +90,27 @@ add_subgraph!(mg,sg2)
 ```
 
 ## Methods
+Modeling with an `OptiGraph` encompasses the following useful methods:
 
 ### OptiGraph
-The `OptiGraph` contains the following useful methods:
-
 ```@docs
 Plasmo.OptiGraph
+Plasmo.getnodes
+Plasmo.all_nodes
 ```
 ### OptiNode
 `OptiNode`s contain methods for managing their contained JuMP models.
 
 ```@docs
 Plasmo.OptiNode
-Plasmo.@optinode(graph::OptiGraph)
+Plasmo.@optinode(graph::OptiGraph,expr::Expr)
 ```
+
+###OptiEdge
 
 ### Attributes
 ```@docs
-Plasmo.getnodes
-Plasmo.all_nodes
+
 Plasmo.getlinkconstraints
 Plasmo.all_linkconstraints
 ```

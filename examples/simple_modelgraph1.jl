@@ -1,7 +1,7 @@
 using Plasmo
 using Ipopt
 
-graph = ModelGraph()
+graph = OptiGraph()
 optimizer = Ipopt.Optimizer
 
 #Add nodes to a ModelGraph

@@ -408,7 +408,7 @@ set_optimizer(graph::OptiGraph,optimizer) = graph.optimizer = optimizer
 ####################################
 function string(graph::OptiGraph)
     """
-    Model Graph:
+    OptiGraph:
     local nodes: $(getnumnodes(graph)), total nodes: $(length(all_nodes(graph)))
     local link constraints: $(num_linkconstraints(graph)), total link constraints $(length(all_linkconstraints(graph)))
     local subgraphs: $(length(getsubgraphs(graph))), total subgraphs $(length(all_subgraphs(graph)))

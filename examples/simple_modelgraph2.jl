@@ -1,10 +1,10 @@
 using Plasmo
 using Ipopt
 
-graph = ModelGraph()
+graph = OptiGraph()
 optimizer = Ipopt.Optimizer
 
-#Add nodes to a GraphModel
+#Add nodes to a OptiGraph
 @node(graph,n1)
 @node(graph,n2)
 @node(graph,n3)

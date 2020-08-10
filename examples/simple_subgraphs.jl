@@ -12,10 +12,10 @@ function nl_model!(node::ModelNode)
 end
 
 #the top level graph
-graph = ModelGraph()
+graph = OptiGraph()
 
 #System 1
-subgraph1 = ModelGraph()
+subgraph1 = OptiGraph()
 @node(subgraph1,n1)
 @node(subgraph1,n2)
 nl_model!(n1)
@@ -23,7 +23,7 @@ nl_model!(n2)
 @linkconstraint(subgraph1,n1[:x] == n2[:x])  #linkconstraint is local to graph1
 
 #System 2
-subgraph2 = ModelGraph()
+subgraph2 = OptiGraph()
 @node(subgraph2,n3)
 @node(subgraph2,n4)
 nl_model!(n3)

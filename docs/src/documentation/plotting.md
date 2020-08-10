@@ -1,1 +1,1 @@
-## Plotting a `ModelGraph`
+# Plotting
