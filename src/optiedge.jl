@@ -55,7 +55,7 @@ getlinkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
 
 
 function string(edge::OptiEdge)
-    "Link edge w/ $(length(edge.linkconstraints)) Constraint(s)"
+    "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"
 end
 print(io::IO,edge::OptiEdge) = print(io, string(edge))
 show(io::IO,edge::OptiEdge) = print(io,edge)

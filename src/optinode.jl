@@ -152,10 +152,8 @@ function JuMP.num_constraints(node::OptiNode)
 end
 
 function num_linked_variables(node::OptiNode)
-
     partial_link_eq = node.partial_linkeqconstraints
     partial_link_ineq = node.partial_linkineqconstraints
-    #m = getmodel(node)
     num_linked = 0
     vars = []
     for (idx,link) in partial_link_eq
@@ -189,7 +187,7 @@ JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node)
 
 
 ##############################################
-# Get Model Node
+# Get OptiNode
 ##############################################
 getnode(m::JuMP.Model) = m.ext[:modelnode]
 
@@ -218,7 +216,7 @@ getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:modelnode]
 # Printing
 ###############################################
 function string(node::OptiNode)
-    "Model Node w/ $(JuMP.num_variables(node)) Variable(s)"
+    "OptiNode w/ $(JuMP.num_variables(node)) Variable(s)"
 end
 print(io::IO,node::OptiNode) = print(io, string(node))
 show(io::IO,node::OptiNode) = print(io,node)

@@ -98,10 +98,10 @@ uuid = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
 version = "0.8.2"
 
 [[Documenter]]
-deps = ["Base64", "DocStringExtensions", "InteractiveUtils", "LibGit2", "Logging", "Markdown", "Pkg", "REPL", "Random", "Test", "Unicode"]
-git-tree-sha1 = "9f2135e0e7ecb63f9c3ef73ea15a31d8cdb79bb7"
+deps = ["Base64", "Dates", "DocStringExtensions", "InteractiveUtils", "JSON", "LibGit2", "Logging", "Markdown", "REPL", "Test", "Unicode"]
+git-tree-sha1 = "1c593d1efa27437ed9dd365d1143c594b563e138"
 uuid = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
-version = "0.20.0"
+version = "0.25.1"
 
 [[FixedPointNumbers]]
 deps = ["Statistics"]
@@ -114,6 +114,24 @@ deps = ["CommonSubexpressions", "DiffResults", "DiffRules", "NaNMath", "Random",
 git-tree-sha1 = "1d090099fb82223abc48f7ce176d3f7696ede36d"
 uuid = "f6369f11-7733-5829-9624-2563aa707210"
 version = "0.10.12"
+
+[[GLPK]]
+deps = ["BinaryProvider", "GLPK_jll", "Libdl", "MathOptInterface", "SparseArrays"]
+git-tree-sha1 = "86573ecb852e303b209212046af44871f1c0e49c"
+uuid = "60bf3e95-4087-53dc-ae20-288a0d20c6a6"
+version = "0.13.0"
+
+[[GLPK_jll]]
+deps = ["GMP_jll", "Libdl", "Pkg"]
+git-tree-sha1 = "ccc855de74292e478d4278e3a6fdd8212f75e81e"
+uuid = "e8aa6df9-e6ca-548a-97ff-1f85fc5b8b98"
+version = "4.64.0+0"
+
+[[GMP_jll]]
+deps = ["Libdl", "Pkg"]
+git-tree-sha1 = "4dd9301d3a027c05ec403e756ee7a60e3c367e5d"
+uuid = "781609d7-10c4-51f6-84f2-b8444358ff6d"
+version = "6.1.2+5"
 
 [[GeometryTypes]]
 deps = ["ColorTypes", "FixedPointNumbers", "LinearAlgebra", "StaticArrays"]
@@ -238,7 +256,9 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[Plasmo]]
 deps = ["ColorTypes", "Colors", "DataStructures", "Distributed", "GeometryTypes", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "NetworkLayout", "Reexport", "Requires", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "b3fe176f895760d86496fec211d8a7ac7a184323"
+git-tree-sha1 = "437e7681e66b226a3fafd0941409afd7f3e0f527"
+repo-rev = "master"
+repo-url = "/home/jordan/.julia/dev/Plasmo"
 uuid = "d3f7391f-f14a-50cc-bbe4-76a32d1bad3c"
 version = "0.3.0"
 

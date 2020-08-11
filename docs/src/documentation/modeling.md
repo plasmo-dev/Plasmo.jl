@@ -1,6 +1,6 @@
 # Modeling
 In Plasmo.jl, the primary modeling object is called an `OptiGraph`. The `OptiGraph` extends the `JuMP.AbstractModel` abstract type to facilitate a modular graph-based modeling style
- and provides and is composed of `OptiNodes` (which also
+and provides and is composed of `OptiNodes` (which also
 extend `JuMP.AbstractModel`) which represent modular optimization problems.
 `OptiNodes` are connected by `OptiEdges` which encapsulate `LinkConstraints`.
 
@@ -62,8 +62,7 @@ is to use the `@linkconstraint` macro.  This macro accepts the same input as a J
 @linkconstraint(graph,n1[:x] == nodes[1,1][:x])  #creates a linear constraint between nodes n1 and n2
 ```
 
-
-## Hierarchical Modeling with Subgraphs
+## Hierarchical Modeling
 
 It is possible to create subgraphs within a `OptiGraph` object.  This is helpful when a user wants to develop to separate systems and link them together within
 a higher level graph.

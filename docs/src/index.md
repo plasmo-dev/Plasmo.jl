@@ -4,6 +4,7 @@
 CurrentModule = Plasmo
 DocTestSetup = quote
     using Plasmo
+    using GLPK
 end
 ```
 
@@ -33,57 +34,102 @@ or alternatively from the Julia 1.0 package manager, one can simply do:
 This quickstart example gives a brief overview of the functions needed to effectively use Plasmo.jl to build optimization models. If you are familiar with JuMP,
 much of the functionality you see here will be equivalent.  In fact, the primary `OptiGraph` object is an extension of the `JuMP.AbstractModel`, as well as its contained `OptiNodes`.  
 
-The below example demonstrates the construction of a simple nonlinear optimization problem that contains two `OptiNodes` coupled by a simple `LinkConstraint` and solved with
-the nonlinear optimization solver Ipopt. More detailed examples can be found in the [examples folder](https://github.com/zavalab/Plasmo.jl/tree/master/examples).
+The below example demonstrates the construction of a simple nonlinear optimization problem that contains two `OptiNodes` coupled by a simple `LinkConstraint` (which creates an `OptiEdge`) and solved with
+the linear optimization solver GLPK. More detailed examples can be found in the [examples folder](https://github.com/zavalab/Plasmo.jl/tree/master/examples).
 
 Once Plasmo.jl has been installed, you can use it from a Julia session as following:
 ```jldoctest quickstart_example
 julia> using Plasmo
 ```
 
-For this example we also need to import the Ipopt optimization solver.
-```jldoctest quickstart_example
-julia> using Ipopt
+For this example we also need to import the GLPK optimization solver and the Plots package which we use to visualize graph structure.
+```julia
+julia> using GLPK
+julia> using Plots
 ```
 !!! note
     We highlight that it is possible to use any solver that works with JuMP. By default, when using a standard optimization solver available through JuMP, Plasmo.jl will aggregate
     the `OptiGraph` into a single node to solve (hence ignoring the graph structure).  While it is useful having such granular control to build optimization models with an
-    `OptiGraph`, we note that this aggregation step introduces additional model-building time when using standard optimization solvers.
+    `OptiGraph`, we note that this aggregation step introduces additional model-building time when using standard optimization solvers (such as GLPK and Ipopt).
 
+### Create an OptiGraph
 
 The following command will create an `OptiGraph` model:
 ```jldoctest quickstart_example
 julia> graph = OptiGraph()
-graph
+OptiGraph:
+local nodes: 0, total nodes: 0
+local link constraints: 0, total link constraints 0
+local subgraphs: 0, total subgraphs 0
+```
+Here we note that an `OptiGraph` distinguishes between local and total nodes, edges, and subgraphs. This distinction is used to describe hierarchical graph structures which we
+introduce in [Hierarchical Modeling](@ref).
+
+### Add OptiNodes
+
+```@meta
+DocTestSetup = quote
+    # Using a mock optimizer removes the need to load a solver such as GLPK for
+    # building the documentation.
+    const MOI = JuMP.MathOptInterface
+    model = Model(() -> MOI.Utilities.MockOptimizer(
+                            MOIU.Model{Float64}(),
+                            eval_objective_value = false,
+                            eval_variable_constraint_dual = false))
+end
 ```
 
-```@example
-graph = OptiGraph()
+```julia
+julia> @optinode(graph,n1)
 
-#Add OptiNodes to an OptiGraph
-@optinode(graph,n1)
-@optinode(graph,n2)
+julia> @variable(n1, y >= 2);
+julia> @variable(n1,x >= 0);
+julia> @constraint(n1,x + y >= 3);
+julia> @objective(n1, Min, y);
 
-#Setup optinode n1
-@variable(n1,0 <= x <= 2)
-@variable(n1,0 <= y <= 3)
-@constraint(n1,x+y <= 4)
-@objective(n1,Min,x)
+julia> @optinode(graph,n2);
+julia> @variable(n2, y);
+julia> @variable(n2,x >= 0);
+julia> @constraint(n2,x + y >= 3);
+julia> @objective(n2, Min, y);
 
-#Setup optinode n2
-@variable(n2,x)
-@NLnodeconstraint(n2,exp(x) >= 2)
+julia> @optinode(graph,n3);
+julia> @variable(n3, y);
+julia> @variable(n3,x >= 0);
+julia> @constraint(n3,x + y >= 3);
+julia> @objective(n3, Min, y);  
 
-#Create a linking constraint
-@linkconstraint(graph,n1[:x] == n2[:x])
+julia> graph
 
-ipopt = Ipopt.Optimizer
-optimize!(graph,ipopt) # hide
-
-#Look at individual node solutions
-println("n1[:x]= ",value(n1,n1[:x]))
-println("n2[:x]= ",value(n2,n2[:x]))
 ```
+
+### Create LinkConstraints (OptiEdges)
+
+```julia
+#Create link constraint between nodes (automatically creates an optiedge on graph1)
+@linkconstraint(graph1, n1[:x] + n2[:x] + n3[:x] == 3)
+
+#Optimize with GLPK
+optimize!(graph1,GLPK.Optimizer)
+
+#Query Solution
+value(n1,n1[:x])          
+value(n2,n2[:x])
+value(n3,n3[:x])
+objective_value(graph1)
+
+#Visualize graph topology
+plt_graph1 = plt_graph1 = Plots.plot(graph1,node_labels = true,   
+markersize = 60,labelsize = 30, linewidth = 4,
+layout_options = Dict(:tol => 0.01,:iterations => 2));
+
+#Visualize graph adjacency
+plt_matrix1 = Plots.spy(graph1,node_labels = true,markersize = 30);   
+```
+
+### Visualize the Structure
+
+### Solve and Query Solution
 
 ## Contents
 
