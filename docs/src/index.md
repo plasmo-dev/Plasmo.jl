@@ -5,6 +5,7 @@ CurrentModule = Plasmo
 DocTestSetup = quote
     using Plasmo
     using GLPK
+    using Plots
 end
 ```
 
@@ -54,7 +55,7 @@ julia> using Plots
 
 ### Create an OptiGraph
 
-The following command will create an `OptiGraph` model:
+The following command will create an `OptiGraph` model.  We also see the printed output which denotes the number of optinodes, linking constraints, and subgraphs within the `OptiGraph`.
 ```jldoctest quickstart_example
 julia> graph = OptiGraph()
 OptiGraph:
@@ -62,74 +63,162 @@ local nodes: 0, total nodes: 0
 local link constraints: 0, total link constraints 0
 local subgraphs: 0, total subgraphs 0
 ```
-Here we note that an `OptiGraph` distinguishes between local and total nodes, edges, and subgraphs. This distinction is used to describe hierarchical graph structures which we
-introduce in [Hierarchical Modeling](@ref).
+
+!!! note
+    An `OptiGraph` distinguishes between local and total entities (i.e. nodes, edges, link constraints, and subgraphs). This distinction
+    between local and total is used to describe hierarchical graph structures which are introduced in [Hierarchical Modeling](@ref).
 
 ### Add OptiNodes
 
+```jldocest quickstart_example
+julia> @optinode(graph,n1)
+OptiNode w/ 0 Variable(s)
+
+julia> @variable(n1, y >= 2)
+y
+
+julia> @variable(n1, x >= 0)
+x
+
+julia> @constraint(n1,x + y >= 3)
+x + y >= 3
+
+julia> @objective(n1, Min, y)
+y
+```
+
 ```@meta
-DocTestSetup = quote
-    # Using a mock optimizer removes the need to load a solver such as GLPK for
-    # building the documentation.
-    const MOI = JuMP.MathOptInterface
-    model = Model(() -> MOI.Utilities.MockOptimizer(
-                            MOIU.Model{Float64}(),
-                            eval_objective_value = false,
-                            eval_variable_constraint_dual = false))
+DocTestSetup = nothing
+```
+
+```@meta
+    DocTestSetup = quote
+    using Plasmo
+    using GLPK
+    using Plots
+
+    graph = OptiGraph()
+    @optinode(graph,n1)
+    @variable(n1, y >= 2)
+    @variable(n1,x >= 0)
+    @constraint(n1,x + y >= 3)
+    @objective(n1, Min, y)
+
+    @optinode(graph,n2);
+    @variable(n2, y >= 0);
+    @variable(n2, x >= 0);
+    @constraint(n2,x + y >= 3);
+    @objective(n2, Min, y);
+
+    @optinode(graph,n3);
+    @variable(n3, y >= 0);
+    @variable(n3,x >= 0);
+    @constraint(n3,x + y >= 3);
+    @objective(n3, Min, y);  
 end
 ```
 
 ```julia
-julia> @optinode(graph,n1)
-
-julia> @variable(n1, y >= 2);
-julia> @variable(n1,x >= 0);
-julia> @constraint(n1,x + y >= 3);
-julia> @objective(n1, Min, y);
-
 julia> @optinode(graph,n2);
-julia> @variable(n2, y);
+julia> @variable(n2, y >= 0);
 julia> @variable(n2,x >= 0);
 julia> @constraint(n2,x + y >= 3);
 julia> @objective(n2, Min, y);
 
 julia> @optinode(graph,n3);
-julia> @variable(n3, y);
+julia> @variable(n3, y >= 0);
 julia> @variable(n3,x >= 0);
 julia> @constraint(n3,x + y >= 3);
 julia> @objective(n3, Min, y);  
+```
 
-julia> graph
+```jldoctest quickstart_example_2
+julia> println(graph)
+OptiGraph:
+local nodes: 3, total nodes: 3
+local link constraints: 0, total link constraints 0
+local subgraphs: 0, total subgraphs 0
+```
 
+```@meta
+DocTestSetup = nothing
 ```
 
 ### Create LinkConstraints (OptiEdges)
 
-```julia
-#Create link constraint between nodes (automatically creates an optiedge on graph1)
-@linkconstraint(graph1, n1[:x] + n2[:x] + n3[:x] == 3)
+```jldoctest quickstart_example_2
+julia> @linkconstraint(graph, n1[:x] + n2[:x] + n3[:x] == 3)
+LinkConstraintRef(1, OptiEdge w/ 1 Constraint(s))
 
-#Optimize with GLPK
-optimize!(graph1,GLPK.Optimizer)
-
-#Query Solution
-value(n1,n1[:x])          
-value(n2,n2[:x])
-value(n3,n3[:x])
-objective_value(graph1)
-
-#Visualize graph topology
-plt_graph1 = plt_graph1 = Plots.plot(graph1,node_labels = true,   
-markersize = 60,labelsize = 30, linewidth = 4,
-layout_options = Dict(:tol => 0.01,:iterations => 2));
-
-#Visualize graph adjacency
-plt_matrix1 = Plots.spy(graph1,node_labels = true,markersize = 30);   
+julia> println(graph)
+OptiGraph:
+local nodes: 3, total nodes: 3
+local link constraints: 1, total link constraints 1
+local subgraphs: 0, total subgraphs 0
 ```
 
-### Visualize the Structure
-
 ### Solve and Query Solution
+```jldoctest quickstart_example_2
+julia> optimize!(graph,GLPK.Optimizer)
+Converting OptiGraph to OptiNode...
+Optimizing OptiNode
+Found Solution
+```
+Now we can query the solution
+```jldoctest quickstart_example_2
+julia> value(n1,n1[:x])    
+1.0
+
+julia> value(n2,n2[:x])
+2.0
+
+julia> value(n3,n3[:x])
+0.0
+
+julia> objective_value(graph)
+6.0
+```      
+
+### Visualize the Structure
+```@setup plot_example
+    using Plasmo
+    using Plots
+
+    graph = OptiGraph()
+    @optinode(graph,n1)
+    @variable(n1, y >= 2)
+    @variable(n1,x >= 0)
+    @constraint(n1,x + y >= 3)
+    @objective(n1, Min, y)
+
+    @optinode(graph,n2);
+    @variable(n2, y >= 0);
+    @variable(n2,x >= 0);
+    @constraint(n2,x + y >= 3);
+    @objective(n2, Min, y);
+
+    @optinode(graph,n3);
+    @variable(n3, y >= 0);
+    @variable(n3, x >= 0);
+    @constraint(n3,x + y >= 3);
+    @objective(n3, Min, y);  
+
+    @linkconstraint(graph, n1[:x] + n2[:x] + n3[:x] == 3);
+```
+
+Graph topology
+
+```@repl plot_example
+plt_graph = Plots.plot(graph,node_labels = true, markersize = 60,labelsize = 30, linewidth = 4,layout_options = Dict(:tol => 0.01,:iterations => 2));
+
+Plots.savefig(plt_graph,"graph_layout.svg");
+```
+![](graph_layout.svg)
+
+Graph adjacency
+```@repl plot_example
+plt_matrix = Plots.spy(graph1,node_labels = true,markersize = 30);   
+```
 
 ## Contents
 
