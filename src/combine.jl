@@ -9,7 +9,7 @@ t_copy_nl_constraints = 0
 mutable struct CombinedNode
     index::Int64
     obj_dict::Dict{Symbol,Any}
-    variablemap::Dict{JuMP.VariableRef,JuMP.VariableRef}                    #map from combine model variable to original modelgraph variable
+    variablemap::Dict{JuMP.VariableRef,JuMP.VariableRef}                    #map from combine model variable to original optigraph variable
     constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
     nl_constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
     objective::Union{JuMP.AbstractJuMPScalar,Expr}                          #copy of original node objective
@@ -61,12 +61,12 @@ getaggnodeconstraints(node::CombinedNode) = collect(keys(node.constraintmap))
 """
     CombinedMap
     Mapping between variable and constraint reference of a OptiGraph to an Combined Model.
-    The reference of the combined model can be obtained by indexing the map with the reference of the corresponding original modelnode.
+    The reference of the combined model can be obtained by indexing the map with the reference of the corresponding original optinode.
 """
 struct CombinedMap
     combined_model::JuMP.AbstractModel                             #An combined model (Could be another OptiGraph)
-    varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}                 #map variables in original modelgraph to combinedmodel
-    conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}             #map constraints in original modelgraph to combinedmodel
+    varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}                 #map variables in original optigraph to combinedmodel
+    conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}             #map constraints in original optigraph to combinedmodel
     linkconstraintmap::Dict{LinkConstraint,JuMP.ConstraintRef}
 end
 
@@ -99,14 +99,14 @@ end
 #############################################################################################
 
 
-function combine(modelgraph::OptiGraph)
+function combine(optigraph::OptiGraph)
     combined_model = CombinedModel()
     reference_map = CombinedMap(combined_model)
 
     #COPY NODE MODELS INTO Combined MODEL
     has_nonlinear_objective = false                      #check if any nodes have nonlinear objectives
-    for modelnode in all_nodes(modelgraph)               #for each node in the model graph
-        node_model = getmodel(modelnode)
+    for optinode in all_nodes(optigraph)               #for each node in the model graph
+        node_model = getmodel(optinode)
         #Need to pass master reference so we use those variables instead of creating new ones
         node_ref_map = _add_to_combined_model!(combined_model,node_model,reference_map)  #updates combined_model and reference_map
 
@@ -120,40 +120,40 @@ function combine(modelgraph::OptiGraph)
     end
 
     #OBJECTIVE FUNCTION
-    if !(has_objective(modelgraph)) && !has_nonlinear_objective
-        _set_node_objectives!(modelgraph)  #set modelgraph objective function
-        _set_node_objectives!(modelgraph,combined_model,reference_map,has_nonlinear_objective) #set combined_model objective function
+    if !(has_objective(optigraph)) && !has_nonlinear_objective
+        _set_node_objectives!(optigraph)  #set optigraph objective function
+        _set_node_objectives!(optigraph,combined_model,reference_map,has_nonlinear_objective) #set combined_model objective function
     end
 
-    if has_objective(modelgraph)
-        agg_graph_obj = _copy_constraint_func(JuMP.objective_function(modelgraph),reference_map)
+    if has_objective(optigraph)
+        agg_graph_obj = _copy_constraint_func(JuMP.objective_function(optigraph),reference_map)
         JuMP.set_objective_function(combined_model,agg_graph_obj)
-        JuMP.set_objective_sense(combined_model,JuMP.objective_sense(modelgraph))
-    # elseif has_NLobjective(modelgraph)
+        JuMP.set_objective_sense(combined_model,JuMP.objective_sense(optigraph))
+    # elseif has_NLobjective(optigraph)
     #     #TODO
     #     error("NL graph objective not yet supported on a OptiGraph")
-    #     # dgraph = JuMP.NLPEvaluator(modelgraph)
+    #     # dgraph = JuMP.NLPEvaluator(optigraph)
     #     # MOI.initialize(dgraph,[:ExprGraph])
     #     # graph_obj = MOI.objective_expr(dgraph)
     #     # _splice_nonlinear_variables!(graph_obj,reference_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
-    #     # JuMP.set_NL_objective(combined_model,JuMP.objective_sense(modelgraph,graph_obj))
+    #     # JuMP.set_NL_objective(combined_model,JuMP.objective_sense(optigraph,graph_obj))
     # else
-    #     _set_node_objectives!(modelgraph,combined_model,reference_map,has_nonlinear_objective)  #Set objective on the combined model
+    #     _set_node_objectives!(optigraph,combined_model,reference_map,has_nonlinear_objective)  #Set objective on the combined model
     end
 
     #ADD LINK CONSTRAINTS
-    for linkconstraint in all_linkconstraints(modelgraph)
+    for linkconstraint in all_linkconstraints(optigraph)
         new_constraint = _copy_constraint(linkconstraint,reference_map)
         cref = JuMP.add_constraint(combined_model,new_constraint)
         reference_map.linkconstraintmap[linkconstraint] = cref
     end
 
     #TODO ADD NLLINKCONSSTRAINTS
-    # for nllinkconstraint in all_nl_linkconstraints(modelgraph)
+    # for nllinkconstraint in all_nl_linkconstraints(optigraph)
     # end
-    modelnode = OptiNode()
-    set_model(modelnode,combined_model)
-    return modelnode,reference_map
+    optinode = OptiNode()
+    set_model(optinode,combined_model)
+    return optinode,reference_map
 end
 
 const aggregate = combine
@@ -173,9 +173,9 @@ function combine(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     println("Creating Combined OptiGraph with a maximum subgraph depth of $max_depth")
 
     sg_dict = Dict()
-    root_modelgraph = OptiGraph()
-    reference_map = CombinedMap(root_modelgraph)  #old model graph => new modelgraph
-    sg_dict[graph] = root_modelgraph
+    root_optigraph = OptiGraph()
+    reference_map = CombinedMap(root_optigraph)  #old model graph => new optigraph
+    sg_dict[graph] = root_optigraph
 
     #iterate through depth until we get to last level.  last level is the leaf subgraphs that get converted to nodes
     depth = 0
@@ -202,7 +202,7 @@ function combine(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     for parent in parents
         name_idx = 1
         for leaf_subgraph in getsubgraphs(parent)
-            combined_node,combine_ref_map = combine(leaf_subgraph) #creates new modelnode
+            combined_node,combine_ref_map = combine(leaf_subgraph) #creates new optinode
             merge!(reference_map,combine_ref_map)
             new_parent = sg_dict[parent]
             add_node!(new_parent,combined_node)
@@ -220,7 +220,7 @@ function combine(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
 
         new_graph = sg_dict[graph]
 
-        #Add copy modelnodes
+        #Add copy optinodes
         for node in mnodes
             new_node,ref_map = copy(node)
             merge!(reference_map,ref_map)
@@ -230,15 +230,15 @@ function combine(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
         end
 
         #Add copy linkconstraints
-        for linkedge in ledges
-            for linkconstraint in getlinkconstraints(linkedge)
+        for optiedge in ledges
+            for linkconstraint in getlinkconstraints(optiedge)
                 new_con = _copy_constraint(linkconstraint,reference_map)
                 JuMP.add_constraint(new_graph,new_con)
             end
         end
     end
 
-    return root_modelgraph,reference_map
+    return root_optigraph,reference_map
 end
 
 #Modify graph by combining subgraphs
@@ -336,30 +336,30 @@ function _add_to_combined_model!(combined_model::JuMP.Model,node_model::JuMP.Mod
     return reference_map
 end
 
-#Creata new set of nodes on a modelgraph
+#Creata new set of nodes on a optigraph
 function _set_nodes(mg::OptiGraph,nodes::Vector{OptiNode})
-    mg.modelnodes = nodes
-    for (idx,node) in enumerate(mg.modelnodes)
+    mg.optinodes = nodes
+    for (idx,node) in enumerate(mg.optinodes)
         mg.node_idx_map[node] = idx
     end
     return nothing
 end
 
-#Create a new set of edges on a modelgraph
+#Create a new set of edges on a optigraph
 function _set_edges(mg::OptiGraph,edges::Vector{OptiEdge})
-    mg.linkedges = edges
+    mg.optiedges = edges
     link_idx = 0
-    for (idx,linkedge) in enumerate(mg.linkedges)
-        mg.edge_idx_map[linkedge] = idx
-        mg.linkedge_map[linkedge.nodes] = linkedge
+    for (idx,optiedge) in enumerate(mg.optiedges)
+        mg.edge_idx_map[optiedge] = idx
+        mg.optiedge_map[optiedge.nodes] = optiedge
     end
 end
 
 #Set combined model objective to sum of OptiGraph node objectives
-function _set_node_objectives!(modelgraph::OptiGraph,combined_model::JuMP.Model,reference_map::CombinedMap,has_nonlinear_objective::Bool)
+function _set_node_objectives!(optigraph::OptiGraph,combined_model::JuMP.Model,reference_map::CombinedMap,has_nonlinear_objective::Bool)
     if has_nonlinear_objective
         graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
-        for node in all_nodes(modelgraph)
+        for node in all_nodes(optigraph)
             node_model = getmodel(node)
             JuMP.objective_sense(node_model) == MOI.MIN_SENSE ? sense = 1 : sense = -1
             d = JuMP.NLPEvaluator(node_model)
@@ -377,28 +377,28 @@ function _set_node_objectives!(modelgraph::OptiGraph,combined_model::JuMP.Model,
     end
 end
 
-function _set_node_objectives!(modelgraph::OptiGraph)
+function _set_node_objectives!(optigraph::OptiGraph)
     #check for quadratic objectives
-    if any(isa.(objective_function.(all_nodes(modelgraph)),Ref(GenericQuadExpr)))
+    if any(isa.(objective_function.(all_nodes(optigraph)),Ref(GenericQuadExpr)))
         graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})
     else
         graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
     end
 
     #  #testing changing this to quadratic expression
-    for node in all_nodes(modelgraph)
+    for node in all_nodes(optigraph)
         sense = JuMP.objective_sense(node)
         s = sense == MOI.MAX_SENSE ? -1.0 : 1.0
         JuMP.add_to_expression!(graph_obj,s,JuMP.objective_function(node))
     end
 
-    JuMP.set_objective(modelgraph,MOI.MIN_SENSE,graph_obj)
+    JuMP.set_objective(optigraph,MOI.MIN_SENSE,graph_obj)
 end
 
 
 # #TODO
 # function combine!(graph::OptiGraph,max_depth::Int64)
-#     #similar to combine, but we don't make copies.  Subgraphs get swapped out for modelnodes
+#     #similar to combine, but we don't make copies.  Subgraphs get swapped out for optinodes
 #     println("Combining OptiGraph with a maximum subgraph depth of $max_depth")
 #
 #     #iterate through depth until we get to last level.  last level is the leaf subgraphs
@@ -417,12 +417,12 @@ end
 #         parents = subs_to_check
 #     end
 #
-#     reference_map = CombinedMap(graph)  #old model graph => new modelgraph
+#     reference_map = CombinedMap(graph)  #old model graph => new optigraph
 #
 #     #ADD THE BOTTOM LEVEL NODES from the corresponding subgraphs
 #     for parent in parents
 #         for (i,subgraph) in enumerate(getsubgraphs(parent))
-#             combined_node,combine_ref_map = combine(subgraph) #creates new modelnode
+#             combined_node,combine_ref_map = combine(subgraph) #creates new optinode
 #             merge!(reference_map,combine_ref_map)
 #             add_node!(parent,combined_node)
 #             #deleteat!(parent.subgraphs,i) #delete the old subgraph
@@ -446,11 +446,11 @@ end
 #     #     ledges = getedges(graph)
 #     #
 #     #     #Add copy linkconstraints
-#     #     for linkedge in ledges
-#     #         for (i,linkconstraint) in linkedge.linkconstraints
+#     #     for optiedge in ledges
+#     #         for (i,linkconstraint) in optiedge.linkconstraints
 #     #             new_con = _copy_constraint(linkconstraint,reference_map)
 #     #             JuMP.add_constraint(graph,new_con)
-#     #             pop!(linkedge.linkconstraints,i)  #remove the old link-constraint
+#     #             pop!(optiedge.linkconstraints,i)  #remove the old link-constraint
 #     #         end
 #     #     end
 #     # end

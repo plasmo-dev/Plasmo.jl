@@ -46,7 +46,7 @@ julia> using Plasmo
 For this example we also need to import the GLPK optimization solver and the Plots package which we use to visualize graph structure.
 ```julia
 julia> using GLPK
-julia> using Plots
+julia> using Plots; pyplot()
 ```
 !!! note
     We highlight that it is possible to use any solver that works with JuMP. By default, when using a standard optimization solver available through JuMP, Plasmo.jl will aggregate
@@ -69,6 +69,10 @@ local subgraphs: 0, total subgraphs 0
     between local and total is used to describe hierarchical graph structures which are introduced in [Hierarchical Modeling](@ref).
 
 ### Add OptiNodes
+An `OptiGraph` consists of `OptiNodes` which contain stand-alone optimization models. An `OptiNode` extends a `JuMP.AbstractModel` (and also a wraps a `JuMP.Model`) and supports the same
+macros to create variables, constraints, and add objective functions (using `@variable`, `@constraint`, and `@objective`).  To add optinodes
+to a graph, one can simply use the `@optinode` macro as shown in the following code snippet. For this example, we create the `OptiNode` `n1`, we create two variables `x` and `y`, and add
+a single constraint and an objective function.
 
 ```jldocest quickstart_example
 julia> @optinode(graph,n1)
@@ -118,6 +122,7 @@ DocTestSetup = nothing
 end
 ```
 
+We can create more `OptiNodes` and add variables, constraints, and objective functions to each node in the graph.
 ```julia
 julia> @optinode(graph,n2);
 julia> @variable(n2, y >= 0);
@@ -145,6 +150,9 @@ DocTestSetup = nothing
 ```
 
 ### Create LinkConstraints (OptiEdges)
+Linking constraints can be used to couple variables between optinodes.  Beneath the modeling surface, creating a linking constraint induces an
+`OptiEdge` in the `OptiGraph` which describes its connectivity.  Linking constraints are created using the `@linkconstraint` macro which takes the exact same
+input as the `JuMP.@constraint` macro.  The following code creates a linking constraint between variables on the three optinodes.
 
 ```jldoctest quickstart_example_2
 julia> @linkconstraint(graph, n1[:x] + n2[:x] + n3[:x] == 3)
@@ -157,14 +165,23 @@ local link constraints: 1, total link constraints 1
 local subgraphs: 0, total subgraphs 0
 ```
 
+!!! note
+    Nonlinear linking constraints are not yet supported
+
 ### Solve and Query Solution
+
+When using a JuMP/MOI enabled optimization solver, we can optimize an `OptiGraph` using the `optimize!` function extended from JuMP.  
+As mentioned earlier, Plasmo.jl aggregates the graph into a single model (an optinode), hands off the problem to JuMP and the chosen solver, and then
+populates the `OptiGraph` solution.
 ```jldoctest quickstart_example_2
 julia> optimize!(graph,GLPK.Optimizer)
 Converting OptiGraph to OptiNode...
 Optimizing OptiNode
 Found Solution
 ```
-Now we can query the solution
+
+After finding a solution, we can query it using `value(::OptiNode,::VariableRef)` extended from JuMP.   We can also query the
+objective value of the graph using `objective_value(::OptiGraph)`
 ```jldoctest quickstart_example_2
 julia> value(n1,n1[:x])    
 1.0
@@ -177,12 +194,17 @@ julia> value(n3,n3[:x])
 
 julia> objective_value(graph)
 6.0
-```      
+```     
+
+!!! note
+    Plasmo.jl assumes the objective function of each optinode is added by default.  The objective function for an optigraph can be changed using the `@objective` macro
+    on the optigraph itself.
 
 ### Visualize the Structure
+
 ```@setup plot_example
     using Plasmo
-    using Plots
+    using Plots; pyplot()
 
     graph = OptiGraph()
     @optinode(graph,n1)
@@ -206,18 +228,27 @@ julia> objective_value(graph)
     @linkconstraint(graph, n1[:x] + n2[:x] + n3[:x] == 3);
 ```
 
-Graph topology
+Lastly, it is often useful to be able to visualize the structure of an `OptiGraph` object.  Doing such a visualization can lead to physical insights about an optimization problem (such as space-time dependencies), but
+it is also helpful just to see the connectivity of the problem.  Plasmo.jl uses [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [NetworkLayout.jl](https://github.com/JuliaGraphs/NetworkLayout.jl) to visualize the
+layout of an `OptiGraph`.  The code here shows how to obtain the graph topology using `Plots.plot(::OptiGraph)`
+and we plot the underlying adjacency matrix structure using `Plots.spy` function. Both of these functions can accept keyword arguments to customize their layout or appearance.
+The matrix visualization also encodes information on the number of variables and constraints in each node and edge. The left figure shows a standard graph visualization where we draw an edge between each pair of nodes if they share an edge, and the rightfigure shows the matrix representation where labeled blocks correspond to nodes and blue marks represent linking constraints that connect their variables. The node layout helps visualize the overall connectivity of the graph while the matrix layout helps visualize the size of nodes and edges.
+
 
 ```@repl plot_example
-plt_graph = Plots.plot(graph,node_labels = true, markersize = 60,labelsize = 30, linewidth = 4,layout_options = Dict(:tol => 0.01,:iterations => 2));
+plt_graph = Plots.plot(graph,node_labels = true, markersize = 30,labelsize = 15, linewidth = 4,layout_options = Dict(:tol => 0.01,:iterations => 2),plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (400,400),:axis => nothing));
 
 Plots.savefig(plt_graph,"graph_layout.svg");
-```
-![](graph_layout.svg)
 
-Graph adjacency
-```@repl plot_example
-plt_matrix = Plots.spy(graph1,node_labels = true,markersize = 30);   
+plt_matrix = Plots.spy(graph,node_labels = true,markersize = 15);   
+
+Plots.savefig(plt_matrix,"matrix_layout.svg");
+```
+```@raw html
+<img src="graph_layout.svg" alt="matrix" width="400"/>
+```
+```@raw html
+<img src="matrix_layout.svg" alt="matrix" width="400"/>
 ```
 
 ## Contents
@@ -231,6 +262,8 @@ Pages = [
     ]
 Depth = 2
 ```
+
+## Future Development 
 
 ## Index
 

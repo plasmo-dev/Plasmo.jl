@@ -26,13 +26,13 @@ end
 
 struct LinkConstraintRef <: AbstractLinkConstraintRef
     idx::Int                        # index in `model.linkconstraints`
-    linkedge::OptiEdge
+    optiedge::OptiEdge
 end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
 getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]  #TODO: Check uniqueness.  It should be unique now that JuMP uses an OrderedDict to store terms.
-getnodes(cref::LinkConstraintRef) = getnodes(cref.linkedge)
+getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge)
 getnumnodes(con::LinkConstraint) = length(getnodes(con))
-JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.linkedge.linkconstraints[linkref.idx]
+JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstraints[linkref.idx]
 
 OptiEdge() = OptiEdge(OrderedSet{OptiNode}(),
                 Dict{LinkConstraint,Float64}(),

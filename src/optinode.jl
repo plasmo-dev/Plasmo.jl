@@ -43,7 +43,7 @@ function OptiNode()
      Dict{MOI.ConstraintIndex,Float64}(),
      Dict{JuMP.NonlinearConstraintIndex,Float64}(),
      Dict{Symbol,Any}())
-     node.model.ext[:modelnode] = node
+     node.model.ext[:optinode] = node
      return node
 end
 
@@ -89,7 +89,7 @@ Set the model on a node.  This will delete any link-constraints the node is curr
 function set_model(node::OptiNode,m::JuMP.AbstractModel;preserve_links = false)
     !(is_set_to_node(m) && getmodel(node) == m) || error("Model $m is already asigned to another node")
     node.model = m
-    m.ext[:modelnode] = node
+    m.ext[:optinode] = node
 
     #setup node references to model objects
     # for var in JuMP.all_variables(m)
@@ -103,8 +103,8 @@ is_node_variable(node::OptiNode,var::AbstractJuMPScalar)
 Check whether a JuMP variable belongs to a OptiNode
 """
 is_node_variable(node::OptiNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
-is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext[:modelnode])
-is_set_to_node(m::AbstractModel) = haskey(m.ext,:modelnode)                      #checks whether a model is assigned to a node
+is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext[:optinode])
+is_set_to_node(m::AbstractModel) = haskey(m.ext,:optinode)                      #checks whether a model is assigned to a node
 
 #############################################
 # JuMP Extension
@@ -179,8 +179,8 @@ JuMP.num_variables(node::OptiNode) = JuMP.num_variables(getmodel(node))
 JuMP.set_optimizer(node::OptiNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
 JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(getmodel(node))
 
-function JuMP.set_objective(modelnode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
-    JuMP.set_objective(getmodel(modelnode),sense,func)
+function JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
+    JuMP.set_objective(getmodel(optinode),sense,func)
 end
 
 JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node))
@@ -189,28 +189,28 @@ JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node)
 ##############################################
 # Get OptiNode
 ##############################################
-getnode(m::JuMP.Model) = m.ext[:modelnode]
+getnode(m::JuMP.Model) = m.ext[:optinode]
 
 #Get the corresponding node for a JuMP variable reference
 function getnode(var::JuMP.VariableRef)
-    if haskey(var.model.ext,:modelnode)
+    if haskey(var.model.ext,:optinode)
         return getnode(var.model)
     else
-        error("variable $var does not belong to a modelnode.  If you're trying to create a linkconstraint, make sure
+        error("variable $var does not belong to a optinode.  If you're trying to create a linkconstraint, make sure
         the owning model has been set to a node.")
     end
 end
 
 function getnode(con::JuMP.ConstraintRef)
-    if haskey(con.model.ext,:modelnode)
+    if haskey(con.model.ext,:optinode)
         return getnode(con.model)
     else
         error("constraint $con does not belong to a node")
     end
 end
 
-getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:modelnode] : throw(error("Only node models have associated graph nodes"))
-getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:modelnode]
+getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:optinode] : throw(error("Only node models have associated graph nodes"))
+getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:optinode]
 
 ###############################################
 # Printing

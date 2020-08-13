@@ -72,12 +72,12 @@ function expand(mg::OptiGraph,subgraph::OptiGraph,distance::Int64)
     new_nodes = neighborhood(hypergraph,hypernodes,distance)
     new_edges =  induced_edges(hypergraph,new_nodes)
 
-    new_modelnodes = [hyper_map[node] for node in new_nodes]
-    new_linkedges = [hyper_map[edge] for edge in new_edges]
+    new_optinodes = [hyper_map[node] for node in new_nodes]
+    new_optiedges = [hyper_map[edge] for edge in new_edges]
 
     new_subgraph = OptiGraph()
-    new_subgraph.modelnodes = new_modelnodes
-    new_subgraph.linkedges = new_linkedges
+    new_subgraph.optinodes = new_optinodes
+    new_subgraph.optiedges = new_optiedges
 
     return new_subgraph
 end
@@ -85,7 +85,7 @@ end
 function LightGraphs.induced_subgraph(mg::OptiGraph,nodes::Vector{OptiGraph})
     edges = OptiGraphs.induced_edges(mg,nodes)
     subgraph = OptiGraph()
-    subgraph.modelnodes = nodes
-    subgraph.linkedges = edges
+    subgraph.optinodes = nodes
+    subgraph.optiedges = edges
     return subgraph
 end
