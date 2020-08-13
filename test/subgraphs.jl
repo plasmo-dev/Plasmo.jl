@@ -31,7 +31,7 @@ end
 
 @test num_nodes(graph) == 1
 @test length(all_nodes(graph)) == 11
-@test num_linkedges(graph) == 2
-@test num_all_linkedges(graph) == 4
+@test num_optiedges(graph) == 2
+@test num_all_optiedges(graph) == 4
 
 true

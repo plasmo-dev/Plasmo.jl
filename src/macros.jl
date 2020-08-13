@@ -9,7 +9,7 @@ Add a new optinode to `optigraph`. The expression `expr` can either be
 * of the form `varname[...]` or `[...]` creating a container of optinodes using JuMP Containers
 
 """
-macro optinode(graph,expr...)
+macro optinode(graph,args...)
      _error(str...) = JuMP._macro_error(:node, args, str...)
 
     #@assert isa(esc(graph),ModelGraph)

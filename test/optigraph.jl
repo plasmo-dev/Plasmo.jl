@@ -17,7 +17,7 @@ end
 @linkconstraint(graph,sum(nodes[i][:x] for i = 1:5) == 5)
 
 @test num_nodes(graph) == 15
-@test num_linkedges(graph) == 2
+@test num_optiedges(graph) == 2
 @test num_linkconstraints(graph) == 2
 
 true

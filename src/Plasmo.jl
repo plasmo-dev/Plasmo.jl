@@ -56,12 +56,12 @@ optimize!,
 # OptiGraph checks
 has_objective,has_NLobjective, has_NLlinkconstraints, has_subgraphs, has_model,
 
-num_linkconstraints, num_linkedges, num_nodes,
+num_linkconstraints, num_optiedges, num_nodes,
 
-num_all_linkedges, num_all_variables, num_all_constraints, num_all_linkconstraints,
+num_all_optiedges, num_all_variables, num_all_constraints, num_all_linkconstraints,
 
 # OptiGraph getters
-getlinkedge, getlinkedges, getmodel,
+getoptiedge, getoptiedges, getmodel,
 
 incidence_matrix, getlinkconstraints, getattribute,
 
