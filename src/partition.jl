@@ -3,6 +3,19 @@
 abstract type AbstractPartition end
 ###########################################################################################################
 #Note that a Partition can contain subpartitions recursively
+"""
+    Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
+
+Create a partition of optinodes using `hypergraph`, `node_membership_vector`, and 'ref_map'.  The 'ref_map' is a dictionary that maps hypernode indices (integers) and hyperedge indices (tuples) back to optinodes and optiedges.
+
+    Partition(optigraph::OptiGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
+
+Create a partition using `optigraph`, `node_membership_vector`, and 'ref_map'. The `ref_map` is a mapping of node_indices to the original optinodes.
+
+    Partition(optigraph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
+
+Manually create a partition using `optigraph` and a vector of vectors containing sets of optinodes that represent each partition.
+"""
 mutable struct Partition <: AbstractPartition
     optinodes::Vector{OptiNode}   #hypernodes at this level
     optiedges::Vector{OptiEdge}   #hyperedges at his level
@@ -48,8 +61,6 @@ function Partition(mg::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
     return partition
 end
 
-
-
 getnodes(partition::Partition) = partition.optinodes
 getedges(partition::Partition) = partition.optiedges
 getparent(partition::Partition) = partition.parent
@@ -73,6 +84,11 @@ function n_subpartitions(partition::Partition)
 end
 
 #Turn graph into subgraph-based structure
+"""
+    make_subgraphs!(optigraph::OptiGraph,partition::Partition)
+
+Create subgraphs in `optigraph` using a produced 'partition'.
+"""
 function make_subgraphs!(graph::OptiGraph,partition::Partition)
     root = partition
     graph.subgraphs = OptiGraph[]

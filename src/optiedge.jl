@@ -1,3 +1,16 @@
+"""
+    LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
+
+Type inherits JuMP.AbstractConstraint.  Contains a func and set used to describe coupling between optinodes.
+
+    LinkConstraint(con::JuMP.ScalarConstraint)
+
+Creates a linking constraint from a JuMP.ScalarConstraint.
+
+    LinkConstraint(ref::LinkConstraintRef)
+
+Retrieves a linking constraint from a LinkConstraintRef.
+"""
 struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
     func::F
     set::S
@@ -51,7 +64,6 @@ OptiEdge(nodes::Vector{OptiNode}) = OptiEdge(OrderedSet(nodes),
 
 num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
 getlinkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
-
 
 
 function string(edge::OptiEdge)

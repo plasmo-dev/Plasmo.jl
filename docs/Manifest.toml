@@ -296,7 +296,7 @@ uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[Plasmo]]
 deps = ["ColorTypes", "Colors", "DataStructures", "Distributed", "GeometryTypes", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "NetworkLayout", "Reexport", "Requires", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "790c296d2ab0726f2842c289e7dabec704f50b92"
+git-tree-sha1 = "50258d4f2bf05961a83d7c91ce896beb88b5cf7f"
 repo-rev = "master"
 repo-url = "/home/jordan/.julia/dev/Plasmo"
 uuid = "d3f7391f-f14a-50cc-bbe4-76a32d1bad3c"

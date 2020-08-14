@@ -1,7 +1,6 @@
 ##############################################################################
-# Model Nodes
+# OptiNode
 ##############################################################################
-
 mutable struct OptiNode <: JuMP.AbstractModel
     #The model
     model::JuMP.AbstractModel
@@ -23,7 +22,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
 end
 
 #############################################
-# Add Model Nodes
+# Add OptiNodes
 ############################################
 """
     OptiNode()
@@ -55,7 +54,6 @@ end
 Get the variable value of `vref` on the optinode `node`.
 """
 JuMP.value(node::OptiNode,vref::VariableRef) = node.variable_values[vref]
-#nodevalue(vref::VariableRef) = vref.node.variable_values[vref]
 getmodel(node::OptiNode) = node.model
 getnodevariable(node::OptiNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 

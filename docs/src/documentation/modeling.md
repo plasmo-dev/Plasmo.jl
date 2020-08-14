@@ -23,7 +23,7 @@ local subgraphs: 0, total subgraphs 0
 ```@meta
 DocTestSetup = nothing
 ```
-An `OptiGraph` optimizer can be specified in the same way as in JuMP using [set_optimizer](@ref).  An optimizer can be any
+An `OptiGraph` optimizer can be specified in the same way as in JuMP using [`JuMP.set_optimizer`](@ref).  An optimizer can be any
 JuMP compatible solver or a custom developed Plasmo.jl solver interface (see the [Solvers](@ref) section).  
 For example, we could construct an `OptiGraph` that uses the `Ipopt.Opimizer` from the Ipopt package as following:
 
@@ -34,12 +34,12 @@ set_optimizer(graph1,Ipopt.Optimizer)
 ```
 
 ## Adding OptiNodes
-The most effective way to add `OptiNode`s to an `OptiGraph` is by using the [@optinode](@ref) macro.  The below piece of code adds the node `n1` to
+The most effective way to add `OptiNode`s to an `OptiGraph` is by using the [`@optinode`](@ref) macro.  The below piece of code adds the node `n1` to
 ```jldoctest modeling
 julia> @optinode(graph1,n1)
 OptiNode w/ 0 Variable(s)
 ```
-It is also possible to create sets of optinodes with a single call to [@optinode](@ref) like shown in the below code snippet.
+It is also possible to create sets of optinodes with a single call to [`@optinode`](@ref) like shown in the below code snippet.
 Here, we create two more optinodes which we refer to with the reference `nodes`. This input produces a `JuMP.DenseAxisArray` which
 allows us to refer to each optinode using the produced index sets.  For example, `nodes[2]` and `nodes[3]` each return the corresponding
 optinode.
@@ -81,7 +81,7 @@ y
 
 ## Adding LinkConstraints (OptiEdges)
 
-Linking constraints ([LinkConstraint](@ref)s are linear constraints that couple variables across different optinodes.  The simplest way to create a linking constraint
+Linking constraints ([`LinkConstraint`](@ref)s are linear constraints that couple variables across different optinodes.  The simplest way to create a linking constraint
 is to use the `@linkconstraint` macro.  This macro accepts the same input as the JuMP `@constraint` macro and creates linear constraints over multiple nodes within the same optigraph.
 
 ```jldoctest modeling
@@ -263,21 +263,27 @@ We refer to the [JuMP Documentation](https://jump.dev/JuMP.jl/stable/) which des
 
 ### OptiGraph Methods
 ```@docs
-Plasmo.OptiGraph
-Plasmo.@optinode
-Plasmo.OptiNode
-Plasmo.getnode
-Plasmo.getnodes
+OptiGraph
+@optinode
+OptiNode
+add_node!
+getnode
+getnodes
+find_node
+is_node_variable
 Base.getindex(::OptiGraph,::OptiNode)
 Base.getindex(::OptiGraph,::OptiEdge)
-Plasmo.all_nodes
-Plasmo.getedges
-Plasmo.all_edges
-Plasmo.getlinkconstraints
-Plasmo.all_linkconstraints
-Plasmo.add_subgraph!
-Plasmo.getsubgraphs
-Plasmo.all_subgraphs
+all_nodes
+set_model
+@linkconstraint
+getedge
+getedges
+all_edges
+getlinkconstraints
+all_linkconstraints
+add_subgraph!
+getsubgraphs
+all_subgraphs
 ```
 
 ### Extended JuMP Methods
@@ -285,4 +291,7 @@ Plasmo.all_subgraphs
 JuMP.all_variables(::OptiNode)
 JuMP.set_optimizer(::OptiGraph,::Any)
 JuMP.objective_function(::OptiGraph)
+JuMP.value(::OptiNode,::VariableRef)
+JuMP.num_variables(::OptiGraph)
+JuMP.num_constraints(::OptiGraph)
 ```
