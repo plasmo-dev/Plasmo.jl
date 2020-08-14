@@ -1,13 +1,7 @@
 ##############################################################################
 # Model Nodes
 ##############################################################################
-"""
-The OptiNode type
 
-OptiNode()
-
-Creates an empty OptiNode.  Does not add it to a graph.
-"""
 mutable struct OptiNode <: JuMP.AbstractModel
     #The model
     model::JuMP.AbstractModel
@@ -31,6 +25,11 @@ end
 #############################################
 # Add Model Nodes
 ############################################
+"""
+    OptiNode()
+
+Creates an empty OptiNode.  Does not add it to a graph.
+"""
 function OptiNode()
      node = OptiNode(JuMP.Model(),
      0,
@@ -50,13 +49,22 @@ end
 #############################################
 # OptiNode Management
 ############################################
-#Get the underlying JuMP Model on a node
+"""
+    JuMP.value(node::OptiNode,vref::VariableRef)
+
+Get the variable value of `vref` on the optinode `node`.
+"""
 JuMP.value(node::OptiNode,vref::VariableRef) = node.variable_values[vref]
 #nodevalue(vref::VariableRef) = vref.node.variable_values[vref]
 getmodel(node::OptiNode) = node.model
 getnodevariable(node::OptiNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
+
+"""
+    JuMP.all_variables(node::OptiNode)::Vector{JuMP.VariableRef}
+
+Retrieve all of the variables on the optinode `node`.
+"""
 JuMP.all_variables(node::OptiNode) = JuMP.all_variables(getmodel(node))
-#getlinkvariable(var::JuMP.VariableRef) = getnode(var).parent_linkvariable_map[var].vref
 
 setattribute(node::OptiNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
 getattribute(node::OptiNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
@@ -82,7 +90,7 @@ nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con]
 
 """
-set_model(node::OptiNode,m::AbstractModel)
+    set_model(node::OptiNode,m::AbstractModel)
 
 Set the model on a node.  This will delete any link-constraints the node is currently part of
 """
@@ -98,11 +106,11 @@ function set_model(node::OptiNode,m::JuMP.AbstractModel;preserve_links = false)
 end
 @deprecate setmodel set_model
 """
-is_node_variable(node::OptiNode,var::AbstractJuMPScalar)
+    is_node_variable(node::OptiNode,var::JuMP.AbstractVariableRef)
 
-Check whether a JuMP variable belongs to a OptiNode
+Checks whether the variable `var` belongs to the optinode `node`.
 """
-is_node_variable(node::OptiNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m   #checks whether a variable belongs to a node or edge
+is_node_variable(node::OptiNode,var::JuMP.AbstractVariableRef) = getmodel(node) == var.m
 is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext[:optinode])
 is_set_to_node(m::AbstractModel) = haskey(m.ext,:optinode)                      #checks whether a model is assigned to a node
 

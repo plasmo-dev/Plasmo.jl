@@ -493,6 +493,9 @@ MOI.is_valid(graph::OptiGraph, cref::LinkConstraintRef) = cref.idx in keys(graph
 # Optimizer
 #################################
 """
+    JuMP.set_optimizer(graph::OptiGraph,optimizer::Any)
+
+Set an optimizer for the optigraph `graph`.
 """
 JuMP.set_optimizer(graph::OptiGraph,optimizer) = graph.optimizer = optimizer
 

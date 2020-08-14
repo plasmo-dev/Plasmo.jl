@@ -275,6 +275,7 @@ Plasmo.getedges
 Plasmo.all_edges
 Plasmo.getlinkconstraints
 Plasmo.all_linkconstraints
+Plasmo.add_subgraph!
 Plasmo.getsubgraphs
 Plasmo.all_subgraphs
 ```
