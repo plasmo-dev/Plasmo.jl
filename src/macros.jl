@@ -83,7 +83,12 @@ macro linkconstraint(graph,args...)
     return esc(code)
 end
 
-#Wrap NLconstraint because NLconstraint extensions don't really work yet.  Easy to deprecate later.
+"""
+    @NLnodeconstraint(node,args...)
+
+Add a nonlinear constraint to an optinode.  Wraps JuMP.@NLconstraint.  This method will deprecate once optinodes
+extend nonlinear JuMP functionality.
+"""
 macro NLnodeconstraint(node,args...)
     code = quote
         @assert isa($node,OptiNode)  #Check the inputs are the correct types.  This needs to throw

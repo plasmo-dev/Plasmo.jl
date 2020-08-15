@@ -174,7 +174,7 @@ function Plots.spy(graph::OptiGraph;node_labels = false,labelsize = 24,subgraph_
     end
     Plots.scatter!(plt,link_cols,link_rows,markersize = markersize,markercolor = :blue,markershape = :rect);
 
-    if length(graph.modelnodes) > 0
+    if length(graph.optinodes) > 0
         row -= 1
     end
 
@@ -213,8 +213,8 @@ function _plot_subgraphs!(graph::OptiGraph,plt,node_col_ranges,row_start_graph;n
         end
         Plots.scatter!(plt,link_cols,link_rows,markersize = markersize,markercolor = :blue,markershape = :rect);
 
-        if !(isempty(subgraph.modelnodes))
-            subgraph_col_start = node_col_ranges[subgraph.modelnodes[1]][1]
+        if !(isempty(subgraph.optinodes))
+            subgraph_col_start = node_col_ranges[subgraph.optinodes[1]][1]
         else
             subgraph_col_start = 0
         end

@@ -1,6 +1,18 @@
 # Modeling
-In Plasmo.jl, the primary modeling object is called an `OptiGraph`. The `OptiGraph` extends the `JuMP.AbstractModel` abstract type to facilitate a modular graph-based modeling style.
-An `OptiGraph` is composed of `OptiNodes` (which also extend the `JuMP.AbstractModel`) which represent modular optimization problems that are connected by `OptiEdges` which encapsulate `LinkConstraints`.
+In Plasmo.jl, the primary modeling object is called an [`OptiGraph`](@ref). The `OptiGraph` extends the `JuMP.AbstractModel` type from `JuMP` and permits a graph-based modeling style (where a graph is a
+collection of nodes connected by edges). This graph-based approach uses ideas such as modularity and hierarchical modeling to express complex optimization problems and to reveal inherent structures that lend themselves to
+graph analysis tasks such as partitioning. The `OptiGraph` represents the following optimization problem.
+
+```math
+\begin{aligned}
+    \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} & \quad \sum_{n \in \mathcal{N(\mathcal{G})}} f_n(x_n) \quad & (\textrm{Objective}) \\
+    \textrm{s.t.} & \quad x_n \in \mathcal{X}_n,      \quad n \in \mathcal{N(\mathcal{G})}, \quad & (\textrm{Node Constraints})\\
+    & \quad g_e(\{x_n\}_{n \in \mathcal{N}(e)}) = 0,  \quad e \in \mathcal{E(\mathcal{G})}. &(\textrm{Link Constraints})
+\end{aligned}
+```
+
+An `OptiGraph` is composed of `OptiNodes` (which also extend the `JuMP.AbstractModel`) which represent modular optimization problems. `OptiNodes` are connected by `OptiEdges` which encapsulate `LinkConstraints` (i.e. linking
+constraints that couple optinodes).
 
 ## Creating an OptiGraph
 An `OptiGraph` does not require any arguments to construct:
@@ -34,7 +46,9 @@ set_optimizer(graph1,Ipopt.Optimizer)
 ```
 
 ## Adding OptiNodes
-The most effective way to add `OptiNode`s to an `OptiGraph` is by using the [`@optinode`](@ref) macro.  The below piece of code adds the node `n1` to
+The most effective way to add optinodes to an optigraph is by using the [`@optinode`](@ref) macro.  The below piece of code adds the node `n1` to
+the optigraph `graph1`.
+
 ```jldoctest modeling
 julia> @optinode(graph1,n1)
 OptiNode w/ 0 Variable(s)
@@ -68,6 +82,11 @@ julia>  for node in getnodes(graph1)
             @objective(node, Min, y)
         end
 ```
+
+!! note
+
+     The [`OptiNode`](@ref) extends `JuMP.AbstractModel` and supports most of the same JuMP macros. However, extending nonlinear functionality in JuMP is not yet supported, and so
+     one must use [`@NLnodeconstraint`](@ref) as opposed `@NLconstraint` to create nonlinear constraints on an optinode.
 
 Variables within an optinode can be accessed directly by indexing the associated symbol.  This enclosed variable space is useful for
 referencing variables on different optinodes when creating linking constraints or optigraph objective functions.
@@ -275,6 +294,7 @@ Base.getindex(::OptiGraph,::OptiNode)
 Base.getindex(::OptiGraph,::OptiEdge)
 all_nodes
 set_model
+@NLnodeconstraint
 @linkconstraint
 getedge
 getedges

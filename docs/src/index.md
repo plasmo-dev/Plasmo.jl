@@ -256,14 +256,14 @@ Plots.savefig(plt_matrix,"matrix_layout.svg");
 ```@contents
 Pages = [
     "documentation/modeling.md"
-    "documentation/solvers/partitioning.md"
-    "documentation/solvers/solvers.md"
-    "documentation/solvers/plotting.md"
+    "documentation/partitioning.md"
+    "documentation/solvers.md"
+    "documentation/plotting.md"
     ]
 Depth = 2
 ```
 
-## Future Development 
+## Future Development
 
 ## Index
 
