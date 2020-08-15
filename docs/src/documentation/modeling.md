@@ -1,8 +1,9 @@
 # Modeling
-In Plasmo.jl, the primary modeling object is called an [`OptiGraph`](@ref). The `OptiGraph` extends the `JuMP.AbstractModel` type from `JuMP` and permits a graph-based modeling style (where a graph is a
-collection of nodes connected by edges). This graph-based approach uses ideas such as modularity and hierarchical modeling to express complex optimization problems and to reveal inherent structures that lend themselves to
-graph analysis tasks such as partitioning. The `OptiGraph` represents the following optimization problem.
+In Plasmo.jl, the primary modeling object is called an [`OptiGraph`](@ref). The `OptiGraph` extends the `JuMP.AbstractModel` type from `JuMP` to permit a graph-based modeling style (where a graph is a
+collection of nodes connected by edges). We specfically say an `OptiGraph` is composed of `OptiNodes` (which also extend the `JuMP.AbstractModel`) which represent modular optimization problems that are connected by `OptiEdges` which encapsulate `LinkConstraints` (i.e. linking constraints that couple optinodes).
 
+A key idea behind this graph-based approach is that it works at a higher level of abstraction than `JuMP` and uses ideas such as modularity and hierarchical modeling to express complex optimization problems,
+and to reveal inherent structures that lend themselves to graph processing tasks such as partitioning. The `OptiGraph` ultimately describes the following mathematical optimization problem:
 ```math
 \begin{aligned}
     \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} & \quad \sum_{n \in \mathcal{N(\mathcal{G})}} f_n(x_n) \quad & (\textrm{Objective}) \\
@@ -10,9 +11,12 @@ graph analysis tasks such as partitioning. The `OptiGraph` represents the follow
     & \quad g_e(\{x_n\}_{n \in \mathcal{N}(e)}) = 0,  \quad e \in \mathcal{E(\mathcal{G})}. &(\textrm{Link Constraints})
 \end{aligned}
 ```
-
-An `OptiGraph` is composed of `OptiNodes` (which also extend the `JuMP.AbstractModel`) which represent modular optimization problems. `OptiNodes` are connected by `OptiEdges` which encapsulate `LinkConstraints` (i.e. linking
-constraints that couple optinodes).
+In this formulation, ``\mathcal{G}`` represents the optigraph, ``{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}`` describes a collection of decision
+variables over the set of nodes (optinodes) ``\mathcal{N}(\mathcal{G})``, and ``x_n`` is the set of
+decision variables on node ``n``. The objective function for the optigraph ``\mathcal{G}`` is given by a linear combination of objective functions on each optinode ``f_n(x_n)``, but other formulations are possible.
+The second equation represents constraints on each optinode ``\mathcal{N}(\mathcal{G})``, and the third equation represents the collection of
+linking constraints which induce optiedges ``\mathcal{E}(\mathcal{G})``. The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints induced by an
+edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})`` (an optiedge can contain multiple linking constraints).
 
 ## Creating an OptiGraph
 An `OptiGraph` does not require any arguments to construct:
@@ -35,9 +39,9 @@ local subgraphs: 0, total subgraphs 0
 ```@meta
 DocTestSetup = nothing
 ```
-An `OptiGraph` optimizer can be specified in the same way as in JuMP using [`JuMP.set_optimizer`](@ref).  An optimizer can be any
-JuMP compatible solver or a custom developed Plasmo.jl solver interface (see the [Solvers](@ref) section).  
-For example, we could construct an `OptiGraph` that uses the `Ipopt.Opimizer` from the Ipopt package as following:
+An optigraph optimizer can also be specified using [`JuMP.set_optimizer`](@ref) where an optimizer can be any
+JuMP compatible solver or a custom developed Plasmo.jl solver (see the [Solvers](@ref) section).  
+For example, we could construct an optigraph that uses the `Ipopt.Optimizer` from the Ipopt package like following:
 
 ```julia
 julia> using Ipopt
@@ -54,7 +58,7 @@ julia> @optinode(graph1,n1)
 OptiNode w/ 0 Variable(s)
 ```
 It is also possible to create sets of optinodes with a single call to [`@optinode`](@ref) like shown in the below code snippet.
-Here, we create two more optinodes which we refer to with the reference `nodes`. This input produces a `JuMP.DenseAxisArray` which
+Here, we create two more optinodes which returns the reference `nodes`. This input produces a `JuMP.DenseAxisArray` which
 allows us to refer to each optinode using the produced index sets.  For example, `nodes[2]` and `nodes[3]` each return the corresponding
 optinode.
 
@@ -97,15 +101,49 @@ x
 julia> nodes[2][:y]
 y
 ```
-
 ## Adding LinkConstraints (OptiEdges)
 
-Linking constraints ([`LinkConstraint`](@ref)s are linear constraints that couple variables across different optinodes.  The simplest way to create a linking constraint
+Linking constraints ([`LinkConstraint`](@ref)s) are linear constraints that couple variables across different optinodes.  The simplest way to create a linking constraint
 is to use the `@linkconstraint` macro.  This macro accepts the same input as the JuMP `@constraint` macro and creates linear constraints over multiple nodes within the same optigraph.
 
 ```jldoctest modeling
 julia> @linkconstraint(graph1, n1[:x] + nodes[2][:x] + nodes[3][:x] == 3)
 LinkConstraintRef(1, OptiEdge w/ 1 Constraint(s))
+```
+We can also plot the graph structure of `graph1` (see [Plotting](@ref)) using both a graph and matrix layouts.
+
+```@setup plot_example1
+    using Plasmo
+    graph1 = OptiGraph()
+    @optinode(graph1,n1)
+    @optinode(graph1,nodes[2:3])
+
+    for node in getnodes(graph1)
+        @variable(node,x >= 0)
+        @variable(node, y >= 2)
+        @constraint(node,x + y >= 3)
+        @objective(node, Min, y)
+    end
+
+    @linkconstraint(graph1, n1[:x] + nodes[2][:x] + nodes[3][:x] == 3)
+```
+
+```@repl plot_example1
+using Plots
+
+plt_graph = Plots.plot(graph1,node_labels = true, markersize = 30,labelsize = 15, linewidth = 4,layout_options = Dict(:tol => 0.01,:iterations => 2),plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (400,400),:axis => nothing));
+
+Plots.savefig(plt_graph,"graph1_layout.svg");
+
+plt_matrix = Plots.spy(graph1,node_labels = true,markersize = 15);   
+
+Plots.savefig(plt_matrix,"matrix1_layout.svg");
+```
+```@raw html
+<img src="graph1_layout.svg" alt="graph1" width="400"/>
+```
+```@raw html
+<img src="matrix1_layout.svg" alt="matrix1" width="400"/>
 ```
 
 ## Hierarchical Modeling
@@ -143,7 +181,7 @@ julia>  for node in getnodes(graph3)
 julia> @linkconstraint(graph3, nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] == 7);
 ```
 
-Now we have three optigraphs (`graph1`,`graph2`, and `graph3`), each with their own local optinodes and linking constraints (and optiedges).  
+Now we have three optigraphs (`graph1`,`graph2`, and `graph3`), each with their own local optinodes and linking constraints (which induce optiedges).  
 These optigraphs can be embedded into a higher level optigraph with the following snippet:
 
 ```jldoctest modeling
@@ -194,7 +232,81 @@ facilitates the construction of optimization problems that include diverse model
 natural gas system and they could be coupled in a higher level combined optigraph.  The hierarchical structure also enables the use of distributed optimization solvers which
 we discuss more in the [Solvers](@ref) section.
 
-## OptiGraph Attributes
+We can lastly plot the hierarchical optigraph and see the nested subgraph structure.
+
+```@setup plot_example2
+    using Plasmo
+    graph1 = OptiGraph()
+    @optinode(graph1,n1)
+    @optinode(graph1,nodes[2:3])
+
+    for node in getnodes(graph1)
+        @variable(node,x >= 0)
+        @variable(node, y >= 2)
+        @constraint(node,x + y >= 3)
+        @objective(node, Min, y)
+    end
+
+    @linkconstraint(graph1, n1[:x] + nodes[2][:x] + nodes[3][:x] == 3)
+
+    graph2 = OptiGraph();
+
+    @optinode(graph2,nodes2[1:3]);
+
+    for node in getnodes(graph2)
+        @variable(node, x >= 0)
+        @variable(node, y >= 2)
+        @constraint(node,x + y >= 5)
+        @objective(node, Min, y)
+    end
+
+    @linkconstraint(graph2, nodes2[1][:x] + nodes2[2][:x] + nodes2[3][:x] == 5);
+
+    graph3 = OptiGraph();
+
+    @optinode(graph3,nodes3[1:3]);
+
+    for node in getnodes(graph3)
+        @variable(node, x >= 0)
+        @variable(node, y >= 2)
+        @constraint(node,x + y >= 5)
+        @objective(node, Min, y)
+    end
+
+    @linkconstraint(graph3, nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] == 7)
+
+    graph0 = OptiGraph()
+    add_subgraph!(graph0,graph1)
+    add_subgraph!(graph0,graph2)
+    add_subgraph!(graph0,graph3)
+
+    @linkconstraint(graph0,nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] == 10)
+```
+
+```@repl plot_example2
+using Plots
+
+for (i,node) in enumerate(all_nodes(graph0))
+    node.label = "n$i"
+end
+
+plt_graph0 = Plots.plot(graph0,node_labels = true,markersize = 60,labelsize = 30,linewidth = 4,subgraph_colors = true,
+layout_options = Dict(:tol => 0.001,:C => 2, :K => 4, :iterations => 5));
+
+Plots.savefig(plt_graph0,"graph0_layout.svg");
+
+plt_matrix0 = Plots.spy(graph0,node_labels = true,subgraph_colors = true,markersize = 16);
+
+Plots.savefig(plt_matrix0,"matrix0_layout.svg");
+```
+```@raw html
+<img src="graph0_layout.svg" alt="graph0" width="400"/>
+```
+```@raw html
+<img src="matrix0_layout.svg" alt="matrix0" width="400"/>
+```
+
+## Query OptiGraph Attributes
 There are a few primary function which can be used to query optigraph attributes. `getnodes` can be used to retrieve an array of
 the local optinodes in an optigraph, whereas `all_nodes` will recursively retrieve all of the optinodes in an optigraph, including the nodes in its subgraphs.
 

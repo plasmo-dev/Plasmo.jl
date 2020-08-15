@@ -1,15 +1,13 @@
 # Partitioning
-One of the key aspects behind modeling with optigraphs is that they facilitate graph operations such as partitioning.  
-The optigraph structure can exploit popular graph partitioning approaches such as those used in [Metis](https://github.com/JuliaSparse/Metis.jl) or [KaHyPar](https://github.com/kahypar/KaHyPar.jl).
-
-## OptiGraph Representations
-To partition an optigraph, we first need to transform it into an appropriate graph representation that reflects the partitioning algorithm.
-An optigraph most closely adheres to a hypergraph representation wherein its optinodes represent hypernodes and its optiedges correspond to hyperedges that connect two or more optinodes (hypernodes).
+The [Modeling](@ref) section describes how to construct optigraphs using a bottom-up approach.  Specifically, we showed how to
+to use [`Hierarchical Modeling`](@ref) with subgraphs to create multi-level optigraphs. This part of the documentation deals with creating optigraphs using a top-down approach.
+Specifically, we show how to construct subgraphs using graph partitions and show how `Plasmo.jl` interfaces with standard graph partitioning tools such
+as [Metis](https://github.com/JuliaSparse/Metis.jl) and [KaHyPar](https://github.com/kahypar/KaHyPar.jl).
 
 ## Example Problem: Dynamic Optimization
-To help demonstrate partitioning capabilities, we instantiate a simple optimal control problem with following code snippet. Here, ``x`` is a vector of states and ``u`` is a vector of control actions which are both
-indexed over the set of time indices ``t \in \{1,...,T\}``. The objective function minimizes the state trajectory with minimal control effort (energy), the second equation describes the
-state dynamics, and the third equation defines the initial condition.
+To help demonstrate graph partitioning capabilities in `Plasmo.jl`, we instantiate a simple optimal control problem described by the following equations. In this problem, ``x`` is a vector of states and ``u`` is a vector of control
+actions which are both indexed over the set of time indices ``t \in \{1,...,T\}``. The objective function minimizes the state trajectory with minimal control effort (energy), the second equation describes the
+state dynamics, and the third equation defines the initial condition. The last two equations define limits on the state and control actions.
 
 ```@meta
     DocTestSetup = quote
@@ -49,6 +47,9 @@ end
 \end{aligned}
 ```
 
+This snippet shows how to construct the optimal control problem in `Plasmo.jl` as described in [Modeling](@ref). We create an optigraph, add optinodes which represent states and controls at each time period, we set
+objective functions for each optinode, and we use linking constraints to describe the dynamics.
+
 ```julia
 using Plasmo
 
@@ -74,7 +75,6 @@ end
 n1 = state[1]
 @constraint(n1,n1[:x] == 0)
 ```
-
 When we print the newly created optigraph for our optimal control problem, we see it contains about 200 optinodes (one for each state and control) and contains almost 100 linking constraints (which couple the time periods).
 ```jldoctest hypergraph
 julia> println(graph)
@@ -88,7 +88,7 @@ local subgraphs: 0, total subgraphs 0
     DocTestSetup = nothing
 ```
 
-If we plot the resulting optigraph (see [Plotting](@ref)) we obtain a simple simple chain, but otherwise there is no real structure in the problem.
+If we plot the resulting optigraph (see [Plotting](@ref)) we obtain a simple simple chain, but otherwise there is no real structure in the problem as we have modeled it.
 ```@setup plot_chain
     using Plasmo
 
@@ -124,6 +124,11 @@ Plots.savefig(plt_chain,"chain_layout.svg");
 ```@raw html
 <img src="chain_layout.svg" alt="chain" width="400"/>
 ```
+
+## OptiGraph Representations
+To partition an optigraph, we first need to transform it into an appropriate graph representation that reflects the partitioning algorithm.
+An optigraph most closely adheres to a hypergraph representation wherein its optinodes represent hypernodes and its optiedges correspond to hyperedges that connect two or more optinodes (hypernodes).
+
 
 ### Hypergraph Representation
 Before we partition the optigraph, we need to cast into a

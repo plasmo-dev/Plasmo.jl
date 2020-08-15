@@ -232,7 +232,8 @@ Lastly, it is often useful to be able to visualize the structure of an `OptiGrap
 it is also helpful just to see the connectivity of the problem.  Plasmo.jl uses [Plots.jl](https://github.com/JuliaPlots/Plots.jl) and [NetworkLayout.jl](https://github.com/JuliaGraphs/NetworkLayout.jl) to visualize the
 layout of an `OptiGraph`.  The code here shows how to obtain the graph topology using `Plots.plot(::OptiGraph)`
 and we plot the underlying adjacency matrix structure using `Plots.spy` function. Both of these functions can accept keyword arguments to customize their layout or appearance.
-The matrix visualization also encodes information on the number of variables and constraints in each node and edge. The left figure shows a standard graph visualization where we draw an edge between each pair of nodes if they share an edge, and the rightfigure shows the matrix representation where labeled blocks correspond to nodes and blue marks represent linking constraints that connect their variables. The node layout helps visualize the overall connectivity of the graph while the matrix layout helps visualize the size of nodes and edges.
+The matrix visualization also encodes information on the number of variables and constraints in each node and edge. The left figure shows a standard graph visualization where we draw an edge between each pair of nodes
+if they share an edge, and the rightfigure shows the matrix representation where labeled blocks correspond to nodes and blue marks represent linking constraints that connect their variables. The node layout helps visualize the overall connectivity of the graph while the matrix layout helps visualize the size of nodes and edges.
 
 
 ```@repl plot_example
@@ -264,6 +265,8 @@ Depth = 2
 ```
 
 ## Future Development
+There are currently a few major development avenues for `Plasmo.jl`. Here is a list of features we intend to add for future releases.  
+
 
 ## Index
 
