@@ -2,6 +2,10 @@
 In Plasmo.jl, the primary modeling object is called an [`OptiGraph`](@ref). The `OptiGraph` extends the `JuMP.AbstractModel` type from `JuMP` to permit a graph-based modeling style (where a graph is a
 collection of nodes connected by edges). We specfically say an `OptiGraph` is composed of `OptiNodes` (which also extend the `JuMP.AbstractModel`) which represent modular optimization problems that are connected by `OptiEdges` which encapsulate `LinkConstraints` (i.e. linking constraints that couple optinodes).
 
+```@raw html
+<img src="../assets/optigraph.svg" alt="optigraph" width="600"/>
+```
+
 A key idea behind this graph-based approach is that it works at a higher level of abstraction than `JuMP` and uses ideas such as modularity and hierarchical modeling to express complex optimization problems,
 and to reveal inherent structures that lend themselves to graph processing tasks such as partitioning. The `OptiGraph` ultimately describes the following mathematical optimization problem:
 ```math
@@ -87,7 +91,7 @@ julia>  for node in getnodes(graph1)
         end
 ```
 
-!! note
+!!! note
 
      The [`OptiNode`](@ref) extends `JuMP.AbstractModel` and supports most of the same JuMP macros. However, extending nonlinear functionality in JuMP is not yet supported, and so
      one must use [`@NLnodeconstraint`](@ref) as opposed `@NLconstraint` to create nonlinear constraints on an optinode.
@@ -101,7 +105,7 @@ x
 julia> nodes[2][:y]
 y
 ```
-## Adding LinkConstraints (OptiEdges)
+## Adding Linking Constraints (OptiEdges)
 
 Linking constraints ([`LinkConstraint`](@ref)s) are linear constraints that couple variables across different optinodes.  The simplest way to create a linking constraint
 is to use the `@linkconstraint` macro.  This macro accepts the same input as the JuMP `@constraint` macro and creates linear constraints over multiple nodes within the same optigraph.

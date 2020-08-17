@@ -1,6 +1,6 @@
-# Partitioning
+# Partitioning and OptiGraph Manipulation
 The [Modeling](@ref) section describes how to construct optigraphs using a bottom-up approach.  Specifically, we showed how to
-to use [`Hierarchical Modeling`](@ref) with subgraphs to create multi-level optigraphs. This part of the documentation deals with creating optigraphs using a top-down approach.
+to use [Hierarchical Modeling](@ref) with subgraphs to create multi-level optigraphs. This part of the documentation deals with creating optigraphs using a top-down approach.
 Specifically, we show how to construct subgraphs using graph partitions and show how `Plasmo.jl` interfaces with standard graph partitioning tools such
 as [Metis](https://github.com/JuliaSparse/Metis.jl) and [KaHyPar](https://github.com/kahypar/KaHyPar.jl).
 
@@ -88,7 +88,7 @@ local subgraphs: 0, total subgraphs 0
     DocTestSetup = nothing
 ```
 
-If we plot the resulting optigraph (see [Plotting](@ref)) we obtain a simple simple chain, but otherwise there is no real structure in the problem as we have modeled it.
+We can also plot the resulting optigraph (see [Plotting](@ref)) which produces a simple chain, but otherwise there is no real structure in the problem as we have modeled it.
 ```@setup plot_chain
     using Plasmo
 
@@ -119,19 +119,23 @@ If we plot the resulting optigraph (see [Plotting](@ref)) we obtain a simple sim
 using Plots; pyplot()
 plt_chain = plt_graph4 = plot(graph,layout_options = Dict(:tol => 0.1,:iterations => 500), linealpha = 0.2,markersize = 6)
 Plots.savefig(plt_chain,"chain_layout.svg");
+
+plt_chain_matrix = spy(graph);
+Plots.savefig(plt_chain_matrix,"chain_layout_matrix.svg");
 ```
 
 ```@raw html
 <img src="chain_layout.svg" alt="chain" width="400"/>
 ```
 
-## OptiGraph Representations
-To partition an optigraph, we first need to transform it into an appropriate graph representation that reflects the partitioning algorithm.
-An optigraph most closely adheres to a hypergraph representation wherein its optinodes represent hypernodes and its optiedges correspond to hyperedges that connect two or more optinodes (hypernodes).
+```@raw html
+<img src="chain_layout_matrix.svg" alt="chain_matrix" width="400"/>
+```
 
-
-### Hypergraph Representation
-Before we partition the optigraph, we need to cast into a
+## Partitioning OptiGraphs
+At its core, the [`OptiGraph`] is a hypergraph and can thus naturally exploit hypergraph partitioning tools.  For our example here we demonstrate how to use hypergraph partitioning (using [KaHyPar](https://github.com/kahypar/KaHyPar.jl)),
+but `Plasmo.jl` also facilitates using standard graph partitioning algorithms  (a hypergraph can be projected to various standard graph representations) or partitioning by manually defining partition vectors.
+The below snippet uses the [`gethypergraph`](@ref) function which returns a [`HyperGraph`](@ref) object and a `hyper_map` (a Julia dictionary) which maps hypernodes and hyperedges back to the original optigraph.
 
 ```jldoctest hypergraph
 julia> hypergraph,hyper_map = gethypergraph(graph);
@@ -139,9 +143,6 @@ julia> hypergraph,hyper_map = gethypergraph(graph);
 julia> println(hypergraph)
 Hypergraph: (199 , 99)
 ```
-
-## Partitioning OptiGraphs
-An optigraph can be partitioned into a set of
 
 ```@meta
     DocTestSetup = quote
@@ -177,6 +178,11 @@ An optigraph can be partitioned into a set of
     end
 ```
 
+With our `hypergraph` we can now use `KaHyPar` to perform hypergraph partitioning in the next snippet which returns a `partition_vector` . Each index in the `partition_vector` corresponds to a
+hypernode index in `hypergraph`, and each value denotes which partition the hypernode belongs to.  So in our example, `partition_vector` contains 199 elements which can take on integer values between 0 and 7 (for 8 total partitions). Once we have a `partition_vector`, we can create a [`Partition`](@ref) object which describes sets (partitions) of optinodes and optiedges, as well as the shared optinodes and optiedges that cross partitions.
+We can lastly use the produced `partition` (a `Partition` object) to formulate subgraphs in our original optigraph (`graph`) using [`make_subgraphs!`](@ref). After doing so,
+we see that our `graph` now contains 8 subgraphs with 7 linking constraints that correspond to the optiedges that cross partitions (i.e. connect subgraphs).
+
 ```julia
 julia> using KaHyPar
 
@@ -196,6 +202,71 @@ julia> println(partition)
 
 julia> println(length(getsubgraphs(graph)))
 8
+
+julia> num_linkconstraints(graph)
+7
+```
+
+```@setup plot_chain_partition
+    using Plasmo
+    using KaHyPar
+    using Plots; pyplot()
+
+    T = 100         
+    d = sin.(1:T)   
+
+    graph = OptiGraph()
+    @optinode(graph,state[1:T])
+    @optinode(graph,control[1:T-1])
+
+    for node in state
+        @variable(node,x)
+        @constraint(node, x >= 0)
+        @objective(node,Min,x^2)
+    end
+    for node in control
+        @variable(node,u)
+        @constraint(node, u >= -1000)
+        @objective(node,Min,u^2)
+    end
+
+    @linkconstraint(graph,[i = 1:T-1],state[i+1][:x] == state[i][:x] + control[i][:u] + d[i])
+    n1 = state[1]
+    @constraint(n1,n1[:x] == 0)
+
+    hypergraph,hyper_map = gethypergraph(graph);
+    partition_vector = KaHyPar.partition(hypergraph,8,configuration = :connectivity,imbalance = 0.01);
+    partition = Partition(graph,partition_vector,hyper_map);
+    make_subgraphs!(graph,partition);
+```
+
+If we plot the partitioned optigraph it reveals eight distinct partitions and
+their corresponding coupling. We also note that the partitions are well-balanced and that the matrix is now reordered into a banded structure that is typical of dynamic
+optimization problems.
+
+```@repl plot_chain_partition
+plt_chain_partition = plot(graph,layout_options = Dict(:tol => 0.01, :iterations => 500),linealpha = 0.2,markersize = 6,subgraph_colors = true);
+Plots.savefig(plt_chain_partition,"chain_layout_partition.svg");
+
+plt_chain_matrix_partition = spy(graph,subgraph_colors = true);
+Plots.savefig(plt_chain_matrix_partition,"chain_layout_matrix_partition.svg");
+```
+
+```@raw html
+<img src="chain_layout_partition.svg" alt="chain" width="400"/>
+```
+
+```@raw html
+<img src="chain_layout_matrix_partition.svg" alt="chain_matrix" width="400"/>
+```
+
+## Aggregating OptiGraphs
+From a solver stand-point, it is helpful to convert subgraphs to stand-alone optinodes, since optinodes ultimately encapsulate solvable models
+which can be communicated to decomposition algorithms that operate at different levels of granularity. This can be done using the [`aggregate`](@ref) function, and in fact,
+this is how optigraphs are solved using standard optimization solvers with `Plasmo.jl`.
+
+```jldoctest partitioning
+julia> aggregate_graph,reference_map = aggregate(graph,0);
 ```
 
 ## Methods
@@ -203,4 +274,7 @@ julia> println(length(getsubgraphs(graph)))
 ```@docs
 Partition
 make_subgraphs!
+aggregate
+expand
+neighborhood
 ```

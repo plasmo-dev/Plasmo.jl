@@ -7,7 +7,7 @@ makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         pages = [
         "Introduction" => "index.md",
         "Modeling" => "documentation/modeling.md",
-        "Partitioning" => "documentation/partitioning.md",
+        "Partitioning and Manipulation" => "documentation/partitioning.md",
         "Solvers" => "documentation/solvers.md",
         "Plotting" => "documentation/plotting.md",
         "Tutorials" => "tutorials/tutorials.md"]
