@@ -8,11 +8,13 @@ The gas junction model is described by the below equations, where ``\theta_{j,t}
 junction, ``\overline{\theta}_j`` is the upper pressure bound, ``f_{j,d,t}^{target}`` is the target demand flow for demand ``d`` on junction ``j``
 and ``\overline{f}_{j,s}`` is the available gas generation from supply ``s`` on junction ``j``.
 
-\begin{align}
+```math
+\begin{aligned}
     & \underline{\theta}_n \le \theta_{j,t} \le \overline{\theta}_n , \quad j \in \mathcal{J}, \ t \in \mathcal{T}   \\
     &0 \le f_{j,d,t} \le f_{j,d,t}^{target}, \quad d \in \mathcal{D}_j, \ j \in \mathcal{J}, \ t \in \mathcal{T} \\
     &0 \le f_{j,s,t} \le \overline{f}_{j,s}, \quad s \in \mathcal{S}_j, \ j \in \mathcal{J}, \ t \in \mathcal{T}
-\end{align}
+\end{aligned}
+```
 
 
 ### Network OptiGraph

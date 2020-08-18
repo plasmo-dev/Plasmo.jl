@@ -5,7 +5,12 @@ using Colors
 using ColorTypes
 using Statistics
 
-#TODO other plotting options:  plot bipartite, node-pins, or clique-expansion
+#TODO other plotting options:  plot bipartite, node-pins, or clique-
+"""
+    Plots.plot(graph::OptiGraph; node_labels = false, subgraph_colors = false,node_colors = false,linewidth = 2.0,linealpha = 1.0, markersize = 30,labelsize = 20, markercolor = :grey, layout_options = Dict(:tol => 0.01,:C => 2, :K => 4, :iterations => 2), plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (800,800),:axis => nothing), line_options = Dict(:linecolor => :blue,:linewidth => linewidth,:linealpha => linealpha),annotate_options = Dict(:markercolor => :black))
+
+Plot a graph layout of the optigraph `graph`.
+"""
 function Plots.plot(graph::OptiGraph; node_labels = false, subgraph_colors = false,node_colors = false,linewidth = 2.0,linealpha = 1.0, markersize = 30,labelsize = 20, markercolor = :grey,
     layout_options = Dict(:tol => 0.01,:C => 2, :K => 4, :iterations => 2),
     plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (800,800),:axis => nothing),
@@ -74,6 +79,11 @@ end
 
 rectangle(w, h, x, y) = Plots.Shape(x .+ [0,w,w,0], y .+ [0,0,h,h])
 
+"""
+    Plots.spy(graph::OptiGraph;node_labels = false,labelsize = 24,subgraph_colors = false,node_colors = false,markersize = 1)
+
+Plot a matrix visualization of the the optigraph `graph`.    
+"""
 function Plots.spy(graph::OptiGraph;node_labels = false,labelsize = 24,subgraph_colors = false,node_colors = false,markersize = 1)
 
     n_graphs = length(graph.subgraphs)
