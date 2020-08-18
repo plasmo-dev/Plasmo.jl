@@ -2,6 +2,7 @@ function LightGraphs.incidence_matrix(graph::OptiGraph)
     return sparse(graph)
 end
 
+#TODO
 # function adjacency_matrix(graph::HyperGraph)
 # end
 
@@ -33,7 +34,12 @@ function getpartitionlist(graph::OptiGraph,membership_vector::Vector{Int64},ref_
     return parts
 end
 
-#this is really just closed neighbors
+#NOTE: Currently inefficient neighborhood implementation.
+"""
+    neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)::Vector{OptiNode}
+
+Return the optinodes within `distance` of the given `nodes` in the optigraph `graph`.
+"""
 function neighborhood(mg::OptiGraph,nodes::Vector{OptiNode},distance::Int64)
     hypergraph,hyper_map = gethypergraph(mg)
     hypernodes = [hyper_map[node] for node in nodes]
@@ -64,6 +70,12 @@ function identify_edges(mg::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
     return link_part_edges,link_cross_edges
 end
 
+"""
+    expand(graph::OptiGraph,subgraph::OptiGraph,distance::Int64)
+
+Return a new expanded subgraph given the optigraph `graph` and an existing subgraph `subgraph`.
+The returned subgraph contains the expanded neighborhood within `distance` of the given `subgraph`.
+"""
 function expand(mg::OptiGraph,subgraph::OptiGraph,distance::Int64)
     hypergraph,hyper_map = gethypergraph(mg)
     nodes = all_nodes(subgraph)

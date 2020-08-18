@@ -265,7 +265,12 @@ Depth = 2
 ```
 
 ## Future Development
-There are currently a few major development avenues for `Plasmo.jl`. Here is a list of features we intend to add for future releases.  
+There are currently a few major development avenues for `Plasmo.jl`. Here is a list of some of the major features we intend to add for future releases:
+
+* Parallel modeling capabilities
+* Nonlinear linking constraints
+* Graph metrics and custom partitioning algorithms
+* More distributed solver support
 
 
 ## Index

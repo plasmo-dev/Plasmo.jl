@@ -240,8 +240,8 @@ julia> num_linkconstraints(graph)
     make_subgraphs!(graph,partition);
 ```
 
-If we plot the partitioned optigraph it reveals eight distinct partitions and
-their corresponding coupling. We also note that the partitions are well-balanced and that the matrix is now reordered into a banded structure that is typical of dynamic
+If we plot the partitioned optigraph, it reveals eight distinct partitions and
+the coupling between them. The plots show that the partitions are well-balanced and the matrix visualization shows the problem is reordered into a banded structure that is typical of dynamic
 optimization problems.
 
 ```@repl plot_chain_partition
@@ -253,20 +253,84 @@ Plots.savefig(plt_chain_matrix_partition,"chain_layout_matrix_partition.svg");
 ```
 
 ```@raw html
-<img src="chain_layout_partition.svg" alt="chain" width="400"/>
+<img src="chain_layout_partition.svg" alt="chain_partition" width="400"/>
 ```
 
 ```@raw html
-<img src="chain_layout_matrix_partition.svg" alt="chain_matrix" width="400"/>
+<img src="chain_layout_matrix_partition.svg" alt="chain_matrix_partition" width="400"/>
 ```
 
 ## Aggregating OptiGraphs
-From a solver stand-point, it is helpful to convert subgraphs to stand-alone optinodes, since optinodes ultimately encapsulate solvable models
-which can be communicated to decomposition algorithms that operate at different levels of granularity. This can be done using the [`aggregate`](@ref) function, and in fact,
-this is how optigraphs are solved using standard optimization solvers with `Plasmo.jl`.
+Subgraphs can be converted into stand-alone optinodes using the using the [`aggregate`](@ref) function. This is important from a solver stand-point because optinodes represent solvable subproblems
+which can be communicated to decomposition algorithms. This aggregation step also takes place when using standard optimization solvers with `Plasmo.jl`, such as `Ipopt` wherein the optigraph is aggregated into a
+single optinode and solved using the underlying `JuMP` interface. In the snippet below, we aggregate
+our optigraph that contains 8 subgraphs.  We include the argument `0` which specifies how many subgraph levels to retain.  In this case,
+`0` means we aggregate subgraphs at the highest level so `graph` contains only new aggregated optinodes. For hierarchical graphs with many levels,
+we can define how many subgraph levels we wish to retain. The function returns a new aggregated graph (`aggregate_graph`), as well as
+`reference_map` which maps variables in `aggregate_graph` to the original optigraph `graph`.
+
 
 ```jldoctest partitioning
 julia> aggregate_graph,reference_map = aggregate(graph,0);
+Creating Combined OptiGraph with a maximum subgraph depth of 0
+
+julia> println(aggregate_graph)
+OptiGraph:
+local nodes: 8, total nodes: 8
+local link constraints: 7, total link constraints 7
+local subgraphs: 0, total subgraphs 0
+```
+
+```@setup plot_chain_aggregate
+    using Plasmo
+    using KaHyPar
+    using Plots; pyplot()
+
+    T = 100         
+    d = sin.(1:T)   
+
+    graph = OptiGraph()
+    @optinode(graph,state[1:T])
+    @optinode(graph,control[1:T-1])
+
+    for node in state
+        @variable(node,x)
+        @constraint(node, x >= 0)
+        @objective(node,Min,x^2)
+    end
+    for node in control
+        @variable(node,u)
+        @constraint(node, u >= -1000)
+        @objective(node,Min,u^2)
+    end
+
+    @linkconstraint(graph,[i = 1:T-1],state[i+1][:x] == state[i][:x] + control[i][:u] + d[i])
+    n1 = state[1]
+    @constraint(n1,n1[:x] == 0)
+
+    hypergraph,hyper_map = gethypergraph(graph);
+    partition_vector = KaHyPar.partition(hypergraph,8,configuration = :connectivity,imbalance = 0.01);
+    partition = Partition(graph,partition_vector,hyper_map);
+    make_subgraphs!(graph,partition);
+
+    aggregate_graph,reference_map = aggregate(graph,0);
+```
+
+We can lastly plot the aggregated graph structure which simply shows 8 optinodes with 7 linking constraints.
+```@repl plot_chain_aggregate
+plt_chain_aggregate = plot(aggregate_graph,layout_options = Dict(:tol => 0.01,:iterations => 10),node_labels = true,markersize = 30,labelsize = 20,node_colors = true);
+Plots.savefig(plt_chain_aggregate,"chain_layout_aggregate.svg");
+
+plt_chain_matrix_aggregate = spy(aggregate_graph,node_labels = true,node_colors = true);
+Plots.savefig(plt_chain_matrix_aggregate,"chain_layout_matrix_aggregate.svg");
+```
+
+```@raw html
+<img src="chain_layout_aggregate.svg" alt="chain_aggregate" width="400"/>
+```
+
+```@raw html
+<img src="chain_layout_matrix_aggregate.svg" alt="chain_matrix_aggregate" width="400"/>
 ```
 
 ## Methods

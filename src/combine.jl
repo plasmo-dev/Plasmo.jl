@@ -39,7 +39,7 @@ getlinkconstraints(m::JuMP.Model) = is_combined_model(m) && getcombinedinfo(m).l
 getNLlinkconstraints(m::JuMP.Model) = is_combined_model(m) && getcombinedinfo(m).NLlinkconstraints
 getnodes(m::JuMP.Model) = is_combined_model(m) && getcombinedinfo(m).nodes
 
-#Create a new new node on an CombinedModel
+#Create a new new node on a CombinedModel
 function add_combined_node!(m::JuMP.Model)
     assert_is_combined_model(m)
     i = getnumnodes(m)
@@ -95,11 +95,23 @@ function Base.merge!(ref_map1::CombinedMap,ref_map2::CombinedMap)
 end
 
 #############################################################################################
-# Combine Functions
+# Aggregate Functions
 #############################################################################################
+"""
+    aggregate(graph::OptiGraph)
 
+Aggregate the optigraph `graph` into a new optinode.  Return an optinode and a dictionary which maps optinode variable and
+constraint references to the original optigraph.
 
-function combine(optigraph::OptiGraph)
+    aggregate(graph::OptiGraph,max_depth::Int64)
+
+Aggregate the optigraph 'graph' into a new aggregated optigraph. Return a newly aggregated
+optigraph and a dictionary which maps new variables and constraints to the original optigraph.
+`max_depth` determines how many levels of subgraphs remain in the new aggregated optigraph. For example,
+a `max_depth` of `0` signifies there should be no subgraphs in the aggregated optigraph.
+
+"""
+function aggregate(optigraph::OptiGraph)
     combined_model = CombinedModel()
     reference_map = CombinedMap(combined_model)
 
@@ -156,9 +168,6 @@ function combine(optigraph::OptiGraph)
     return optinode,reference_map
 end
 
-const aggregate = combine
-
-
 function copy(node::OptiNode)
     node_model = getmodel(node)
     new_model = CombinedModel()
@@ -169,7 +178,7 @@ function copy(node::OptiNode)
     return new_node,reference_map
 end
 
-function combine(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
+function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     println("Creating Combined OptiGraph with a maximum subgraph depth of $max_depth")
 
     sg_dict = Dict()
@@ -240,6 +249,8 @@ function combine(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
 
     return root_optigraph,reference_map
 end
+
+const combine = aggregate
 
 #Modify graph by combining subgraphs
 #IDEA: Create new OptiGraph with subgraphs based on partition object.
