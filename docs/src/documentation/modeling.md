@@ -1,13 +1,11 @@
 # Modeling
-In Plasmo.jl, the primary modeling object is called an [`OptiGraph`](@ref). The `OptiGraph` extends the `JuMP.AbstractModel` type from `JuMP` to permit a graph-based modeling style (where a graph is a
-collection of nodes connected by edges). We specfically say an `OptiGraph` is composed of `OptiNodes` (which also extend the `JuMP.AbstractModel`) which represent modular optimization problems that are connected by `OptiEdges` which encapsulate `LinkConstraints` (i.e. linking constraints that couple optinodes).
+In Plasmo.jl, the primary modeling object is called an [`OptiGraph`](@ref). The `OptiGraph` adheres to a graph-based style of modeling that uses nodes and edges to create optimization problems.
+This graph-based style permits modular model development and makes it possible to capture and represent complex optimization problem structures.
+An `OptiGraph` is composed of [`OptiNode`](@ref)s which represent individual optimization problems that are connected by [`OptiEdge`](@ref)s
+which encapsulate [`LinkConstraint`](@ref)s (i.e. linking constraints that couple optinodes). A key idea behind Plasmo's' graph-based approach is that it works at a high level of abstraction
+and uses modular principles and hierarchical modeling to express complex optimization problems. The optimization models created with an optigraph can be used to reveal inherent structures that lend themselves to graph processing tasks such as partitioning.
 
-```@raw html
-<img src="../assets/optigraph.svg" alt="optigraph" width="600"/>
-```
-
-A key idea behind this graph-based approach is that it works at a higher level of abstraction than `JuMP` and uses ideas such as modularity and hierarchical modeling to express complex optimization problems,
-and to reveal inherent structures that lend themselves to graph processing tasks such as partitioning. The `OptiGraph` ultimately describes the following mathematical optimization problem:
+The `OptiGraph` ultimately describes the following mathematical optimization problem:
 ```math
 \begin{aligned}
     \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} & \quad \sum_{n \in \mathcal{N(\mathcal{G})}} f_n(x_n) \quad & (\textrm{Objective}) \\
@@ -20,7 +18,14 @@ variables over the set of nodes (optinodes) ``\mathcal{N}(\mathcal{G})``, and ``
 decision variables on node ``n``. The objective function for the optigraph ``\mathcal{G}`` is given by a linear combination of objective functions on each optinode ``f_n(x_n)``, but other formulations are possible.
 The second equation represents constraints on each optinode ``\mathcal{N}(\mathcal{G})``, and the third equation represents the collection of
 linking constraints which induce optiedges ``\mathcal{E}(\mathcal{G})``. The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints induced by an
-edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})`` (an optiedge can contain multiple linking constraints).
+edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})`` (an optiedge can contain multiple linking constraints). This formulation is also visualized by the following figure.
+
+```@raw html
+<img src="../assets/optigraph.svg" alt="optigraph" width="600"/>
+```
+
+From an implementation standpoint, an `OptiGraph` contains `OptiNode` and `OptiEdge` objects and extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl).
+The `OptiNode` object encapsulates a `Model` object from `JuMP`, and the `OptiEdge` object encapsulates the linking constraints that define coupling between optinodes.
 
 ## Creating an OptiGraph
 An `OptiGraph` does not require any arguments to construct:
@@ -133,7 +138,7 @@ We can also plot the graph structure of `graph1` (see [Plotting](@ref)) using bo
 ```
 
 ```@repl plot_example1
-using Plots
+using Plots; pyplot();
 
 plt_graph = Plots.plot(graph1,node_labels = true, markersize = 30,labelsize = 15, linewidth = 4,layout_options = Dict(:tol => 0.01,:iterations => 2),plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (400,400),:axis => nothing));
 
@@ -396,7 +401,7 @@ local subgraphs: 0, total subgraphs 0
 Modeling with an `OptiGraph` encompasses various useful methods.  It is important to note that both the `OptiGraph` and the `OptiNode` are extensions of the `JuMP.AbstractModel` and can use many of the same methods.
 We refer to the [JuMP Documentation](https://jump.dev/JuMP.jl/stable/) which describes most methods. Some select functions are also listed here.
 
-### OptiGraph Methods
+### OptiGraph Functions
 ```@docs
 OptiGraph
 @optinode
@@ -408,13 +413,16 @@ find_node
 is_node_variable
 Base.getindex(::OptiGraph,::OptiNode)
 Base.getindex(::OptiGraph,::OptiEdge)
+nodevalue
 all_nodes
 set_model
 @NLnodeconstraint
 @linkconstraint
+OptiEdge
 getedge
 getedges
 all_edges
+LinkConstraint
 getlinkconstraints
 all_linkconstraints
 add_subgraph!
@@ -422,7 +430,7 @@ getsubgraphs
 all_subgraphs
 ```
 
-### Extended JuMP Methods
+### Extended JuMP Functions
 ```@docs
 JuMP.all_variables(::OptiNode)
 JuMP.set_optimizer(::OptiGraph,::Any)

@@ -1,4 +1,4 @@
-using Documenter, Plasmo, JuMP, LightGraphs
+using Documenter, Plasmo, JuMP, LightGraphs, Plots
 
 makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         doctest=true,format = Documenter.HTML(
@@ -7,7 +7,7 @@ makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         pages = [
         "Introduction" => "index.md",
         "Modeling" => "documentation/modeling.md",
-        "Partitioning and Manipulation" => "documentation/partitioning.md",
+        "Partitioning and Graph Operations" => "documentation/partitioning.md",
         "Solvers" => "documentation/solvers.md",
         "Plotting" => "documentation/plotting.md",
         "Tutorials" => "tutorials/tutorials.md"]

@@ -1,4 +1,4 @@
-# Partitioning and OptiGraph Manipulation
+# Partitioning and Graph Operations
 The [Modeling](@ref) section describes how to construct optigraphs using a bottom-up approach.  Specifically, we showed how to
 to use [Hierarchical Modeling](@ref) with subgraphs to create multi-level optigraphs. This part of the documentation deals with creating optigraphs using a top-down approach.
 Specifically, we show how to construct subgraphs using graph partitions and show how `Plasmo.jl` interfaces with standard graph partitioning tools such
@@ -340,5 +340,5 @@ Partition
 make_subgraphs!
 aggregate
 expand
-neighborhood
+Plasmo.neighborhood
 ```

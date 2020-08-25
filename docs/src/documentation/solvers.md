@@ -2,43 +2,74 @@
 Plasmo.jl supports JuMP/MOI enabled solvers, as well as the [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) parallel optimization solver.
 
 ## JuMP/MOI Solvers
-Plasmo.jl can use JuMP/MOI solvers by means of the [`aggregate`](@ref) function.    
-The example below solves an optigraph using `Ipopt`. Underneath, Plasmo.jl produces a single `OptiNode` (which encapsulates a `JuMP.Model`), solves the node, and populates the solution
+Plasmo.jl can use JuMP/MOI solvers by means of its [`aggregate`](@ref) function.    
+The example below solves an optigraph using `Ipopt`, where underneath, `optimize!` produces a single `OptiNode` (which encapsulates a `JuMP.Model`), solves the optinode, and populates the solution
 of the optigraph with the result.
 
-```jldocest solver_example
+```julia
 using Plasmo
 using Ipopt
 
-graph = OptiGraph();
+graph = OptiGraph()
 
-@optinode(graph,n1);
-@optinode(graph,n2);
+@optinode(graph,n1)
+@optinode(graph,n2)
 
-@variable(n1,0 <= x <= 2);
-@variable(n1,0 <= y <= 3);
-@constraint(n1,x+y <= 4);
-@objective(n1,Min,x);
+@variable(n1,0 <= x <= 2)
+@variable(n1,0 <= y <= 3)
+@constraint(n1,x+y <= 4)
+@objective(n1,Min,x)
 
-@variable(n2,x);
-@NLnodeconstraint(n2,exp(x) >= 2);
+@variable(n2,x)
+@NLnodeconstraint(n2,exp(x) >= 2)
 
-@linkconstraint(graph,n1[:x] == n2[:x]);
+@linkconstraint(graph,n1[:x] == n2[:x])
 
-ipopt = Ipopt.Optimizer;
-optimize!(graph,ipopt);
-
+ipopt = Ipopt.Optimizer
+optimize!(graph,ipopt)
 ```
 
+```@meta
+CurrentModule = Plasmo
+DocTestSetup = quote
+    using Plasmo
+    using Ipopt
+
+    graph = OptiGraph()
+
+    @optinode(graph,n1)
+    @optinode(graph,n2)
+
+    @variable(n1,0 <= x <= 2)
+    @variable(n1,0 <= y <= 3)
+    @constraint(n1,x+y <= 4)
+    @objective(n1,Min,x)
+
+    @variable(n2,x)
+    @NLnodeconstraint(n2,exp(x) >= 2)
+
+    @linkconstraint(graph,n1[:x] == n2[:x])
+
+    ipopt = Ipopt.Optimizer
+    optimize!(graph,ipopt)
+end
+```
+
+A result specific to an optinode can be accessed using the `nodevalue` function.  Here we see that the value of `x` on  optinodes `n1` and `n2`
+can be queried (and are consistent with the linking constraint).
+
 ```jldoctest solver_example
-println("n1[:x]= ",value(n1,n1[:x]))
-println("n2[:x]= ",value(n2,n2[:x]))
+julia> println("n1[:x]= ",nodevalue(n1[:x]))
+n1[:x]= 0.693147178063229
+
+julia> println("n2[:x]= ",nodevalue(n2[:x]))
+n2[:x]= 0.693147178063229
 ```
 
 ## PipsSolver
-The [PipsSolver](https://github.com/zavalab/PipsSolver.jl) package can be used to solve nonlinear optimization problems with [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
-To do so, we use the `MPClusterManagers` package and Julia's `Distributed` package to distribute an optigraph among worker CPUs.  We then execute PIPS-NLP using
-MPI using `@mpi_do` which runs MPI on each worker. The below example shows how this is done for a simple optigraph with two optinodes and two MPI ranks.
+The [PipsSolver](https://github.com/zavalab/PipsSolver.jl) interface can be used to solve structured nonlinear optimization problems with [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
+To do so, we use the [MPClusterManagers](https://github.com/JuliaParallel/MPIClusterManagers.jl) package and Julia's `Distributed` module to distribute an optigraph among worker CPUs.  We then execute PIPS-NLP using
+MPI using `@mpi_do` (available from `MPIClusterManagers`) which runs MPI on each worker. The below example shows how this is done for a simple optigraph with two optinodes and two MPI ranks.
 
 ```julia
 using MPIClusterManagers
@@ -83,3 +114,7 @@ remote_references = PipsSolver.distribute(graph,julia_workers,remote_name = :pip
     PipsSolver.pipsnlp_solve(pipsgraph)
 end
 ```
+
+## SchwarzSolver
+
+Documentation Coming Soon

@@ -12,7 +12,7 @@ end
 # Plasmo.jl - Platform for Scalable Modeling and Optimization
 
 Plasmo.jl is a graph-based optimization framework written in [Julia](https://julialang.org) that adopts a modular modeling style to construct and solve optimization problems.
-The package builds upon the modeling framework [JuMP](https://github.com/jump-dev/JuMP.jl) to create graph-structured optimization models and works at a higher level of
+The package builds upon the modeling framework [JuMP.jl](https://github.com/jump-dev/JuMP.jl) to create graph-structured optimization models and works at a higher level of
 abstraction which facilitates hierarchical modeling and graph-based operations such as partitioning.
 More specifically, Plasmo.jl implements what is called the `OptiGraph` abstraction to construct optimization models. An `OptiGraph` captures the underlying topology of an
 optimization problem using `OptiNodes` (which represent stand-alone optimization models) that are coupled by means of `OptiEdges` (which correspond to coupling constraints). The resulting graph topology
