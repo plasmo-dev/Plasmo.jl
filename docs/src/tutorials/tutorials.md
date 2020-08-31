@@ -1,8 +1,8 @@
 # Tutorials
 
-## Tutorial 1
+## Modeling, Partitioning, and Solving a Natural Gas Network Optimal Control Problem with PIPS-NLP
 
-### Modeling, Partitioning, and Solving a Natural Gas Network Optimal Control Problem with PIPS-NLP
+### Problem Description
 
 ### Junction OptiGraph
 The gas junction model is described by the below equations, where ``\theta_{j,t}`` is the pressure at junction
@@ -18,6 +18,11 @@ and ``\overline{f}_{j,s}`` is the available gas generation from supply ``s`` on 
 \end{aligned}
 ```
 
+### Compressor OptiGraph
+
+
+### Pipeline OptiGraph
+
 
 ### Network OptiGraph
 ```math
@@ -31,3 +36,11 @@ and ``\overline{f}_{j,s}`` is the available gas generation from supply ``s`` on 
      & \text{Network Link Equations} &
 \end{aligned}
 ```
+
+
+
+### Partitioning
+
+
+
+### Solution with PIPS-NLP

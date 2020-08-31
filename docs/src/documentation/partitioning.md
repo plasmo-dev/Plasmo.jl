@@ -341,4 +341,6 @@ make_subgraphs!
 aggregate
 expand
 Plasmo.neighborhood
+HyperGraph
+gethypergraph
 ```
