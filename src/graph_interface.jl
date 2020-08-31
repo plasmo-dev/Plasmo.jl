@@ -2,6 +2,9 @@
 #A hypergraph has topology functions and partitioning interfaces.
 
 #Create a hypergraph representation of a optigraph
+"""
+    gethypergraph(graph::OptiGraph)
+"""
 function gethypergraph(graph::OptiGraph)
     hypergraph = HyperGraph()
     hyper_map = Dict()  #two-way mapping from hypergraph nodes to optinodes and link_edges

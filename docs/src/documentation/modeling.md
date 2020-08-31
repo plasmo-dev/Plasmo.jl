@@ -85,7 +85,7 @@ OptiNode w/ 0 Variable(s)
 julia> nodes[3]
 OptiNode w/ 0 Variable(s)
 ```
-Each optinode can have its underlying model constructed in a modular way.  Here we loop through each optinode in `graph1` using [getnodes](@ref)
+Each optinode can have its underlying model constructed in a modular way.  Here we loop through each optinode in `graph1` using [`getnodes`](@ref)
 and construct its underlying model by adding variables, a constraint, and objective function.
 ```jldoctest modeling
 julia>  for node in getnodes(graph1)
