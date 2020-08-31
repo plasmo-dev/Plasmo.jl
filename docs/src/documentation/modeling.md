@@ -158,7 +158,7 @@ Plots.savefig(plt_matrix,"matrix1_layout.svg");
 ## Hierarchical Modeling
 
 A fundamental feature of using optigraphs is that it is possible to create subgraphs (i.e. sub-optigraphs) within an optigraph.  This enables a hierarchical style of modeling that retains its modular aspects.
-Subgraphs are defined using the [add_subgraph!](@ref) function which embeds an optigraph as a subgraph within a higher level optigraph. This is demonstrated in the below snippets.  
+Subgraphs are defined using the [`add_subgraph!`](@ref) function which embeds an optigraph as a subgraph within a higher level optigraph. This is demonstrated in the below snippets.  
 
 First, we create two new optigraphs in the same fashion we did above.
 

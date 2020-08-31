@@ -4,6 +4,9 @@
 #Create a hypergraph representation of a optigraph
 """
     gethypergraph(graph::OptiGraph)
+
+Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
+that maps hypernodes and hyperedges to the original optinodes and optiedges.
 """
 function gethypergraph(graph::OptiGraph)
     hypergraph = HyperGraph()

@@ -23,17 +23,17 @@ Plot a graph layout of the optigraph `graph`. The following keyword arguments ca
 * `labelsize = 20`: the size for each node label.  Only active if `node_labels = true`.
 * `markercolor = :grey`: the color for each node.
 
-* layout_options = Dict(:tol => 0.01,:C => 2, :K => 4, :iterations => 2): dictionary with options for the layout algorithm.
+* `layout_options = Dict(:tol => 0.01,:C => 2, :K => 4, :iterations => 2)`: dictionary with options for the layout algorithm.
     * `tol`: permitted distance between a current and calculated co-ordinate.
     * `C`,`K`: scaling parameters.
     * `iterations`: number of iterations used to apply forces.
-* plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (800,800),:axis => nothing): dictionary with primary plotting options.
+* `plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (800,800),:axis => nothing)`: dictionary with primary plotting options.
     * `legend`: whether to include legend, or legend position.
     * `framestyle`: style of frame used for plot.
     * `size`: size of the resulting plot.
     * `axis`: whether to include the axis.  The axis typically does not make sense for a graph layout plot.
     * It is also possible to use various plotting options compatible with `Plots.scatter` from the `Plots.jl` package.
-* line_options = Dict(:linecolor => :blue,:linewidth => linewidth,:linealpha => linealpha): line plotting options used to display edges in the graph.
+* `line_options = Dict(:linecolor => :blue,:linewidth => linewidth,:linealpha => linealpha)`: line plotting options used to display edges in the graph.
     * `linecolor`: color to use for each line.
     * `linewidth`: linewidth to use for each edge.  Defaults to the above option.
     * `linealpha`: linealpha to use for each edge. Default to the above option.

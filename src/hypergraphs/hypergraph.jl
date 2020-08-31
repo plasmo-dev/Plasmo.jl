@@ -11,6 +11,11 @@ end
 HyperEdge(t::Vector{HyperNode}) = HyperEdge(Set(t))
 HyperEdge(t::HyperNode...) = HyperEdge(Set(collect(t)))
 
+"""
+    Hypergraph
+
+A simple hypergraph type.  Contains attributes for vertices and hyperedges.
+"""
 mutable struct HyperGraph <: AbstractHyperGraph
     vertices::Vector{HyperNode}
     hyperedge_map::OrderedDict{Int64,HyperEdge}  #look up hyperedges by index in the hypergraph
