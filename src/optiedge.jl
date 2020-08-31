@@ -21,6 +21,12 @@ LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set)
 # OptiEdges
 # OptiEdges describe connections between model nodes
 ##############################################################################
+"""
+    OptiEdge
+
+The `OptiEdge` type.  Typically created from [`@linkconstraint`](@ref).  Contains the set of its supporting optionodes, as well as
+references to its underlying linking constraints.
+"""
 mutable struct OptiEdge <: AbstractOptiEdge
     nodes::OrderedSet{OptiNode}
     #nodes::Set{OptiNode}

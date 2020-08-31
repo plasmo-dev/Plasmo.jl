@@ -66,6 +66,20 @@ JuMP.all_variables(node::OptiNode) = JuMP.all_variables(getmodel(node))
 
 setattribute(node::OptiNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
 getattribute(node::OptiNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
+
+"""
+    nodevalue(var::JuMP.VariableRef)
+
+Get the current value of `var`
+
+    nodevalue(expr::JuMP.GenericAffExpr)
+
+Get the current value of `expr` which is `JuMP.GenericAffExpr`
+
+    nodevalue(expr::JuMP.GenericQuadExpr)
+
+Get the current value of `expr` which is a `JuMP.GenericQuadExpr`
+"""
 nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var]
 function nodevalue(expr::JuMP.GenericAffExpr)
     ret_value = 0.0
