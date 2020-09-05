@@ -56,9 +56,15 @@ macro node(graph,args...)
 end
 
 macro linkconstraint(graph,args...)
+    args, kw_args, requestedcontainer = Containers._extract_kw_args(args)
+    attached_node_kw_args = filter(kw -> kw.args[1] == :attach, kw_args)
+    extra_kw_args = filter(kw -> kw.args[1] != :attach, kw_args)
+
+    attached_node = attached_node_kw_args[1].args[2]
+    
     code = quote
         @assert isa($graph,AbstractOptiGraph)  #Check the inputs are the correct types.  This needs to throw
-        JuMP.@constraint($graph,($(args...)))   #this will call add_constraint(graph::ModelGraph)
+        LinkConstraint(JuMP.@constraint($graph,$(args...),$(extra_kw_args...))).attached_node = $attached_node #this will call add_constraint(graph::ModelGraph)
     end
     return esc(code)
 end

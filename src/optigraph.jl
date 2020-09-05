@@ -347,7 +347,7 @@ function _add_to_partial_linkeqconstraint!(node::OptiNode,var::JuMP.VariableRef,
         new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
         new_func.terms[var] = coeff
         new_func.constant = constant
-        linkcon = LinkConstraint(new_func,set)
+        linkcon = LinkConstraint(new_func,set,nothing)
         node.partial_linkeqconstraints[index] = linkcon
     end
 end
@@ -362,7 +362,7 @@ function _add_to_partial_linkineqconstraint!(node::OptiNode,var::JuMP.VariableRe
         new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
         new_func.terms[var] = coeff
         new_func.constant = constant
-        linkcon = LinkConstraint(new_func,set)
+        linkcon = LinkConstraint(new_func,set,nothing)
         node.partial_linkineqconstraints[index] = linkcon
     end
 end
