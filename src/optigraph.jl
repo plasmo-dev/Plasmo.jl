@@ -272,13 +272,14 @@ JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
 #####################################################
 
 
-function add_link_equality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",eq_idx = graph.linkeqconstraint_index + 1)
+function add_link_equality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",eq_idx = graph.linkeqconstraint_index + 1,attached_node = nothing)
     @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
 
     graph.linkeqconstraint_index += 1
     graph.linkconstraint_index += 1
 
     link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
+    link_con.attached_node = attached_node
     modelnodes = getnodes(link_con)
 
     linkedge = add_link_edge!(graph,modelnodes)
@@ -301,13 +302,14 @@ function add_link_equality_constraint(graph::OptiGraph,con::JuMP.ScalarConstrain
     return cref
 end
 
-function add_link_inequality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",ineq_idx = graph.linkineqconstraint_index + 1)
+function add_link_inequality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",ineq_idx = graph.linkineqconstraint_index + 1,attached_node = nothing)
     @assert typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64}]
 
     graph.linkineqconstraint_index += 1
     graph.linkconstraint_index += 1
 
     link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
+    link_con.attached_node = attached_node
     modelnodes = getnodes(link_con)
     linkedge = add_link_edge!(graph,modelnodes)
 
@@ -328,11 +330,11 @@ function add_link_inequality_constraint(graph::OptiGraph,con::JuMP.ScalarConstra
     return cref
 end
 
-function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="")
+function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(keys(con.func.terms)[1]))
     if isa(con.set,MOI.EqualTo)
-        cref = add_link_equality_constraint(graph,con;name = name)
+        cref = add_link_equality_constraint(graph,con;name = name,attached_node = attached_node)
     else
-        cref = add_link_inequality_constraint(graph,con;name = name)
+        cref = add_link_inequality_constraint(graph,con;name = name,attached_node = attached_node)
     end
     return cref
 end
