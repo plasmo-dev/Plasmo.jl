@@ -330,7 +330,7 @@ function add_link_inequality_constraint(graph::OptiGraph,con::JuMP.ScalarConstra
     return cref
 end
 
-function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(keys(con.func.terms)[1]))
+function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
     if isa(con.set,MOI.EqualTo)
         cref = add_link_equality_constraint(graph,con;name = name,attached_node = attached_node)
     else
