@@ -68,7 +68,7 @@ incidence_matrix, getlinkconstraints, getattribute,
 all_linkconstraints,
 
 # OptiGraph setters
-set_model, set_optimizer, reset_model, setattribute,
+set_model, set_optimizer, reset_model, setattribute, set_attached_node,
 
 # Variable functions
 is_nodevariable, is_linked_variable,
