@@ -1,9 +1,14 @@
-struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
+mutable struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
     func::F
     set::S
+    attached_node::Union{Nothing,OptiNode}
 end
-LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set)
+LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set,nothing)
 
+function set_attached_node(con::LinkConstraint,node::OptiNode)
+    @assert node in getnodes(con)
+    con.attached_node = node
+end
 ##############################################################################
 # OptiEdges
 # OptiEdges describe connections between model nodes

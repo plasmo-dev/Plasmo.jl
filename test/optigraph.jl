@@ -15,9 +15,10 @@ end
 
 @linkconstraint(graph,n1[:x] == nodes[1][:x])
 @linkconstraint(graph,sum(nodes[i][:x] for i = 1:5) == 5)
+@linkconstraint(graph,nodes[2][:y] == nodes[3][:y],attach = nodes[2])
 
 @test num_nodes(graph) == 15
-@test num_linkedges(graph) == 2
-@test num_linkconstraints(graph) == 2
+@test num_linkedges(graph) == 3
+@test num_linkconstraints(graph) == 3
 
 true
