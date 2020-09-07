@@ -58,13 +58,32 @@ end
 macro linkconstraint(graph,args...)
     args, kw_args, requestedcontainer = Containers._extract_kw_args(args)
     attached_node_kw_args = filter(kw -> kw.args[1] == :attach, kw_args)
-    extra_kw_args = filter(kw -> kw.args[1] != :attach, kw_args)
+    #extra_kw_args = filter(kw -> kw.args[1] != :attach, kw_args)
 
-    attached_node = attached_node_kw_args[1].args[2]
-    
+    if length(attached_node_kw_args) > 0
+        attached_node = attached_node_kw_args[1].args[2]
+    else
+        attached_node = nothing
+    end
+
     code = quote
         @assert isa($graph,AbstractOptiGraph)  #Check the inputs are the correct types.  This needs to throw
-        LinkConstraint(JuMP.@constraint($graph,$(args...),$(extra_kw_args...))).attached_node = $attached_node #this will call add_constraint(graph::ModelGraph)
+        refs = JuMP.@constraint($graph,($(args...)))
+
+        #Set attached node if argument was provided
+        if $attached_node != nothing
+            if isa(refs,LinkConstraintRef)
+                link = LinkConstraint(refs)
+                set_attached_node(link,$attached_node)
+            else
+                links = LinkConstraint.(refs)
+                for link in links
+                    set_attached_node(link,$attached_node)
+                end
+            end
+        end
+        refs
+        #LinkConstraint(JuMP.@constraint($graph,$(args...),$(extra_kw_args...))).attached_node = $attached_node #this will call add_constraint(graph::ModelGraph)
     end
     return esc(code)
 end
