@@ -2,13 +2,13 @@ using Plasmo
 using Plots
 #theme(:juno)
 
-graph = ModelGraph()
+graph = OptiGraph()
 
 @node(graph,node0)
 @variable(node0,z[1:2])
 @constraint(node0,z[1] + z[2] <= 2)
 
-subgraph = ModelGraph()
+subgraph = OptiGraph()
 add_subgraph!(graph,subgraph)
 
 @node(subgraph,n1)

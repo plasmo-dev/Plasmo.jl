@@ -1,6 +1,14 @@
 using Base.Meta
 
-#deprecate
+"""
+    @optinode(optigraph, expr...)
+
+Add a new optinode to `optigraph`. The expression `expr` can either be
+
+* of the form `varname` creating a single optinode with the variable name `varname`
+* of the form `varname[...]` or `[...]` creating a container of optinodes using JuMP Containers
+
+"""
 macro optinode(graph,args...)
      _error(str...) = JuMP._macro_error(:node, args, str...)
 
@@ -55,6 +63,18 @@ macro node(graph,args...)
     return esc(code)
 end
 
+"""
+    @linkconstraint(graph::OptiGraph, expr)
+
+Add a linking constraint described by the expression `expr`.
+
+    @linkconstraint(graph::OptiGraph, ref[i=..., j=..., ...], expr)
+
+Add a group of linking  constraints described by the expression `expr` parametrized by
+`i`, `j`, ...
+
+The @linkconstraint macro works the same way as the `JuMP.@constraint` macro.
+"""
 macro linkconstraint(graph,args...)
     args, kw_args, requestedcontainer = Containers._extract_kw_args(args)
     attached_node_kw_args = filter(kw -> kw.args[1] == :attach, kw_args)
@@ -88,7 +108,12 @@ macro linkconstraint(graph,args...)
     return esc(code)
 end
 
-#Wrap NLconstraint because NLconstraint extensions don't really work yet.  Easy to deprecate later.
+"""
+    @NLnodeconstraint(node,args...)
+
+Add a nonlinear constraint to an optinode.  Wraps JuMP.@NLconstraint.  This method will deprecate once optinodes
+extend nonlinear JuMP functionality.
+"""
 macro NLnodeconstraint(node,args...)
     code = quote
         @assert isa($node,OptiNode)  #Check the inputs are the correct types.  This needs to throw

@@ -1,19 +1,18 @@
-using Documenter, Plasmo, JuMP, LightGraphs
+using Documenter, Plasmo, JuMP, LightGraphs, Plots
 
-makedocs(sitename="Plasmo.jl - Platform for Scalable Modeling and Optimization", modules=[Plasmo],
-        doctest=true,html_prettyurls = get(ENV, "CI", nothing) == "true",
+makedocs(sitename="Plasmo.jl", modules=[Plasmo],
+        doctest=true,format = Documenter.HTML(
+        prettyurls = get(ENV, "CI", nothing) == "true"),
         authors = "Jordan Jalving",
         pages = [
         "Introduction" => "index.md",
-        "Quick Start" => "documentation/quickstart.md",
-        "Modeling" => "documentation/modelgraph.md",
-        "Partitioning" => "documentation/partitioning.md",
-        "Manipulation" => "documentation/manipulation.md",
-        "Plotting" => "documentation/plotting.md",
+        "Modeling" => "documentation/modeling.md",
+        "Partitioning and Graph Operations" => "documentation/partitioning.md",
         "Solvers" => "documentation/solvers.md",
+        "Plotting" => "documentation/plotting.md",
         "Tutorials" => "tutorials/tutorials.md"]
         )
 
 deploydocs(
-    repo = "github.com/jalving/Plasmo.jl.git"
+    repo = "github.com/zavalab/Plasmo.jl.git"
     )

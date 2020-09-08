@@ -1,15 +1,15 @@
-JuMP.Model(modelgraph::OptiGraph;add_node_objectives = !(has_objective(model_graph))) = getmodel(aggregate(modelgraph,add_node_objectives = add_node_objectives))
+JuMP.Model(optigraph::OptiGraph;add_node_objectives = !(has_objective(model_graph))) = getmodel(aggregate(optigraph,add_node_objectives = add_node_objectives))
 
 function JuMP.optimize!(graph::OptiGraph,optimizer;kwargs...)
     println("Converting OptiGraph to OptiNode...")
-    modelnode,reference_map = combine(graph)
+    optinode,reference_map = combine(graph)
 
     println("Optimizing OptiNode")
-    JuMP.set_optimizer(modelnode,optimizer)
-    status = JuMP.optimize!(modelnode)#,optimizer;kwargs...)
+    JuMP.set_optimizer(optinode,optimizer)
+    status = JuMP.optimize!(optinode)#,optimizer;kwargs...)
     #status = JuMP.termination_status(aggregate_model)
 
-    if JuMP.has_values(getmodel(modelnode))     # TODO Get all the correct status codes for copying a solution
+    if JuMP.has_values(getmodel(optinode))     # TODO Get all the correct status codes for copying a solution
         _copysolution!(graph,reference_map)     #Now get our solution data back into the original ModelGraph
         println("Found Solution")
     end
@@ -33,10 +33,10 @@ JuMP.optimize!(node::OptiNode;kwargs...) = JuMP.optimize!(getmodel(node);kwargs.
 #     return status
 # end
 
-function _copysolution!(modelgraph::OptiGraph,ref_map::CombinedMap)
+function _copysolution!(optigraph::OptiGraph,ref_map::CombinedMap)
 
     #Node solutions
-    for node in all_nodes(modelgraph)
+    for node in all_nodes(optigraph)
         for var in JuMP.all_variables(node)
             node.variable_values[var] = JuMP.value(ref_map[var])
         end
@@ -44,7 +44,7 @@ function _copysolution!(modelgraph::OptiGraph,ref_map::CombinedMap)
 
     #Link constraint duals
     if JuMP.has_duals(ref_map.combined_model)
-        for edge in all_edges(modelgraph)
+        for edge in all_edges(optigraph)
             for linkcon in getlinkconstraints(edge)
                 dual = JuMP.dual(ref_map.linkconstraintmap[linkcon])
                 edge.dual_values[linkcon] = dual

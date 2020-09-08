@@ -2,13 +2,13 @@ using Plasmo
 using Ipopt
 
 
-modelgraph = ModelGraph()
+optigraph = OptiGraph()
 
 #Add nodes to a GraphModel
-@node modelgraph n1
-@node modelgraph n2
-@node modelgraph n3
-@node modelgraph n4
+@node optigraph n1
+@node optigraph n2
+@node optigraph n3
+@node optigraph n4
 
 #Set a model on node 1
 @variable(n1,0 <= x <= 2)
@@ -28,18 +28,18 @@ modelgraph = ModelGraph()
 ipopt = Ipopt.Optimizer
 
 #Link constraints take the same expressions as the JuMP @constraint macro
-@linkconstraint(modelgraph,n1[:x] == n2[:x])
-@linkconstraint(modelgraph,n2[:y] == n3[:x])
-@linkconstraint(modelgraph,n3[:x] == n4[:x])
+@linkconstraint(optigraph,n1[:x] == n2[:x])
+@linkconstraint(optigraph,n2[:y] == n3[:x])
+@linkconstraint(optigraph,n3[:x] == n4[:x])
 
-optimize!(modelgraph,ipopt)
+optimize!(optigraph,ipopt)
 
 node_vectors = [[n1,n2],[n3,n4]]
-partition = Partition(modelgraph,node_vectors)
-make_subgraphs!(modelgraph,partition)
-new_modelgraph,ref_map = combine(modelgraph,0)
+partition = Partition(optigraph,node_vectors)
+make_subgraphs!(optigraph,partition)
+new_optigraph,ref_map = combine(optigraph,0)
 
-optimize!(new_modelgraph,ipopt)
+optimize!(new_optigraph,ipopt)
 
 #Check results
 println()

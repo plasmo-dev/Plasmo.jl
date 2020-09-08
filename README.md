@@ -76,10 +76,25 @@ The primary developer is Jordan Jalving (@jalving) with support from the followi
 
 
 ## Citing Plasmo.jl
-If you find Plasmo.jl useful for your work, you may cite the following [manuscript](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
+
+If you find Plasmo.jl useful for your work, you may cite the current [pre-print](https://arxiv.org/abs/2006.05378):
 
 ```
-@article{Jalving2019,
+@misc{JalvingShinZavala2020,
+title = {A Graph-Based Modeling Abstraction for Optimization: Concepts and Implementation in Plasmo.jl},
+author = {Jordan Jalving and Sungho Shin and Victor M. Zavala},
+year = {2020},
+eprint = {2006.05378},
+archivePrefix = {arXiv},
+primaryClass = {math.OC}
+}
+```
+
+There is also an earlier manuscript where we presented the initial ideas behind Plasmo.jl which you can find
+[here](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
+
+```
+@article{JalvingCaoZavala2019,
 author = {Jalving, Jordan and Cao, Yankai and Zavala, Victor M},
 journal = {Computers {\&} Chemical Engineering},
 pages = {134--154},
@@ -89,3 +104,5 @@ year = {2019},
 doi = {https://doi.org/10.1016/j.compchemeng.2019.03.009}
 }
 ```
+
+A pre-print of this paper can also be found [here](https://arxiv.org/abs/1812.04983)

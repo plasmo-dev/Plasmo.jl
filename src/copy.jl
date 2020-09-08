@@ -112,7 +112,7 @@ function copy(mg::OptiGraph)
         new_node,ref_map = copy(node)   #creates new _models.  Use ref map to reference old graph variables
         add_node!(new_graph,new_node)
     end
-    for linkedge in getedges(mg)
+    for optiedge in getedges(mg)
     end
 
     #TODO copy linkconstraints

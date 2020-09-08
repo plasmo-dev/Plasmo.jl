@@ -2,10 +2,10 @@ using Plasmo
 using Ipopt
 using KaHyPar
 
-modelgraph = ModelGraph()
+optigraph = OptiGraph()
 
-#Add nodes to a ModelGraph
-@node(modelgraph,nodes[1:4])
+#Add nodes to a OptiGraph
+@node(optigraph,nodes[1:4])
 
 
 #Set a model on node 1
@@ -30,24 +30,24 @@ modelgraph = ModelGraph()
 ipopt = Ipopt.Optimizer
 
 #Link constraints take the same expressions as the JuMP @constraint macro
-@linkconstraint(modelgraph,nodes[1][:x] == nodes[2][:x])
-@linkconstraint(modelgraph,nodes[2][:y] == nodes[3][:x])
-@linkconstraint(modelgraph,nodes[3][:x] == nodes[4][:x])
+@linkconstraint(optigraph,nodes[1][:x] == nodes[2][:x])
+@linkconstraint(optigraph,nodes[2][:y] == nodes[3][:x])
+@linkconstraint(optigraph,nodes[3][:x] == nodes[4][:x])
 
-optimize!(modelgraph,ipopt)
+optimize!(optigraph,ipopt)
 
 
-hypergraph,hyper_map = gethypergraph(modelgraph) #create hypergraph object based on modelgraph
+hypergraph,hyper_map = gethypergraph(optigraph) #create hypergraph object based on optigraph
 partition_vector = KaHyPar.partition(hypergraph,2;configuration = :edge_cut)
 partition = Partition(hypergraph,partition_vector,hyper_map)
-make_subgraphs!(modelgraph,partition)
-new_modelgraph,ref_map = combine(modelgraph,0)
+make_subgraphs!(optigraph,partition)
+new_optigraph,ref_map = combine(optigraph,0)
 
-optimize!(new_modelgraph,ipopt)
+optimize!(new_optigraph,ipopt)
 
 #Check results
 println()
-println("Combined ModelGraph Solution")
+println("Combined OptiGraph Solution")
 println("n1[:x]= ",nodevalue(nodes[1][:x]))
 println("n1[:y]= ",nodevalue(nodes[1][:y]))
 

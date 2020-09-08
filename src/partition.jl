@@ -1,11 +1,24 @@
-# The Partition object describes partitions of modelnodes and linkedges.
+# The Partition object describes partitions of optinodes and optiedges.
 # Different graph projections can be used to create an intermediate Partition object which is the standard interface to make subgraphs
 abstract type AbstractPartition end
 ###########################################################################################################
 #Note that a Partition can contain subpartitions recursively
+"""
+    Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
+
+Create a partition of optinodes using `hypergraph`, `node_membership_vector`, and 'ref_map'.  The 'ref_map' is a dictionary that maps hypernode indices (integers) and hyperedge indices (tuples) back to optinodes and optiedges.
+
+    Partition(optigraph::OptiGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
+
+Create a partition using `optigraph`, `node_membership_vector`, and 'ref_map'. The `ref_map` is a mapping of node_indices to the original optinodes.
+
+    Partition(optigraph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
+
+Manually create a partition using `optigraph` and a vector of vectors containing sets of optinodes that represent each partition.
+"""
 mutable struct Partition <: AbstractPartition
-    modelnodes::Vector{OptiNode}   #hypernodes at this level
-    linkedges::Vector{OptiEdge}   #hyperedges at his level
+    optinodes::Vector{OptiNode}   #hypernodes at this level
+    optiedges::Vector{OptiEdge}   #hyperedges at his level
     parent::Union{Nothing,AbstractPartition} #parent partition
     subpartitions::Vector{AbstractPartition}      #subpartitions
 end
@@ -17,11 +30,11 @@ function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},
     induced_edge_partitions,cross_edges = identify_edges(hypergraph,hypernode_vectors)
     @assert length(hypernode_vectors) == length(induced_edge_partitions)
 
-    partition.linkedges = getindex.(Ref(ref_map),cross_edges)
+    partition.optiedges = getindex.(Ref(ref_map),cross_edges)
     for i = 1:length(hypernode_vectors)
         subpartition = Partition()
-        subpartition.modelnodes = getindex.(Ref(ref_map),hypernode_vectors[i])
-        subpartition.linkedges = getindex.(Ref(ref_map),induced_edge_partitions[i])
+        subpartition.optinodes = getindex.(Ref(ref_map),hypernode_vectors[i])
+        subpartition.optiedges = getindex.(Ref(ref_map),induced_edge_partitions[i])
         subpartition.parent = partition
         push!(partition.subpartitions,subpartition)
     end
@@ -33,25 +46,23 @@ function Partition(graph::OptiGraph,node_membership_vector::Vector{Int64},ref_ma
     return Partition(graph,optinode_vectors)
 end
 
-function Partition(mg::OptiGraph,modelnode_vectors::Vector{Vector{OptiNode}})
+function Partition(mg::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
     partition = Partition()
-    linkedge_vectors,cross_edges = identify_edges(mg,modelnode_vectors)
-    @assert length(modelnode_vectors) == length(linkedge_vectors)
-    partition.linkedges = cross_edges
-    for i = 1:length(modelnode_vectors)
+    optiedge_vectors,cross_edges = identify_edges(mg,optinode_vectors)
+    @assert length(optinode_vectors) == length(optiedge_vectors)
+    partition.optiedges = cross_edges
+    for i = 1:length(optinode_vectors)
         subpartition = Partition()
-        subpartition.modelnodes = modelnode_vectors[i]
-        subpartition.linkedges = linkedge_vectors[i]
+        subpartition.optinodes = optinode_vectors[i]
+        subpartition.optiedges = optiedge_vectors[i]
         subpartition.parent = partition
         push!(partition.subpartitions,subpartition)
     end
     return partition
 end
 
-
-
-getnodes(partition::Partition) = partition.modelnodes
-getedges(partition::Partition) = partition.linkedges
+getnodes(partition::Partition) = partition.optinodes
+getedges(partition::Partition) = partition.optiedges
 getparent(partition::Partition) = partition.parent
 getsubparts(partition::Partition) = partition.subpartitions
 
@@ -73,12 +84,17 @@ function n_subpartitions(partition::Partition)
 end
 
 #Turn graph into subgraph-based structure
+"""
+    make_subgraphs!(optigraph::OptiGraph,partition::Partition)
+
+Create subgraphs in `optigraph` using a produced 'partition'.
+"""
 function make_subgraphs!(graph::OptiGraph,partition::Partition)
     root = partition
     graph.subgraphs = OptiGraph[]
 
-    mnodes = root.modelnodes
-    ledges = root.linkedges
+    mnodes = root.optinodes
+    ledges = root.optiedges
 
     _set_nodes(graph,mnodes)
     _set_edges(graph,ledges)
@@ -151,7 +167,7 @@ show(io::IO,partition::Partition) = print(io,partition)
 #NOTE (s)
 # end
 # #Case 0
-# hypergraph = gethypergraph(modelgraph)  #OR getlinkvarhypergraph(modelgraph)  #hypergraph with a node for the master problem.  the linknode gets index 0
+# hypergraph = gethypergraph(optigraph)  #OR getlinkvarhypergraph(optigraph)  #hypergraph with a node for the master problem.  the linknode gets index 0
 # membership_vector = KaHyPar.partition(hypergraph)
 # model_partition = ModelPartition(hypergraph,membership_vector)  #create hypergraph partitions, find shared hyperedges
 #
@@ -160,7 +176,7 @@ show(io::IO,partition::Partition) = print(io,partition)
 # clique_graph, projection_map = clique_expansion(hyper_graph)  #conversion map maps nodes and edges back to hypergraph
 # membership_vector = Metis.partition(clique_graph)  #e.g. [1,2,1,1,3,2,2,2,3,4,4,4]
 # hyper_partition = HyperPartition(clique_graph,projection_map,membership_vector)
-# new_graph, agg_map = aggregate(modelgraph,hyper_partition)
+# new_graph, agg_map = aggregate(optigraph,hyper_partition)
 #
 # #Case 2
 # hypergraph = gethypergraph(model_graph)

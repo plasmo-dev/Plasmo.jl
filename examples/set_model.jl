@@ -2,7 +2,7 @@ using Plasmo
 using Ipopt
 using JuMP
 
-graph = ModelGraph()
+graph = OptiGraph()
 optimizer = Ipopt.Optimizer
 
 #Add nodes to a GraphModel

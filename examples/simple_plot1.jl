@@ -2,7 +2,7 @@ using Plasmo
 using Plots
 pyplot()
 
-graph2 = ModelGraph()
+graph2 = OptiGraph()
 
 n1 = add_node!(graph2)
 @variable(n1, y >= 2)
