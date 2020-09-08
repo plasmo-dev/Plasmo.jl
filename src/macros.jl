@@ -63,6 +63,7 @@ macro node(graph,args...)
     return esc(code)
 end
 
+
 """
     @linkconstraint(graph::OptiGraph, expr)
 
@@ -75,7 +76,7 @@ Add a group of linking  constraints described by the expression `expr` parametri
 
 The @linkconstraint macro works the same way as the `JuMP.@constraint` macro.
 """
-macro linkconstraint(graph,args...)
+macro linkconstraint(graph_or_edge,args...)
     args, kw_args, requestedcontainer = Containers._extract_kw_args(args)
     attached_node_kw_args = filter(kw -> kw.args[1] == :attach, kw_args)
     #extra_kw_args = filter(kw -> kw.args[1] != :attach, kw_args)
@@ -87,8 +88,8 @@ macro linkconstraint(graph,args...)
     end
 
     code = quote
-        @assert isa($graph,AbstractOptiGraph)  #Check the inputs are the correct types.  This needs to throw
-        refs = JuMP.@constraint($graph,($(args...)))
+        @assert isa($graph_or_edge,Union{AbstractOptiGraph,OptiEdge})  #Check the inputs are the correct types.  This needs to throw
+        refs = JuMP.@constraint($graph_or_edge,($(args...)))
 
         #Set attached node if argument was provided
         if $attached_node != nothing
