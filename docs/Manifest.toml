@@ -231,6 +231,14 @@ git-tree-sha1 = "cbab42e2e912109d27046aa88f02a283a9abac7c"
 uuid = "4076af6c-e467-56ae-b986-b466b2749572"
 version = "0.21.3"
 
+[[KaHyPar]]
+deps = ["BinaryProvider", "Libdl", "LinearAlgebra", "SparseArrays"]
+git-tree-sha1 = "0bc353a15a32903c261e57f504d15da11861344e"
+repo-rev = "master"
+repo-url = "https://github.com/kahypar/KaHyPar.jl.git"
+uuid = "2a6221f6-aa48-11e9-3542-2d9e0ef01880"
+version = "0.1.0"
+
 [[LibGit2]]
 uuid = "76f85450-5226-5b5a-8eaa-529ad045b433"
 
@@ -315,12 +323,6 @@ git-tree-sha1 = "c84c576296d0e2fbb3fc134d3e09086b3ea617cd"
 uuid = "77ba4419-2d1f-58cd-9bb1-8ffee604a2e3"
 version = "0.3.4"
 
-[[NetworkLayout]]
-deps = ["DelimitedFiles", "GeometryTypes", "LinearAlgebra", "SparseArrays", "Test"]
-git-tree-sha1 = "adde9ad01842a4f62c3724b8707bed90293f0f3f"
-uuid = "46757867-2c16-5918-afeb-47bfcb05e46a"
-version = "0.2.0"
-
 [[OpenBLAS32_jll]]
 deps = ["CompilerSupportLibraries_jll", "Libdl", "Pkg"]
 git-tree-sha1 = "793b33911239d2651c356c823492b58d6490d36a"
@@ -341,14 +343,6 @@ version = "1.0.10"
 [[Pkg]]
 deps = ["Dates", "LibGit2", "Markdown", "Printf", "REPL", "Random", "SHA", "UUIDs"]
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
-
-[[Plasmo]]
-deps = ["ColorTypes", "Colors", "DataStructures", "Distributed", "GeometryTypes", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "NetworkLayout", "Reexport", "Requires", "SparseArrays", "Statistics", "Test"]
-git-tree-sha1 = "ccf5d5acab7a398ab7b317111103c4d8a5a979ef"
-repo-rev = "master"
-repo-url = "/home/jordan/.julia/dev/Plasmo"
-uuid = "d3f7391f-f14a-50cc-bbe4-76a32d1bad3c"
-version = "0.3.0"
 
 [[PlotThemes]]
 deps = ["PlotUtils", "Requires", "Statistics"]
