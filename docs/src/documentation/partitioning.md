@@ -133,7 +133,8 @@ Plots.savefig(plt_chain_matrix,"chain_layout_matrix.svg");
 ```
 
 ## Partitioning OptiGraphs
-At its core, the [`OptiGraph`] is a hypergraph and can thus naturally exploit hypergraph partitioning tools.  For our example here we demonstrate how to use hypergraph partitioning (using [KaHyPar](https://github.com/kahypar/KaHyPar.jl)),
+At its core, the [`OptiGraph`](@ref) is a [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) and can thus naturally exploit hypergraph partitioning tools.  
+For our example here we demonstrate how to use hypergraph partitioning (using [KaHyPar](https://github.com/kahypar/KaHyPar.jl)),
 but `Plasmo.jl` also facilitates using standard graph partitioning algorithms  (a hypergraph can be projected to various standard graph representations) or partitioning by manually defining partition vectors.
 The below snippet uses the [`gethypergraph`](@ref) function which returns a [`HyperGraph`](@ref) object and a `hyper_map` (a Julia dictionary) which maps hypernodes and hyperedges back to the original optigraph.
 
