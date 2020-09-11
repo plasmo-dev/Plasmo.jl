@@ -14,5 +14,6 @@ makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         )
 
 deploydocs(
-    repo = "github.com/zavalab/Plasmo.jl.git"
+    repo = "github.com/jalving/Plasmo.jl.git"
+    #repo = "github.com/zavalab/Plasmo.jl.git"
     )
