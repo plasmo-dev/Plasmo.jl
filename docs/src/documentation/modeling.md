@@ -23,6 +23,7 @@ edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{
 ```@raw html
 <img src="../assets/optigraph.svg" alt="optigraph" width="600"/>
 ```
+![optigraph](assets/optigraph.svg)
 
 From an implementation standpoint, an `OptiGraph` contains `OptiNode` and `OptiEdge` objects and extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl).
 The `OptiNode` object encapsulates a `Model` object from `JuMP`, and the `OptiEdge` object encapsulates the linking constraints that define coupling between optinodes.
