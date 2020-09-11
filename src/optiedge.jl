@@ -83,8 +83,8 @@ end
 print(io::IO,edge::OptiEdge) = print(io, string(edge))
 show(io::IO,edge::OptiEdge) = print(io,edge)
 
-function string(con::LinkConstraint)
-    "LinkConstraint: $(con.func),$(con.set)"
+function string(con::AbstractLinkConstraint)
+    "LinkConstraint: $(con.func), $(con.set)"
 end
-print(io::IO,con::LinkConstraint) = print(io, string(con))
-show(io::IO,con::LinkConstraint) = print(io,con)
+print(io::IO,con::AbstractLinkConstraint) = print(io, string(con))
+show(io::IO,con::AbstractLinkConstraint) = print(io,con)
