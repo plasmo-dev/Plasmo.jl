@@ -1,5 +1,7 @@
 using Documenter, Plasmo, JuMP, LightGraphs, Plots
 
+ENV["GKSwstype"] = "100"
+
 makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         doctest=true,format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true"),
