@@ -14,6 +14,7 @@ The gas junctions connect thirteen pipelines which forms an optigraph with a lin
 ```@raw html
 <img src="assets/13_pipe_sketch_control.svg" alt="13_pipeline" width="800"/>
 ```
+![](assets/13_pipe_sketch_control.svg)
 
 We seek to solve an optimal control problem that maximizes revenue over a 24 hour time period given a forecast of gas demand profiles. That is, we wish to obtain a compressor
 control policy that will meet the gas demand at junction `j_{25}`, whilst simultaneously minimizing compressor costs and meeting operational constraints.
@@ -337,6 +338,8 @@ in [Plotting](@ref), but we have opted to export the graph structure and use the
 ```@raw html
 <img src="assets/13_pipeline_space_time.svg" alt="13_pipeline_space_time" width="800"/>
 ```
+![](assets/13_pipeline_space_time.svg)
+
 
 ### Partitioning
 Now that we have an optigraph representation of our optimal control problem, we can use [hypergraph partitioning](https://en.wikipedia.org/wiki/Hypergraph#Partitions)
@@ -376,6 +379,8 @@ depicts the optimization problem partitioned into 13 distinct partitions.
 ```@raw html
 <img src="assets/13_pipeline_space_time_partition.svg" alt="13_pipeline_space_time" width="800"/>
 ```
+![](assets/13_pipeline_space_time_partition.svg)
+
 
 ### Solution with PIPS-NLP
 We finally solve the partitioned optigraph optimization problem using [PipsSolver](@ref). The below

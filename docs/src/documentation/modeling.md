@@ -149,10 +149,10 @@ plt_matrix = Plots.spy(graph1,node_labels = true,markersize = 15);
 Plots.savefig(plt_matrix,"matrix1_layout.svg");
 ```
 ```@raw html
-<img src="graph1_layout.svg" alt="graph1" width="400"/>
+<img src="../graph1_layout.svg" alt="graph1" width="400"/>
 ```
 ```@raw html
-<img src="matrix1_layout.svg" alt="matrix1" width="400"/>
+<img src="../matrix1_layout.svg" alt="matrix1" width="400"/>
 ```
 
 ## Hierarchical Modeling
