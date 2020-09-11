@@ -364,18 +364,18 @@ query linking constraints:
 ```jldoctest modeling
 julia> getlinkconstraints(graph1)
 1-element Array{LinkConstraint,1}:
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(3.0))
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(3.0)
 
 julia> getlinkconstraints(graph0)
 1-element Array{LinkConstraint,1}:
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(10.0))
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(10.0)
 
 julia> all_linkconstraints(graph0)
 4-element Array{LinkConstraint,1}:
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(3.0))
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(5.0))
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(7.0))
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(10.0))
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(3.0)
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(5.0)
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(7.0)
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(10.0)
 ```
 and query subgraphs:
 ```jldoctest modeling
