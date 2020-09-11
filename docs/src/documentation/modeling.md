@@ -55,7 +55,7 @@ For example, we could construct an optigraph that uses the `Ipopt.Optimizer` fro
 ```julia
 julia> using Ipopt
 
-set_optimizer(graph1,Ipopt.Optimizer)
+julia> set_optimizer(graph1,Ipopt.Optimizer)
 ```
 
 ## Adding OptiNodes
