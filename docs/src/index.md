@@ -246,7 +246,7 @@ plt_matrix = Plots.spy(graph,node_labels = true,markersize = 15);
 Plots.savefig(plt_matrix,"matrix_layout.svg");
 ```
 ```@raw html
-<img src="graph_layout.svg" alt="matrix" width="400"/>
+<img src="graph_layout.svg" alt="graph" width="400"/>
 ```
 ```@raw html
 <img src="matrix_layout.svg" alt="matrix" width="400"/>

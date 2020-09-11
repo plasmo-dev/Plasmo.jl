@@ -12,7 +12,7 @@ We consider the system of connected pipelines in series shown in the below figur
 The gas junctions connect thirteen pipelines which forms an optigraph with a linear topology.
 
 ```@raw html
-<img src="../assets/13_pipe_sketch_control.svg" alt="13_pipeline" width="800"/>
+<img src="$HOME/.julia/dev/Plasmo/docs/src/assets/13_pipe_sketch_control.svg" alt="13_pipeline" width="800"/>
 ```
 
 We seek to solve an optimal control problem that maximizes revenue over a 24 hour time period given a forecast of gas demand profiles. That is, we wish to obtain a compressor
@@ -335,7 +335,7 @@ Using the abovie function, we can obtain a complete optigraph representation of 
 in [Plotting](@ref), but we have opted to export the graph structure and use the `Gephi` visualization to produce the below figure.  Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and grey corresponds to pipleines.  Notice that the optigraph has captured the space-time structure of the optimization problem.  We also observe a cylindrical shape to the problem which results from the line-pack constraint which couples the initial and final time optinodes for each pipeline.
 
 ```@raw html
-<img src="../assets/13_pipeline_space_time.svg" alt="13_pipeline_space_time" width="800"/>
+<img src="$HOME/.julia/dev/Plasmo/docs/src/assets/13_pipeline_space_time.svg" alt="13_pipeline_space_time" width="800"/>
 ```
 
 ### Partitioning
@@ -374,7 +374,7 @@ The partitioned optimal control problem is visualized in the below figure and
 depicts the optimization problem partitioned into 13 distinct partitions.
 
 ```@raw html
-<img src="../assets/13_pipeline_space_time_partition.svg" alt="13_pipeline_space_time" width="800"/>
+<img src="$HOME/.julia/dev/Plasmo/docs/src/assets/13_pipeline_space_time_partition.svg" alt="13_pipeline_space_time" width="800"/>
 ```
 
 ### Solution with PIPS-NLP

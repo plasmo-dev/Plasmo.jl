@@ -116,7 +116,7 @@ We can also plot the resulting optigraph (see [Plotting](@ref)) which produces a
 ```
 
 ```@repl plot_chain
-using Plots; pyplot()
+using Plots
 plt_chain = plt_graph4 = plot(graph,layout_options = Dict(:tol => 0.1,:iterations => 500), linealpha = 0.2,markersize = 6)
 Plots.savefig(plt_chain,"chain_layout.svg");
 
