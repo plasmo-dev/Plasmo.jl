@@ -28,7 +28,6 @@ jobs:
       julia: 1.0
       os: linux
       script:
-        - julia --project=docs -e 'using Pkg; Pkg.add("JuMP")'
         - julia --project=docs -e 'using Pkg; Pkg.instantiate(); Pkg.develop(PackageSpec(path=pwd()))'
         - julia --project=docs --color=yes docs/make.jl
       after_success: skip
