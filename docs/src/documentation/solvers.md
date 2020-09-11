@@ -59,11 +59,11 @@ A result specific to an optinode can be accessed using the `nodevalue` function.
 can be queried (and are consistent with the linking constraint).
 
 ```jldoctest solver_example
-julia> println("n1[:x]= ",nodevalue(n1[:x]))
-n1[:x]= 0.693147178063229
+julia> println("n1[:x]= ",round(nodevalue(n1[:x]),digits = 5))
+n1[:x]= 0.69315
 
-julia> println("n2[:x]= ",nodevalue(n2[:x]))
-n2[:x]= 0.693147178063229
+julia> println("n2[:x]= ",round(nodevalue(n2[:x]),digits = 5))
+n2[:x]= 0.69315
 ```
 
 ## PipsSolver
