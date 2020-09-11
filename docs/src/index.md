@@ -46,7 +46,7 @@ julia> using Plasmo
 For this example we also need to import the GLPK optimization solver and the Plots package which we use to visualize graph structure.
 ```julia
 julia> using GLPK
-julia> using Plots; pyplot()
+julia> using Plots
 ```
 !!! note
     We highlight that it is possible to use any solver that works with JuMP. By default, when using a standard optimization solver available through JuMP, Plasmo.jl will aggregate
@@ -204,7 +204,7 @@ julia> objective_value(graph)
 
 ```@setup plot_example
     using Plasmo
-    using Plots; pyplot()
+    using Plots
 
     graph = OptiGraph()
     @optinode(graph,n1)

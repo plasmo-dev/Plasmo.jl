@@ -211,7 +211,7 @@ julia> num_linkconstraints(graph)
 ```@setup plot_chain_partition
     using Plasmo
     using KaHyPar
-    using Plots; pyplot()
+    using Plots
 
     T = 100         
     d = sin.(1:T)   
@@ -285,7 +285,7 @@ local subgraphs: 0, total subgraphs 0
 ```@setup plot_chain_aggregate
     using Plasmo
     using KaHyPar
-    using Plots; pyplot()
+    using Plots
 
     T = 100         
     d = sin.(1:T)   

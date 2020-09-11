@@ -138,7 +138,7 @@ We can also plot the graph structure of `graph1` (see [Plotting](@ref)) using bo
 ```
 
 ```@repl plot_example1
-using Plots; pyplot();
+using Plots;
 
 plt_graph = Plots.plot(graph1,node_labels = true, markersize = 30,labelsize = 15, linewidth = 4,layout_options = Dict(:tol => 0.01,:iterations => 2),plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (400,400),:axis => nothing));
 
