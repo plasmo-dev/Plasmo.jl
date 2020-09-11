@@ -11,13 +11,10 @@ The actual implementation of this tutorial can be found in [this git repository]
 We consider the system of connected pipelines in series shown in the below figure. This linear network includes a gas supply at one end, a time-varying demand at the other end, and twelve compressor stations.
 The gas junctions connect thirteen pipelines which forms an optigraph with a linear topology.
 
-```@raw html
-<img src="../assets/13_pipe_sketch_control.svg" alt="13_pipeline" width="800"/>
-```
 ![13pipeline_sketch](../assets/13_pipe_sketch_control.svg)
 
 We seek to solve an optimal control problem that maximizes revenue over a 24 hour time period given a forecast of gas demand profiles. That is, we wish to obtain a compressor
-control policy that will meet the gas demand at junction `j_{25}`, whilst simultaneously minimizing compressor costs and meeting operational constraints.
+control policy that will meet the gas demand at junction ``j_{25}``, whilst simultaneously minimizing compressor costs and meeting operational constraints.
 In the formulation below, ``\alpha_{\ell}`` and ``P_{\ell,t}`` are the compression cost (\$/kW), and compression power for each compressor ``\ell`` at time ``t``, and ``\alpha_{d}`` and ``f^{target}_{d,t}`` are the demand price and target demand flow for each demand ``d`` at time ``t``. This formulation includes physical equations and constraints that describe the network junctions, the pipeline dynamics, and compressors.  
 The network link equations describe how the devices within the topology are coupled together such as conservation of mass and boundary conditions.
 The sets that describe the elements of the optimization problem are also presented here.
@@ -106,8 +103,8 @@ end
 ### Compressor OptiGraph
 
 Compressors constitute the primary control decisions in the optimal control problem and are described by the following simple
-formulation. We use an ideal isentropic compressor model where ``\eta_{\ell,t}``, ``p_{\ell,t}^{in}``, and ``p_{\ell,t}^{out}`` are the compression ratio, suction pressure, and discharge pressure at time `t`,
-and ``P_{\ell,t}`` is power at time `t`. We also introduceduce the dummy variables ``f_{\ell,t}^{in}`` and ``f_{\ell,t}^{out}`` to be consistent with the
+formulation. We use an ideal isentropic compressor model where ``\eta_{\ell,t}``, ``p_{\ell,t}^{in}``, and ``p_{\ell,t}^{out}`` are the compression ratio, suction pressure, and discharge pressure at time ``t``,
+and ``P_{\ell,t}`` is power at time ``t``. We also introduceduce the dummy variables ``f_{\ell,t}^{in}`` and ``f_{\ell,t}^{out}`` to be consistent with the
 pipeline model in the next section.
 
 ```math
@@ -261,7 +258,7 @@ The next equations define pipeline and compressor link boundary conditions.
     & p_{\ell,t}^{out} = \theta_{snd(\ell),t}, \quad \ell \in \mathcal{L},  t \in \mathcal{T}
 \end{aligned}
 ```
-Here, ``\theta_{rec(\ell),t}`` and ``\theta_{snd(\ell),t}`` are the receiving and sending junction pressure for each link ``\ell \in \mathcal{L}`` at time `t`.
+Here, ``\theta_{rec(\ell),t}`` and ``\theta_{snd(\ell),t}`` are the receiving and sending junction pressure for each link ``\ell \in \mathcal{L}`` at time ``t``.
 
 The Julia code required to create the network optigraph is a bit more involved, but mostly because we have to define some data structures to capture the network topology.
 The below piece of code defines the function `create_gas_network` which accepts a dictionary of network data and calls the above defined functions to create the hierarchical optigraph. That is,
@@ -335,10 +332,7 @@ end
 Using the abovie function, we can obtain a complete optigraph representation of the optimal control problem.  It is now possible to plot the graph layout using the functions
 in [Plotting](@ref), but we have opted to export the graph structure and use the `Gephi` visualization to produce the below figure.  Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and grey corresponds to pipleines.  Notice that the optigraph has captured the space-time structure of the optimization problem.  We also observe a cylindrical shape to the problem which results from the line-pack constraint which couples the initial and final time optinodes for each pipeline.
 
-```@raw html
-<img src="../assets/13_pipeline_space_time.svg" alt="13_pipeline_space_time" width="800"/>
-```
-
+![space_time](../assets/13_pipeline_space_time.svg)
 
 ### Partitioning
 Now that we have an optigraph representation of our optimal control problem, we can use [hypergraph partitioning](https://en.wikipedia.org/wiki/Hypergraph#Partitions)
@@ -375,10 +369,8 @@ new_graph , aggregate_map  = aggregate(gas_network,0)
 The partitioned optimal control problem is visualized in the below figure and
 depicts the optimization problem partitioned into 13 distinct partitions.
 
-```@raw html
-<img src="assets/13_pipeline_space_time_partition.svg" alt="13_pipeline_space_time" width="800"/>
-```
-![](../assets/13_pipeline_space_time_partition.svg)
+
+![partition](../assets/13_pipeline_space_time_partition.svg)
 
 
 ### Solution with PIPS-NLP
