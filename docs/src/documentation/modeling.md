@@ -21,7 +21,7 @@ linking constraints which induce optiedges ``\mathcal{E}(\mathcal{G})``. The con
 edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})`` (an optiedge can contain multiple linking constraints). This formulation is also visualized by the following figure.
 
 ```@raw html
-<img src="$HOME/.julia/dev/Plasmo/docs/src/assets/optigraph.svg" alt="optigraph" width="600"/>
+<img src="../assets/optigraph.svg" alt="optigraph" width="600"/>
 ```
 
 From an implementation standpoint, an `OptiGraph` contains `OptiNode` and `OptiEdge` objects and extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl).
@@ -309,10 +309,10 @@ plt_matrix0 = Plots.spy(graph0,node_labels = true,subgraph_colors = true,markers
 Plots.savefig(plt_matrix0,"matrix0_layout.svg");
 ```
 ```@raw html
-<img src="graph0_layout.svg" alt="graph0" width="400"/>
+<img src="../graph0_layout.svg" alt="graph0" width="400"/>
 ```
 ```@raw html
-<img src="matrix0_layout.svg" alt="matrix0" width="400"/>
+<img src="../matrix0_layout.svg" alt="matrix0" width="400"/>
 ```
 
 ## Query OptiGraph Attributes

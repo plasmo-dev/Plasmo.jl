@@ -125,11 +125,11 @@ Plots.savefig(plt_chain_matrix,"chain_layout_matrix.svg");
 ```
 
 ```@raw html
-<img src="chain_layout.svg" alt="chain" width="400"/>
+<img src="../chain_layout.svg" alt="chain" width="400"/>
 ```
 
 ```@raw html
-<img src="chain_layout_matrix.svg" alt="chain_matrix" width="400"/>
+<img src="../chain_layout_matrix.svg" alt="chain_matrix" width="400"/>
 ```
 
 ## Partitioning OptiGraphs
@@ -254,11 +254,11 @@ Plots.savefig(plt_chain_matrix_partition,"chain_layout_matrix_partition.svg");
 ```
 
 ```@raw html
-<img src="chain_layout_partition.svg" alt="chain_partition" width="400"/>
+<img src="../chain_layout_partition.svg" alt="chain_partition" width="400"/>
 ```
 
 ```@raw html
-<img src="chain_layout_matrix_partition.svg" alt="chain_matrix_partition" width="400"/>
+<img src="../chain_layout_matrix_partition.svg" alt="chain_matrix_partition" width="400"/>
 ```
 
 ## Aggregating OptiGraphs
@@ -327,11 +327,11 @@ Plots.savefig(plt_chain_matrix_aggregate,"chain_layout_matrix_aggregate.svg");
 ```
 
 ```@raw html
-<img src="chain_layout_aggregate.svg" alt="chain_aggregate" width="400"/>
+<img src="../chain_layout_aggregate.svg" alt="chain_aggregate" width="400"/>
 ```
 
 ```@raw html
-<img src="chain_layout_matrix_aggregate.svg" alt="chain_matrix_aggregate" width="400"/>
+<img src="../chain_layout_matrix_aggregate.svg" alt="chain_matrix_aggregate" width="400"/>
 ```
 
 ## Methods
