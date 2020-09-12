@@ -27,6 +27,7 @@ mutable struct OptiGraph <: AbstractOptiGraph
 
     #Model Information
     obj_dict::Dict{Symbol,Any}
+    ext::Dict{Symbol,Any}
 
     #TODO Nonlinear Link Constraints using NLP Data
     nlp_data::Union{Nothing,JuMP._NLPData}
@@ -42,6 +43,7 @@ mutable struct OptiGraph <: AbstractOptiGraph
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
                     nothing,
+                    Dict{Symbol,Any}(),
                     Dict{Symbol,Any}(),
                     nothing
                     )
@@ -427,7 +429,7 @@ function add_link_equality_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstra
     optinodes = getnodes(link_con)
 
     @assert issubset(optinodes,optiedge.nodes)
-    
+
     linkconstraint_index = length(optiedge.linkconstraints) + 1
     linkeqconstraint_index = length(optiedge.linkeqconstraints) + 1
     cref = LinkConstraintRef(linkconstraint_index,optiedge)
@@ -456,12 +458,12 @@ function add_link_inequality_constraint(optiedge::OptiEdge,con::JuMP.ScalarConst
     link_con.attached_node = attached_node
 
     @assert issubset(optinodes,optiedge.nodes)
-    
+
     linkconstraint_index = length(optiedge.linkconstraints) + 1
     linkineqconstraint_index = length(optiedge.linkeqconstraints) + 1
     cref = LinkConstraintRef(linkconstraint_index,optiedge)
     JuMP.set_name(cref, name)
-    
+
     push!(optiedge.linkrefs,cref)
 
     optiedge.linkconstraints[linkineqconstraint_index] = link_con

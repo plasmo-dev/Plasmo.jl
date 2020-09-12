@@ -5,7 +5,7 @@ An `OptiGraph` is composed of [`OptiNode`](@ref)s which represent individual opt
 which encapsulate [`LinkConstraint`](@ref)s (i.e. linking constraints that couple optinodes). A key idea behind Plasmo's' graph-based approach is that it works at a high level of abstraction
 and uses modular principles and hierarchical modeling to express complex optimization problems. The optimization models created with an optigraph can be used to reveal inherent structures that lend themselves to graph processing tasks such as partitioning.
 
-The `OptiGraph` ultimately describes the following mathematical optimization problem:
+The `OptiGraph` ultimately describes the following mathematical representation of an optimization problem:
 ```math
 \begin{aligned}
     \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} & \quad \sum_{n \in \mathcal{N(\mathcal{G})}} f_n(x_n) \quad & (\textrm{Objective}) \\
@@ -15,17 +15,13 @@ The `OptiGraph` ultimately describes the following mathematical optimization pro
 ```
 In this formulation, ``\mathcal{G}`` represents the optigraph, ``{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}`` describes a collection of decision
 variables over the set of nodes (optinodes) ``\mathcal{N}(\mathcal{G})``, and ``x_n`` is the set of
-decision variables on node ``n``. The objective function for the optigraph ``\mathcal{G}`` is given by a linear combination of objective functions on each optinode ``f_n(x_n)``, but other formulations are possible.
+decision variables on node ``n``. The objective function for the optigraph ``\mathcal{G}`` is given by a linear combination of objective functions on each optinode ``f_n(x_n)``.
 The second equation represents constraints on each optinode ``\mathcal{N}(\mathcal{G})``, and the third equation represents the collection of
-linking constraints which induce optiedges ``\mathcal{E}(\mathcal{G})``. The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints induced by an
-edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})`` (an optiedge can contain multiple linking constraints). This formulation is also visualized by the following figure.
+linking constraints associated with optiedges ``\mathcal{E}(\mathcal{G})``. The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints
+that correspond to an edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})``.
 
-```@raw html
-<img src="../assets/optigraph.svg" alt="optigraph" width="600"/>
-```
 
-From an implementation standpoint, an `OptiGraph` contains `OptiNode` and `OptiEdge` objects and extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl).
-The `OptiNode` object encapsulates a `Model` object from `JuMP`, and the `OptiEdge` object encapsulates the linking constraints that define coupling between optinodes.
+From an implementation standpoint, an `OptiGraph` contains `OptiNode` and `OptiEdge` objects and extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl). The `OptiNode` object encapsulates a `Model` object from `JuMP`, and the `OptiEdge` object encapsulates the linking constraints that define coupling between optinodes.
 
 ## Creating an OptiGraph
 An `OptiGraph` does not require any arguments to construct:
@@ -55,7 +51,7 @@ For example, we could construct an optigraph that uses the `Ipopt.Optimizer` fro
 ```julia
 julia> using Ipopt
 
-set_optimizer(graph1,Ipopt.Optimizer)
+julia> set_optimizer(graph1,Ipopt.Optimizer)
 ```
 
 ## Adding OptiNodes
@@ -138,7 +134,7 @@ We can also plot the graph structure of `graph1` (see [Plotting](@ref)) using bo
 ```
 
 ```@repl plot_example1
-using Plots; pyplot();
+using Plots;
 
 plt_graph = Plots.plot(graph1,node_labels = true, markersize = 30,labelsize = 15, linewidth = 4,layout_options = Dict(:tol => 0.01,:iterations => 2),plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (400,400),:axis => nothing));
 
@@ -149,10 +145,10 @@ plt_matrix = Plots.spy(graph1,node_labels = true,markersize = 15);
 Plots.savefig(plt_matrix,"matrix1_layout.svg");
 ```
 ```@raw html
-<img src="graph1_layout.svg" alt="graph1" width="400"/>
+<img src="../graph1_layout.svg" alt="graph1" width="400"/>
 ```
 ```@raw html
-<img src="matrix1_layout.svg" alt="matrix1" width="400"/>
+<img src="../matrix1_layout.svg" alt="matrix1" width="400"/>
 ```
 
 ## Hierarchical Modeling
@@ -309,10 +305,10 @@ plt_matrix0 = Plots.spy(graph0,node_labels = true,subgraph_colors = true,markers
 Plots.savefig(plt_matrix0,"matrix0_layout.svg");
 ```
 ```@raw html
-<img src="graph0_layout.svg" alt="graph0" width="400"/>
+<img src="../graph0_layout.svg" alt="graph0" width="400"/>
 ```
 ```@raw html
-<img src="matrix0_layout.svg" alt="matrix0" width="400"/>
+<img src="../matrix0_layout.svg" alt="matrix0" width="400"/>
 ```
 
 ## Query OptiGraph Attributes
@@ -364,18 +360,18 @@ query linking constraints:
 ```jldoctest modeling
 julia> getlinkconstraints(graph1)
 1-element Array{LinkConstraint,1}:
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(3.0))
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(3.0)
 
 julia> getlinkconstraints(graph0)
 1-element Array{LinkConstraint,1}:
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(10.0))
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(10.0)
 
 julia> all_linkconstraints(graph0)
 4-element Array{LinkConstraint,1}:
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(3.0))
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(5.0))
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(7.0))
- LinkConstraint{GenericAffExpr{Float64,VariableRef},MathOptInterface.EqualTo{Float64}}(x + x + x, MathOptInterface.EqualTo{Float64}(10.0))
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(3.0)
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(5.0)
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(7.0)
+ LinkConstraint: x + x + x, MathOptInterface.EqualTo{Float64}(10.0)
 ```
 and query subgraphs:
 ```jldoctest modeling

@@ -1,5 +1,8 @@
 using Documenter, Plasmo, JuMP, LightGraphs, Plots
 
+#Fix issue with GKS for plotting
+ENV["GKSwstype"] = "100"
+
 makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         doctest=true,format = Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true"),
