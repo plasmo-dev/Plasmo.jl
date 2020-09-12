@@ -20,16 +20,8 @@ The second equation represents constraints on each optinode ``\mathcal{N}(\mathc
 linking constraints which induce optiedges ``\mathcal{E}(\mathcal{G})``. The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints induced by an
 edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})`` (an optiedge can contain multiple linking constraints). This formulation is also visualized by the following figure.
 
-![optigraph](../assets/optigraph.svg)
+![optigraph](../assets/optigraph.png)
 
-test1
-```@raw html
-<img src="../assets/optigraph.svg" alt="optigraph" width="400"/>
-```
-test2
-```@raw html
-<img src="assets/optigraph.svg" alt="optigraph" width="400"/>
-```
 
 From an implementation standpoint, an `OptiGraph` contains `OptiNode` and `OptiEdge` objects and extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl).
 The `OptiNode` object encapsulates a `Model` object from `JuMP`, and the `OptiEdge` object encapsulates the linking constraints that define coupling between optinodes.
