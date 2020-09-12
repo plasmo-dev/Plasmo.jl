@@ -1,5 +1,6 @@
 using Documenter, Plasmo, JuMP, LightGraphs, Plots
 
+#Fix issue with GKS for plotting
 ENV["GKSwstype"] = "100"
 
 makedocs(sitename="Plasmo.jl", modules=[Plasmo],
@@ -16,6 +17,5 @@ makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         )
 
 deploydocs(
-    repo = "github.com/jalving/Plasmo.jl.git"
-    #repo = "github.com/zavalab/Plasmo.jl.git"
+    repo = "github.com/zavalab/Plasmo.jl.git"
     )
