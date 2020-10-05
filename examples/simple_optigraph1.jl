@@ -5,8 +5,8 @@ graph = OptiGraph()
 optimizer = Ipopt.Optimizer
 
 #Add nodes to a ModelGraph
-n1 = @node(graph)
-n2 = @node(graph)
+n1 = @optinode(graph)
+n2 = @optinode(graph)
 
 #Node 1 Model
 @variable(n1,0 <= x <= 2)

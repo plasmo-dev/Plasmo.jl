@@ -204,7 +204,9 @@ function JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, fu
 end
 
 JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node))
-
+JuMP.raw_status(node::OptiNode) = JuMP.raw_status(getmodel(node))
+JuMP.primal_status(node::OptiNode) = JuMP.primal_status(getmodel(node))
+JuMP.dual_status(node::OptiNode) = JuMP.dual_status(getmodel(node))
 
 ##############################################
 # Get OptiNode
@@ -240,95 +242,3 @@ function string(node::OptiNode)
 end
 print(io::IO,node::OptiNode) = print(io, string(node))
 show(io::IO,node::OptiNode) = print(io,node)
-
-
-
-
-
-# TODO
-# RECREATE LINK CONSTRAINTS IF POSSIBLE
-# THROW WARNING IF THEY NEED TO BE DELETED
-# Check for the same variable containers to attach link constraints to
-# If it already had a model, delete all the link constraints corresponding to that model
-# if hasmodel(node)
-#     for (graph,constraints) in getlinkconstraints(node)
-#         local_link_cons = constraints
-#         graph_links = getlinkconstraints(graph)
-#         filter!(c -> !(c in local_link_cons), graph_links)  #filter out local link constraints
-#         node.link_data = NodeLinkData()   #reset the local node or edge link data
-#     end
-# end
-
-#TODO
-#set a model with the same variable names and dimensions as the old model on the node.
-#This will not break link constraints by default but will make sure they match the old model
-#switch out variables in any connected linkconstraints
-#throw warnings if link constraints break
-# function reset_model(node::ModelNode,m::JuMP.AbstractModel)
-#     #reassign the model
-#     node.model = m
-# end
-
-######################################################
-# Node Constraints
-######################################################
-# const NodeAffExpr = Union{NodeVariableRef,JuMP.GenericAffExpr{Float64,NodeVariableRef}}
-#
-# struct ScalarNodeConstraint{F <: NodeAffExpr,S <: MOI.AbstractScalarSet} <: AbstractConstraint
-#     func::F
-#     set::S
-#     function ScalarNodeConstraint(F::NodeAffExpr,S::MOI.AbstractScalarSet)
-#         con = new{typeof(F),typeof(S)}(F,S)
-#     end
-# end
-#
-# function JuMP.build_constraint(_error::Function,func::NodeAffExpr,set::MOI.AbstractScalarSet)
-#     constraint = ScalarNodeConstraint(func, set)
-#     return constraint
-# end
-#
-# function JuMP.ScalarConstraint(con::ScalarNodeConstraint)
-#     terms = con.func.terms
-#     new_terms = OrderedDict([(linkvar_ref.vref,coeff) for (linkvar_ref,coeff) in terms])
-#     new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-#     new_func.terms = new_terms
-#     new_func.constant = con.func.constant
-#     return JuMP.ScalarConstraint(new_func,con.set)
-# end
-#
-# #Add a Node Constraint
-# function JuMP.add_constraint(node::ModelNode, con::ScalarNodeConstraint, name::String="")
-#     scalar_con = JuMP.ScalarConstraint(con)
-#     cref = JuMP.add_constraint(getmodel(node),scalar_con,name)          #also add to master model
-#     return cref
-# end
-#
-# # Model Extras
-# JuMP.show_constraints_summary(::IOContext,node::ModelNode) = ""
-# JuMP.show_backend_summary(::IOContext,m::ModelNode) = ""
-# Base.broadcastable(v::NodeVariableRef) = Ref(v)
-# Base.copy(v::NodeVariableRef) = v
-# Base.:(==)(v::NodeVariableRef, w::NodeVariableRef) = v.vref.model === w.vref.model && v.vref.index == w.vref.index
-# JuMP.owner_model(v::NodeVariableRef) = v.node.model
-# JuMP.isequal_canonical(v::NodeVariableRef, w::NodeVariableRef) = v.vref == w.vref
-# JuMP.variable_type(::ModelNode) = NodeVariableRef
-#
-# JuMP.set_name(v::NodeVariableRef, s::String) = JuMP.set_name(v.vref,s)
-# JuMP.name(v::NodeVariableRef) =  JuMP.name(v.vref)
-#
-#
-# #Delete a node variable
-# function MOI.delete!(node::ModelNode, vref::NodeVariableRef)
-#     delete!(node.nodevariables, vref.idx)
-#     delete!(node.nodevarnames, vref.idx)
-# end
-# MOI.is_valid(node::ModelNode, vref::NodeVariableRef) = vref.idx in keys(node.nodevariables)
-
-#getnode(var::NodeVariableRef) = var.node
-
-#A node variable is a simple wrapper around a JuMP Variable Reference
-# struct NodeVariableRef <: AbstractNodeVariableRef
-#     vref::JuMP.VariableRef
-#     node::ModelNode
-#     idx::Int64
-# end
