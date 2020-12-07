@@ -6,31 +6,42 @@
 
 Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports many JuMP.Model functions.
 """
-mutable struct OptiGraph <: AbstractOptiGraph
+mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph ultimately extends a JuMP model to use its syntax)
 
     #Topology
-    optinodes::Vector{OptiNode}                #Local model nodes
+    optinodes::Vector{OptiNode}                  #Local model nodes
     optiedges::Vector{OptiEdge}                  #Local link edges.  These can also connect nodes across subgraphs
-    node_idx_map::Dict{OptiNode,Int64}          #Local map of model nodes to indices
+    node_idx_map::Dict{OptiNode,Int64}           #Local map of model nodes to indices
     edge_idx_map::Dict{OptiEdge,Int64}           #Local map of link edges indices
-    subgraphs::Vector{AbstractOptiGraph}        #Subgraphs contained in the model graph
+    subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the model graph
 
-    #graphindex::Int64
-    optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of vertices map to a optiedge
+    optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
 
     #Objective
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
     #Optimizer
-    optimizer
+    optimizer#::AbstractGraphOptimizer
 
-    #Model Information
+    #First IDEA: Use MOI backend directly to do model construction.  We also want to 'stitch' together a backend when creating induced optigraphs
+    # In MANUAL and AUTOMATIC modes, CachingOptimizer.
+    # In DIRECT mode, will hold an AbstractOptimizer.
+    # NOTE: The NLPBlock points back to a JuMP NLP Evaluator, which isn't easy to copy
+    moi_backend::MOI.AbstractOptimizer
+    #OR?:
+    #Other IDEA: I don't think we can 'stitch' together a JuMP model using references to other JuMP models.  Currently,
+    #we use aggregation, but the aggregate speeds can be slow.  It also complicates setting solution values. We would really like to avoid the
+    #value(node,var) syntax if possible. Looking into how hard it would be to merge backends together and then create linking constraints
     obj_dict::Dict{Symbol,Any}
+
+    #Extension Information
     ext::Dict{Symbol,Any}
 
     #TODO Nonlinear Link Constraints using NLP Data
     nlp_data::Union{Nothing,JuMP._NLPData}
+
+    model::Union{Nothing,JuMP.AbstractModel}
 
     #Constructor
     function OptiGraph()
@@ -50,6 +61,8 @@ mutable struct OptiGraph <: AbstractOptiGraph
         return optigraph
     end
 end
+
+
 
 @deprecate ModelGraph OptiGraph
 
@@ -363,8 +376,6 @@ JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
 #  Link Constraints
 #  A linear constraint between JuMP Models (nodes).  Link constraints can be equality or inequality.
 #####################################################
-
-
 function add_link_equality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
     @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
 
@@ -533,7 +544,6 @@ function JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, nam
 end
 
 JuMP.owner_model(cref::LinkConstraintRef) = cref.optiedge
-# JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
 JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
 JuMP.jump_function(constraint::LinkConstraint) = constraint.func
 JuMP.moi_set(constraint::LinkConstraint) = constraint.set
@@ -576,3 +586,37 @@ function string(graph::OptiGraph)
 end
 print(io::IO, graph::OptiGraph) = print(io, string(graph))
 show(io::IO,graph::OptiGraph) = print(io,graph)
+
+
+
+#
+# Other new functions
+#
+"""
+    empty!(graph::OptiGraph) -> graph
+Empty the optigraph, that is, remove all variables, constraints and model
+attributes but not optimizer attributes. Always return the argument.
+Note: removes extensions data.
+"""
+function Base.empty!(graph::OptiGraph)::OptiGraph
+    MOI.empty!(graph.moi_backend)
+    graph.nlp_data = nothing
+
+    empty!(graph.obj_dict)
+    empty!(graph.ext)
+
+
+    optinodes::Vector{OptiNode}                  #Local model nodes
+    optiedges::Vector{OptiEdge}                  #Local link edges.  These can also connect nodes across subgraphs
+    node_idx_map::Dict{OptiNode,Int64}           #Local map of model nodes to indices
+    edge_idx_map::Dict{OptiEdge,Int64}           #Local map of link edges indices
+    subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the model graph
+
+    optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
+
+    #Objective
+    objective_sense::MOI.OptimizationSense
+    objective_function::JuMP.AbstractJuMPScalar
+
+    return graph
+end

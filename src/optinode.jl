@@ -2,7 +2,7 @@
 # OptiNode
 ##############################################################################
 mutable struct OptiNode <: JuMP.AbstractModel
-    #The model
+    #The underlying optinode model
     model::JuMP.AbstractModel
     nodevariable_index::Int64
     nodevariables::OrderedDict{Int,AbstractVariableRef}
@@ -13,6 +13,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
     partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #Solution Data
+    #TODO: GO directly through underlying JuMP model to get these values
     variable_values::Dict{JuMP.AbstractVariableRef,Float64}
     constraint_dual_values::Dict{JuMP.ConstraintRef,Float64}
     nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
