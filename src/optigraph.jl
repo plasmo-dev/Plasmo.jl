@@ -18,18 +18,21 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
 
     #Objective
+    #These could move to the backend
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
     #Optimizer
-    optimizer#::AbstractGraphOptimizer
+    #optimizer#::AbstractGraphOptimizer
 
     #First IDEA: Use MOI backend directly to do model construction.  We also want to 'stitch' together a backend when creating induced optigraphs
     # In MANUAL and AUTOMATIC modes, CachingOptimizer.
     # In DIRECT mode, will hold an AbstractOptimizer.
     # NOTE: The NLPBlock points back to a JuMP NLP Evaluator, which isn't easy to copy
-    moi_backend::MOI.AbstractOptimizer
+    moi_backend::Union{Nothing,MOI.AbstractOptimizer} #The backend can be created on the fly if we create an induced subgraph
+
     #OR?:
+
     #Other IDEA: I don't think we can 'stitch' together a JuMP model using references to other JuMP models.  Currently,
     #we use aggregation, but the aggregate speeds can be slow.  It also complicates setting solution values. We would really like to avoid the
     #value(node,var) syntax if possible. Looking into how hard it would be to merge backends together and then create linking constraints
@@ -39,9 +42,11 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     ext::Dict{Symbol,Any}
 
     #TODO Nonlinear Link Constraints using NLP Data
+    #We will also need an NLP evaluator we can use with the OptiGraph.  We could also do multi-threaded function evaluations
     nlp_data::Union{Nothing,JuMP._NLPData}
 
-    model::Union{Nothing,JuMP.AbstractModel}
+
+    #model::Union{Nothing,JuMP.AbstractModel}
 
     #Constructor
     function OptiGraph()
