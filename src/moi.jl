@@ -6,6 +6,7 @@ mutable struct NodeOptimizer <: MOI.AbstractOptimizer
     caching_optimizer::MOIU.CachingOptimizer
     var_values::OrderedDict{MOI.VariableIndex,Float64}  #variable values #{MOI.VariableIndex => Value}
     var_duals::OrderedDict{MOI.ConstraintIndex,Float64}
+    status::MOI.TerminationStatusCode
 end
 
 function NodeOptimizer()
@@ -15,7 +16,10 @@ function NodeOptimizer()
     return NodeOptimizer(caching_opt,nothing,nothing)
 end
 
-NodeOptimizer(caching_opt::MOIU.CachingOptimizer) = NodeOptimizer(caching_opt,nothing,nothing)
+NodeOptimizer(caching_opt::MOIU.CachingOptimizer) = NodeOptimizer(caching_opt,
+OrderedDict{MOI.VariableIndex,Float64}(),
+OrderedDict{MOI.ConstraintIndex,Float64}(),
+MOI.OPTIMIZE_NOT_CALLED)
 
 #How many functions do we need to define here?
 function MOI.get(optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
@@ -32,15 +36,36 @@ function MOI.get(optimizer::NodeOptimizer, attr::MOI.VariablePrimal, idx::Vector
     return getindex.(Ref(optimizer.var_values),idx)
 end
 
+#Need to set a termination status for a node optimizer.  This is what JuMP checks for.
+function MOI.get(optimizer::NodeOptimizer, attr::MOI.TerminationStatus)
+    return MOI.TerminationStatusCode(1)
+end
+
 # I would like to do this, but it says it's ambiguous
 # MOI.get(model::NodeOptimizer, args...) = MOI.get(model.caching_optimizer,args...)
+# function _moi_get_result(model::MOI.ModelLike, args...)
 
+#These work in JuMP
+#     if MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+#         throw(OptimizeNotCalled())
+#     end
+#     return MOI.get(model, args...)
+# end
+# function _moi_get_result(model::MOIU.CachingOptimizer, args...)
+#     if MOIU.state(model) == MOIU.NO_OPTIMIZER
+#         throw(NoOptimizer())
+#     elseif MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+#         throw(OptimizeNotCalled())
+#     end
+#     return MOI.get(model, args...)
+# end
 
 #Now we just define get for the node
 
 #MOI.get(node_optimizer,MOI.VariablePrimal,idx) = node_optimizer.values[idx]
 
 #IDEA for nonlinear copy:
+# Copy and aggregate NLP blocks
 # Create an OptiGraph NLP Evaluator
 # Look at JuMP NLP Evaluator for ideas here. We could use all of the Optinodes to throw together a quick OptiGraph NLPEvaluator
 # Look at MadNLP.jl for an example of an NLP evaluator that uses Plasmo.jl
@@ -100,11 +125,39 @@ function append_to_backend(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names::
 end
 
 
+#normally, we can just track the objective function in the optigraph.
+#keep an option to
+function _set_sum_of_affine_objectives(dest::MOI.ModelLike,srcs::Vector{MOI.ModelLike},idxmaps::Vector{MOIU.IndexMap})
+    dest_obj = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm{Float64}[], 0.0)
+    for (i,src) in enumerate(srcs)
+        T = MOI.get(src,MOI.ObjectiveFunctionType())
+        src_obj_to_add = copy(MOI.get(src,MOI.ObjectiveFunction{T}()))
 
-function set_sum_of_objectives(dest,backends)
-    #objective function
-    #check for nonlinear objective
-    #TODO: sum up the objective functions
+        idxmap = idxmaps[i]
+        #swap out variable indices for destination model
+        _swap_indices!(src_obj_to_add,idxmap)
+
+        #TODO: check sense
+
+        dest_obj += src_obj_to_add
+    end
+end
+
+function _swap_indices!(obj::MOI.AbstractFunction,idxmap::MOIU.IndexMap)
+    terms = obj.terms
+    for i = 1:length(terms)
+        coeff = terms[i].coefficient
+        var_idx = terms[i].variable_index
+        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
+    end
+end
+
+#If any src model is quadratic, the destination is also quadtratic
+function set_sum_of_quadratic_objectives()
+end
+
+
+
     # MOI.set(model, MOI.ObjectiveSense(), MIN_SENSE)
     #
     # #Need to use idxmaps

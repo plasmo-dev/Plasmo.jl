@@ -2,8 +2,10 @@ using JuMP
 using MathOptInterface
 using Ipopt
 using DataStructures
+using Plasmo
 
 const MOI = MathOptInterface
+include("moi.jl")
 
 m1 = Model()
 set_optimizer(m1,Ipopt.Optimizer)
@@ -20,6 +22,18 @@ m2 = Model()
 @constraint(m2,sum(y[1:5]) + sum(x[1:5]) == 10)
 @objective(m2,Min,sum(x))
 src2 = backend(m2)
+
+######################################
+m3 = Model()
+@variable(m3,x1[1:5] >= 0)
+@variable(m3,y1[1:5] >= 1)
+@constraint(m3,sum(x1) == 10)
+@constraint(m3,sum(y1) == 5)
+@variable(m3,x2[1:5] >= 0)
+@variable(m3,y2[1:5] >= 1)
+@constraint(m3,sum(y2[1:5]) + sum(x2[1:5]) == 10)
+@objective(m3,Min,sum(x1) + sum(x2))
+######################################
 
 #We can copy models directly into an optimizer
 optimizer = Ipopt.Optimizer()
@@ -68,7 +82,7 @@ for src in srces
     #MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap, vis_src)
 
     # Copy model attributes? (e.g. objective function)
-    MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
+    #MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
 
     # Copy constraints
     MOI.Utilities.pass_constraints(dest, src, copy_names, idxmap,
@@ -79,24 +93,43 @@ for src in srces
 
 end
 
-
+#Get solution from optimizer
 vis_dest = MOI.get(dest,MOI.ListOfVariableIndices())
+cons = MOI.get(dest,MOI.ListOfConstraints())
+
+cis_dest = []
+for con in cons
+    F = con[1]
+    S = con[2]
+    append!(cis_dest,MOI.get(dest,MOI.ListOfConstraintIndices{F,S}()))
+end
+
+#TODO Set objective function for backend model
+
 MOI.optimize!(dest)
 MOI.get(dest, MOI.VariablePrimal(), vis_dest)
-sol = OrderedDict(zip(vis_dest,MOI.get(dest, MOI.VariablePrimal(), vis_dest[1:10])))
 
-#Now define MOI.get for a custom optimizer
 
-# TODO
-#Set primal values for each JuMP model using custom optimizer
-#MOI.get(src1,MOI.VariablePrimal(),src1_vis[1])
+sol_primal = OrderedDict(zip(vis_dest,MOI.get(dest, MOI.VariablePrimal(), vis_dest[1:10])))
+sol_dual = OrderedDict(zip(cis_dest,MOI.get(dest, MOI.ConstraintDual(), cis_dest[1:12])))
+
+#Set primal values for each JuMP model using a custom optimizer
 node_optimizer = NodeOptimizer(src1)
-node_optimizer.var_values = sol
+#TODO: Set solutions based on index maps
+node_optimizer.var_values = sol_primal
+node_optimizer.var_duals = sol_dual
+
 src1_vis = MOI.get(node_optimizer,MOI.ListOfVariableIndices())
 vals = MOI.get(node_optimizer, MOI.VariablePrimal(), src1_vis[1])
 m2.moi_backend = node_optimizer
 
+#This works
+println(value.(m2[:x]))
+println(value.(m2[:y]))
 
-#TODO: Bridge LinkConstraints into an MOI backend backend
+
+
+
+#TODO: Bridge LinkConstraints into an MOI backend
 #Meta-algorithms would still use LinkingConstraints on the algorithm side
 #LinkingConstraint --> ScalarConstraint
