@@ -41,12 +41,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     #Extension Information
     ext::Dict{Symbol,Any}
 
-    #TODO Nonlinear Link Constraints using NLP Data
-    #We will also need an NLP evaluator we can use with the OptiGraph.  We could also do multi-threaded function evaluations
+    #TODO Nonlinear Link Constraints using NLP Data and NLPEvaluator
     nlp_data::Union{Nothing,JuMP._NLPData}
-
-
-    #model::Union{Nothing,JuMP.AbstractModel}
 
     #Constructor
     function OptiGraph()
