@@ -138,8 +138,6 @@ include("optiedge.jl")
 
 include("optigraph.jl")
 
-# include("nlp_extension.jl")
-
 include("macros.jl")
 
 include("partition.jl")
@@ -148,9 +146,7 @@ include("combine.jl")          #An aggregated JuMP model
 
 include("copy.jl")
 
-include("solve.jl")              #Aggregate and solve with an MOI Solver
-
-#include("utils.jl")
+include("optimizer_interface.jl")              #Aggregate and solve with an MOI Solver
 
 include("graph_interface.jl")
 

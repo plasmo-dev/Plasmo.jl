@@ -32,7 +32,7 @@ function MOI.get(optimizer::NodeOptimizer, attr::MOI.VariablePrimal, idx::MOI.Va
 end
 
 function MOI.get(optimizer::NodeOptimizer, attr::MOI.ConstraintDual, idx::MOI.ConstraintIndex)
-    return optimizer.primals[idx]
+    return optimizer.duals[idx]
 end
 
 #Get vector of primal values
@@ -42,9 +42,11 @@ end
 
 #Need to set a termination status for a node optimizer.  This is what JuMP checks for.
 function MOI.get(optimizer::NodeOptimizer, attr::MOI.TerminationStatus)
-    return MOI.TerminationStatusCode(1)
+    return MOI.TerminationStatusCode(1) #Currently set to Optimal if a node has a solution
 end
 
+# This doesn't work because the function call is ambiguous
+# MOI.get(model::NodeOptimizer, args...) = MOI.get(model.caching_optimizer,args...)
 
 #IDEA here: Copy multiple moi backends without emptying the destination model.
 function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names::Bool;filter_constraints::Union{Nothing, Function}=nothing)
@@ -130,7 +132,7 @@ end
 
 
 # I would like to do this, but it says it's ambiguous
-# MOI.get(model::NodeOptimizer, args...) = MOI.get(model.caching_optimizer,args...)
+
 # function _moi_get_result(model::MOI.ModelLike, args...)
 
 #These work in JuMP
@@ -139,14 +141,7 @@ end
 #     end
 #     return MOI.get(model, args...)
 # end
-# function _moi_get_result(model::MOIU.CachingOptimizer, args...)
-#     if MOIU.state(model) == MOIU.NO_OPTIMIZER
-#         throw(NoOptimizer())
-#     elseif MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-#         throw(OptimizeNotCalled())
-#     end
-#     return MOI.get(model, args...)
-# end
+
 
 #Now we just define get for the node
 

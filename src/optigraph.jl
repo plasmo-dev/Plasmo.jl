@@ -4,7 +4,7 @@
 """
     OptiGraph()
 
-Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports many JuMP.Model functions.
+Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports most JuMP.Model functions.
 """
 mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph ultimately extends a JuMP model to use its syntax)
 
@@ -14,28 +14,17 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     node_idx_map::Dict{OptiNode,Int64}           #Local map of model nodes to indices
     edge_idx_map::Dict{OptiEdge,Int64}           #Local map of link edges indices
     subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the model graph
-
     optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
 
     #Objective
-    #These could move to the backend
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    #Optimizer
-    #optimizer#::AbstractGraphOptimizer
+    #First IDEA: Use MOI backend directly to do model construction.  We also want to create a backend on the fly when creating from induced optigraphs
+    # NOTE: The NLPBlock points back to a NLP Evaluator
 
-    #First IDEA: Use MOI backend directly to do model construction.  We also want to 'stitch' together a backend when creating induced optigraphs
-    # In MANUAL and AUTOMATIC modes, CachingOptimizer.
-    # In DIRECT mode, will hold an AbstractOptimizer.
-    # NOTE: The NLPBlock points back to a JuMP NLP Evaluator, which isn't easy to copy
-    moi_backend::Union{Nothing,MOI.AbstractOptimizer} #The backend can be created on the fly if we create an induced subgraph
+    moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
 
-    #OR?:
-
-    #Other IDEA: I don't think we can 'stitch' together a JuMP model using references to other JuMP models.  Currently,
-    #we use aggregation, but the aggregate speeds can be slow.  It also complicates setting solution values. We would really like to avoid the
-    #value(node,var) syntax if possible. Looking into how hard it would be to merge backends together and then create linking constraints
     obj_dict::Dict{Symbol,Any}
 
     #Extension Information
@@ -564,15 +553,7 @@ function MOI.delete!(cref::LinkConstraintRef)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
 
-#################################
-# Optimizer
-#################################
-"""
-    JuMP.set_optimizer(graph::OptiGraph,optimizer::Any)
 
-Set an optimizer for the optigraph `graph`.
-"""
-JuMP.set_optimizer(graph::OptiGraph,optimizer) = graph.optimizer = optimizer
 
 ####################################
 #Print Functions

@@ -26,18 +26,16 @@ src2 = backend(m2)
 
 ######################################
 m3 = Model()
-@variable(m3,x1[1:5] >= 0)
+@variable(m3,x1[1:5] >= 2)
 @variable(m3,y1[1:5] >= 1)
-@constraint(m3,sum(x1) == 10)
-@constraint(m3,sum(y1) == 5)
+@constraint(m3,ref1_3,sum(x1) == 10)
+@constraint(m3,ref2_3,sum(y1) == 5)
 @variable(m3,x2[1:5] >= 0)
 @variable(m3,y2[1:5] >= 1)
 @constraint(m3,sum(y2[1:5]) + sum(x2[1:5]) == 10)
 @objective(m3,Min,sum(x1) + sum(x2))
+set_optimizer(m3,Ipopt.Optimizer)
 ######################################
-
-#We can copy models directly into an optimizer
-#optimizer = Ipopt.Optimizer()
 
 #Setup an MOI model for the destination model.  This could be the optigraph MOI model
 caching_mode = MOIU.AUTOMATIC
@@ -46,13 +44,11 @@ caching_opt = MOIU.CachingOptimizer(universal_fallback,caching_mode)
 dest = caching_opt
 MOIU.reset_optimizer(dest,Ipopt.Optimizer())
 
-
 srces = MOI.ModelLike[src1,src2]
 idxmaps = MOIU.IndexMap[]
 for src in srces
     idx_map = append_to_backend!(dest, src, false;filter_constraints=nothing)
     push!(idxmaps,idx_map)#
-    #return mapping of dest to each src?
 end
 
 #Constraints in dest model
@@ -68,14 +64,6 @@ _set_sum_of_affine_objectives!(dest,srces,idxmaps)
 
 MOI.optimize!(dest)
 
-
-vis_dest = MOI.get(dest,MOI.ListOfVariableIndices())
-MOI.get(dest, MOI.VariablePrimal(), vis_dest)
-sol_primal_m1 = OrderedDict(zip(vis_dest,MOI.get(dest, MOI.VariablePrimal(), vis_dest[1:10])))
-sol_primal_m2 = OrderedDict(zip(vis_dest,MOI.get(dest, MOI.VariablePrimal(), vis_dest[11:20])))
-#sol_dual = OrderedDict(zip(cis_dest,MOI.get(dest, MOI.ConstraintDual(), cis_dest[1:12])))
-
-##TODO: Set solutions using index maps
 node_optimizers = []
 for (src,idxmap) in zip(srces,idxmaps)
     vars = MOI.get(src,MOI.ListOfVariableIndices())
@@ -114,6 +102,16 @@ m2.moi_backend = node_optimizers[2]
 #This works!
 println(value.(m1[:x]))
 println(value.(m1[:y]))
+println(dual(ref1))
+println(dual(ref2))
+
+
+#Check results with aggregated JuMP model
+optimize!(m3)
+println(value.(m3[:x1]))
+println(value.(m3[:y1]))
+println(dual(ref1_3))
+println(dual(ref2_3))
 
 
 #Set primal values for each JuMP model using a custom optimizer
@@ -123,7 +121,10 @@ println(value.(m1[:y]))
 
 # src1_vis = MOI.get(node_optimizer,MOI.ListOfVariableIndices())
 # vals = MOI.get(node_optimizer, MOI.VariablePrimal(), src1_vis[1])
-#TODO: LinkConstraints into an MOI backend
-#Meta-algorithms would still use LinkingConstraints on the algorithm side
-#LinkingConstraint --> ScalarConstraint
-#USe idxmaps to create destination constraints for a caching optimizer
+
+
+# vis_dest = MOI.get(dest,MOI.ListOfVariableIndices())
+# MOI.get(dest, MOI.VariablePrimal(), vis_dest)
+# sol_primal_m1 = OrderedDict(zip(vis_dest,MOI.get(dest, MOI.VariablePrimal(), vis_dest[1:10])))
+# sol_primal_m2 = OrderedDict(zip(vis_dest,MOI.get(dest, MOI.VariablePrimal(), vis_dest[11:20])))
+# sol_dual = OrderedDict(zip(cis_dest,MOI.get(dest, MOI.ConstraintDual(), cis_dest[1:12])))
