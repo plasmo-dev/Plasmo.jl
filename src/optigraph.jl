@@ -20,9 +20,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    #First IDEA: Use MOI backend directly to do model construction.  We also want to create a backend on the fly when creating from induced optigraphs
+    # IDEA: Use MOI backend directly to do model construction.  We also want to create a backend on the fly when creating from induced optigraphs
     # NOTE: The NLPBlock points back to a NLP Evaluator
-
     moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
 
     obj_dict::Dict{Symbol,Any}

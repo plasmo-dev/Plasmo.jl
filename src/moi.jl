@@ -1,25 +1,28 @@
 JuMP.backend(graph::OptiGraph) = graph.moi_backend
 JuMP.backend(node::OptiNode) = JuMP.backend(getmodel(node))
 
-#An optinode can be solved just like a JuMP model, but sometimes we just want to store a value using an underlying optimizer
-mutable struct NodeOptimizer <: MOI.AbstractOptimizer
-    caching_optimizer::MOIU.CachingOptimizer
-    primals::OrderedDict#{MOI.VariableIndex,Float64}  #variable values #{MOI.VariableIndex => Value}
+#An optinode can be solved just like a JuMP model, but sometimes we just want to store a solution on it
+mutable struct NodeOptimizer <: MOI.ModelLike
+    # optimizer::MOIU.CachingOptimizer
+    optimizer::MOI.ModelLike
+    primals::OrderedDict#{MOI.VariableIndex,Float64}
     duals::OrderedDict#{MOI.ConstraintIndex,Float64}
     status::MOI.TerminationStatusCode
-end
-
-function NodeOptimizer()
-    caching_mode::MOIU.CachingOptimizerMode=MOIU.AUTOMATIC
-    universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
-    caching_opt = MOIU.CachingOptimizer(universal_fallback,caching_mode)
-    return NodeOptimizer(caching_opt,nothing,nothing)
+    idx_map::MOIU.IndexMap
 end
 
 NodeOptimizer(caching_opt::MOIU.CachingOptimizer) = NodeOptimizer(caching_opt,
 OrderedDict{MOI.VariableIndex,Float64}(),
 OrderedDict{MOI.ConstraintIndex,Float64}(),
-MOI.OPTIMIZE_NOT_CALLED)
+MOI.OPTIMIZE_NOT_CALLED,
+MOIU.IndexMap())
+
+function NodeOptimizer()
+    caching_mode = MOIU.AUTOMATIC
+    universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
+    caching_opt = MOIU.CachingOptimizer(universal_fallback,caching_mode)
+    return NodeOptimizer(caching_opt)
+end
 
 #How many functions do we need to define here?
 function MOI.get(optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
@@ -51,13 +54,9 @@ end
 #IDEA here: Copy multiple moi backends without emptying the destination model.
 function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names::Bool;filter_constraints::Union{Nothing, Function}=nothing)
 
-    #Normally, the destination model is emptied out
-    #variable indices of src model
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
     idxmap = MOI.Utilities.index_map_for_variable_indices(vis_src)
 
-
-    #The standard default_copy_to doesn't really work here since we need to increment variable indices on new src models
     # The `NLPBlock` assumes that the order of variables does not change (#849)
     if MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
         constraint_types = MOI.get(src, MOI.ListOfConstraints())
@@ -67,9 +66,8 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
 
         vector_of_variables_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables, S}()) for S in vector_of_variables_types]
         single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
-
-    else #this sets up idxmap
-        #this collects the variable set types that destination model supports
+    else
+        #this collects the variable set types that the destination model supports
         vector_of_variables_types, _, vector_of_variables_not_added,
         single_variable_types, _, single_variable_not_added =
         MOI.Utilities.try_constrain_variables_on_creation(dest, src, idxmap, MOI.add_constrained_variables, MOI.add_constrained_variable)
@@ -82,8 +80,7 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     # Copy variable attributes
     MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap, vis_src)
 
-    # Normally, this copies the objective function, but we will set that with another function
-    # This would just override the objective each iteration
+    # Normally, this copies the objective function, but we don't want to do that here
     # MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
 
     # Copy constraints
@@ -130,8 +127,6 @@ end
 function set_sum_of_quadratic_objectives()
 end
 
-
-# I would like to do this, but it says it's ambiguous
 
 # function _moi_get_result(model::MOI.ModelLike, args...)
 

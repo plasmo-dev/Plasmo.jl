@@ -1,6 +1,11 @@
 ##############################################################################
 # OptiNode
 ##############################################################################
+"""
+    OptiNode()
+
+Creates an empty OptiNode.  Does not add it to a graph.
+"""
 mutable struct OptiNode <: JuMP.AbstractModel
     #The underlying optinode model
     model::JuMP.AbstractModel
@@ -14,36 +19,34 @@ mutable struct OptiNode <: JuMP.AbstractModel
 
     #Solution Data
     #TODO: GO directly through underlying JuMP model to get these values
-    variable_values::Dict{JuMP.AbstractVariableRef,Float64}
-    constraint_dual_values::Dict{JuMP.ConstraintRef,Float64}
+    # variable_values::Dict{JuMP.AbstractVariableRef,Float64}
+    # constraint_dual_values::Dict{JuMP.ConstraintRef,Float64}
     nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
 
     #Extension data
     ext::Dict{Symbol,Any}
-end
 
-#############################################
-# Add OptiNodes
-############################################
-"""
-    OptiNode()
+    function OptiNode()
+        model = JuMP.Model()
+        node_backend = NodeOptimizer(JuMP.backend(model))
+        model.moi_backend = node_backend
 
-Creates an empty OptiNode.  Does not add it to a graph.
-"""
-function OptiNode()
-     node = OptiNode(JuMP.Model(),
-     0,
-     OrderedDict{Int,JuMP.VariableRef}(),
-     Dict{Int,String}(),
-     "node",
-     Dict{Int64,AbstractLinkConstraint}(),
-     Dict{Int64,AbstractLinkConstraint}(),
-     Dict{MOI.VariableIndex,Float64}(),
-     Dict{MOI.ConstraintIndex,Float64}(),
-     Dict{JuMP.NonlinearConstraintIndex,Float64}(),
-     Dict{Symbol,Any}())
-     node.model.ext[:optinode] = node
-     return node
+        node = new(
+        OptiNode(model,
+        0,
+        OrderedDict{Int,JuMP.VariableRef}(),
+        Dict{Int,String}(),
+        "node",
+        Dict{Int64,AbstractLinkConstraint}(),
+        Dict{Int64,AbstractLinkConstraint}(),
+        # Dict{MOI.VariableIndex,Float64}(),
+        # Dict{MOI.ConstraintIndex,Float64}(),
+        Dict{JuMP.NonlinearConstraintIndex,Float64}(),
+        Dict{Symbol,Any}())
+        )
+        node.model.ext[:optinode] = node
+        return node
+    end
 end
 
 #############################################
