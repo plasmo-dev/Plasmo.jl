@@ -1,8 +1,8 @@
-JuMP.backend(graph::OptiGraph) = graph.moi_backend
-JuMP.backend(node::OptiNode) = JuMP.backend(getmodel(node))
+#abstract type AbstractNodeOptimizer <: MOI.ModelLike end
+abstract type AbstractNodeOptimizer <: MOI.AbstractOptimizer end
 
 #An optinode can be solved just like a JuMP model, but sometimes we just want to store a solution on it
-mutable struct NodeOptimizer <: MOI.ModelLike
+mutable struct NodeOptimizer <: AbstractNodeOptimizer
     # optimizer::MOIU.CachingOptimizer
     optimizer::MOI.ModelLike
     primals::OrderedDict#{MOI.VariableIndex,Float64}
@@ -24,9 +24,28 @@ function NodeOptimizer()
     return NodeOptimizer(caching_opt)
 end
 
-#How many functions do we need to define here?
-function MOI.get(optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
-    return MOI.get(optimizer.caching_optimizer,attr)
+#Forward methods
+MOI.add_variable(node_optimizer::AbstractNodeOptimizer) = MOI.add_variable(node_optimizer.optimizer)
+MOI.add_constraint(node_optimizer::AbstractNodeOptimizer,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_optimizer.optimizer,func,set)
+
+MOI.get(optimizer::AbstractNodeOptimizer,attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}, args...) =
+MOI.get(optimizer.optimizer,attr,args...)
+
+MOI.set(optimizer::AbstractNodeOptimizer,attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute},args...) =
+MOI.set(optimizer.optimizer,attr,args...)
+
+MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T} where T<:MathOptInterface.AbstractFunction, set::Type{S} where S <: MathOptInterface.AbstractSet) =
+MOI.supports_constraint(optimizer.optimizer,func,set)
+
+MOI.supports(optimizer::AbstractNodeOptimizer, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) =
+MOI.supports(optimizer.optimizer,attr)
+
+# moi_mode(optimizer::AbstractNodeOptimizer) =
+# moi_bridge_constraints(optimizer::AbstractNodeOptimizer)
+
+#Specialized methods
+function MOI.get(node_optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
+    return MOI.get(node_optimizer.optimizer,attr)
 end
 
 #Get single variable index
@@ -48,8 +67,6 @@ function MOI.get(optimizer::NodeOptimizer, attr::MOI.TerminationStatus)
     return MOI.TerminationStatusCode(1) #Currently set to Optimal if a node has a solution
 end
 
-# This doesn't work because the function call is ambiguous
-# MOI.get(model::NodeOptimizer, args...) = MOI.get(model.caching_optimizer,args...)
 
 #IDEA here: Copy multiple moi backends without emptying the destination model.
 function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names::Bool;filter_constraints::Union{Nothing, Function}=nothing)
@@ -129,19 +146,21 @@ end
 
 
 # function _moi_get_result(model::MOI.ModelLike, args...)
-
-#These work in JuMP
 #     if MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
 #         throw(OptimizeNotCalled())
 #     end
 #     return MOI.get(model, args...)
 # end
+# function _moi_get_result(model::MOIU.CachingOptimizer, args...)
+#     if MOIU.state(model) == MOIU.NO_OPTIMIZER
+#         throw(NoOptimizer())
+#     elseif MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+#         throw(OptimizeNotCalled())
+#     end
+#     return MOI.get(model, args...)
+# end
 
-
-#Now we just define get for the node
-
-#MOI.get(node_optimizer,MOI.VariablePrimal,idx) = node_optimizer.values[idx]
-
+#Nonlinear DATA
 #IDEA for nonlinear copy:
 # Copy and aggregate NLP blocks
 # Create an OptiGraph NLP Evaluator

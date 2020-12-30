@@ -17,6 +17,9 @@ mutable struct OptiNode <: JuMP.AbstractModel
     partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
     partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
 
+    #TODO
+    #Partial link constraints
+
     #Solution Data
     #TODO: GO directly through underlying JuMP model to get these values
     # variable_values::Dict{JuMP.AbstractVariableRef,Float64}
@@ -31,8 +34,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
         node_backend = NodeOptimizer(JuMP.backend(model))
         model.moi_backend = node_backend
 
-        node = new(
-        OptiNode(model,
+        node = new(model,
         0,
         OrderedDict{Int,JuMP.VariableRef}(),
         Dict{Int,String}(),
@@ -43,8 +45,8 @@ mutable struct OptiNode <: JuMP.AbstractModel
         # Dict{MOI.ConstraintIndex,Float64}(),
         Dict{JuMP.NonlinearConstraintIndex,Float64}(),
         Dict{Symbol,Any}())
-        )
         node.model.ext[:optinode] = node
+
         return node
     end
 end
@@ -200,7 +202,7 @@ JuMP.objective_function(node::OptiNode) = JuMP.objective_function(getmodel(node)
 JuMP.objective_value(node::OptiNode) = JuMP.objective_value(getmodel(node))
 JuMP.objective_sense(node::OptiNode) = JuMP.objective_sense(getmodel(node))
 JuMP.num_variables(node::OptiNode) = JuMP.num_variables(getmodel(node))
-JuMP.set_optimizer(node::OptiNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
+#JuMP.set_optimizer(node::OptiNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
 JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(getmodel(node))
 
 function JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)

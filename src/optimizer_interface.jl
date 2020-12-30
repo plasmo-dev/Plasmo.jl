@@ -1,3 +1,14 @@
+JuMP.backend(graph::OptiGraph) = graph.moi_backend
+JuMP.backend(node::OptiNode) = JuMP.backend(getmodel(node))
+
+MOI.get(node::OptiNode, args...) = MOI.get(getmodel(node), args...)
+MOI.set(node::OptiNode, args...) = MOI.set(getmodel(node), args...)
+
+
+MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
+
+
+
 #Create an moi backend for an optigraph using the underlying optinodes and optiedges
 function _aggregate_backends!(graph::OptiGraph,dest::MOI.ModelLike)
     nodes = all_nodes(graph)
@@ -16,9 +27,6 @@ function _aggregate_backends!(graph::OptiGraph,dest::MOI.ModelLike)
         #add constraint to backend
         #add_constraint(dest,link)
     end
-
-
-
 
     return nothing
 end
@@ -77,11 +85,12 @@ function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor)
     graph.moi_backend = backend
     return nothing
 end
+
 # function MOIU.reset_optimizer(model::Model, optimizer::MOI.AbstractOptimizer)
 #     error_if_direct_mode(model, :reset_optimizer)
 #     MOIU.reset_optimizer(backend(model), optimizer)
 # end
-#
+
 # function MOIU.reset_optimizer(model::Model)
 #     error_if_direct_mode(model, :reset_optimizer)
 #     MOIU.reset_optimizer(backend(model))
@@ -121,45 +130,45 @@ function JuMP.optimize!(node::OptiNode;kwargs...)
     return nothing
 end
 
-#TODO: Update node_variables
-JuMP.optimize!(node::OptiNode;kwargs...) = JuMP.optimize!(getmodel(node);kwargs...)
+# #TODO: Update node_variables
+# JuMP.optimize!(node::OptiNode;kwargs...) = JuMP.optimize!(getmodel(node);kwargs...)
 
-function _copysolution!(optigraph::OptiGraph,ref_map::CombinedMap)
-
-    #Node solutions
-    for node in all_nodes(optigraph)
-        for var in JuMP.all_variables(node)
-            node.variable_values[var] = JuMP.value(ref_map[var])
-        end
-    end
-
-    #Link constraint duals
-    if JuMP.has_duals(ref_map.combined_model)
-        for edge in all_edges(optigraph)
-            for linkcon in getlinkconstraints(edge)
-                dual = JuMP.dual(ref_map.linkconstraintmap[linkcon])
-                edge.dual_values[linkcon] = dual
-            end
-        end
-    end
-
-    #TODO Copy constraint duals
-    # for (jnodeconstraint,modelconstraint) in node.constraintmap
-    #     try
-    #         model_node.constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
-    #     catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
-    #         continue
-    #     end
-    # end
-    #     for (jnodeconstraint,modelconstraint) in node.nl_constraintmap
-    #         try
-    #             model_node.nl_constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
-    #         catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
-    #             continue
-    #         end
-    #     end
-    # end
-end
+# function _copysolution!(optigraph::OptiGraph,ref_map::CombinedMap)
+#
+#     #Node solutions
+#     for node in all_nodes(optigraph)
+#         for var in JuMP.all_variables(node)
+#             node.variable_values[var] = JuMP.value(ref_map[var])
+#         end
+#     end
+#
+#     #Link constraint duals
+#     if JuMP.has_duals(ref_map.combined_model)
+#         for edge in all_edges(optigraph)
+#             for linkcon in getlinkconstraints(edge)
+#                 dual = JuMP.dual(ref_map.linkconstraintmap[linkcon])
+#                 edge.dual_values[linkcon] = dual
+#             end
+#         end
+#     end
+#
+#     #TODO Copy constraint duals
+#     # for (jnodeconstraint,modelconstraint) in node.constraintmap
+#     #     try
+#     #         model_node.constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
+#     #     catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
+#     #         continue
+#     #     end
+#     # end
+#     #     for (jnodeconstraint,modelconstraint) in node.nl_constraintmap
+#     #         try
+#     #             model_node.nl_constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
+#     #         catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
+#     #             continue
+#     #         end
+#     #     end
+#     # end
+# end
 
 #has_aggregate(graph::OptiGraph) = haskey(graph.obj_dict,:current_optinode)
 
@@ -173,8 +182,6 @@ end
 #     end
 # end
 
-#NOTE: These should hit the current graph backend
-MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
 
 #TODO: Equivalent of _moi_get from JuMP
 

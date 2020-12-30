@@ -132,6 +132,8 @@ include("hypergraphs/hypergraph.jl")
 
 include("hypergraphs/projections.jl")
 
+include("moi.jl")
+
 include("optinode.jl")
 
 include("optiedge.jl")
