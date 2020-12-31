@@ -14,7 +14,7 @@ m1 = Model()
 @constraint(m1,ref1,sum(x) == 10)
 @constraint(m1,ref2,sum(y) == 5)
 @objective(m1,Min,sum(x))
-src1 = backend(m1)
+src1 = JuMP.backend(m1)
 set_optimizer(m1,Ipopt.Optimizer)
 
 m2 = Model()
@@ -22,7 +22,7 @@ m2 = Model()
 @variable(m2,y[1:5] >= 1)
 @constraint(m2,sum(y[1:5]) + sum(x[1:5]) == 10)
 @objective(m2,Min,sum(x))
-src2 = backend(m2)
+src2 = JuMP.backend(m2)
 
 ######################################
 m3 = Model()

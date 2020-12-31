@@ -1,43 +1,72 @@
+
+#Get backends
 JuMP.backend(graph::OptiGraph) = graph.moi_backend
 JuMP.backend(node::OptiNode) = JuMP.backend(getmodel(node))
 
+#Extend OptiNode and OptiGraph with MOI interface
 MOI.get(node::OptiNode, args...) = MOI.get(getmodel(node), args...)
 MOI.set(node::OptiNode, args...) = MOI.set(getmodel(node), args...)
-
-
 MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
 
 
-
 #Create an moi backend for an optigraph using the underlying optinodes and optiedges
-function _aggregate_backends!(graph::OptiGraph,dest::MOI.ModelLike)
+function _aggregate_backends!(graph::OptiGraph)
+    dest = JuMP.backend(graph)
     nodes = all_nodes(graph)
     srces = JuMP.backend.(nodes)
-
     for src in srces
         idx_map = append_to_backend!(dest, src, false; filter_constraints=nothing)
 
-        #idx_map: {src_attribute => dest_attribute}
-        _set_idx_map(src,idx_map) #retain index map on src model
+        #remember idx_map: {src_attribute => dest_attribute}
+        _set_idx_map(src,idx_map) #this retains an index map on each src model
     end
 
-    #TODO LinkConstraints
     for link in all_linkconstraints(graph)
-        #map variable indices, then add constraint to backend
-        #add constraint to backend
-        #add_constraint(dest,link)
+        _add_link_constraint!(dest,link)
     end
 
     return nothing
 end
 
-_get_idx_map(optimizer::NodeOptimizer,idx_map::MOIU.IndexMap) = optimizer.idx_map
+function _set_sum_of_affine_objectives!(graph::OptiGraph)
+    dest = JuMP.backend(graph)
+    srces = JuMP.backend.(all_nodes(graph))
+    idx_maps = _get_idx_map.(srces)
+    _set_sum_of_affine_objectives!(dest,srces,idx_maps)
+    return nothing
+end
+
+#Add a LinkConstraint to a MOI backend.  This is used as part of _aggregate_backends!
+function _add_link_constraint!(dest::MOI.ModelLike,link::LinkConstraint)
+    jump_func = JuMP.jump_function(link)
+    moi_func = JuMP.moi_function(link)
+    for (i,term) in enumerate(JuMP.linear_terms(jump_func))
+        coeff = term[1]
+        var = term[2]
+
+        src = JuMP.backend(getnode(var))
+        idx_map = Plasmo._get_idx_map(src)
+
+        var_idx = JuMP.index(var)
+        dest_idx = idx_map[var_idx]
+
+        moi_func.terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,dest_idx)
+    end
+    moi_set = JuMP.moi_set(link)
+
+    MOI.add_constraint(dest,moi_func,moi_set)
+
+    return nothing
+end
+
+_get_idx_map(optimizer::NodeOptimizer) = optimizer.idx_map
+_get_idx_map(node::OptiNode) = _get_idx_map(JuMP.backend(node))
 _set_idx_map(optimizer::NodeOptimizer,idx_map::MOIU.IndexMap) = optimizer.idx_map = idx_map
 _set_primals(optimizer::NodeOptimizer,primals::OrderedDict) = optimizer.primals = primals
 _set_duals(optimizer::NodeOptimizer,duals::OrderedDict) = optimizer.duals = duals
 
 function _populate_node_results!(graph::OptiGraph)
-    backend = JuMP.backend(graph)
+    graph_backend = JuMP.backend(graph)
 
     nodes = all_nodes(graph)
     srces = JuMP.backend.(nodes)
@@ -59,8 +88,8 @@ function _populate_node_results!(graph::OptiGraph)
             append!(dest_cons,dest_con)
         end
 
-        primals = OrderedDict(zip(vars,MOI.get(dest,MOI.VariablePrimal(),dest_vars)))
-        duals = OrderedDict(zip(cons,MOI.get(dest,MOI.ConstraintDual(),dest_cons)))
+        primals = OrderedDict(zip(vars,MOI.get(graph_backend,MOI.VariablePrimal(),dest_vars)))
+        duals = OrderedDict(zip(cons,MOI.get(graph_backend,MOI.ConstraintDual(),dest_cons)))
         _set_primals(src,primals)
         _set_duals(src,duals)
     end
@@ -86,16 +115,6 @@ function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor)
     return nothing
 end
 
-# function MOIU.reset_optimizer(model::Model, optimizer::MOI.AbstractOptimizer)
-#     error_if_direct_mode(model, :reset_optimizer)
-#     MOIU.reset_optimizer(backend(model), optimizer)
-# end
-
-# function MOIU.reset_optimizer(model::Model)
-#     error_if_direct_mode(model, :reset_optimizer)
-#     MOIU.reset_optimizer(backend(model))
-# end
-
 function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #check optimizer state.  Create new backend if optimize not called
     backend = JuMP.backend(graph)
@@ -105,13 +124,21 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #we could check for incremental changes in the node backends and update the graph backend accordingly
 
     #combine backends from optinodes
-    _aggregate_backends!(graph,backend)
+    _aggregate_backends!(graph)
 
-    #TODO Set graph objective function
+
+    # #TODO Set default graph objective function
+    # if has_objective(graph)
+    #     #use graph objective function
+    # else
+    _set_sum_of_affine_objectives!(graph)
+    # end
+
+
 
     MOI.optimize!(backend)
 
-    #populate optimizer solutions on nodes
+    #populate optimizer solutions onto node backend
     _populate_node_results!(graph)
 
     return nothing

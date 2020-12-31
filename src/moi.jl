@@ -28,11 +28,17 @@ end
 MOI.add_variable(node_optimizer::AbstractNodeOptimizer) = MOI.add_variable(node_optimizer.optimizer)
 MOI.add_constraint(node_optimizer::AbstractNodeOptimizer,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_optimizer.optimizer,func,set)
 
-MOI.get(optimizer::AbstractNodeOptimizer,attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}, args...) =
-MOI.get(optimizer.optimizer,attr,args...)
 
-MOI.set(optimizer::AbstractNodeOptimizer,attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute},args...) =
-MOI.set(optimizer.optimizer,attr,args...)
+
+#MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.get(optimizer.optimizer,attr,args...)
+#This is ambiguous with: get(model::MathOptInterface.ModelLike, attr::MOI.AnyAttribute, idxs::Array{T,1} where T)
+
+MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute) = MOI.get(optimizer.optimizer,attr)
+MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idx) = MOI.get(optimizer.optimizer,attr,idx)
+MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(optimizer.optimizer,attr,idxs)
+
+#MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
+MOI.set(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.set(optimizer.optimizer,attr,args...)
 
 MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T} where T<:MathOptInterface.AbstractFunction, set::Type{S} where S <: MathOptInterface.AbstractSet) =
 MOI.supports_constraint(optimizer.optimizer,func,set)
@@ -44,9 +50,9 @@ MOI.supports(optimizer.optimizer,attr)
 # moi_bridge_constraints(optimizer::AbstractNodeOptimizer)
 
 #Specialized methods
-function MOI.get(node_optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
-    return MOI.get(node_optimizer.optimizer,attr)
-end
+# function MOI.get(node_optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
+#     return MOI.get(node_optimizer.optimizer,attr)
+# end
 
 #Get single variable index
 function MOI.get(optimizer::NodeOptimizer, attr::MOI.VariablePrimal, idx::MOI.VariableIndex)
@@ -109,7 +115,7 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
-function _set_sum_of_affine_objectives!(dest::MOI.ModelLike,srcs::Vector{MOI.ModelLike},idxmaps::Vector{MOIU.IndexMap})
+function _set_sum_of_affine_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vector{MOIU.IndexMap})
     dest_obj = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm{Float64}[], 0.0)
     MOI.set(dest,MOI.ObjectiveSense(),MOI.MIN_SENSE)
     for (i,src) in enumerate(srcs)

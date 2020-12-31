@@ -20,7 +20,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    # IDEA: Use MOI backend directly to do model construction.  We also want to create a backend on the fly when creating from induced optigraphs
+    # IDEA: Use MOI backend to interface with solvers.  We can create a backend on the fly when creating from induced optigraphs
     # NOTE: The NLPBlock points back to a NLP Evaluator
     moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
 
@@ -34,6 +34,10 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
 
     #Constructor
     function OptiGraph()
+        caching_mode = MOIU.AUTOMATIC
+        universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
+        backend = MOIU.CachingOptimizer(universal_fallback,caching_mode)
+
         optigraph = new(Vector{OptiNode}(),
                     Vector{OptiEdge}(),
                     Dict{OptiNode,Int64}(),
@@ -42,7 +46,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
                     OrderedDict{OrderedSet,OptiEdge}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
-                    nothing,
+                    backend,
                     Dict{Symbol,Any}(),
                     Dict{Symbol,Any}(),
                     nothing
