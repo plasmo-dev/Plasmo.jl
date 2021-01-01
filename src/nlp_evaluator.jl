@@ -1,4 +1,4 @@
-#Inspired by MadNLP.jl
+#Code re-used from MadNLP.jl
 
 mutable struct OptiGraphNLPEvaluator
     obj::Function
@@ -32,6 +32,7 @@ function jacobian_structure(linkedge::OptiEdge,I,J,ninds,x_index_map,g_index_map
         offset += jacobian_structure(linkcon,I,J,ninds,x_index_map,g_index_map,offset)
     end
 end
+
 function jacobian_structure(linkcon,I,J,ninds,x_index_map,g_index_map,offset)
     cnt = 0
     for var in get_vars(linkcon)

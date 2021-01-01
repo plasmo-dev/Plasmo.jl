@@ -8,23 +8,20 @@ Creates an empty OptiNode.  Does not add it to a graph.
 """
 mutable struct OptiNode <: JuMP.AbstractModel
     #The underlying optinode model
-    model::JuMP.AbstractModel
+    model::JuMP.AbstractModel #JuMP.Model
     nodevariable_index::Int64
     nodevariables::OrderedDict{Int,AbstractVariableRef}
     nodevarnames::Dict{Int,String}
     label::String
 
+    #TODO: Just store linkconstraints.  Make functions that can differentiate equality and inequality.
     partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
     partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
 
-    #TODO
-    #Partial link constraints
-
     #Solution Data
     #TODO: GO directly through underlying JuMP model to get these values
-    # variable_values::Dict{JuMP.AbstractVariableRef,Float64}
-    # constraint_dual_values::Dict{JuMP.ConstraintRef,Float64}
     nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
+    #Add to node NLP data?
 
     #Extension data
     ext::Dict{Symbol,Any}

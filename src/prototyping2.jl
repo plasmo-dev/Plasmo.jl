@@ -8,8 +8,6 @@ using Ipopt
 using DataStructures
 
 const MOI = MathOptInterface
-const MOIB = MathOptInterface.Bridges
-include("moi.jl")
 
 graph = OptiGraph()
 set_optimizer(graph,Ipopt.Optimizer)
@@ -21,7 +19,6 @@ set_optimizer(graph,Ipopt.Optimizer)
 @constraint(n1,ref2,sum(y) == 5)
 @objective(n1,Min,sum(x))
 
-
 @optinode(graph,n2)
 @variable(n2,x[1:5] >= 0)
 @variable(n2,y[1:5] >= 1)
@@ -32,8 +29,9 @@ set_optimizer(graph,Ipopt.Optimizer)
 
 #TODO
 #set_sum_of_objectives(graph)
-
 optimize!(graph)
 
 println(value.(n1[:x]))
 println(value.(n2[:y]))
+println(dual(ref1))
+println(dual(ref2))

@@ -124,6 +124,7 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #we could check for incremental changes in the node backends and update the graph backend accordingly
 
     #combine backends from optinodes
+    #TODO: NLP
     _aggregate_backends!(graph)
 
 
@@ -133,8 +134,6 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     # else
     _set_sum_of_affine_objectives!(graph)
     # end
-
-
 
     MOI.optimize!(backend)
 
@@ -200,18 +199,7 @@ end
 #has_aggregate(graph::OptiGraph) = haskey(graph.obj_dict,:current_optinode)
 
 
-
-# function getmodel(graph::OptiGraph)
-#     if has_aggregate(graph)
-#         return graph.obj_dict[:current_optinode]
-#     else
-#         error("OptiGraph has no current aggregate model")
-#     end
-# end
-
-
 #TODO: Equivalent of _moi_get from JuMP
-
 # JuMP.termination_status(graph::OptiGraph) = JuMP.termination_status(getmodel(graph))
 # JuMP.raw_status(graph::OptiGraph) = JuMP.raw_status(getmodel(graph))
 # JuMP.primal_status(graph::OptiGraph) = JuMP.primal_status(getmodel(graph))
