@@ -29,8 +29,9 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     #Extension Information
     ext::Dict{Symbol,Any}
 
-    #TODO Nonlinear Link Constraints or objective function using NLPData and NLPEvaluator
-    #Also used for MOI backend when aggregating models
+    #TODO
+    #Captures nonlinear linking constraints
+    #Created for MOI backend when aggregating optinodes
     nlp_data::Union{Nothing,JuMP._NLPData}
 
     #Constructor

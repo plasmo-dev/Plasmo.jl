@@ -1,3 +1,18 @@
+#TODO
+# function JuMP.NLPEvaluator(graph::OptiGraph)
+#     model = Model()
+#     model.ext[:graph] = graph
+#     model.nlp_data = graph.nlp_data
+#     vars = JuMP.all_node_variables(graph)  #oredered by order of node
+#     #We shouldn't need other variable information since we only want to be able to get constraint information.  We would never pass this model to a solver.
+#     for var in vars
+#         @variable(model,var)
+#     end
+#     #Need to add the constraints in too
+#     d = JuMP.NLPEvaluator(model)
+#     return d
+# end
+
 #Code re-used from MadNLP.jl
 
 mutable struct OptiGraphNLPEvaluator

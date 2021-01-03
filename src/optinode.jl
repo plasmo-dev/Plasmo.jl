@@ -18,9 +18,12 @@ mutable struct OptiNode <: JuMP.AbstractModel
     partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
     partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
 
+    #nlp_data will reference model.nlp_data
+    nlp_data::Union{Nothing,JuMP._NLPData}
+
     #Solution Data
     #TODO: GO directly through underlying JuMP model to get these values
-    nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
+    #nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
     #Add to node NLP data?
 
     #Extension data
@@ -40,7 +43,8 @@ mutable struct OptiNode <: JuMP.AbstractModel
         Dict{Int64,AbstractLinkConstraint}(),
         # Dict{MOI.VariableIndex,Float64}(),
         # Dict{MOI.ConstraintIndex,Float64}(),
-        Dict{JuMP.NonlinearConstraintIndex,Float64}(),
+        #Dict{JuMP.NonlinearConstraintIndex,Float64}(),
+        nothing,
         Dict{Symbol,Any}())
         node.model.ext[:optinode] = node
 
