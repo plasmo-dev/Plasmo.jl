@@ -1,21 +1,14 @@
-#TODO
-# function JuMP.NLPEvaluator(graph::OptiGraph)
-#     model = Model()
-#     model.ext[:graph] = graph
-#     model.nlp_data = graph.nlp_data
-#     vars = JuMP.all_node_variables(graph)  #oredered by order of node
-#     #We shouldn't need other variable information since we only want to be able to get constraint information.  We would never pass this model to a solver.
-#     for var in vars
-#         @variable(model,var)
-#     end
-#     #Need to add the constraints in too
-#     d = JuMP.NLPEvaluator(model)
-#     return d
-# end
+#NLP Data for nonliner link constraints
+function JuMP._init_NLP(graph::OptiGraph)
+    if graph.nlp_data === nothing
+        graph.nlp_data = JuMP._NLPData()
+    end
+end
 
-#Code re-used from MadNLP.jl
-
+#OptiGraph NLP Evaluator.  Wraps Local JuMP NLP Evaluators.
 mutable struct OptiGraphNLPEvaluator
+    optigraph::OptiGraph
+
     obj::Function
     obj_grad!::Function
 
@@ -29,6 +22,8 @@ mutable struct OptiGraphNLPEvaluator
     status::Status
 end
 
+
+#NOTE Code re-used from MadNLP.jl
 function hessian_lagrangian_structure(graph::OptiGraph,I,J,ninds,nnzs_hess_inds,optinodes)
     @blas_safe_threads for k=1:length(optinodes)
         isempty(nnzs_hess_inds[k]) && continue
@@ -58,8 +53,8 @@ function jacobian_structure(linkcon,I,J,ninds,x_index_map,g_index_map,offset)
     return cnt
 end
 
-function jacobian_structure(
-    graph::OptiGraph,I,J,ninds,minds,pinds,nnzs_jac_inds,nnzs_link_jac_inds,
+function jacobian_structure(graph::OptiGraph,I,J,ninds,minds,pinds,
+    nnzs_jac_inds,nnzs_link_jac_inds,
     x_index_map,g_index_map,modelnodes,linkedges)
 
     @blas_safe_threads for k=1:length(modelnodes)

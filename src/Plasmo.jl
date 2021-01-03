@@ -117,9 +117,6 @@ clique_expansion, star_expansion,
 
 @NLnodeconstraint, @NLnodeobjective
 
-#TODO
-#@NLlinkconstraint,
-
 
 #Abstract Types
 abstract type AbstractOptiGraph <: JuMP.AbstractModel end
@@ -144,11 +141,11 @@ include("macros.jl")
 
 include("partition.jl")
 
-include("combine.jl")          #An aggregated JuMP model
+include("jump_aggregation.jl")          #An aggregated JuMP model
 
 include("copy.jl")
 
-include("optimizer_interface.jl")              #Aggregate and solve with an MOI Solver
+include("optimizer_interface.jl")       #Aggregate and solve with an MOI Solver
 
 include("graph_interface.jl")
 

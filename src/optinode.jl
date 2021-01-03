@@ -18,7 +18,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
     partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
     partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
 
-    #nlp_data will reference model.nlp_data
+    #nlp_data is a reference to `model.nlp_data`
     nlp_data::Union{Nothing,JuMP._NLPData}
 
     #Solution Data
@@ -34,6 +34,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
         node_backend = NodeOptimizer(JuMP.backend(model))
         model.moi_backend = node_backend
 
+
         node = new(model,
         0,
         OrderedDict{Int,JuMP.VariableRef}(),
@@ -43,7 +44,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
         Dict{Int64,AbstractLinkConstraint}(),
         # Dict{MOI.VariableIndex,Float64}(),
         # Dict{MOI.ConstraintIndex,Float64}(),
-        #Dict{JuMP.NonlinearConstraintIndex,Float64}(),
+        # Dict{JuMP.NonlinearConstraintIndex,Float64}(),
         nothing,
         Dict{Symbol,Any}())
         node.model.ext[:optinode] = node
@@ -214,6 +215,8 @@ JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node)
 JuMP.raw_status(node::OptiNode) = JuMP.raw_status(getmodel(node))
 JuMP.primal_status(node::OptiNode) = JuMP.primal_status(getmodel(node))
 JuMP.dual_status(node::OptiNode) = JuMP.dual_status(getmodel(node))
+JuMP.solver_name(node::OptiNode) = JuMP.solver_name(getmodel(node))
+JuMP.mode(node::OptiNode) = JuMP.mode(getmodel(node))
 
 ##############################################
 # Get OptiNode

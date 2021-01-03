@@ -3,8 +3,7 @@ abstract type AbstractNodeOptimizer <: MOI.AbstractOptimizer end
 
 #An optinode can be solved just like a JuMP model, but sometimes we just want to store a solution on it
 mutable struct NodeOptimizer <: AbstractNodeOptimizer
-    # optimizer::MOIU.CachingOptimizer
-    optimizer::MOI.ModelLike
+    optimizer::MOI.ModelLike # optimizer::MOIU.CachingOptimizer
     primals::OrderedDict#{MOI.VariableIndex,Float64}
     duals::OrderedDict#{MOI.ConstraintIndex,Float64}
     status::MOI.TerminationStatusCode
@@ -28,16 +27,13 @@ end
 MOI.add_variable(node_optimizer::AbstractNodeOptimizer) = MOI.add_variable(node_optimizer.optimizer)
 MOI.add_constraint(node_optimizer::AbstractNodeOptimizer,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_optimizer.optimizer,func,set)
 
-
-
 #MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.get(optimizer.optimizer,attr,args...)
 #This is ambiguous with: get(model::MathOptInterface.ModelLike, attr::MOI.AnyAttribute, idxs::Array{T,1} where T)
-
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute) = MOI.get(optimizer.optimizer,attr)
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idx) = MOI.get(optimizer.optimizer,attr,idx)
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(optimizer.optimizer,attr,idxs)
 
-#MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
+#NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
 MOI.set(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.set(optimizer.optimizer,attr,args...)
 
 MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T} where T<:MathOptInterface.AbstractFunction, set::Type{S} where S <: MathOptInterface.AbstractSet) =
@@ -46,8 +42,10 @@ MOI.supports_constraint(optimizer.optimizer,func,set)
 MOI.supports(optimizer::AbstractNodeOptimizer, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) =
 MOI.supports(optimizer.optimizer,attr)
 
+MOIU.state(optimizer::AbstractNodeOptimizer) = MOIU.state(optimizer.optimizer)
+
 # moi_mode(optimizer::AbstractNodeOptimizer) =
-# moi_bridge_constraints(optimizer::AbstractNodeOptimizer)
+# moi_bridge_constraints(optimizer::AbstractNodeOptimizer) =
 
 #Specialized methods
 # function MOI.get(node_optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
@@ -149,6 +147,8 @@ end
 #If any src model is quadratic, the destination is also quadtratic
 function set_sum_of_quadratic_objectives()
 end
+
+JuMP.moi_mode(node_optimizer::NodeOptimizer) = JuMP.moi_mode(node_optimizer.optimizer)
 
 
 # function _moi_get_result(model::MOI.ModelLike, args...)

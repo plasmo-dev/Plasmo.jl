@@ -23,6 +23,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     # IDEA: Use MOI backend to interface with solvers.  We can create a backend on the fly when creating from induced optigraphs
     # NOTE: The NLPBlock points back to a NLP Evaluator
     moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
+    #optimizer: #NOTE: MadNLP uses optimizer field
 
     obj_dict::Dict{Symbol,Any}
 

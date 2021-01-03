@@ -9,6 +9,7 @@ MOI.set(node::OptiNode, args...) = MOI.set(getmodel(node), args...)
 MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
 
 
+
 #Create an moi backend for an optigraph using the underlying optinodes and optiedges
 function _aggregate_backends!(graph::OptiGraph)
     dest = JuMP.backend(graph)
@@ -156,8 +157,12 @@ function JuMP.optimize!(node::OptiNode;kwargs...)
     return nothing
 end
 
-# #TODO: Update node_variables
-# JuMP.optimize!(node::OptiNode;kwargs...) = JuMP.optimize!(getmodel(node);kwargs...)
+#TODO: NLPBlock
+# if model.nlp_data !== nothing
+#         MOI.set(model, MOI.NLPBlock(), _create_nlp_block_data(model))
+#         empty!(model.nlp_data.nlconstr_duals)
+# end
+
 
 # function _copysolution!(optigraph::OptiGraph,ref_map::CombinedMap)
 #
