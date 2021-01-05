@@ -113,6 +113,7 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
+#TODO: This can be replaced at the modeling level
 function _set_sum_of_affine_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vector{MOIU.IndexMap})
     dest_obj = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm{Float64}[], 0.0)
     MOI.set(dest,MOI.ObjectiveSense(),MOI.MIN_SENSE)
@@ -145,10 +146,9 @@ function _swap_indices!(obj::MOI.AbstractFunction,idxmap::MOIU.IndexMap)
 end
 
 #If any src model is quadratic, the destination is also quadtratic
-function set_sum_of_quadratic_objectives()
+function _set_sum_of_quadratic_objectives()
 end
 
-JuMP.moi_mode(node_optimizer::NodeOptimizer) = JuMP.moi_mode(node_optimizer.optimizer)
 
 
 # function _moi_get_result(model::MOI.ModelLike, args...)
@@ -167,7 +167,7 @@ JuMP.moi_mode(node_optimizer::NodeOptimizer) = JuMP.moi_mode(node_optimizer.opti
 # end
 
 #Nonlinear DATA
-#IDEA for nonlinear copy:
+#IDEA for nonlinear append:
 # Copy and aggregate NLP blocks
 # Create an OptiGraph NLP Evaluator
 # Look at JuMP NLP Evaluator for ideas here. We could use all of the Optinodes to throw together a quick OptiGraph NLPEvaluator

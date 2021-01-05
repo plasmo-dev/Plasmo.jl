@@ -2,6 +2,7 @@
 #Get backends
 JuMP.backend(graph::OptiGraph) = graph.moi_backend
 JuMP.backend(node::OptiNode) = JuMP.backend(getmodel(node))
+JuMP.moi_mode(node_optimizer::NodeOptimizer) = JuMP.moi_mode(node_optimizer.optimizer)
 
 #Extend OptiNode and OptiGraph with MOI interface
 MOI.get(node::OptiNode, args...) = MOI.get(getmodel(node), args...)
@@ -34,6 +35,7 @@ function _set_sum_of_affine_objectives!(graph::OptiGraph)
     srces = JuMP.backend.(all_nodes(graph))
     idx_maps = _get_idx_map.(srces)
     _set_sum_of_affine_objectives!(dest,srces,idx_maps)
+
     return nothing
 end
 
@@ -125,15 +127,32 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #we could check for incremental changes in the node backends and update the graph backend accordingly
 
     #combine backends from optinodes
-    #TODO: NLP
     _aggregate_backends!(graph)
 
+    #TODO: NLP
+    if has_nlp_data(graph)
+        optinodes = all_nodes(graph)
+        for k=1:length(optinodes)
+            JuMP.set_optimizer(getmodel(optinodes[k]),constructor)
+            if modelnodes[k].model.nlp_data !== nothing
+                MOI.set(modelnodes[k].model, MOI.NLPBlock(),_create_nlp_block_data(modelnodes[k].model))
+                empty!(modelnodes[k].model.nlp_data.nlconstr_duals)
+            end
+            MOIU.attach_optimizer(optinodes[k].model)
+            MOI.initialize(moi_optimizer(modelnodes[k]).nlp_data.evaluator,[:Grad,:Hess,:Jac])
+        end
+    end
+    # if model.nlp_data !== nothing
+    #     MOI.set(model, MOI.NLPBlock(), _create_nlp_block_data(model))
+    #     empty!(model.nlp_data.nlconstr_duals)
+    # end
 
-    # #TODO Set default graph objective function
+
+    # #TODO Set default graph objective function to sum of nodes by default
     # if has_objective(graph)
     #     #use graph objective function
     # else
-    _set_sum_of_affine_objectives!(graph)
+    _set_sum_of_affine_objectives!(graph) #I don't actually need to do this.  We can just setup graph.objective.
     # end
 
     MOI.optimize!(backend)
@@ -151,6 +170,9 @@ function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
 end
 
 function JuMP.optimize!(node::OptiNode;kwargs...)
+    #TODO: Check for optimizer
+    #TODO: Would it be better to do: JuMP.optimize!(node.model)? This would setup the NLP data
+
     #JuMP.set_optimizer(node,optimizer)
     backend = JuMP.backend(node)
     MOI.optimize!(backend;kwargs...)
