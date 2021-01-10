@@ -1,58 +1,5 @@
-mutable struct OptiGraphNLPEvaluator <: MOI.AbstractNLPEvaluator
-    graph::OptiGraph
-    evaluators::Vector
 
-    # timers
-    eval_objective_timer::Float64
-    eval_constraint_timer::Float64
-    eval_objective_gradient_timer::Float64
-    eval_constraint_jacobian_timer::Float64
-    eval_hessian_lagrangian_timer::Float64
-    function OptiGraphNLPEvaluator(graph::OptiGraph)
-        d = new(graph)
-
-        set_optimizer(getmodel(optinodes[k]),Optimizer)
-        d.eval_objective_timer = 0
-        d.eval_constraint_timer = 0
-        d.eval_objective_gradient_timer = 0
-        d.eval_constraint_jacobian_timer = 0
-        d.eval_hessian_lagrangian_timer = 0
-        return d
-    end
-end
-
-function MOI.initialize(d::OptiGraphNLPEvaluator, requested_features::Vector{Symbol})
-    #nldata::_NLPData = d.m.nlp_data
-    graph = d.graph
-
-    optinodes = all_nodes(graph)
-    linkedges = all_edges(graph)
-
-    for optinode in optinodes
-        num_variables(optinode) == 0 && error("Detected optinode with 0 variables.  The Plasmo NLP interface does not yet support optinodes with zero variables.")
-    end
-
-    #Initialize each optinode with the requested features
-    #TODO: figure out Optimizer constructor
-    @blas_safe_threads for k=1:length(optinodes)
-        if optinodes[k].model.nlp_data !== nothing
-            MOI.set(optinodes[k].model, MOI.NLPBlock(),_create_nlp_block_data(optinodes[k].model))
-            empty!(optinodes[k].model.nlp_data.nlconstr_duals)
-        end
-        MOIU.attach_optimizer(optinodes[k].model)
-
-        #[:Grad,:Hess,:Jac]
-        MOI.initialize(moi_optimizer(optinodes[k]).nlp_data.evaluator,requested_features)
-    end
-end
-
-const dummy_function = ()->nothing
-
-num_linkconstraints(optiedge::OptiEdge) = length(optiedge.linkconstraints)
-
-#moi_optimizer(optinode::OptiNode) = optinode.model.moi_backend.optimizer.model
 moi_optimizer(optinode::OptiNode) = JuMP.backend(optinode)
-
 function set_g_link!(linkedge::OptiEdge,l,gl,gu)
     cnt = 1
     for (ind,linkcon) in linkedge.linkconstraints
@@ -74,20 +21,59 @@ function set_g_link!(linkedge::OptiEdge,l,gl,gu)
     end
 end
 
-function MOI.hessian_lagrangian_structure(graph::OptiGraph,I,J,ninds,nnzs_hess_inds,optinodes)::Vector{Tuple{Int64,Int64}}
-    @blas_safe_threads for k=1:length(optinodes)
-        isempty(nnzs_hess_inds[k]) && continue
+#This is similar to the JuMP Implementation
+function MOI.hessian_lagrangian_structure(d::OptiGraphNLPEvaluator)::Vector{Tuple{Int64,Int64}}
+    d.want_hess || error("Hessian computations were not requested on the call to initialize!.")
+    return d.hessian_sparsity #d.hessian_sparsity = _hessian_lagrangian_structure(d)
+end
 
-        
+# function _hessian_lagrangian_structure(d::OptiGraphNLPEvaluator)
+#     hessian_sparsity = Tuple{Int64,Int64}[]
+#
+#     if d.has_nlobj
+#         for idx in 1:length(d.objective.hess_I)
+#             push!(
+#                 hessian_sparsity,
+#                 (d.objective.hess_I[idx], d.objective.hess_J[idx]),
+#             )
+#         end
+#     end
+#     for ex in d.constraints
+#         for idx in 1:length(ex.hess_I)
+#             push!(hessian_sparsity, (ex.hess_I[idx], ex.hess_J[idx]))
+#         end
+#     end
+#
+#     return hessian_sparsity
+# end
 
-        offset = ninds[k][1]-1
-        II = view(I,nnzs_hess_inds[k])
-        JJ = view(J,nnzs_hess_inds[k])
-        hessian_lagrangian_structure(moi_optimizer(optinodes[k]),II,JJ)
+function MOI.hessian_lagrangian_structure(d::OptiGraphNLPEvaluator)::Vector{Tuple{Int64,Int64}}
+    graph = d.graph
+    optinodes = all_nodes(graph)
+
+    I = Vector{Int32}(undef,d.nnz_hess)
+    J = Vector{Int32}(undef,d.nnz_hess)
+    #hessian_sparsity = Tuple{Int64,Int64}[]
+
+    # @blas_safe_threads for k=1:length(optinodes)
+    for k=1:length(optinodes)
+        isempty(d.nnzs_hess_inds[k]) && continue
+
+        offset = d.ninds[k][1]-1
+        II = view(I,d.nnzs_hess_inds[k])
+        JJ = view(J,d.nnzs_hess_inds[k])
+
+        Inode,Jnode = MOI.hessian_lagrangian_structure(optinodes[k].model.d)
+        II = Inode
+        JJ = Jnode
+
+        #hessian_lagrangian_structure(moi_optimizer(optinodes[k]),II,JJ)
         II.+= offset
         JJ.+= offset
     end
+    return II,JJ
 end
+
 
 function jacobian_structure(linkedge::OptiEdge,I,J,ninds,x_index_map,g_index_map)
     offset=1
@@ -128,29 +114,32 @@ function MOI.jacobian_structure(graph::OptiGraph,
         jacobian_structure(linkedges[q],II,JJ,ninds,x_index_map,g_index_map)
     end
 end
-function MOI.eval_objective(graph::OptiGraph,x,ninds,x_index_map,optinodes)
-    obj = Threads.Atomic{Float64}(0.)
 
-    @blas_safe_threads for k=1:length(optinodes)
-         Threads.atomic_add!(obj,eval_objective(
-             moi_optimizer(optinodes[k]),view(x,ninds[k])))
+#Eval objective
+function MOI.eval_objective(graph::OptiGraph,x)
+    obj = Threads.Atomic{Float64}(0.)
+    # @blas_safe_threads for k=1:length(optinodes)
+    for k=1:d.n_nodes
+         Threads.atomic_add!(obj,eval_objective(moi_optimizer(optinodes[k]),view(x,d.ninds[k])))
+        obj = obj + eval_objective(optinodes[k].model,view(x,d.ninds[k])))
     end
-    return obj.value + eval_function(graph.objective_function,x,ninds,x_index_map)
+    return obj.value + eval_function(graph.objective_function,x,d.ninds,d.x_index_map)
 end
 
+#Eval objective gradient
 function MOI.eval_objective_gradient(graph::OptiGraph,f,x,ninds,optinodes)
     @blas_safe_threads for k=1:length(optinodes)
         MOI.eval_objective_gradient(moi_optimizer(optinodes[k]),view(f,ninds[k]),view(x,ninds[k]))
     end
 end
 
-function eval_function(aff::GenericAffExpr,x,ninds,x_index_map)
-    function_value = aff.constant
-    for (var,coef) in aff.terms
-        function_value += coef*x[x_index_map[var]]
-    end
-    return function_value
-end
+# function eval_function(aff::GenericAffExpr,x,ninds,x_index_map)
+#     function_value = aff.constant
+#     for (var,coef) in aff.terms
+#         function_value += coef*x[x_index_map[var]]
+#     end
+#     return function_value
+# end
 
 function eval_constraint(linkedge::OptiEdge,c,x,ninds,x_index_map)
     cnt = 1

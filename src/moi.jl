@@ -113,7 +113,8 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
-#TODO: This can be replaced at the modeling level
+
+#TODO: This can be replaced at the modeling level.  The objective function will be a JuMP object
 function _set_sum_of_affine_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vector{MOIU.IndexMap})
     dest_obj = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm{Float64}[], 0.0)
     MOI.set(dest,MOI.ObjectiveSense(),MOI.MIN_SENSE)

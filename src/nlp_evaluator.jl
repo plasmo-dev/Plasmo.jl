@@ -1,4 +1,6 @@
-#NLP Data for nonliner link constraints
+#NOTE Code re-used from MadNLP.jl
+
+#NLP Data for nonliner objective function and (someday) nonlinear link constraints
 function JuMP._init_NLP(graph::OptiGraph)
     if graph.nlp_data === nothing
         graph.nlp_data = JuMP._NLPData()
@@ -6,24 +8,121 @@ function JuMP._init_NLP(graph::OptiGraph)
 end
 
 #OptiGraph NLP Evaluator.  Wraps Local JuMP NLP Evaluators.
-mutable struct OptiGraphNLPEvaluator
-    optigraph::OptiGraph
+mutable struct OptiGraphNLPEvaluator <: MOI.AbstractNLPEvaluator
+    graph::OptiGraph
+    nlps::Union{Nothing,Vector{MOI.AbstractNLPEvaluator}} #nlp evaluators
+    has_nlobj
+    n#num variables
+    m#num constraints
+    p#num link constraints
+    ninds#variable indices per node
+    minds
+    pinds
+    nnzs_hess_inds
+    nnzs_jac_inds
+    nnzs_link_jac_inds
 
-    obj::Function
-    obj_grad!::Function
 
-    con!::Function
-    con_jac!::Function
-    lag_hess!::Function
+    # timers
+    eval_objective_timer::Float64
+    eval_constraint_timer::Float64
+    eval_objective_gradient_timer::Float64
+    eval_constraint_jacobian_timer::Float64
+    eval_hessian_lagrangian_timer::Float64
+    function OptiGraphNLPEvaluator(graph::OptiGraph)
+        optinodes = all_nodes(graph)
+        linkedges = all_edges(graph)
 
-    hess_sparsity!::Function
-    jac_sparsity!::Function
+        K = length(optinodes)
 
-    status::Status
+        #num variables in optigraph
+        ns= [num_variables(moi_optimizer(optinode)) for optinode in optinodes]
+        n = sum(ns)
+        ns_cumsum = cumsum(ns)
+
+        #num constraints
+        ms= [num_constraints(moi_optimizer(optinode)) for optinode in optinodes]
+        m = sum(ms)
+        ms_cumsum = cumsum(ms)
+
+        #hessian nonzeros
+        nnzs_hess = [get_nnz_hess(moi_optimizer(optinode)) for optinode in optinodes]
+        nnzs_hess_cumsum = cumsum(nnzs_hess)
+        nnz_hess = sum(nnzs_hess)
+
+        #jacobian nonzeros
+        nnzs_jac = [get_nnz_jac(moi_optimizer(optinode)) for optinode in optinodes]
+        nnzs_jac_cumsum = cumsum(nnzs_jac)
+        nnz_jac = sum(nnzs_jac)
+
+        #link jacobian nonzeros
+        nnzs_link_jac = [get_nnz_link_jac(linkedge) for linkedge in linkedges]
+        nnzs_link_jac_cumsum = cumsum(nnzs_link_jac)
+        nnz_link_jac = isempty(nnzs_link_jac) ? 0 : sum(nnzs_link_jac)
+
+        #variable indices and constraint indices
+        ninds = [(i==1 ? 0 : ns_cumsum[i-1])+1:ns_cumsum[i] for i=1:K]
+        minds = [(i==1 ? 0 : ms_cumsum[i-1])+1:ms_cumsum[i] for i=1:K]
+
+        #nonzero indices for hessian and jacobian
+        nnzs_hess_inds = [(i==1 ? 0 : nnzs_hess_cumsum[i-1])+1:nnzs_hess_cumsum[i] for i=1:K]
+        nnzs_jac_inds = [(i==1 ? 0 : nnzs_jac_cumsum[i-1])+1:nnzs_jac_cumsum[i] for i=1:K]
+
+        #num linkedges
+        Q = length(linkedges)
+        ps= [num_linkconstraints(optiedge) for optiedge in linkedges]
+        ps_cumsum =  cumsum(ps)
+        p = sum(ps)
+        pinds = [(i==1 ? m : m+ps_cumsum[i-1])+1:m+ps_cumsum[i] for i=1:Q]
+
+        #link jacobian nonzero indices
+        nnzs_link_jac_inds = [(i==1 ? nnz_jac : nnz_jac+nnzs_link_jac_cumsum[i-1])+1: nnz_jac + nnzs_link_jac_cumsum[i] for i=1:Q]
+
+        d = new(graph)
+        d.n = n
+        d.m = m
+        d.p = p
+        d.ninds = ninds
+        d.minds = minds
+        d.pinds = pinds
+        d.nnzs_hess_inds = nnzs_hess_inds
+        d.nnzs_jac_inds = nnzs_jac_inds
+        d.nnzs_link_jac_inds = d.nnzs_link_jac_inds
+
+        #set_optimizer(getmodel(optinodes[k]),Optimizer)
+        d.eval_objective_timer = 0
+        d.eval_constraint_timer = 0
+        d.eval_objective_gradient_timer = 0
+        d.eval_constraint_jacobian_timer = 0
+        d.eval_hessian_lagrangian_timer = 0
+        return d
+    end
+end
+
+function MOI.initialize(d::OptiGraphNLPEvaluator, requested_features::Vector{Symbol})
+    #nldata::_NLPData = d.m.nlp_data
+    graph = d.graph
+
+    optinodes = all_nodes(graph)
+    #linkedges = all_edges(graph)
+
+    #Check for empty optinodes
+    # for optinode in optinodes
+    #     num_variables(optinode) == 0 && error("Detected optinode with 0 variables.  The Plasmo NLP interface does not yet support optinodes with zero variables.")
+    # end
+
+    #Initialize each optinode with the requested features
+    #TODO: Each optinode needs to be initialized.
+    #@blas_safe_threads for k=1:length(optinodes)
+    for k = 1:length(optinodes)
+        #Initialize each optinode evaluator
+        d_node = JuMP.NLPEvaluator(optinodes[k].model)
+        MOI.initialize(d_node,requested_features)
+    end
 end
 
 
-#NOTE Code re-used from MadNLP.jl
+
 function hessian_lagrangian_structure(graph::OptiGraph,I,J,ninds,nnzs_hess_inds,optinodes)
     @blas_safe_threads for k=1:length(optinodes)
         isempty(nnzs_hess_inds[k]) && continue
@@ -154,3 +253,30 @@ function eval_constraint_jacobian(graph::OptiGraph,jac,x,
 end
 get_nnz_link_jac(linkedge::OptiEdge) = sum(
     length(linkcon.func.terms) for (ind,linkcon) in linkedge.linkconstraints)
+
+#@blas_safe_threads
+const blas_num_threads = Ref{Int}()
+function set_blas_num_threads(n::Integer;permanent::Bool=false)
+    permanent && (blas_num_threads[]=n)
+    BLAS.set_num_threads(n) # might be mkl64 or openblas64
+    ccall((:mkl_set_dynamic, libmkl32),
+          Cvoid,
+          (Ptr{Int32},),
+          Ref{Int32}(0))
+    ccall((:mkl_set_num_threads, libmkl32),
+          Cvoid,
+          (Ptr{Int32},),
+          Ref{Int32}(n))
+    ccall((:openblas_set_num_threads, libopenblas32),
+          Cvoid,
+          (Ptr{Int32},),
+          Ref{Int32}(n))
+end
+macro blas_safe_threads(args...)
+    code = quote
+        set_blas_num_threads(1)
+        Threads.@threads($(args...))
+        set_blas_num_threads(blas_num_threads[])
+    end
+    return esc(code)
+end

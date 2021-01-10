@@ -129,17 +129,15 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #combine backends from optinodes
     _aggregate_backends!(graph)
 
-    #TODO: NLP
+    #TODO: NLP: Set up block data for each optinode
     if has_nlp_data(graph)
         optinodes = all_nodes(graph)
         for k=1:length(optinodes)
-            JuMP.set_optimizer(getmodel(optinodes[k]),constructor)
-            if modelnodes[k].model.nlp_data !== nothing
-                MOI.set(modelnodes[k].model, MOI.NLPBlock(),_create_nlp_block_data(modelnodes[k].model))
-                empty!(modelnodes[k].model.nlp_data.nlconstr_duals)
+            #JuMP.set_optimizer(getmodel(optinodes[k]),constructor)
+            if optinodes[k].model.nlp_data !== nothing
+                MOI.set(optinodes[k].model, MOI.NLPBlock(),_create_nlp_block_data(optinodes[k].model))
+                empty!(optinodes[k].model.nlp_data.nlconstr_duals)
             end
-            MOIU.attach_optimizer(optinodes[k].model)
-            MOI.initialize(moi_optimizer(modelnodes[k]).nlp_data.evaluator,[:Grad,:Hess,:Jac])
         end
     end
     # if model.nlp_data !== nothing
@@ -155,7 +153,16 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     _set_sum_of_affine_objectives!(graph) #I don't actually need to do this.  We can just setup graph.objective.
     # end
 
-    MOI.optimize!(backend)
+    try
+        MOI.optimize!(backend)
+    catch err
+        if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
+            error("The solver does not support nonlinear problems " *
+                  "(i.e., NLobjective and NLconstraint).")
+        else
+            rethrow(err)
+        end
+    end
 
     #populate optimizer solutions onto node backend
     _populate_node_results!(graph)
