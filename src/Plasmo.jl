@@ -153,6 +153,8 @@ include("graph_functions.jl")
 
 include("nlp_macro.jl")
 
+include("nlp_evaluator.jl")
+
 
 function __init__()
     @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")

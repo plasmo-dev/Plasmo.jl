@@ -27,8 +27,9 @@ set_optimizer(graph,Ipopt.Optimizer)
 
 @linkconstraint(graph,n1[:x][1] == n2[:x][1])
 
-#TODO
+#TODO Graph objective function
 #set_sum_of_objectives(graph)
+#@objective(graph,Min,sum(n1[:x]) + sum(n2[:x]))
 optimize!(graph)
 
 println(value.(n1[:x]))

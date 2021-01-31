@@ -20,7 +20,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    # IDEA: Use MOI backend to interface with solvers.  We can create a backend on the fly when creating from induced optigraphs
+    # IDEA: Use MOI backend to interface with solvers.  We can create a backend on the fly when creating an optigraph from induced optigraphs
     # NOTE: The NLPBlock points back to a NLP Evaluator
     moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
 
@@ -31,9 +31,9 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     #Extension Information
     ext::Dict{Symbol,Any}
 
-    #TODO
+    #TODO Someday
     #Captures nonlinear linking constraints and nonlinear objective function
-    nlp_data::Union{Nothing,JuMP._NLPData}
+    #nlp_data::Union{Nothing,JuMP._NLPData}
 
     #Constructor
     function OptiGraph()
@@ -51,8 +51,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
                     backend,
                     Dict{Symbol,Any}(),
-                    Dict{Symbol,Any}(),
-                    nothing
+                    Dict{Symbol,Any}()
                     )
         return optigraph
     end
@@ -350,6 +349,8 @@ Retrieve the current graph objective function.
 JuMP.objective_function(graph::OptiGraph) = graph.objective_function
 JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
 JuMP.set_objective_function(graph::OptiGraph, func::JuMP.AbstractJuMPScalar) = graph.objective_function = func  #JuMP.set_objective_function(graph, func)
+
+JuMP.set_objective_sense(graph::OptiGraph,sense::MOI.OptimizationSense) = graph.objective_sense = sense
 
 function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     graph.objective_sense = sense

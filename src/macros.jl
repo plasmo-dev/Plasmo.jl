@@ -196,6 +196,32 @@ function _get_name(c::Expr)
     end
 end
 
+#@blas_safe_threads
+# const blas_num_threads = Ref{Int}()
+# function set_blas_num_threads(n::Integer;permanent::Bool=false)
+#     permanent && (blas_num_threads[]=n)
+#     BLAS.set_num_threads(n) # might be mkl64 or openblas64
+#     ccall((:mkl_set_dynamic, libmkl32),
+#           Cvoid,
+#           (Ptr{Int32},),
+#           Ref{Int32}(0))
+#     ccall((:mkl_set_num_threads, libmkl32),
+#           Cvoid,
+#           (Ptr{Int32},),
+#           Ref{Int32}(n))
+#     ccall((:openblas_set_num_threads, libopenblas32),
+#           Cvoid,
+#           (Ptr{Int32},),
+#           Ref{Int32}(n))
+# end
+# macro blas_safe_threads(args...)
+#     code = quote
+#         set_blas_num_threads(1)
+#         Threads.@threads($(args...))
+#         set_blas_num_threads(blas_num_threads[])
+#     end
+#     return esc(code)
+# end
 
 # macro NLlinkconstraint(graph,args...)
 #     code = quote

@@ -1,13 +1,23 @@
+#An Optinode nlp_data object just points to the underlying JuMP Model object
 function JuMP._init_NLP(node::OptiNode)
     JuMP._init_NLP(node.model)
     node.nlp_data = node.model.nlp_data
+end
+
+#NLP Data for nonliner objective function and (someday) nonlinear link constraints
+function JuMP._init_NLP(graph::OptiGraph)
+    error("An OptiGraph does not yet support the @NLconstraint macro.")
+end
+
+function JuMP._parse_NL_expr_runtime(graph::OptiGraph, x, tape, parent, values)
+    error("An OptiGraph does not yet support the @NLconstraint macro.")
 end
 
 function JuMP.set_objective(node::OptiNode,sense::MathOptInterface.OptimizationSense,data::JuMP._NonlinearExprData)
     JuMP.set_objective(node.model,sense,data)
 end
 
-#Functions copied from JuMP.jl.  These would be necessary to do nonlinear LinkConstraints
+
 function JuMP._parse_NL_expr_runtime(node::OptiNode, x::Real, tape, parent, values)
     push!(values, x)
     push!(tape, JuMP.NodeData(JuMP.VALUE, length(values), parent))
@@ -49,10 +59,7 @@ function JuMP._parse_NL_expr_runtime(node::OptiNode, x, tape, parent, values)
     error("Unexpected object $x (of type $(typeof(x)) in nonlinear expression.")
 end
 
-JuMP.name(cref::ConstraintRef{OptiNode,NonlinearConstraintIndex,ScalarShape}) = "test"
-# JuMP.constraint_object(ref::ConstraintRef{OptiNode,NonlinearConstraintIndex,ScalarShape}) =
-# JuMP.object_dictionary(m::OptiNode) = m.objdict
-
+JuMP.name(cref::ConstraintRef{OptiNode,NonlinearConstraintIndex,ScalarShape}) = "Nonlinear reference"
 
 
 #PRINTING
@@ -102,7 +109,7 @@ function JuMP.nl_constraint_string(node::OptiNode, mode, c::JuMP._NonlinearConst
 end
 
 #TODO
-const NonlinearLinkConstraintRef = ConstraintRef{OptiNode, NonlinearConstraintIndex}
+const NonlinearLinkConstraintRef = ConstraintRef{OptiNode, NonlinearConstraintIndex}# where T <: OptiObject
 
 function Base.show(io::IO, c::NonlinearLinkConstraintRef)
     print(io, JuMP.nl_constraint_string(c.model, REPLMode, c.model.nlp_data.nlconstr[c.index.value]))
@@ -112,3 +119,60 @@ function Base.show(io::IO, ::MIME"text/latex", c::NonlinearLinkConstraintRef)
     constraint = c.model.nlp_data.nlconstr[c.index.value]
     print(io, JuMP._wrap_in_math_mode(JuMP.nl_constraint_string(c.model, IJuliaMode, constraint)))
 end
+
+
+# function JuMP.set_objective(graph::OptiGraph,sense::MathOptInterface.OptimizationSense,data::JuMP._NonlinearExprData)
+#     JuMP._init_NLP(graph)
+#     JuMP.set_objective_sense(graph,sense)
+#     graph.nlp_data.nlobj = data
+# end
+
+#TODO: Use a union for both optinode and optigraph when we implement nonlinear linking constraints
+#const OptiObject = Union{OptiNode,OptiGraph}
+
+#Functions copied from JuMP.jl.  These would be necessary to do nonlinear LinkConstraints
+# function JuMP._parse_NL_expr_runtime(node::OptiObject, x::Real, tape, parent, values)
+#     push!(values, x)
+#     push!(tape, JuMP.NodeData(JuMP.VALUE, length(values), parent))
+#     nothing
+# end
+#
+# function JuMP._parse_NL_expr_runtime(node::OptiObject, x::JuMP.VariableRef, tape, parent, values)
+#     push!(tape, JuMP.NodeData(JuMP.MOIVARIABLE, x.index.value, parent))
+#     nothing
+# end
+#
+# function JuMP._parse_NL_expr_runtime(node::OptiObject, x::NonlinearExpression, tape, parent, values)
+#     push!(tape, JuMP.NodeData(JuMP.SUBEXPRESSION, x.index, parent))
+#     nothing
+# end
+#
+# function JuMP._parse_NL_expr_runtime(node::OptiObject, x::NonlinearParameter, tape, parent, values)
+#     push!(tape, JuMP.NodeData(JuMP.PARAMETER, x.index, parent))
+#     nothing
+# end
+#
+# function JuMP._parse_NL_expr_runtime(node::OptiObject, x::AbstractArray, tape, parent, values)
+#     error("Unexpected array $x in nonlinear expression. Nonlinear expressions may contain only scalar expressions.")
+# end
+#
+# function JuMP._parse_NL_expr_runtime(node::OptiObject, x::GenericQuadExpr, tape, parent, values)
+#     error("Unexpected quadratic expression $x in nonlinear expression. " *
+#           "Quadratic expressions (e.g., created using @expression) and " *
+#           "nonlinear expressions cannot be mixed.")
+# end
+#
+# function JuMP._parse_NL_expr_runtime(node::OptiObject, x::GenericAffExpr, tape, parent, values)
+#     error("Unexpected affine expression $x in nonlinear expression. " *
+#           "Affine expressions (e.g., created using @expression) and " *
+#           "nonlinear expressions cannot be mixed.")
+# end
+#
+# function JuMP._parse_NL_expr_runtime(node::OptiObject, x, tape, parent, values)
+#     error("Unexpected object $x (of type $(typeof(x)) in nonlinear expression.")
+# end
+
+# JuMP.constraint_object(ref::ConstraintRef{OptiNode,NonlinearConstraintIndex,ScalarShape}) = ref.model
+# JuMP.name(cref::ConstraintRef{T,NonlinearConstraintIndex,ScalarShape} where T <: OptiObject) = "test"
+# JuMP.constraint_object(ref::ConstraintRef{T,NonlinearConstraintIndex,ScalarShape} where T <: OptiObject) = ref.model
+# JuMP.object_dictionary(m::OptiObject) = m.objdict

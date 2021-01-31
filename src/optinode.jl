@@ -179,6 +179,8 @@ function JuMP.num_constraints(node::OptiNode)
     return num_cons
 end
 
+JuMP.num_nl_constraints(node::OptiNode) = JuMP.num_nl_constraints(node.model)
+
 function num_linked_variables(node::OptiNode)
     partial_link_eq = node.partial_linkeqconstraints
     partial_link_ineq = node.partial_linkineqconstraints
