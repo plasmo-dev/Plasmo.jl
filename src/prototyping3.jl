@@ -25,13 +25,18 @@ graph = OptiGraph()
 @constraint(n2,ref1,sum(x) == 10)
 @constraint(n2,ref2,sum(y) == 5)
 @NLconstraint(n2,x[1]^2 + x[2]^2 <= 5)
-@objective(n2,Min,sum(n2[:x][i] for i = 1:5))
-#@NLobjective(n2,Min,sum(n2[:x][i] for i = 1:5)^3)
+@objective(n2,Min,sum(n2[:x][i]^2 for i = 1:5))
 
 @linkconstraint(graph,[i = 1:5],n1[:y][i] == n2[:y][i])
 
-d = Plasmo.OptiGraphNLPEvaluator(graph)
-MOI.initialize(d,[:Hess,:Jac])
+
+x1 = ones(20)
+g1 = zeros(20)
+
+d1 = Plasmo.OptiGraphNLPEvaluator(graph)
+MOI.initialize(d1,[:Hess,:Jac])
+MOI.eval_objective(d1,x1)
+MOI.eval_objective_gradient(d1,g1,x1)
 
 #TODO: someday. #This is an error for now.  It is hard to inspect nonlinear data, but not impossible. We require the objective to be set per node if nonlinear.
 #@NLobjective(graph,Min,sum(n1[:x][i] for i = 1:5)^3 + sum(n2[:x][i] for i = 1:5)^3)
@@ -63,10 +68,15 @@ model = Model()
 #"Link Constraint"
 @constraint(model,[i = 1:5],y1[i] == y2[i])
 
-#This sets local objective functions on the corresponding nodes?
-@NLobjective(model,Min,sum(x1[i] for i = 1:5)+ sum(x2[i] for i = 1:5))
-# @objective(model,Min,sum(x1[i] for i = 1:5)+ sum(x2[i] for i = 1:5))
-#@NLobjective(model,Min,sum(x1[i] for i = 1:5)^3 + sum(x2[i] for i = 1:5)^3)
+#This sets local objective functions on the corresponding "nodes"
+@NLobjective(model,Min,sum(x1[i] for i = 1:5)^3 + sum(x2[i]^2 for i = 1:5))
 
-d = JuMP.NLPEvaluator(model)
-MOI.initialize(d,[:Jac])
+
+x2 = ones(20)
+g2 = zeros(20)
+d2 = JuMP.NLPEvaluator(model)
+
+MOI.initialize(d2,[:Hess,:Jac])
+MOI.eval_objective(d2,x2)
+MOI.eval_objective_gradient(d2,g2,x2)
+MOI.hessian_lagrangian_structure(d2)

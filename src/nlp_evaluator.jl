@@ -19,8 +19,11 @@ mutable struct OptiGraphNLPEvaluator <: MOI.AbstractNLPEvaluator
     nnzs_hess_inds
     nnzs_jac_inds
     #nnzs_link_jac_inds
+    nnz_hess
+    nnz_jac
 
-    #TODO someday: nonlinear optigraph objective and nonlinear linking constraints.  For now, we assume the objective is either the summation across nodes
+    ###############################################################################
+    #TODO someday: nonlinear optigraph objective and nonlinear linking constraints.  For now, we assume the objective is the summation across nodes (i.e. separable)
     # The general idea would need to replace MOI Variable Indices for each optinode when initializing the evaluator
     # We would have to handle non-seperable objective functions
     # objective::JuMP._FunctionStorage
@@ -52,6 +55,7 @@ function MOI.initialize(d::OptiGraphNLPEvaluator,requested_features::Vector{Symb
     d.optinodes = optinodes
     d.nlps = Vector{JuMP.NLPEvaluator}(undef,length(optinodes)) #Initialize each optinode with the requested features
     d.has_nlobj = false
+
     #@blas_safe_threads for k=1:length(optinodes)
     for k=1:length(optinodes)
         d_node = JuMP.NLPEvaluator(optinodes[k].model)     #Initialize each optinode evaluator
@@ -69,22 +73,29 @@ function MOI.initialize(d::OptiGraphNLPEvaluator,requested_features::Vector{Symb
     n = sum(ns)
     ns_cumsum = cumsum(ns)
 
-    #num constraints NOTE: Should this just be NL constraints?
+    #num constraints NOTE: Should this just be NL constraints? Depends on evaluator mode
     ms= [num_nl_constraints(optinode) for optinode in optinodes]
     m = sum(ms)
     ms_cumsum = cumsum(ms)
 
-    #hessian nonzeros
-    nnzs_hess = [_get_nnz_hess(d.nlps[k]) for k = 1:K]
+    #hessian nonzeros: This grabs quadratic terms if we have a nonlinear objective function on any node
+    if d.has_nlobj
+        #TODO: grab constraint too
+        nnzs_hess = [_get_nnz_hess_quad(d.nlps[k]) for k = 1:K]
+    else
+        nnzs_hess = [_get_nnz_hess(d.nlps[k]) for k = 1:K]
+    end
+
+    #nnzs_hess = [_get_nnz_hess(d.nlps[k]) for k = 1:K]
     nnzs_hess_cumsum = cumsum(nnzs_hess)
-    nnz_hess = sum(nnzs_hess)
+    d.nnz_hess = sum(nnzs_hess)
 
     #jacobian nonzeros
     nnzs_jac = [_get_nnz_jac(d.nlps[k]) for k = 1:K]
     nnzs_jac_cumsum = cumsum(nnzs_jac)
-    nnz_jac = sum(nnzs_jac)
+    d.nnz_jac = sum(nnzs_jac)
 
-    #link jacobian nonzeros (These wouldn't be returned in the JuMP NLP Evaluator)
+    # link jacobian nonzeros (These wouldn't be returned in the JuMP NLP Evaluator)
     # nnzs_link_jac = [get_nnz_link_jac(linkedge) for linkedge in linkedges]
     # nnzs_link_jac_cumsum = cumsum(nnzs_link_jac)
     # nnz_link_jac = isempty(nnzs_link_jac) ? 0 : sum(nnzs_link_jac)
@@ -119,8 +130,18 @@ function MOI.initialize(d::OptiGraphNLPEvaluator,requested_features::Vector{Symb
 
 end
 
+_get_nnz_hess(obj::Union{JuMP.VariableRef,JuMP.GenericAffExpr}) = 0
+_get_nnz_hess(obj::JuMP.GenericQuadExpr) = length(obj.terms)
 _get_nnz_hess(d_node::JuMP.NLPEvaluator) = length(MOI.hessian_lagrangian_structure(d_node))
 _get_nnz_jac(d_node::JuMP.NLPEvaluator) = length(MOI.jacobian_structure(d_node))
+
+function _get_nnz_hess_quad(d_node::JuMP.NLPEvaluator)
+    if d_node.has_nlobj
+        return _get_nnz_hess(d_node)
+    else
+        return _get_nnz_hess(d_node) + _get_nnz_hess(objective_function(d_node.m))
+    end
+end
 
 #Objective Function
 function MOI.eval_objective(d::OptiGraphNLPEvaluator, x)
@@ -148,7 +169,7 @@ function _eval_function(var::JuMP.VariableRef, x)
     return x[var.index.value]
 end
 
-function _eval_function(aff::GenericAffExpr,x)
+function _eval_function(aff::JuMP.GenericAffExpr,x)
     function_value = aff.constant
     for (var,coef) in aff.terms
         function_value += coef*x[var.index.value]
@@ -169,80 +190,120 @@ function _eval_function(quad::JuMP.GenericQuadExpr, x)
     return function_value
 end
 
+function MOI.eval_objective_gradient(d::OptiGraphNLPEvaluator,grad,x)
+    ninds = d.ninds
+    d.eval_objective_gradient_timer += @elapsed begin
+        if d.has_nlobj
+            fill!(grad, 0.0)
+            # @blas_safe_threads for k=1:length(modelnodes)
+            for k = 1:length(d.nlps)
+                if d.nlps[k].has_nlobj
+                    MOI.eval_objective_gradient(d.nlps[k],view(grad,ninds[k]),view(x,ninds[k]))
+                else
+                    _fill_gradient!(objective_function(d.nlps[k].m),view(grad,ninds[k]),view(x,ninds[k]))
+                end
+            end
+        else
+            error("No nonlinear objective.")
+        end
+    end
+    return
+end
 
+function _fill_gradient!(var::JuMP.VariableRef, grad, x)
+    grad[var.index.value] = 1.0
+	return
+end
+
+function _fill_gradient!( aff::JuMP.GenericAffExpr,grad, x)
+	for	(var,coef) in aff.terms
+        grad[var.index.value] += coef
+    end
+	return
+end
+
+function _fill_gradient!(quad::JuMP.GenericQuadExpr,grad, x)
+    for	(var,coef) in quad.aff.terms
+        grad[var.index.value] += coef
+    end
+	for (terms,coef) in quad.terms
+        row_idx = terms.a.index
+        col_idx = terms.b.index
+        if row_idx == col_idx
+            grad[row_idx.value] += 2*coef*x[row_idx.value]
+        else
+            grad[row_idx.value] += coef*x[col_idx.value]
+            grad[col_idx.value] += coef*x[row_idx.value]
+        end
+    end
+	return
+end
+
+function MOI.hessian_lagrangian_structure(d::OptiGraphNLPEvaluator)
+    nnzs_hess_inds = d.nnzs_hess_inds
+    nnz_hess = d.nnz_hess
+
+    I = Vector{Int64}(undef,d.nnz_hess)
+    J = Vector{Int64}(undef,d.nnz_hess)
+
+    # @blas_safe_threads for k=1:length(optinodes)
+    for k=1:length(d.nlps)
+        isempty(nnzs_hess_inds[k]) && continue
+        offset = d.ninds[k][1]-1
+        II = view(I,nnzs_hess_inds[k])
+        JJ = view(J,nnzs_hess_inds[k])
+        if d.has_nlobj #if the optigraph has a nonlinear objective on any node, we need to treat quadratic objectives as nonlinear
+            _hessian_lagrangian_structure_quad(d.nlps[k],II,JJ)
+        else #just run the normal JuMP function
+            _hessian_lagrangian_structure(d.nlps[k],II,JJ)
+        end
+        II.+= offset
+        JJ.+= offset
+    end
+    hessian_sparsity = collect(zip(I,J)) # return Tuple{Int64,Int64}[]
+    return hessian_sparsity
+end
+
+#Hessian Lagrangian structure without quadratic objective terms included
+function _hessian_lagrangian_structure(d::JuMP.NLPEvaluator,I,J)
+    cnt = 0
+    for (row,col) in MOI.hessian_lagrangian_structure(d)
+        I[1+cnt]=row
+        J[1+cnt]=col
+        cnt+=1
+    end
+end
+
+#Hessian Lagrangian structure with quadratic objective terms included
+function _hessian_lagrangian_structure_quad(d::JuMP.NLPEvaluator,I,J)
+    if !(d.has_nlobj)
+        obj = objective_function(d.m)
+        offset = append_to_hessian_sparsity!(I,J,obj,1) + 1
+    else
+        offset = 1
+    end
+
+    cnt = 0
+    for (row,col) in MOI.hessian_lagrangian_structure(d)
+        I[offset+cnt]=row
+        J[offset+cnt]=col
+        cnt+=1
+    end
+end
+
+function append_to_hessian_sparsity!(I,J,quad::JuMP.GenericQuadExpr,offset)
+    cnt = 0
+    for term in keys(quad.terms)
+        I[offset+cnt]=term.a.index.value
+        J[offset+cnt]=term.b.index.value
+        cnt+=1
+    end
+    return cnt
+end
+append_to_hessian_sparsity!(I,J,::Union{JuMP.VariableRef,JuMP.GenericAffExpr},offset) = 0
 ###########################################################################
-# function MOI.eval_objective_gradient(d::OptiGraphNLPEvaluator,g,x)
-#     ninds = d.inds
-#     optinodes = d.optinodes
-#
-#     d.eval_objective_gradient_timer += @elapsed begin
-#     # if d.has_nlobj
-#     #     fill!(g, 0.0)
-#
-#     # @blas_safe_threads for k=1:length(modelnodes)
-#     for k=1:length(optinodes)
-#         MOI.eval_objective_gradient(d.nlps[k],view(g,ninds[k]),view(x,ninds[k]))
-#     end
-# end
+##########################################################################
 
-#
-# function MOI.eval_objective_gradient(d::NLPEvaluator, g, x)
-#     d.eval_objective_gradient_timer += @elapsed begin
-#         if d.last_x != x
-#             _forward_eval_all(d, x)
-#             _reverse_eval_all(d, x)
-#         end
-#         if d.has_nlobj
-#             fill!(g, 0.0)
-#             ex = d.objective
-#             subexpr_reverse_values = d.subexpression_reverse_values
-#             subexpr_reverse_values[ex.dependent_subexpressions] .= 0.0
-#             reverse_extract(
-#                 g,
-#                 ex.reverse_storage,
-#                 ex.nd,
-#                 ex.adj,
-#                 subexpr_reverse_values,
-#                 1.0,
-#             )
-#             for i in length(ex.dependent_subexpressions):-1:1
-#                 k = ex.dependent_subexpressions[i]
-#                 subexpr = d.subexpressions[k]
-#                 reverse_extract(
-#                     g,
-#                     subexpr.reverse_storage,
-#                     subexpr.nd,
-#                     subexpr.adj,
-#                     subexpr_reverse_values,
-#                     subexpr_reverse_values[k],
-#                 )
-#             end
-#         else
-#             error("No nonlinear objective.")
-#         end
-#     end
-#     return
-# end
-#
-# # function eval_objective_gradient(graph::OptiGraph,f,x,ninds,modelnodes)
-# #     @blas_safe_threads for k=1:length(modelnodes)
-# #         eval_objective_gradient(moi_optimizer(modelnodes[k]),view(f,ninds[k]),view(x,ninds[k]))
-# #     end
-# # end
-#
-#
-# function hessian_lagrangian_structure(graph::OptiGraph,I,J,ninds,nnzs_hess_inds,optinodes)
-#     @blas_safe_threads for k=1:length(optinodes)
-#         isempty(nnzs_hess_inds[k]) && continue
-#         offset = ninds[k][1]-1
-#         II = view(I,nnzs_hess_inds[k])
-#         JJ = view(J,nnzs_hess_inds[k])
-#         hessian_lagrangian_structure(moi_optimizer(optinodes[k]),II,JJ)
-#         II.+= offset
-#         JJ.+= offset
-#     end
-# end
-#
 # function jacobian_structure(linkedge::OptiEdge,I,J,ninds,x_index_map,g_index_map)
 #     offset=1
 #     for linkcon in getlinkconstraints(linkedge)
