@@ -32,11 +32,26 @@ graph = OptiGraph()
 
 x1 = ones(20)
 g1 = zeros(20)
+c1 = zeros(2)
+mu1 = ones(2)
+
 
 d1 = Plasmo.OptiGraphNLPEvaluator(graph)
 MOI.initialize(d1,[:Hess,:Jac])
-MOI.eval_objective(d1,x1)
+obj1 = MOI.eval_objective(d1,x1)
 MOI.eval_objective_gradient(d1,g1,x1)
+hess_structure1 = MOI.hessian_lagrangian_structure(d1)
+jac_structure1 = MOI.jacobian_structure(d1)
+MOI.eval_constraint(d1,c1,x1)
+
+hess_inds1 = sortperm(hess_structure1)
+hess_vals1 = zeros(length(hess_structure1))
+MOI.eval_hessian_lagrangian(d1,hess_vals1,x1,1.0,mu1)
+
+jac_vals1 = zeros(length(jac_structure1))
+MOI.eval_constraint_jacobian(d1,jac_vals1,x1)
+
+
 
 #TODO: someday. #This is an error for now.  It is hard to inspect nonlinear data, but not impossible. We require the objective to be set per node if nonlinear.
 #@NLobjective(graph,Min,sum(n1[:x][i] for i = 1:5)^3 + sum(n2[:x][i] for i = 1:5)^3)
@@ -75,8 +90,28 @@ model = Model()
 x2 = ones(20)
 g2 = zeros(20)
 d2 = JuMP.NLPEvaluator(model)
+c2 = zeros(2)
+mu2 = ones(2)
 
 MOI.initialize(d2,[:Hess,:Jac])
-MOI.eval_objective(d2,x2)
+obj2 = MOI.eval_objective(d2,x2)
 MOI.eval_objective_gradient(d2,g2,x2)
-MOI.hessian_lagrangian_structure(d2)
+hess_structure2 = MOI.hessian_lagrangian_structure(d2)
+jac_structure2 = MOI.jacobian_structure(d2)
+MOI.eval_constraint(d2,c2,x2)
+
+hess_inds2 = sortperm(hess_structure2)
+
+hess_vals2 = zeros(length(hess_structure2))
+MOI.eval_hessian_lagrangian(d2,hess_vals2,x2,1.0,mu2)
+
+jac_vals2 = zeros(length(jac_structure2))
+MOI.eval_constraint_jacobian(d2,jac_vals2,x2)
+
+
+#checks
+@assert obj1 == obj2
+@assert g1 == g2
+@assert c1 == c2
+@assert hess_vals1[hess_inds1] == hess_vals2[hess_inds2]
+@assert jac_vals1 == jac_vals2

@@ -143,6 +143,8 @@ function _get_nnz_hess_quad(d_node::JuMP.NLPEvaluator)
     end
 end
 
+MOI.features_available(d::OptiGraphNLPEvaluator) = [:Grad,:Hess,:Jac]
+
 #Objective Function
 function MOI.eval_objective(d::OptiGraphNLPEvaluator, x)
     ninds = d.ninds
@@ -282,7 +284,6 @@ function _hessian_lagrangian_structure_quad(d::JuMP.NLPEvaluator,I,J)
     else
         offset = 1
     end
-
     cnt = 0
     for (row,col) in MOI.hessian_lagrangian_structure(d)
         I[offset+cnt]=row
@@ -301,111 +302,89 @@ function append_to_hessian_sparsity!(I,J,quad::JuMP.GenericQuadExpr,offset)
     return cnt
 end
 append_to_hessian_sparsity!(I,J,::Union{JuMP.VariableRef,JuMP.GenericAffExpr},offset) = 0
-###########################################################################
-##########################################################################
 
-# function jacobian_structure(linkedge::OptiEdge,I,J,ninds,x_index_map,g_index_map)
-#     offset=1
-#     for linkcon in getlinkconstraints(linkedge)
-#         offset += jacobian_structure(linkcon,I,J,ninds,x_index_map,g_index_map,offset)
-#     end
-# end
-#
-# function jacobian_structure(linkcon,I,J,ninds,x_index_map,g_index_map,offset)
-#     cnt = 0
-#     for var in get_vars(linkcon)
-#         I[offset+cnt] = g_index_map[linkcon]
-#         J[offset+cnt] = x_index_map[var]
-#         cnt += 1
-#     end
-#     return cnt
-# end
-#
-# function jacobian_structure(graph::OptiGraph,I,J,ninds,minds,pinds,
-#     nnzs_jac_inds,nnzs_link_jac_inds,
-#     x_index_map,g_index_map,modelnodes,linkedges)
-#
-#     @blas_safe_threads for k=1:length(modelnodes)
-#         isempty(nnzs_jac_inds[k]) && continue
-#         offset_i = minds[k][1]-1
-#         offset_j = ninds[k][1]-1
-#         II = view(I,nnzs_jac_inds[k])
-#         JJ = view(J,nnzs_jac_inds[k])
-#         jacobian_structure(
-#             moi_optimizer(modelnodes[k]),II,JJ)
-#         II.+= offset_i
-#         JJ.+= offset_j
-#     end
-#
-#     @blas_safe_threads for q=1:length(linkedges)
-#         isempty(nnzs_link_jac_inds[q]) && continue
-#         II = view(I,nnzs_link_jac_inds[q])
-#         JJ = view(J,nnzs_link_jac_inds[q])
-#         jacobian_structure(
-#             linkedges[q],II,JJ,ninds,x_index_map,g_index_map)
-#     end
-# end
-#
-#
-# function eval_constraint(linkedge::OptiEdge,c,x,ninds,x_index_map)
-#     cnt = 1
-#     for linkcon in getlinkconstraints(linkedge)
-#         c[cnt] = eval_function(get_func(linkcon),x,ninds,x_index_map)
-#         cnt += 1
-#     end
-# end
-# get_func(linkcon) = linkcon.func
-# function eval_constraint(graph::OptiGraph,c,x,ninds,minds,pinds,x_index_map,modelnodes,linkedges)
-#     @blas_safe_threads for k=1:length(modelnodes)
-#         eval_constraint(moi_optimizer(modelnodes[k]),view(c,minds[k]),view(x,ninds[k]))
-#     end
-#     @blas_safe_threads for q=1:length(linkedges)
-#         eval_constraint(linkedges[q],view(c,pinds[q]),x,ninds,x_index_map)
-#     end
-# end
-#
-# function eval_hessian_lagrangian(graph::OptiGraph,hess,x,sig,l,
-#                                  ninds,minds,nnzs_hess_inds,modelnodes)
-#     @blas_safe_threads for k=1:length(modelnodes)
-#         isempty(nnzs_hess_inds) && continue
-#         eval_hessian_lagrangian(moi_optimizer(modelnodes[k]),
-#                                 view(hess,nnzs_hess_inds[k]),view(x,ninds[k]),sig,
-#                                 view(l,minds[k]))
-#     end
-# end
-#
-# function eval_constraint_jacobian(linkedge::OptiEdge,jac,x)
-#     offset=0
-#     for linkcon in getlinkconstraints(linkedge)
-#         offset+=eval_constraint_jacobian(linkcon,jac,offset)
-#     end
-# end
-# function eval_constraint_jacobian(linkcon,jac,offset)
-#     cnt = 0
-#     for coef in get_coeffs(linkcon)
-#         cnt += 1
-#         jac[offset+cnt] = coef
-#     end
-#     return cnt
-# end
-# get_vars(linkcon) = keys(linkcon.func.terms)
-# get_coeffs(linkcon) = values(linkcon.func.terms)
-#
-# function eval_constraint_jacobian(graph::OptiGraph,jac,x,
-#                                   ninds,minds,nnzs_jac_inds,nnzs_link_jac_inds,modelnodes,linkedges)
-#     @blas_safe_threads for k=1:length(modelnodes)
-#         eval_constraint_jacobian(
-#             moi_optimizer(modelnodes[k]),view(jac,nnzs_jac_inds[k]),view(x,ninds[k]))
-#     end
-#     @blas_safe_threads for q=1:length(linkedges)
-#         eval_constraint_jacobian(linkedges[q],view(jac,nnzs_link_jac_inds[q]),x)
-#     end
-# end
-# get_nnz_link_jac(linkedge::OptiEdge) = sum(length(linkcon.func.terms) for (ind,linkcon) in linkedge.linkconstraints)
+function MOI.jacobian_structure(d::OptiGraphNLPEvaluator)
+    nnzs_jac_inds = d.nnzs_jac_inds
+    I = Vector{Int64}(undef,d.nnz_jac)
+    J = Vector{Int64}(undef,d.nnz_jac)
+    #@blas_safe_threads for k=1:length(modelnodes)
+    for k=1:length(d.nlps)
+        isempty(nnzs_jac_inds[k]) && continue
+        offset_i = d.minds[k][1]-1
+        offset_j = d.ninds[k][1]-1
+        II = view(I,nnzs_jac_inds[k])
+        JJ = view(J,nnzs_jac_inds[k])
+        _jacobian_structure(d.nlps[k],II,JJ)
+        II.+= offset_i
+        JJ.+= offset_j
+    end
+    jacobian_sparsity = collect(zip(I,J)) # return Tuple{Int64,Int64}[]
+    return jacobian_sparsity
+end
 
-##########################################################################
+function _jacobian_structure(d::JuMP.NLPEvaluator,I,J)
+    cnt = 0
+    for (nlp_row, nlp_col) in MOI.jacobian_structure(d)
+        I[1+cnt] = nlp_row
+        J[1+cnt] = nlp_col
+        cnt+=1
+    end
+end
 
-#Check for empty optinodes
-# for optinode in optinodes
-#     num_variables(optinode) == 0 && error("Detected optinode with 0 variables.  The Plasmo NLP interface does not yet support optinodes with zero variables.")
-# end
+function MOI.eval_constraint(d::OptiGraphNLPEvaluator,c::AbstractArray,x::AbstractArray)
+    # @blas_safe_threads for k=1:length(modelnodes)
+    for k=1:length(d.nlps)
+        MOI.eval_constraint(d.nlps[k],view(c,d.minds[k]),view(x,d.ninds[k]))
+    end
+end
+
+######################################
+function MOI.eval_hessian_lagrangian(d::OptiGraphNLPEvaluator,hess::AbstractArray,x::AbstractArray,sigma::Float64,mu::AbstractArray)
+    # @blas_safe_threads for k=1:length(modelnodes)
+    for k=1:length(d.nlps)
+        isempty(d.nnzs_hess_inds[k]) && continue
+        if d.has_nlobj
+            _eval_hessian_lagrangian_quad(d.nlps[k],view(hess,d.nnzs_hess_inds[k]),view(x,d.ninds[k]),sigma,view(mu,d.minds[k]))
+        else
+            _eval_hessian_lagrangian(d.nlps[k],view(hess,d.nnzs_hess_inds[k]),view(x,d.ninds[k]),sigma,view(mu,d.minds[k]))
+        end
+    end
+end
+
+_eval_hessian_lagrangian(d::JuMP.NLPEvaluator,hess,x,sigma,mu) = MOI.eval_hessian_lagrangian(d,hess,x,sigma,mu)
+
+function _eval_hessian_lagrangian_quad(d::JuMP.NLPEvaluator,hess,x,sigma,mu)
+    offset = fill_hessian_lagrangian!(hess, 0, sigma, JuMP.objective_function(d.m))
+    nlp_values = view(hess, 1 + offset : length(hess))
+    MOI.eval_hessian_lagrangian(d, nlp_values, x, sigma, mu)
+end
+
+function fill_hessian_lagrangian!(hess, start_offset, sigma,::Union{JuMP.VariableRef,JuMP.GenericAffExpr{Float64,JuMP.VariableRef},Nothing})
+    return 0
+end
+
+function fill_hessian_lagrangian!(hess, start_offset, sigma, quad::JuMP.GenericQuadExpr{Float64,JuMP.VariableRef})
+	i = 1
+	for (terms,coeff) in quad.terms
+		row_idx = terms.a.index
+		col_idx = terms.b.index
+		if row_idx == col_idx
+			hess[start_offset + i] = 2*sigma*coeff
+		else
+			hess[start_offset + i] = sigma*coeff
+		end
+		i += 1
+	end
+    return length(quad.terms)
+end
+
+function MOI.eval_constraint_jacobian(d::OptiGraphNLPEvaluator,jac,x)
+    # @blas_safe_threads for k=1:length(modelnodes)
+    for k=1:length(d.nlps)
+        MOI.eval_constraint_jacobian(d.nlps[k],view(jac,d.nnzs_jac_inds[k]),view(x,d.ninds[k]))
+    end
+end
+
+MOI.objective_expr(d::OptiGraphNLPEvaluator) = 0
+
+MOI.constraint_expr(d::OptiGraphNLPEvaluator) = 0
