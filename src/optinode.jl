@@ -21,11 +21,6 @@ mutable struct OptiNode <: JuMP.AbstractModel
     #nlp_data is a reference to `model.nlp_data`
     nlp_data::Union{Nothing,JuMP._NLPData}
 
-    #Solution Data
-    #TODO: GO directly through underlying JuMP model to get these values
-    #nl_constraint_dual_values::Dict{JuMP.NonlinearConstraintIndex,Float64}
-    #Add to node NLP data?
-
     #Extension data
     ext::Dict{Symbol,Any}
 
@@ -33,8 +28,6 @@ mutable struct OptiNode <: JuMP.AbstractModel
         model = JuMP.Model()
         node_backend = NodeOptimizer(JuMP.backend(model))
         model.moi_backend = node_backend
-
-
         node = new(model,
         0,
         OrderedDict{Int,JuMP.VariableRef}(),
@@ -42,9 +35,6 @@ mutable struct OptiNode <: JuMP.AbstractModel
         "node",
         Dict{Int64,AbstractLinkConstraint}(),
         Dict{Int64,AbstractLinkConstraint}(),
-        # Dict{MOI.VariableIndex,Float64}(),
-        # Dict{MOI.ConstraintIndex,Float64}(),
-        # Dict{JuMP.NonlinearConstraintIndex,Float64}(),
         nothing,
         Dict{Symbol,Any}())
         node.model.ext[:optinode] = node
@@ -75,6 +65,7 @@ JuMP.all_variables(node::OptiNode) = JuMP.all_variables(getmodel(node))
 setattribute(node::OptiNode,symbol::Symbol,attribute::Any) = getmodel(node).obj_dict[symbol] = attribute
 getattribute(node::OptiNode,symbol::Symbol) = getmodel(node).obj_dict[symbol]
 
+#TODO deprecate nodevalue and nodedual
 """
     nodevalue(var::JuMP.VariableRef)
 
@@ -118,11 +109,6 @@ function set_model(node::OptiNode,m::JuMP.AbstractModel;preserve_links = false)
     !(is_set_to_node(m) && getmodel(node) == m) || error("Model $m is already asigned to another node")
     node.model = m
     m.ext[:optinode] = node
-
-    #setup node references to model objects
-    # for var in JuMP.all_variables(m)
-    #     node.variable_values[var] =
-
 end
 @deprecate setmodel set_model
 """
@@ -201,7 +187,6 @@ function num_link_constraints(node::OptiNode)
     return length(node.partial_link_eq + node.partial_link_ineq)
 end
 
-
 JuMP.objective_function(node::OptiNode) = JuMP.objective_function(getmodel(node))
 JuMP.objective_value(node::OptiNode) = JuMP.objective_value(getmodel(node))
 JuMP.objective_sense(node::OptiNode) = JuMP.objective_sense(getmodel(node))
@@ -209,9 +194,9 @@ JuMP.num_variables(node::OptiNode) = JuMP.num_variables(getmodel(node))
 #JuMP.set_optimizer(node::OptiNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
 JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(getmodel(node))
 
-function JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
-    JuMP.set_objective(getmodel(optinode),sense,func)
-end
+JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar) = JuMP.set_objective(getmodel(optinode),sense,func)
+JuMP.set_objective_function(optinode::OptiNode,func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(optinode.model,func)
+JuMP.set_objective_function(optinode::OptiNode,real::Real) = JuMP.set_objective_function(optinode.model,real)
 
 JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node))
 JuMP.raw_status(node::OptiNode) = JuMP.raw_status(getmodel(node))

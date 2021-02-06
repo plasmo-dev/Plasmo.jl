@@ -32,7 +32,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     ext::Dict{Symbol,Any}
 
     #TODO Someday
-    #Captures nonlinear linking constraints and nonlinear objective function
+    #Captures nonlinear linking constraints and (separable?) nonlinear objective function
     #nlp_data::Union{Nothing,JuMP._NLPData}
 
     #Constructor
@@ -56,8 +56,6 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
         return optigraph
     end
 end
-
-
 
 @deprecate ModelGraph OptiGraph
 
@@ -253,12 +251,9 @@ end
 # Model Management
 ########################################################
 has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
-has_NLobjective(graph::OptiGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
-has_subgraphs(graph::OptiGraph) = !(isempty(graph.subgraphs))
-has_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
 
+has_subgraphs(graph::OptiGraph) = !(isempty(graph.subgraphs))
 num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))  #length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
-num_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
 
 num_nodes(graph::OptiGraph) = length(graph.optinodes)
 num_optiedges(graph::OptiGraph) = length(graph.optiedges)
@@ -341,33 +336,83 @@ end
 ####################################
 # Objective
 ###################################
+JuMP.objective_sense(graph::OptiGraph) = graph.objective_sense
+JuMP.set_objective_sense(graph::OptiGraph,sense::MOI.OptimizationSense) = graph.objective_sense = sense
 """
     JuMP.objective_function(graph::OptiGraph)
 
 Retrieve the current graph objective function.
 """
 JuMP.objective_function(graph::OptiGraph) = graph.objective_function
-JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
-JuMP.set_objective_function(graph::OptiGraph, func::JuMP.AbstractJuMPScalar) = graph.objective_function = func  #JuMP.set_objective_function(graph, func)
+function JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
+    x_affine = convert(JuMP.AffExpr,x)
+    JuMP.set_objective_function(graph,x_affine)
+end
 
-JuMP.set_objective_sense(graph::OptiGraph,sense::MOI.OptimizationSense) = graph.objective_sense = sense
+function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericAffExpr)
+    #clear optinodes objective functions
+    for node in all_nodes(graph)
+        JuMP.set_objective_function(node,0)
+    end
+    #put objective terms onto nodes
+    for (coef,term) in JuMP.linear_terms(expr)
+        node = getnode(term)
+        JuMP.set_objective_function(node,objective_function(node) + coef*term)
+    end
+    graph.objective_function = expr
+    # sense = objective_sense(graph)
+    # obj_sign = sense == MOI.MAX_SENSE ? -1 : 1
+end
+
+function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericQuadExpr)
+    for node in all_nodes(graph)
+        JuMP.set_objective_function(node,0)
+    end
+    for (coef,term1,term2) in JuMP.quad_terms(expr)
+        @assert getnode(term1) == getnode(term2)
+        node = getnode(term1)
+        JuMP.set_objective_function(node,objective_function(node) + coef*term1*term2)
+    end
+    for (coef,term) in JuMP.linear_terms(expr)
+        node = getnode(term)
+        JuMP.set_objective_function(node,objective_function(node) + coef*term)
+    end
+    graph.objective_function = expr
+end
 
 function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
-    graph.objective_sense = sense
-    graph.objective_function = func
+    JuMP.set_objective_sense(graph,sense)
+    JuMP.set_objective_function(graph,func)
 end
 
 function JuMP.objective_value(graph::OptiGraph)
     objective = JuMP.objective_function(graph)
-    return nodevalue(objective)
+    return value(objective) #nodevalue(objective)
 end
 
-JuMP.object_dictionary(m::OptiGraph) = m.obj_dict
-JuMP.objective_sense(m::OptiGraph) = m.objective_sense
+function getnodes(expr::JuMP.GenericAffExpr)
+    nodes = OptiNode[]
+    for (coef,term) in JuMP.linear_terms(expr)
+        node = getnode(term)
+        push!(nodes,node)
+    end
+    return unique(nodes)
+end
 
-# Model Extras
-JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
-JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
+function getnodes(expr::JuMP.GenericQuadExpr)
+    nodes = OptiNode[]
+    for (coef,term1,term2) in JuMP.quad_terms(expr)
+        @assert getnode(term1) == getnode(term2)
+        node = getnode(term1)
+        push!(nodes,node)
+    end
+    for (coef,term) in JuMP.linear_terms(expr)
+        node = getnode(term)
+        push!(nodes,node)
+    end
+    return unique(nodes)
+end
+
 
 #####################################################
 #  Link Constraints
@@ -495,7 +540,7 @@ function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name:
     return cref
 end
 
-import JuMP: _valid_model
+
 _valid_model(m::OptiEdge, name) = nothing
 function JuMP.add_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
     if isa(con.set,MOI.EqualTo)
@@ -576,7 +621,10 @@ end
 print(io::IO, graph::OptiGraph) = print(io, string(graph))
 show(io::IO,graph::OptiGraph) = print(io,graph)
 
-
+# Model Extras
+JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
+JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
+JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
 
 #
 # Other new functions
@@ -589,19 +637,16 @@ Note: removes extensions data.
 """
 function Base.empty!(graph::OptiGraph)::OptiGraph
     MOI.empty!(graph.moi_backend)
-    graph.nlp_data = nothing
-
     empty!(graph.obj_dict)
     empty!(graph.ext)
 
+    optinodes::Vector{OptiNode}
+    optiedges::Vector{OptiEdge}
+    node_idx_map::Dict{OptiNode,Int64}
+    edge_idx_map::Dict{OptiEdge,Int64}
+    subgraphs::Vector{AbstractOptiGraph}
 
-    optinodes::Vector{OptiNode}                  #Local model nodes
-    optiedges::Vector{OptiEdge}                  #Local link edges.  These can also connect nodes across subgraphs
-    node_idx_map::Dict{OptiNode,Int64}           #Local map of model nodes to indices
-    edge_idx_map::Dict{OptiEdge,Int64}           #Local map of link edges indices
-    subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the model graph
-
-    optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
+    optiedge_map::OrderedDict{Set,OptiEdge}
 
     #Objective
     objective_sense::MOI.OptimizationSense
@@ -609,3 +654,9 @@ function Base.empty!(graph::OptiGraph)::OptiGraph
 
     return graph
 end
+
+
+#TODO
+#has_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
+#has_NLobjective(graph::OptiGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
+#num_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)

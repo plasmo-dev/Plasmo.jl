@@ -12,6 +12,7 @@ using Reexport
 @reexport using JuMP
 
 import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
+import JuMP: _valid_model
 import Base: ==,show,print,string,getindex,copy
 import LightGraphs:AbstractGraph,AbstractEdge,Graph
 import DataStructures.OrderedDict
@@ -26,7 +27,10 @@ AbstractOptiGraph, OptiGraph, ModelGraph,
 
 #ModelNode and LinkEdge
 OptiNode,OptiEdge,
+
 ModelNode,LinkEdge,
+
+OptiGraphNLPEvaluator,
 
 getsubgraph,getsubgraphs,all_subgraphs,
 

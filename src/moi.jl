@@ -39,8 +39,7 @@ MOI.set(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.s
 MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T} where T<:MathOptInterface.AbstractFunction, set::Type{S} where S <: MathOptInterface.AbstractSet) =
 MOI.supports_constraint(optimizer.optimizer,func,set)
 
-MOI.supports(optimizer::AbstractNodeOptimizer, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) =
-MOI.supports(optimizer.optimizer,attr)
+MOI.supports(optimizer::AbstractNodeOptimizer, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) = MOI.supports(optimizer.optimizer,attr)
 
 MOIU.state(optimizer::AbstractNodeOptimizer) = MOIU.state(optimizer.optimizer)
 
@@ -113,9 +112,8 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
-
 #TODO: This can be replaced at the modeling level.  The objective function will be a JuMP object
-function _set_sum_of_affine_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vector{MOIU.IndexMap})
+function _set_sum_of_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vector{MOIU.IndexMap})
     dest_obj = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm{Float64}[], 0.0)
     MOI.set(dest,MOI.ObjectiveSense(),MOI.MIN_SENSE)
     for (i,src) in enumerate(srcs)
@@ -137,7 +135,7 @@ function _set_sum_of_affine_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps
     return dest_obj
 end
 
-function _swap_indices!(obj::MOI.AbstractFunction,idxmap::MOIU.IndexMap)
+function _swap_indices!(obj::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
     terms = obj.terms
     for i = 1:length(terms)
         coeff = terms[i].coefficient
@@ -146,30 +144,18 @@ function _swap_indices!(obj::MOI.AbstractFunction,idxmap::MOIU.IndexMap)
     end
 end
 
-#If any src model is quadratic, the destination is also quadtratic
-function _set_sum_of_quadratic_objectives()
+function _swap_indices!(obj::MOI.ScalarQuadraticFunction,idxmap::MOIU.IndexMap)
+    quad_terms = obj.quadratic_terms
+    for i = 1:length(quad_terms)
+        coeff = quad_terms[i].coefficient
+        var_idx1 = quad_terms[i].variable_index_1
+        var_idx2 = quad_terms[i].variable_index_2
+        quad_terms[i] = MOI.ScalarQuadraticTerm{Float64}(coeff,idxmap[var_idx1],idxmap[var_idx2])
+    end
+    aff_terms = obj.affine_terms
+    for i = 1:length(aff_terms)
+        coeff = aff_terms[i].coefficient
+        var_idx = aff_terms[i].variable_index
+        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
+    end
 end
-
-
-
-# function _moi_get_result(model::MOI.ModelLike, args...)
-#     if MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-#         throw(OptimizeNotCalled())
-#     end
-#     return MOI.get(model, args...)
-# end
-# function _moi_get_result(model::MOIU.CachingOptimizer, args...)
-#     if MOIU.state(model) == MOIU.NO_OPTIMIZER
-#         throw(NoOptimizer())
-#     elseif MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-#         throw(OptimizeNotCalled())
-#     end
-#     return MOI.get(model, args...)
-# end
-
-#Nonlinear DATA
-#IDEA for nonlinear append:
-# Copy and aggregate NLP blocks
-# Create an OptiGraph NLP Evaluator
-# Look at JuMP NLP Evaluator for ideas here. We could use all of the Optinodes to throw together a quick OptiGraph NLPEvaluator
-# Look at MadNLP.jl for an example of an NLP evaluator that uses Plasmo.jl

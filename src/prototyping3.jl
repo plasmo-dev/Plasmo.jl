@@ -9,8 +9,6 @@ using DataStructures
 const MOI = MathOptInterface
 
 graph = OptiGraph()
-#set_optimizer(graph,Ipopt.Optimizer)
-
 @optinode(graph,n1)
 @variable(n1,x[1:5] >= 2)
 @variable(n1,y[1:5] >= 1)
@@ -50,11 +48,11 @@ MOI.eval_hessian_lagrangian(d1,hess_vals1,x1,1.0,mu1)
 
 jac_vals1 = zeros(length(jac_structure1))
 MOI.eval_constraint_jacobian(d1,jac_vals1,x1)
-
-
+#set_optimizer(graph,Ipopt.Optimizer)
 
 #TODO: someday. #This is an error for now.  It is hard to inspect nonlinear data, but not impossible. We require the objective to be set per node if nonlinear.
 #@NLobjective(graph,Min,sum(n1[:x][i] for i = 1:5)^3 + sum(n2[:x][i] for i = 1:5)^3)
+
 
 
 #optimize!(graph)

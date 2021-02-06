@@ -1,4 +1,3 @@
-
 #Get backends
 JuMP.backend(graph::OptiGraph) = graph.moi_backend
 JuMP.backend(node::OptiNode) = JuMP.backend(getmodel(node))
@@ -8,8 +7,6 @@ JuMP.moi_mode(node_optimizer::NodeOptimizer) = JuMP.moi_mode(node_optimizer.opti
 MOI.get(node::OptiNode, args...) = MOI.get(getmodel(node), args...)
 MOI.set(node::OptiNode, args...) = MOI.set(getmodel(node), args...)
 MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
-
-
 
 #Create an moi backend for an optigraph using the underlying optinodes and optiedges
 function _aggregate_backends!(graph::OptiGraph)
@@ -30,13 +27,14 @@ function _aggregate_backends!(graph::OptiGraph)
     return nothing
 end
 
-function _set_sum_of_affine_objectives!(graph::OptiGraph)
-    dest = JuMP.backend(graph)
-    srces = JuMP.backend.(all_nodes(graph))
+#NOTE: Must hit _aggregate_backends! first
+function _set_backend_objective(graph::OptiGraph)
+    backend = JuMP.backend(graph)
+    obj = objective_function(graph)
+    nodes = getnodes(obj)
+    srces = JuMP.backend.(nodes)
     idx_maps = _get_idx_map.(srces)
-    _set_sum_of_affine_objectives!(dest,srces,idx_maps)
-
-    return nothing
+    _set_sum_of_objectives!(backend,srces,idx_maps)
 end
 
 #Add a LinkConstraint to a MOI backend.  This is used as part of _aggregate_backends!
@@ -126,32 +124,21 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #check backend state. We don't always want to recreate the model.
     #we could check for incremental changes in the node backends and update the graph backend accordingly
 
-    #combine backends from optinodes
+    #combine optinode backends
     _aggregate_backends!(graph)
 
-    #TODO: NLP: Set up block data for each optinode
+    #NLP data
     if has_nlp_data(graph)
+        MOI.set(backend, MOI.NLPBlock(), _create_nlp_block_data(graph))
         optinodes = all_nodes(graph)
         for k=1:length(optinodes)
-            #JuMP.set_optimizer(getmodel(optinodes[k]),constructor)
             if optinodes[k].model.nlp_data !== nothing
-                MOI.set(optinodes[k].model, MOI.NLPBlock(),_create_nlp_block_data(optinodes[k].model))
                 empty!(optinodes[k].model.nlp_data.nlconstr_duals)
             end
         end
     end
-    # if model.nlp_data !== nothing
-    #     MOI.set(model, MOI.NLPBlock(), _create_nlp_block_data(model))
-    #     empty!(model.nlp_data.nlconstr_duals)
-    # end
 
-
-    # #TODO Set default graph objective function to sum of nodes by default
-    # if has_objective(graph)
-    #     #use graph objective function
-    # else
-    _set_sum_of_affine_objectives!(graph) #I don't actually need to do this.  We can just setup graph.objective.
-    # end
+    _set_backend_objective(graph)
 
     try
         MOI.optimize!(backend)
@@ -179,85 +166,32 @@ end
 function JuMP.optimize!(node::OptiNode;kwargs...)
     #TODO: Check for optimizer
     #TODO: Would it be better to do: JuMP.optimize!(node.model)? This would setup the NLP data
-
+    JuMP.optimize!(node.model;kwargs...)
     #JuMP.set_optimizer(node,optimizer)
-    backend = JuMP.backend(node)
-    MOI.optimize!(backend;kwargs...)
+
+
+    # backend = JuMP.backend(node)
+    # MOI.optimize!(backend;kwargs...)
     return nothing
 end
 
-#TODO: NLPBlock
-# if model.nlp_data !== nothing
-#         MOI.set(model, MOI.NLPBlock(), _create_nlp_block_data(model))
-#         empty!(model.nlp_data.nlconstr_duals)
-# end
+function has_nlp_data(graph::OptiGraph)
+    return any(node -> (node.nlp_data !== nothing),all_nodes(graph))
+end
 
+function _create_nlp_block_data(graph::OptiGraph)
+    @assert has_nlp_data(graph)
 
-# function _copysolution!(optigraph::OptiGraph,ref_map::CombinedMap)
-#
-#     #Node solutions
-#     for node in all_nodes(optigraph)
-#         for var in JuMP.all_variables(node)
-#             node.variable_values[var] = JuMP.value(ref_map[var])
-#         end
-#     end
-#
-#     #Link constraint duals
-#     if JuMP.has_duals(ref_map.combined_model)
-#         for edge in all_edges(optigraph)
-#             for linkcon in getlinkconstraints(edge)
-#                 dual = JuMP.dual(ref_map.linkconstraintmap[linkcon])
-#                 edge.dual_values[linkcon] = dual
-#             end
-#         end
-#     end
-#
-#     #TODO Copy constraint duals
-#     # for (jnodeconstraint,modelconstraint) in node.constraintmap
-#     #     try
-#     #         model_node.constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
-#     #     catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
-#     #         continue
-#     #     end
-#     # end
-#     #     for (jnodeconstraint,modelconstraint) in node.nl_constraintmap
-#     #         try
-#     #             model_node.nl_constraint_dual_values[modelconstraint.index] = JuMP.dual(jnodeconstraint)
-#     #         catch ArgumentError #NOTE: Ipopt doesn't catch duals of quadtratic constraints
-#     #             continue
-#     #         end
-#     #     end
-#     # end
-# end
+    bounds = MOI.NLPBoundsPair[]
 
-#has_aggregate(graph::OptiGraph) = haskey(graph.obj_dict,:current_optinode)
-
-
-#TODO: Equivalent of _moi_get from JuMP
-# JuMP.termination_status(graph::OptiGraph) = JuMP.termination_status(getmodel(graph))
-# JuMP.raw_status(graph::OptiGraph) = JuMP.raw_status(getmodel(graph))
-# JuMP.primal_status(graph::OptiGraph) = JuMP.primal_status(getmodel(graph))
-# JuMP.dual_status(graph::OptiGraph) = JuMP.dual_status(getmodel(graph))
-
-
-
-
-# function JuMP.optimize!(graph::OptiGraph;kwargs...)
-#     println("Converting OptiGraph to OptiNode...")
-#     optinode,reference_map = aggregate(graph)
-#
-#     println("Optimizing OptiNode")
-#     JuMP.set_optimizer(optinode,optimizer)
-#     status = JuMP.optimize!(optinode)#,optimizer;kwargs...)
-#
-#     #Hold on to aggregated optinode and reference map to access solver attributes
-#     graph.obj_dict[:current_optinode] = optinode
-#     graph.obj_dict[:current_ref_map] = reference_map
-#
-#     if JuMP.has_values(getmodel(optinode))     # TODO Get all the correct status codes for copying a solution
-#         _copysolution!(graph,reference_map)     #Now get our solution data back into the original OptiGraph
-#         println("Found Solution")
-#     end
-#
-#     return nothing
-# end
+    has_nl_obj = false
+    for node in all_nodes(graph)
+        for constr in node.model.nlp_data.nlconstr
+            push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
+        end
+        if !has_nl_obj && isa(node.nlp_data.nlobj, JuMP._NonlinearExprData)
+            has_nl_obj = true
+        end
+    end
+    return MOI.NLPBlockData(bounds,OptiGraphNLPEvaluator(graph),has_nl_obj)
+end
