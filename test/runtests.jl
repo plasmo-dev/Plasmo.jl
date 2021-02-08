@@ -7,17 +7,21 @@ using Test
 #     include(file)
 # end
 
-@testset "Core functions" begin
-    include("optigraph.jl")
-    include("subgraphs.jl")
-    include("partition.jl")
+@testset "Aggregate"
+    include("aggregate.jl")
 end
 
-@testset "Nonlinear functions" begin
-    include("add_NL_objectives.jl")
-    include("nl_problem.jl")
-end
-
-@testset "Graph functions" begin
-    include("hypergraph.jl")
-end
+# @testset "Core functions" begin
+#     include("optigraph.jl")
+#     include("subgraphs.jl")
+#     include("partition.jl")
+# end
+#
+# @testset "Nonlinear functions" begin
+#     include("add_NL_objectives.jl")
+#     include("nl_problem.jl")
+# end
+#
+# @testset "Graph functions" begin
+#     include("hypergraph.jl")
+# end

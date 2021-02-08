@@ -186,11 +186,13 @@ function _create_nlp_block_data(graph::OptiGraph)
 
     has_nl_obj = false
     for node in all_nodes(graph)
-        for constr in node.model.nlp_data.nlconstr
-            push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
-        end
-        if !has_nl_obj && isa(node.nlp_data.nlobj, JuMP._NonlinearExprData)
-            has_nl_obj = true
+        if node.model.nlp_data !== nothing
+            for constr in node.model.nlp_data.nlconstr
+                push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
+            end
+            if !has_nl_obj && isa(node.nlp_data.nlobj, JuMP._NonlinearExprData)
+                has_nl_obj = true
+            end
         end
     end
     return MOI.NLPBlockData(bounds,OptiGraphNLPEvaluator(graph),has_nl_obj)

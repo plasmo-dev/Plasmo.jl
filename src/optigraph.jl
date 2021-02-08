@@ -271,6 +271,11 @@ function num_all_optiedges(graph::OptiGraph)
     return n_link_edges
 end
 
+function JuMP.all_variables(graph::OptiGraph)
+    vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
+    return vars
+end
+
 """
     getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraint}
 

@@ -197,6 +197,7 @@ JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(getmodel(node))
 JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar) = JuMP.set_objective(getmodel(optinode),sense,func)
 JuMP.set_objective_function(optinode::OptiNode,func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(optinode.model,func)
 JuMP.set_objective_function(optinode::OptiNode,real::Real) = JuMP.set_objective_function(optinode.model,real)
+JuMP.set_objective_sense(optinode::OptiNode,sense::MOI.OptimizationSense) = JuMP.set_objective_sense(optinode.model,sense)
 
 JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node))
 JuMP.raw_status(node::OptiNode) = JuMP.raw_status(getmodel(node))

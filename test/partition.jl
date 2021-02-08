@@ -1,27 +1,46 @@
+module TestPartition
+
 using Plasmo
 using Test
 
-mg = OptiGraph()
+function test_partition1
+    graph = OptiGraph()
 
-@optinode(mg,nodes[1:100])
-for node in nodes
-    @variable(node,x>=0)
+    @optinode(graph,nodes[1:100])
+    for node in nodes
+        @variable(node,x >= 0)
+    end
+
+    for j = 1:99
+        @linkconstraint(mg,nodes[j][:x] == nodes[j+1][:x])
+    end
+
+    A = reshape(nodes,20,5)
+    node_vectors = [A[c,:] for c in 1:size(A,1)]
+
+    partition = Partition(graph,node_vectors)
+
+    @test length(partition.subpartitions) == 20
+    @test num_nodes(graph) == 100
+
+    make_subgraphs!(graph,partition)
+
+    @test num_nodes(graph) == 0
+    @test length(all_nodes(graph)) == 100
 end
 
-for j = 1:99
-    @linkconstraint(mg,nodes[j][:x] == nodes[j+1][:x])
+function runtests()
+    for name in names(@__MODULE__; all = true)
+        if !startswith("$(name)", "test_")
+            continue
+        end
+        @testset "$(name)" begin
+            getfield(@__MODULE__, name)()
+        end
+    end
 end
 
-A = reshape(nodes,20,5)
-node_vectors = [A[c,:] for c in 1:size(A,1)]
 
-partition = Partition(mg,node_vectors)
+end
 
-@test length(partition.subpartitions) == 20
-
-@test num_nodes(mg) == 100
-
-make_subgraphs!(mg,partition)
-
-@test num_nodes(mg) == 0
-@test length(all_nodes(mg)) == 100
+TestPartition.run_tests()

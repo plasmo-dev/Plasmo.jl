@@ -4,6 +4,13 @@ function JuMP._init_NLP(node::OptiNode)
     node.nlp_data = node.model.nlp_data
 end
 
+function JuMP.set_objective(node::OptiNode,sense::MOI.OptimizationSense,ex::JuMP._NonlinearExprData)
+    JuMP._init_NLP(node)
+    JuMP.set_objective_sense(node, sense)
+    node.nlp_data.nlobj = ex
+    return
+end
+
 #NLP Data for nonliner objective function and (someday) nonlinear link constraints
 function JuMP._init_NLP(graph::OptiGraph)
     error("An OptiGraph does not yet support the @NLconstraint macro.")
