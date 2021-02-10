@@ -20,11 +20,6 @@ function JuMP._parse_NL_expr_runtime(graph::OptiGraph, x, tape, parent, values)
     error("An OptiGraph does not yet support the @NLconstraint macro.")
 end
 
-function JuMP.set_objective(node::OptiNode,sense::MathOptInterface.OptimizationSense,data::JuMP._NonlinearExprData)
-    JuMP.set_objective(node.model,sense,data)
-end
-
-
 function JuMP._parse_NL_expr_runtime(node::OptiNode, x::Real, tape, parent, values)
     push!(values, x)
     push!(tape, JuMP.NodeData(JuMP.VALUE, length(values), parent))

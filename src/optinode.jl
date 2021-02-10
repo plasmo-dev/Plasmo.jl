@@ -79,7 +79,7 @@ Get the current value of `expr` which is `JuMP.GenericAffExpr`
 
 Get the current value of `expr` which is a `JuMP.GenericQuadExpr`
 """
-nodevalue(var::JuMP.VariableRef) = getnode(var).variable_values[var]
+nodevalue(var::JuMP.VariableRef) = JuMP.value(var)
 function nodevalue(expr::JuMP.GenericAffExpr)
     ret_value = 0.0
     for (var,coeff) in expr.terms
@@ -99,6 +99,9 @@ function nodevalue(expr::JuMP.GenericQuadExpr)
 end
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(con).constraint_dual_values[con]
 nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con]
+
+@deprecate nodevalue value
+@deprecate nodedual dual
 
 """
     set_model(node::OptiNode,m::AbstractModel)
@@ -125,7 +128,7 @@ is_set_to_node(m::AbstractModel) = haskey(m.ext,:optinode)                      
 ############################################
 function Base.getindex(node::OptiNode,symbol::Symbol)
     if haskey(node.model.obj_dict,symbol)
-        return getmodel(node)[symbol]#.vref
+        return getmodel(node)[symbol]
     else
         return getattribute(node,symbol)
     end
@@ -139,12 +142,9 @@ JuMP.object_dictionary(m::OptiNode) = m.model.obj_dict
 JuMP.variable_type(::OptiNode) = JuMP.VariableRef
 JuMP.constraint_type(::OptiNode) = JuMP.ConstraintRef
 
-#Add a link variable to a ModelGraph.  We need to wrap the variable in our own LinkVariableRef to work with it in constraints
 function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
-    node.nodevariable_index += 1
-    jump_vref = JuMP.add_variable(node.model,v,name) #add the variable to the node model
-    node.nodevariables[node.nodevariable_index] = jump_vref
-    JuMP.set_name(jump_vref, name)
+    jump_vref = JuMP.add_variable(node.model,v,name) #add the variable to the optinode
+    JuMP.set_name(jump_vref, "$(node.label)[:$(JuMP.name(jump_vref))]")
     return jump_vref
 end
 
@@ -198,6 +198,9 @@ JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.
 JuMP.set_objective_function(optinode::OptiNode,func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(optinode.model,func)
 JuMP.set_objective_function(optinode::OptiNode,real::Real) = JuMP.set_objective_function(optinode.model,real)
 JuMP.set_objective_sense(optinode::OptiNode,sense::MOI.OptimizationSense) = JuMP.set_objective_sense(optinode.model,sense)
+
+#TODO: check nlp objective
+has_objective(node::OptiNode) = objective_function(node) != zero(JuMP.AffExpr) && objective_function(node) != zero(JuMP.QuadExpr)
 
 JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node))
 JuMP.raw_status(node::OptiNode) = JuMP.raw_status(getmodel(node))

@@ -16,7 +16,7 @@ n2 = @optinode(graph)
 
 #Node 2 Model
 @variable(n2,x)
-@NLnodeconstraint(n2,ref,exp(x) >= 2)
+@NLconstraint(n2,ref,exp(x) >= 2)
 @variable(n2,z >= 0)
 @constraint(n2,z + x >= 4)
 
@@ -30,9 +30,9 @@ n2 = @optinode(graph)
 #Optimize with Ipopt.
 optimize!(graph,optimizer)
 
-println("n1[:z]= ",value(n1,n1[:z]))
-println("n2[:z]= ",value(n2,n2[:z]))
-println("n1[:x]= ",value(n1,n1[:x]))
-println("n1[:y]= ",value(n1,n1[:y]))
-println("n2[:x]= ",value(n2,n2[:x]))
+println("n1[:z]= ",value(n1[:z]))
+println("n2[:z]= ",value(n2[:z]))
+println("n1[:x]= ",value(n1[:x]))
+println("n1[:y]= ",value(n1[:y]))
+println("n2[:x]= ",value(n2[:x]))
 println("objective = ", objective_value(graph))

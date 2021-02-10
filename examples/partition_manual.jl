@@ -5,10 +5,10 @@ using Ipopt
 optigraph = OptiGraph()
 
 #Add nodes to a GraphModel
-@node optigraph n1
-@node optigraph n2
-@node optigraph n3
-@node optigraph n4
+@optinode optigraph n1
+@optinode optigraph n2
+@optinode optigraph n3
+@optinode optigraph n4
 
 #Set a model on node 1
 @variable(n1,0 <= x <= 2)
@@ -18,7 +18,7 @@ optigraph = OptiGraph()
 
 @variable(n2,x >= 1)
 @variable(n2,0 <= y <= 5)
-@NLnodeconstraint(n2,exp(x)+y <= 7)
+@NLconstraint(n2,exp(x)+y <= 7)
 @objective(n2,Min,x)
 
 @variable(n3,x >= 0)

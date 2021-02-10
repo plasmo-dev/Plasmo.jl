@@ -1,14 +1,14 @@
-module NLPEvaluatorTest
+module TestNLPEvaluator
 
 using Plasmo
 using JuMP
-using MathOptInterface
 using Ipopt
+using Test
 
-const MOI = MathOptInterface
-
+#########################################################
+#Plasmo model to check evaluator functions
+#########################################################
 function _make_plasmo_graph()
-
     graph = OptiGraph()
     @optinode(graph,n1)
     @variable(n1,x[1:5] >= 0)
@@ -167,4 +167,4 @@ end
 
 end
 
-NLPEvaluatorTest.run_tests()
+TestNLPEvaluator.run_tests()

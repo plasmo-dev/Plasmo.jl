@@ -27,7 +27,17 @@ function _aggregate_backends!(graph::OptiGraph)
     return nothing
 end
 
-#NOTE: Must hit _aggregate_backends! first
+function _set_graph_objective(graph::OptiGraph)
+    if !has_objective(graph) && has_node_objective(graph)
+        nodes = all_nodes(graph)
+        node_senses = JuMP.objective_sense.(nodes)
+        scl = [JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1 for node in nodes]
+        JuMP.set_objective(graph,MOI.MIN_SENSE,sum(scl[i]*objective_function(nodes[i]) for i = 1:length(nodes)))
+    end
+    return nothing
+end
+
+#NOTE: Must hit _aggregate_backends!() first
 function _set_backend_objective(graph::OptiGraph)
     backend = JuMP.backend(graph)
     obj = objective_function(graph)
@@ -93,6 +103,10 @@ function _populate_node_results!(graph::OptiGraph)
         duals = OrderedDict(zip(cons,MOI.get(graph_backend,MOI.ConstraintDual(),dest_cons)))
         _set_primals(src,primals)
         _set_duals(src,duals)
+
+        #TODO
+        # _set_link_duals(src)
+        # _set_nl_duals(src)
     end
 end
 
@@ -122,7 +136,10 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
 
     #TODO:
     #check backend state. We don't always want to recreate the model.
-    #we could check for incremental changes in the node backends and update the graph backend accordingly
+    #we could check for incremental changes in the optinode backends and update the graph backend accordingly
+
+    #set graph objective if it's empty and there are node objectives
+    _set_graph_objective(graph)
 
     #combine optinode backends
     _aggregate_backends!(graph)
@@ -164,14 +181,7 @@ function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
 end
 
 function JuMP.optimize!(node::OptiNode;kwargs...)
-    #TODO: Check for optimizer
-    #TODO: Would it be better to do: JuMP.optimize!(node.model)? This would setup the NLP data
     JuMP.optimize!(node.model;kwargs...)
-    #JuMP.set_optimizer(node,optimizer)
-
-
-    # backend = JuMP.backend(node)
-    # MOI.optimize!(backend;kwargs...)
     return nothing
 end
 

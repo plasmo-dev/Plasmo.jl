@@ -16,14 +16,15 @@ n1 = @optinode(graph)
 #Node 2 model
 n2 = @optinode(graph)
 @variable(n2,x)
-@NLnodeconstraint(n2,exp(x) >= 2)
+@NLconstraint(n2,exp(x) >= 2)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
 @linkconstraint(graph,n1[:x] == n2[:x])
 
 #Combine modelnodes until a single node
-combined_model,reference_map = aggregate(graph)
-optimize!(combined_model,optimizer)
+aggregate_node,reference_map = aggregate(graph)
+set_optimizer(aggregate_node,optimizer)
+optimize!(aggregate_node)
 
 #Use the reference map to look up values
 println("n1[:x] = ",value(reference_map[n1[:x]]))

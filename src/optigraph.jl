@@ -20,8 +20,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    # IDEA: Use MOI backend to interface with solvers.  We can create a backend on the fly when creating an optigraph from induced optigraphs
-    # NOTE: The NLPBlock points back to a NLP Evaluator
+    # IDEA: Use MOI backend to interface with solvers.  We create a backend by aggregating optinode backends
     moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
 
     #optimizer: #NOTE: MadNLP uses optimizer field
@@ -32,7 +31,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     ext::Dict{Symbol,Any}
 
     #TODO Someday
-    #Captures nonlinear linking constraints and (separable?) nonlinear objective function
+    #Capture nonlinear linking constraints and (separable) nonlinear objective functions
     #nlp_data::Union{Nothing,JuMP._NLPData}
 
     #Constructor
@@ -81,6 +80,7 @@ end
 Retrieve the local subgraphs of `optigraph`.
 """
 getsubgraphs(optigraph::OptiGraph) = optigraph.subgraphs
+num_subgraphs(optigraph::OptiGraph) = length(optigraph.subgraphs)
 
 """
     all_subgraphs(optigraph::OptiGraph)::Vector{OptiGraph}
@@ -95,6 +95,8 @@ function all_subgraphs(optigraph::OptiGraph)
     end
     return subgraphs
 end
+num_all_subgraphs(optigraph::OptiGraph) = length(all_subgraphs(optigraph))
+has_subgraphs(graph::OptiGraph) = !(isempty(graph.subgraphs))
 #################
 #OptiNodes
 #################
@@ -115,7 +117,7 @@ function add_node!(graph::OptiGraph)
     optinode = OptiNode()
     push!(graph.optinodes,optinode)
     i = length(graph.optinodes)
-    optinode.label = "$i"
+    optinode.label = "n$i"
     graph.node_idx_map[optinode] = length(graph.optinodes)
     return optinode
 end
@@ -160,14 +162,16 @@ function all_nodes(graph::OptiGraph)
 end
 
 """
-    find_node(graph::OptiGraph,index::Int64)
+    all_node(graph::OptiGraph,index::Int64)
 
 Find the optinode in `graph` at `index`. This traverses all of the nodes in the subgraphs of `graph`.
 """
-function find_node(graph::OptiGraph,index::Int64)
+function all_node(graph::OptiGraph,index::Int64)
     nodes = all_nodes(graph)
     return nodes[index]
 end
+@deprecate(find_node,all_node)
+
 
 """
     Base.getindex(graph::OptiGraph,node::OptiNode)
@@ -250,9 +254,10 @@ end
 ########################################################
 # Model Management
 ########################################################
-has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
+has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.AffExpr) && graph.objective_function != zero(JuMP.QuadExpr)
+has_node_objective(graph::OptiGraph) = any(has_objective.(all_nodes(graph)))
 
-has_subgraphs(graph::OptiGraph) = !(isempty(graph.subgraphs))
+
 num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))  #length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
 
 num_nodes(graph::OptiGraph) = length(graph.optinodes)
@@ -418,10 +423,10 @@ function getnodes(expr::JuMP.GenericQuadExpr)
     return unique(nodes)
 end
 
-
 #####################################################
 #  Link Constraints
 #  A linear constraint between JuMP Models (nodes).  Link constraints can be equality or inequality.
+# TODO: simplify link constraints.  Don't really need to distinguish between equality and inequality anymore
 #####################################################
 function add_link_equality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
     @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
@@ -609,8 +614,6 @@ function MOI.delete!(cref::LinkConstraintRef)
     delete!(cref.optiedge.linkconstraint_names, cref.idx)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
-
-
 
 ####################################
 #Print Functions
