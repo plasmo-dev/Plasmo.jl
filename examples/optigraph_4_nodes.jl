@@ -10,13 +10,13 @@ set_optimizer(graph,optimizer)
 
 @variable(nodes[1],0 <= x <= 2)
 @variable(nodes[1],0 <= y <= 3)
-@variable(nodes[1], z >= 0)
+@variable(nodes[1], 0 <= z <= 2)
 @constraint(nodes[1],x+y+z >= 4)
 @objective(nodes[1],Min,y)
 
 @variable(nodes[2],x >= 0)
 @NLconstraint(nodes[2],ref,exp(x) >= 2)
-@variable(nodes[2],z >= 0)
+@variable(nodes[2],0 <= z <= 2)
 @constraint(nodes[2],z + x >= 4)
 @objective(nodes[2],Min,x)
 
@@ -31,9 +31,9 @@ set_optimizer(graph,optimizer)
 @NLobjective(nodes[4],Min,x[2]^3)
 
 #Link constraints take the same expressions as the JuMP @constraint macro
-@linkconstraint(graph,nodes[1][:x] == nodes[2][:x])
-@linkconstraint(graph,nodes[2][:x] == nodes[3][:x][3])
-@linkconstraint(graph,nodes[3][:x][1] == nodes[4][:x][1])
+@linkconstraint(graph,link1,nodes[1][:x] == nodes[2][:x])
+@linkconstraint(graph,link2,nodes[2][:x] == nodes[3][:x][3])
+@linkconstraint(graph,link3,nodes[3][:x][1] == nodes[4][:x][1])
 
 optimize!(graph)
 
@@ -45,10 +45,23 @@ for var in all_variables(graph)
     println(var," = ",value(var))
 end
 println()
-println("dual values:")
-println(conref," = ",dual(conref))
-println(nlcon," = ",dual(nlcon))
-# #TODO
-# println("dual values:")
-# for con_type in list_of_constraint_types(graph)
-# end
+
+println("dual values on nodes:")
+for constraint_type in list_of_constraint_types(graph)
+    cons = all_constraints(graph,constraint_type[1],constraint_type[2])
+    for con in cons
+        println("($con) = $(dual(con))")
+    end
+end
+println()
+println("nonlinear dual values on nodes:")
+println("($conref) = $(dual(conref))")
+println("($nlcon) = $(dual(nlcon))")
+# println(conref," = ",dual(conref))
+# println(nlcon," = ",dual(nlcon))
+
+println()
+println("dual values on link constraints")
+for link in all_linkconstraints(graph)
+    println("($link) = $(dual(link))")
+end

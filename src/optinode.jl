@@ -219,6 +219,9 @@ JuMP.dual_status(node::OptiNode) = JuMP.dual_status(getmodel(node))
 JuMP.solver_name(node::OptiNode) = JuMP.solver_name(getmodel(node))
 JuMP.mode(node::OptiNode) = JuMP.mode(getmodel(node))
 
+JuMP.list_of_constraint_types(node::OptiNode) = JuMP.list_of_constraint_types(getmodel(node))
+JuMP.all_constraints(node::OptiNode,F::DataType,S::DataType) = JuMP.all_constraints(getmodel(node),F,S)
+
 ##############################################
 # Get OptiNode
 ##############################################
@@ -241,7 +244,6 @@ function getnode(con::JuMP.ConstraintRef)
         error("constraint $con does not belong to a node")
     end
 end
-
 getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:optinode] : throw(error("Only node models have associated graph nodes"))
 getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:optinode]
 

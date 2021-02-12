@@ -252,17 +252,15 @@ function Base.getindex(graph::OptiGraph,optiedge::OptiEdge)
 end
 
 ########################################################
-# Model Management
+# Model Interaction
 ########################################################
 has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.AffExpr) && graph.objective_function != zero(JuMP.QuadExpr)
 has_node_objective(graph::OptiGraph) = any(has_objective.(all_nodes(graph)))
 
-
-num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))  #length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
-
 num_nodes(graph::OptiGraph) = length(graph.optinodes)
+@deprecate getnumnodes num_nodes
 num_optiedges(graph::OptiGraph) = length(graph.optiedges)
-getnumnodes(graph::OptiGraph) = num_nodes(graph)
+
 
 function num_all_nodes(graph::OptiGraph)
     n_nodes = sum(num_nodes.(all_subgraphs(graph)))
@@ -280,27 +278,27 @@ function JuMP.all_variables(graph::OptiGraph)
     vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
     return vars
 end
-
 """
-    getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraint}
+    getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
 Retrieve the local linking constraints in `graph`. Returns a vector of the linking constraints.
 """
 function getlinkconstraints(graph::OptiGraph)
-    links = LinkConstraint[]
-    for ledge in graph.optiedges
-        append!(links,collect(values(ledge.linkconstraints)))
+    links = LinkConstraintRef[]
+    for edge in graph.optiedges
+        # append!(links,collect(values(ledge.linkconstraints)))
+        append!(links,edge.linkrefs)
     end
     return links
 end
-
+num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))  #length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
 """
-    all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraint}
+    all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
 Retrieve all of the linking constraints in `graph`, including linking constraints in its subgraphs. Returns a vector of the linking constraints.
 """
 function all_linkconstraints(graph::OptiGraph)
-    links = LinkConstraint[]
+    links = LinkConstraintRef[]
     for subgraph in all_subgraphs(graph)
         append!(links,getlinkconstraints(subgraph))
     end
@@ -621,7 +619,7 @@ MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstr
 function string(graph::OptiGraph)
     """
     OptiGraph:
-    local nodes: $(getnumnodes(graph)), total nodes: $(length(all_nodes(graph)))
+    local nodes: $(num_nodes(graph)), total nodes: $(length(all_nodes(graph)))
     local link constraints: $(num_linkconstraints(graph)), total link constraints $(length(all_linkconstraints(graph)))
     local subgraphs: $(length(getsubgraphs(graph))), total subgraphs $(length(all_subgraphs(graph)))
     """
@@ -633,10 +631,11 @@ show(io::IO,graph::OptiGraph) = print(io,graph)
 JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
 JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
 JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
+JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
+JuMP.all_constraints(graph::OptiGraph,F::DataType,S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph),Ref(F),Ref(S))...)
 
-#
-# Other new functions
-#
+
+
 """
     empty!(graph::OptiGraph) -> graph
 Empty the optigraph, that is, remove all variables, constraints and model

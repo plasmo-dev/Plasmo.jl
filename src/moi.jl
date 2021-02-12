@@ -113,6 +113,9 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
+
+#NOTE: May no longer need these
+##########################################################
 function _swap_indices!(obj::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
     terms = obj.terms
     for i = 1:length(terms)
@@ -138,7 +141,6 @@ function _swap_indices!(obj::MOI.ScalarQuadraticFunction,idxmap::MOIU.IndexMap)
     end
 end
 
-#NOTE: May no longer need this
 function _set_sum_of_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vector{MOIU.IndexMap})
     dest_obj = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm{Float64}[], 0.0)
     MOI.set(dest,MOI.ObjectiveSense(),MOI.MIN_SENSE)
@@ -160,3 +162,4 @@ function _set_sum_of_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vecto
     MOI.set(dest,MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),dest_obj)
     return dest_obj
 end
+##########################################################

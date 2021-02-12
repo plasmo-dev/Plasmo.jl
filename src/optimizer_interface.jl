@@ -17,11 +17,12 @@ function _aggregate_backends!(graph::OptiGraph)
         idx_map = append_to_backend!(dest, src, false; filter_constraints=nothing)
 
         #remember idx_map: {src_attribute => dest_attribute}
-        _set_idx_map(src,idx_map) #this retains an index map on each src model
+        _set_idx_map(src,idx_map) #this retains an index map on each src (node) model
     end
 
-    for link in all_linkconstraints(graph)
-        _add_link_constraint!(dest,link)
+    for linkref in all_linkconstraints(graph)
+        constraint_index = _add_link_constraint!(dest,JuMP.constraint_object(linkref))
+        linkref.optiedge.idx_map[linkref] = constraint_index
     end
 
     return nothing
@@ -72,9 +73,9 @@ function _add_link_constraint!(dest::MOI.ModelLike,link::LinkConstraint)
     end
     moi_set = JuMP.moi_set(link)
 
-    MOI.add_constraint(dest,moi_func,moi_set)
+    constraint_index = MOI.add_constraint(dest,moi_func,moi_set)
 
-    return nothing
+    return constraint_index
 end
 
 _get_idx_map(optimizer::NodeOptimizer) = optimizer.idx_map
@@ -83,8 +84,6 @@ _set_idx_map(optimizer::NodeOptimizer,idx_map::MOIU.IndexMap) = optimizer.idx_ma
 _set_primals(optimizer::NodeOptimizer,primals::OrderedDict) = optimizer.primals = primals
 _set_duals(optimizer::NodeOptimizer,duals::OrderedDict) = optimizer.duals = duals
 
-function _set_nlp_duals(optimizer::NodeOptimizer,nlp_duals::OrderedDict)
-end
 
 function _set_link_duals()
 end
@@ -95,6 +94,7 @@ function _populate_node_results!(graph::OptiGraph)
     nodes = all_nodes(graph)
     srces = JuMP.backend.(nodes)
     idxmaps = _get_idx_map.(nodes)
+
     #nodes
     for (src,idxmap) in zip(srces,idxmaps)
         vars = MOI.get(src,MOI.ListOfVariableIndices())
@@ -118,6 +118,12 @@ function _populate_node_results!(graph::OptiGraph)
         _set_duals(src,duals)
     end
 
+    #edges (links)
+    for linkref in all_linkconstraints(graph)
+        edge = JuMP.owner_model(linkref)
+        edge.dual_values[linkref.idx] = MOI.get(graph_backend,MOI.ConstraintDual(),edge.idx_map[linkref])
+    end
+
     #Nonlinear duals
     if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
         nlp_duals = MOI.get(graph_backend,MOI.NLPBlockDual())
@@ -131,9 +137,6 @@ function _populate_node_results!(graph::OptiGraph)
             end
         end
     end
-    #TODO edges
-    # _set_link_duals(src)
-
 end
 
 JuMP.optimize!(graph::OptiGraph,optimizer;kwargs...) = error("The optimizer keyword argument is no longer supported. Use `set_optimizer` first, and then `optimize!`.")

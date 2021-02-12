@@ -31,9 +31,28 @@ n2 = @optinode(graph)
 optimize!(graph)
 
 #Get results
-println("n1[:z]= ",value(n1[:z]))
-println("n2[:z]= ",value(n2[:z]))
-println("n1[:x]= ",value(n1[:x]))
-println("n1[:y]= ",value(n1[:y]))
-println("n2[:x]= ",value(n2[:x]))
-println("objective = ", objective_value(graph))
+println()
+println("objective value = ", objective_value(graph))
+
+println()
+println("variable values:")
+println("n1[:z] = ",value(n1[:z]))
+println("n2[:z] = ",value(n2[:z]))
+println("n1[:x] = ",value(n1[:x]))
+println("n1[:y] = ",value(n1[:y]))
+println("n2[:x] = ",value(n2[:x]))
+
+println()
+println("dual values on nodes:")
+for constraint_type in list_of_constraint_types(graph)
+    cons = all_constraints(graph,constraint_type[1],constraint_type[2])
+    for con in cons
+        println("($con) = $(dual(con))")
+    end
+end
+
+println()
+println("dual values on link constraints")
+for link in all_linkconstraints(graph)
+    println("($link) = $(dual(link))")
+end
