@@ -1,10 +1,11 @@
 using Plasmo
-using Ipopt
+using GLPK
 
 graph = OptiGraph()
-optimizer = Ipopt.Optimizer
+optimizer = GLPK.Optimizer
+set_optimizer(graph,optimizer)
 
-#Add nodes to a ModelGraph
+#Add nodes to optigraph
 n1 = @optinode(graph)
 n2 = @optinode(graph)
 
@@ -16,7 +17,6 @@ n2 = @optinode(graph)
 
 #Node 2 Model
 @variable(n2,x)
-@NLconstraint(n2,ref,exp(x) >= 2)
 @variable(n2,z >= 0)
 @constraint(n2,z + x >= 4)
 
@@ -24,12 +24,13 @@ n2 = @optinode(graph)
 @linkconstraint(graph,n1[:x] == n2[:x])
 @linkconstraint(graph,n1[:z] == n2[:z])
 
-#Graph objective
+#Objective function
 @objective(graph,Min,n1[:y] + n2[:x] + n1[:z])
 
-#Optimize with Ipopt.
-optimize!(graph,optimizer)
+#Optimize with glpk.
+optimize!(graph)
 
+#Get results
 println("n1[:z]= ",value(n1[:z]))
 println("n2[:z]= ",value(n2[:z]))
 println("n1[:x]= ",value(n1[:x]))

@@ -1,8 +1,6 @@
 # The Partition object describes partitions of optinodes and optiedges.
 # Different graph projections can be used to create an intermediate Partition object which is the standard interface to make subgraphs
 abstract type AbstractPartition end
-###########################################################################################################
-#Note that a Partition can contain subpartitions recursively
 """
     Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
 
@@ -17,8 +15,8 @@ Create a partition using `optigraph`, `node_membership_vector`, and 'ref_map'. T
 Manually create a partition using `optigraph` and a vector of vectors containing sets of optinodes that represent each partition.
 """
 mutable struct Partition <: AbstractPartition
-    optinodes::Vector{OptiNode}   #hypernodes at this level
-    optiedges::Vector{OptiEdge}   #hyperedges at his level
+    optinodes::Vector{OptiNode}   #optinodes at partition level
+    optiedges::Vector{OptiEdge}   #hyperedges at partition level
     parent::Union{Nothing,AbstractPartition} #parent partition
     subpartitions::Vector{AbstractPartition}      #subpartitions
 end
@@ -93,11 +91,11 @@ function make_subgraphs!(graph::OptiGraph,partition::Partition)
     root = partition
     graph.subgraphs = OptiGraph[]
 
-    mnodes = root.optinodes
-    ledges = root.optiedges
+    optinodes = root.optinodes
+    optiedges = root.optiedges
 
-    _set_nodes(graph,mnodes)
-    _set_edges(graph,ledges)
+    _set_nodes(graph,optinodes)
+    _set_edges(graph,optiedges)
     subparts = root.subpartitions
     #Create subgraph structure from nodes and partition data
     for subpartition in subparts

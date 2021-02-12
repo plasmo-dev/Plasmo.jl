@@ -30,9 +30,16 @@ end
 function _set_graph_objective(graph::OptiGraph)
     if !has_objective(graph) && has_node_objective(graph)
         nodes = all_nodes(graph)
-        node_senses = JuMP.objective_sense.(nodes)
-        scl = [JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1 for node in nodes]
-        JuMP.set_objective(graph,MOI.MIN_SENSE,sum(scl[i]*objective_function(nodes[i]) for i = 1:length(nodes)))
+        # node_senses = JuMP.objective_sense.(nodes)
+        #need to flip the node sense
+        for node in nodes
+            if JuMP.objective_sense(node) == MOI.MAX_SENSE
+                JuMP.set_objective_sense(node,MOI.MIN_SENSE)
+                JuMP.set_objective_function(node,-1*JuMP.objective_function(node))
+            end
+        end
+        #scl = [JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1 for node in nodes]
+        JuMP.set_objective(graph,MOI.MIN_SENSE,sum(objective_function(nodes[i]) for i = 1:length(nodes)))
     end
     return nothing
 end
@@ -76,13 +83,19 @@ _set_idx_map(optimizer::NodeOptimizer,idx_map::MOIU.IndexMap) = optimizer.idx_ma
 _set_primals(optimizer::NodeOptimizer,primals::OrderedDict) = optimizer.primals = primals
 _set_duals(optimizer::NodeOptimizer,duals::OrderedDict) = optimizer.duals = duals
 
+function _set_nlp_duals(optimizer::NodeOptimizer,nlp_duals::OrderedDict)
+end
+
+function _set_link_duals()
+end
+
 function _populate_node_results!(graph::OptiGraph)
     graph_backend = JuMP.backend(graph)
 
     nodes = all_nodes(graph)
     srces = JuMP.backend.(nodes)
     idxmaps = _get_idx_map.(nodes)
-
+    #nodes
     for (src,idxmap) in zip(srces,idxmaps)
         vars = MOI.get(src,MOI.ListOfVariableIndices())
         dest_vars = MOI.VariableIndex[idxmap[var] for var in vars]
@@ -103,11 +116,24 @@ function _populate_node_results!(graph::OptiGraph)
         duals = OrderedDict(zip(cons,MOI.get(graph_backend,MOI.ConstraintDual(),dest_cons)))
         _set_primals(src,primals)
         _set_duals(src,duals)
-
-        #TODO
-        # _set_link_duals(src)
-        # _set_nl_duals(src)
     end
+
+    #Nonlinear duals
+    if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
+        nlp_duals = MOI.get(graph_backend,MOI.NLPBlockDual())
+        for node in nodes
+            if node.nlp_data != nothing
+                nl_idx_map = JuMP.backend(node).nl_idx_map
+                node.nlp_data.nlconstr_duals = Vector{Float64}(undef,length(node.nlp_data.nlconstr))
+                for (src_index,graph_index) in nl_idx_map
+                    node.nlp_data.nlconstr_duals[src_index.value] = nlp_duals[graph_index.value]
+                end
+            end
+        end
+    end
+    #TODO edges
+    # _set_link_duals(src)
+
 end
 
 JuMP.optimize!(graph::OptiGraph,optimizer;kwargs...) = error("The optimizer keyword argument is no longer supported. Use `set_optimizer` first, and then `optimize!`.")
@@ -134,8 +160,8 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #check optimizer state.  Create new backend if optimize not called
     backend = JuMP.backend(graph)
 
-    #TODO:
-    #check backend state. We don't always want to recreate the model.
+    #TODO: Incremental changes
+    #check backend state. We don't always want to recreate the backend.
     #we could check for incremental changes in the optinode backends and update the graph backend accordingly
 
     #set graph objective if it's empty and there are node objectives
@@ -162,13 +188,13 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     catch err
         if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
             error("The solver does not support nonlinear problems " *
-                  "(i.e., NLobjective and NLconstraint).")
+                  "(i.e., @NLobjective and @NLconstraint).")
         else
             rethrow(err)
         end
     end
 
-    #populate optimizer solutions onto node backend
+    #populate optimizer solutions onto each node backend
     _populate_node_results!(graph)
 
     return nothing
@@ -197,8 +223,9 @@ function _create_nlp_block_data(graph::OptiGraph)
     has_nl_obj = false
     for node in all_nodes(graph)
         if node.model.nlp_data !== nothing
-            for constr in node.model.nlp_data.nlconstr
+            for (i,constr) in enumerate(node.model.nlp_data.nlconstr)
                 push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
+                JuMP.backend(node).nl_idx_map[JuMP.NonlinearConstraintIndex(i)] = JuMP.NonlinearConstraintIndex(length(bounds))
             end
             if !has_nl_obj && isa(node.nlp_data.nlobj, JuMP._NonlinearExprData)
                 has_nl_obj = true

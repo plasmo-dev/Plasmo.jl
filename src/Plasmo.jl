@@ -4,6 +4,7 @@ using Requires
 using LinearAlgebra
 using DataStructures
 using SparseArrays
+using LightGraphs
 
 using MathOptInterface
 const MOI = MathOptInterface
@@ -16,8 +17,8 @@ import JuMP: _valid_model
 import Base: ==,show,print,string,getindex,copy
 import LightGraphs:AbstractGraph,AbstractEdge,Graph
 import DataStructures.OrderedDict
+import Base: ==,string,print,show
 
-#Model Graph
 export
 
 #################################
@@ -129,10 +130,6 @@ abstract type AbstractLinkConstraintRef end
 abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 
-include("hypergraphs/hypergraph.jl")
-
-include("hypergraphs/projections.jl")
-
 include("moi.jl")
 
 include("optinode.jl")
@@ -143,15 +140,11 @@ include("optigraph.jl")
 
 include("macros.jl")
 
-include("partition.jl")
+include("aggregate.jl")
 
-include("jump_aggregation.jl")          #An aggregated JuMP model
+include("aggregate_utils.jl")
 
-include("copy.jl")
-
-include("optimizer_interface.jl")       #Aggregate and solve with an MOI Solver
-
-include("graph_interface.jl")
+include("optimizer_interface.jl")
 
 include("graph_functions.jl")
 
@@ -159,6 +152,13 @@ include("nlp_macro.jl")
 
 include("nlp_evaluator.jl")
 
+include("graphs/hypergraph.jl")
+
+include("graphs/projections.jl")
+
+include("graphs/graph_interface.jl")
+
+include("partition.jl")
 
 function __init__()
     @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")

@@ -1,10 +1,10 @@
-function LightGraphs.incidence_matrix(graph::OptiGraph)
-    return sparse(graph)
-end
+
 
 #TODO
 # function adjacency_matrix(graph::HyperGraph)
 # end
+LightGraphs.incidence_matrix(graph::OptiGraph) = sparse(graph)
+
 
 function LightGraphs.all_neighbors(mg::OptiGraph,node::OptiNode)
     hypergraph,hypermap = gethypergraph(mg)

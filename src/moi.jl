@@ -8,13 +8,15 @@ mutable struct NodeOptimizer <: AbstractNodeOptimizer
     duals::OrderedDict#{MOI.ConstraintIndex,Float64}
     status::MOI.TerminationStatusCode
     idx_map::MOIU.IndexMap
+    nl_idx_map::OrderedDict
 end
 
 NodeOptimizer(caching_opt::MOIU.CachingOptimizer) = NodeOptimizer(caching_opt,
 OrderedDict{MOI.VariableIndex,Float64}(),
 OrderedDict{MOI.ConstraintIndex,Float64}(),
 MOI.OPTIMIZE_NOT_CALLED,
-MOIU.IndexMap())
+MOIU.IndexMap(),
+OrderedDict())
 
 function NodeOptimizer()
     caching_mode = MOIU.AUTOMATIC
@@ -70,8 +72,7 @@ function MOI.get(optimizer::NodeOptimizer, attr::MOI.TerminationStatus)
     return MOI.TerminationStatusCode(1) #Currently set to Optimal if a node has a solution
 end
 
-
-#IDEA here: Copy multiple moi backends without emptying the destination model.
+#IDEA: Copy multiple moi backends without emptying the destination model.
 function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names::Bool;filter_constraints::Union{Nothing, Function}=nothing)
 
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
@@ -112,29 +113,6 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
-#TODO: This can be replaced at the modeling level.  The objective function will be a JuMP object
-function _set_sum_of_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vector{MOIU.IndexMap})
-    dest_obj = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm{Float64}[], 0.0)
-    MOI.set(dest,MOI.ObjectiveSense(),MOI.MIN_SENSE)
-    for (i,src) in enumerate(srcs)
-        T = MOI.get(src,MOI.ObjectiveFunctionType())
-        src_obj_to_add = copy(MOI.get(src,MOI.ObjectiveFunction{T}()))
-
-        idxmap = idxmaps[i]
-
-        #swap out variable indices for destination model
-        _swap_indices!(src_obj_to_add,idxmap)
-
-        #Fix objective sense
-        if MOI.get(src,MOI.ObjectiveSense()) == MOI.MAX_SENSE
-            src_obj_to_add = -1*src_obj_to_add
-        end
-        dest_obj += src_obj_to_add
-    end
-    MOI.set(dest,MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),dest_obj)
-    return dest_obj
-end
-
 function _swap_indices!(obj::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
     terms = obj.terms
     for i = 1:length(terms)
@@ -158,4 +136,27 @@ function _swap_indices!(obj::MOI.ScalarQuadraticFunction,idxmap::MOIU.IndexMap)
         var_idx = aff_terms[i].variable_index
         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
     end
+end
+
+#NOTE: May no longer need this
+function _set_sum_of_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vector{MOIU.IndexMap})
+    dest_obj = MOI.ScalarAffineFunction{Float64}(MOI.ScalarAffineTerm{Float64}[], 0.0)
+    MOI.set(dest,MOI.ObjectiveSense(),MOI.MIN_SENSE)
+    for (i,src) in enumerate(srcs)
+        T = MOI.get(src,MOI.ObjectiveFunctionType())
+        src_obj_to_add = copy(MOI.get(src,MOI.ObjectiveFunction{T}()))
+
+        idxmap = idxmaps[i]
+
+        #swap out variable indices for destination model
+        _swap_indices!(src_obj_to_add,idxmap)
+
+        #Fix objective sense
+        if MOI.get(src,MOI.ObjectiveSense()) == MOI.MAX_SENSE
+            src_obj_to_add = -1*src_obj_to_add
+        end
+        dest_obj += src_obj_to_add
+    end
+    MOI.set(dest,MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),dest_obj)
+    return dest_obj
 end

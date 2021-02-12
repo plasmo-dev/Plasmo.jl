@@ -103,6 +103,16 @@ nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) 
 @deprecate nodevalue value
 @deprecate nodedual dual
 
+#TODO: Nonlinear constraint duals
+function JuMP.dual(c::JuMP.ConstraintRef{OptiNode,NonlinearConstraintIndex})
+    JuMP._init_NLP(c.model)
+    nldata::JuMP._NLPData = c.model.nlp_data
+    # The array is cleared on every solve.
+    if length(nldata.nlconstr_duals) != length(nldata.nlconstr)
+        nldata.nlconstr_duals = MOI.get(c.model, MOI.NLPBlockDual())
+    end
+    return nldata.nlconstr_duals[c.index.value]
+end
 """
     set_model(node::OptiNode,m::AbstractModel)
 

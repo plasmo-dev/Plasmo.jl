@@ -1,6 +1,3 @@
-import Base: ==,string,print,show
-using LightGraphs
-
 abstract type AbstractHyperGraph <: LightGraphs.AbstractGraph{Int64} end
 abstract type AbstractHyperEdge <: LightGraphs.AbstractEdge{Int64} end
 
@@ -300,6 +297,8 @@ LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal no
 # LightGraphs.rem_vertex!
 #TODO Delete any associated edges with the vertex
 LightGraphs.rem_vertex!(g::HyperGraph) = throw(error("Vertex removal not yet supported on hypergraphs"))
+
+
 
 #TODO: Copy, remove degree
 # #Copy hypergraph.  Retain subgraphs too

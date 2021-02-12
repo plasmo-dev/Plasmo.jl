@@ -23,7 +23,7 @@ n3 = add_node!(graph2)
 @objective(n3, Min, y)
 
 #Create a link constraint linking the 3 models
-@linkconstraint(graph2, n1[:y] + n2[:y] + n3[:y] == 5 )
+@linkconstraint(graph2, n1[:y] + n2[:y] + n3[:y] == 5)
 
 plt_graph = Plots.plot(graph2,node_labels = true, subgraph_colors = true,
 layout_options = Dict(:tol => 0.01,:C => 1, :K => 1, :iterations => 100),

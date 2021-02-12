@@ -2,8 +2,8 @@
 #OptiGraph NLP Evaluator.  Wraps Local JuMP NLP Evaluators.
 
 #IDEA: evaluator could work in multiple modes.
-#1: Same as JuMP, evaluates NLP part of model.
-#2 Treats the entire model as an NLP, evaluates linear and quadratic terms too.
+#1: Same as JuMP, evaluates NLP part of model (currently supported).
+#2  Treats the entire model as an NLP, evaluates linear and quadratic terms too (not yet supported).
 mutable struct OptiGraphNLPEvaluator <: MOI.AbstractNLPEvaluator
     graph::OptiGraph
     optinodes::Vector{OptiNode}
@@ -388,6 +388,7 @@ function MOI.eval_constraint_jacobian(d::OptiGraphNLPEvaluator,jac,x)
     end
 end
 
+#TODO
 MOI.objective_expr(d::OptiGraphNLPEvaluator) = 0
 
 MOI.constraint_expr(d::OptiGraphNLPEvaluator) = 0
