@@ -163,6 +163,8 @@ function JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, name:
     return cref
 end
 
+JuMP.add_NL_constraint(node::OptiNode,expr::Expr) = JuMP.add_NL_constraint(getmodel(node),expr)
+
 function JuMP.num_constraints(node::OptiNode)
     m = getmodel(node)
     num_cons = 0
@@ -201,7 +203,6 @@ JuMP.objective_function(node::OptiNode) = JuMP.objective_function(getmodel(node)
 JuMP.objective_value(node::OptiNode) = JuMP.objective_value(getmodel(node))
 JuMP.objective_sense(node::OptiNode) = JuMP.objective_sense(getmodel(node))
 JuMP.num_variables(node::OptiNode) = JuMP.num_variables(getmodel(node))
-#JuMP.set_optimizer(node::OptiNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
 JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(getmodel(node))
 
 JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar) = JuMP.set_objective(getmodel(optinode),sense,func)
@@ -211,6 +212,14 @@ JuMP.set_objective_sense(optinode::OptiNode,sense::MOI.OptimizationSense) = JuMP
 
 #TODO: check nlp objective
 has_objective(node::OptiNode) = objective_function(node) != zero(JuMP.AffExpr) && objective_function(node) != zero(JuMP.QuadExpr)
+function has_nl_objective(node::OptiNode)
+    if node.nlp_data != nothing
+        if node.nlp_data.nlobj != nothing
+            return true
+        end
+    end
+    return false
+end
 
 JuMP.termination_status(node::OptiNode) = JuMP.termination_status(getmodel(node))
 JuMP.raw_status(node::OptiNode) = JuMP.raw_status(getmodel(node))
@@ -221,7 +230,7 @@ JuMP.mode(node::OptiNode) = JuMP.mode(getmodel(node))
 
 JuMP.list_of_constraint_types(node::OptiNode) = JuMP.list_of_constraint_types(getmodel(node))
 JuMP.all_constraints(node::OptiNode,F::DataType,S::DataType) = JuMP.all_constraints(getmodel(node),F,S)
-
+# JuMP.VariableRef(node::OptiNode,var::JuMP.VariableRef) = JuMP.VariableRef(getmodel(node),var)
 ##############################################
 # Get OptiNode
 ##############################################

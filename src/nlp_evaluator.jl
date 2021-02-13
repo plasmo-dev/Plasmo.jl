@@ -160,7 +160,7 @@ function MOI.eval_objective(d::OptiGraphNLPEvaluator, x)
                 if d.nlps[k].has_nlobj
                     Threads.atomic_add!(obj,MOI.eval_objective(d.nlps[k],view(x,ninds[k])))
                 else
-                    Threads.atomic_add!(obj,_eval_function(objective_function(optinodes[k]),view(x,ninds[k]))) #,x_index_map))
+                    Threads.atomic_add!(obj,_eval_function(objective_function(optinodes[k]),view(x,ninds[k])))
                 end
             end
         else

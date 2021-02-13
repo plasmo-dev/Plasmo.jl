@@ -1,5 +1,5 @@
 # The Partition object describes partitions of optinodes and optiedges.
-# Different graph projections can be used to create an intermediate Partition object which is the standard interface to make subgraphs
+# Different graph projections can be used to create a Partition object which is the standard interface to form subgraphs
 abstract type AbstractPartition end
 """
     Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
@@ -17,11 +17,13 @@ Manually create a partition using `optigraph` and a vector of vectors containing
 mutable struct Partition <: AbstractPartition
     optinodes::Vector{OptiNode}   #optinodes at partition level
     optiedges::Vector{OptiEdge}   #hyperedges at partition level
-    parent::Union{Nothing,AbstractPartition} #parent partition
     subpartitions::Vector{AbstractPartition}      #subpartitions
 end
-Partition() = Partition(Vector{OptiNode}(),Vector{OptiEdge}(),nothing,Vector{Partition}())
+Partition() = Partition(Vector{OptiNode}(),Vector{OptiEdge}(),Vector{Partition}())
 
+#TODO: Check partition structure
+
+#NODE PARTITION
 function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
     partition = Partition()
     hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
@@ -33,7 +35,6 @@ function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},
         subpartition = Partition()
         subpartition.optinodes = getindex.(Ref(ref_map),hypernode_vectors[i])
         subpartition.optiedges = getindex.(Ref(ref_map),induced_edge_partitions[i])
-        subpartition.parent = partition
         push!(partition.subpartitions,subpartition)
     end
     return partition
@@ -53,15 +54,20 @@ function Partition(mg::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
         subpartition = Partition()
         subpartition.optinodes = optinode_vectors[i]
         subpartition.optiedges = optiedge_vectors[i]
-        subpartition.parent = partition
         push!(partition.subpartitions,subpartition)
     end
     return partition
 end
 
+#EDGE PARTITION
+function Partition(graph::OptiGraph,optiedge_vectors::Vector{Vector{OptiEdge}})
+end
+
+
+#NODE EDGE PARTITION
+
 getnodes(partition::Partition) = partition.optinodes
 getedges(partition::Partition) = partition.optiedges
-getparent(partition::Partition) = partition.parent
 getsubparts(partition::Partition) = partition.subpartitions
 
 function all_subpartitions(partition::Partition)

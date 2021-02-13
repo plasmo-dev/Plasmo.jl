@@ -203,20 +203,18 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     return nothing
 end
 
-function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
-    optimizer = MOI.instantiate(optimizer_constructor)
-    node.model.moi_backend.optimizer = optimizer
-    return nothing
-end
+# function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
+#     optimizer = MOI.instantiate(optimizer_constructor)
+#     node.model.moi_backend.optimizer = optimizer
+#     return nothing
+# end
+JuMP.set_optimizer(node::OptiNode,optimizer) = JuMP.set_optimizer(getmodel(node),optimizer)
 
 function JuMP.optimize!(node::OptiNode;kwargs...)
-    JuMP.optimize!(node.model;kwargs...)
+    JuMP.optimize!(getmodel(node);kwargs...)
     return nothing
 end
 
-function has_nlp_data(graph::OptiGraph)
-    return any(node -> (node.nlp_data !== nothing),all_nodes(graph))
-end
 
 function _create_nlp_block_data(graph::OptiGraph)
     @assert has_nlp_data(graph)

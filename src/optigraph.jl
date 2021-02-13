@@ -256,6 +256,19 @@ end
 ########################################################
 has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.AffExpr) && graph.objective_function != zero(JuMP.QuadExpr)
 has_node_objective(graph::OptiGraph) = any(has_objective.(all_nodes(graph)))
+has_quad_objective(graph::OptiGraph) = any((node) -> isa(objective_function(node),JuMP.QuadExpr),all_nodes(graph))
+has_nlp_data(graph::OptiGraph) = any(node -> (node.nlp_data !== nothing),all_nodes(graph))
+function has_nl_objective(graph::OptiGraph)
+    for node in all_nodes(graph)
+        if node.nlp_data != nothing
+            if node.nlp_data.nlobj != nothing
+                return true
+            end
+        end
+    end
+    return false
+end
+
 
 num_nodes(graph::OptiGraph) = length(graph.optinodes)
 @deprecate getnumnodes num_nodes

@@ -60,57 +60,48 @@ a `max_depth` of `0` signifies there should be no subgraphs in the aggregated op
 """
 function aggregate(optigraph::OptiGraph)
     aggregate_node = OptiNode()
+    JuMP.object_dictionary(aggregate_node)[:nodes] = []
+
     reference_map = AggregateMap(aggregate_node)
 
+    #CHECK OBJECTIVE FORM
+    has_nonlinear_objective = has_nl_objective(optigraph)                     #check if any nodes have nonlinear objectives
+    if has_nonlinear_objective
+        graph_obj = :(0) #NOTE
+    elseif has_quad_objective(optigraph)
+        graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})
+    else
+        graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
+    end
+
     #COPY NODE MODELS INTO AGGREGATE NODE
-    has_nonlinear_objective = false                     #check if any nodes have nonlinear objectives
     for optinode in all_nodes(optigraph)               #for each node in the model graph
-        #Need to pass master reference so we use those variables instead of creating new ones
+        # Need to pass master reference so we use those variables instead of creating new ones
         # node_agg_map = _add_to_aggregate_node!(aggregate_node,optinode,reference_map)  #updates combined_model and reference_map
-        _add_to_aggregate_node!(aggregate_node,optinode,reference_map)
+        _add_to_aggregate_node!(aggregate_node,optinode,reference_map,graph_obj)
 
         #NOTE:This doesn't seem to work.  I have to pass the reference map to the function for some reason
         #merge!(reference_map,node_agg_map)
-
-        #Check for nonlinear objective functions unless we know we already have one
-        if has_nonlinear_objective != true
-            has_nonlinear_objective = _has_nonlinear_obj(optinode)
-        end
     end
 
-    #OBJECTIVE FUNCTION
-    if !(has_objective(optigraph)) && !has_nonlinear_objective
-        #_set_node_objectives!(optigraph)  #set optigraph objective function
-        _set_node_objectives!(optigraph,aggregate_node,reference_map,has_nonlinear_objective) #set combined_model objective function
-    end
-
-    if has_objective(optigraph)
-        agg_graph_obj = _copy_constraint_func(JuMP.objective_function(optigraph),reference_map)
-        JuMP.set_objective_function(aggregate_node,agg_graph_obj)
-        JuMP.set_objective_sense(aggregate_node,JuMP.objective_sense(optigraph))
+    if has_nonlinear_objective
+        JuMP.set_NL_objective(aggregate_node,MOI.MIN_SENSE,graph_obj)
+    else
+        JuMP.set_objective(aggregate_node,MOI.MIN_SENSE,graph_obj)
     end
 
     #ADD LINK CONSTRAINTS
     for linkconstraint in all_linkconstraints(optigraph)
-        new_constraint = _copy_constraint(linkconstraint,reference_map)
+        new_constraint = _copy_constraint(JuMP.constraint_object(linkconstraint),reference_map)
         cref = JuMP.add_constraint(aggregate_node,new_constraint)
-        reference_map.linkconstraintmap[linkconstraint] = cref
+        reference_map.linkconstraintmap[JuMP.constraint_object(linkconstraint)] = cref
     end
 
     return aggregate_node,reference_map
 end
 const combine = aggregate
 #Modify graph by combining subgraphs
-function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,aggregate_map::AggregateMap)
-
-    #agg_node = add_combined_node!(aggregate_node)
-    #push!(aggregate_node.ext[:agg_data],Dict(:varmap=>Dict(),))
-
-    if JuMP.mode(add_node) == JuMP.DIRECT
-        error("Cannot aggreagate optinode in `DIRECT` mode. Use the `Model` ",
-              "constructor instead of the `direct_model` constructor to be ",
-              "able to combined into a new JuMP Model.")
-    end
+function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,aggregate_map::AggregateMap,graph_obj::Any)
 
     reference_map = AggregateMap(aggregate_node)
     constraint_types = JuMP.list_of_constraint_types(add_node)
@@ -125,7 +116,6 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
         if JuMP.start_value(var) != nothing
             JuMP.set_start_value(new_x,JuMP.start_value(var))
         end
-        #agg_node.variablemap[new_x] = var
     end
 
     #COPY  CONSTRAINTS
@@ -134,7 +124,7 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
         for constraint_ref in constraint_refs
             constraint = JuMP.constraint_object(constraint_ref)
             new_constraint = _copy_constraint(constraint,reference_map)
-            new_ref= JuMP.add_constraint(combined_model,new_constraint)
+            new_ref= JuMP.add_constraint(aggregate_node,new_constraint)
             reference_map[constraint_ref] = new_ref
             #agg_node.constraintmap[new_ref] = constraint_ref
         end
@@ -149,40 +139,38 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
         for i = 1:length(add_node.nlp_data.nlconstr)
             expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
             _splice_nonlinear_variables!(expr,add_node,reference_map)        #splice the variables from var_map into the expression
-            new_nl_constraint = JuMP.add_NL_constraint(combined_model,expr)      #raw expression input for non-linear constraint
+            new_nl_constraint = JuMP.add_NL_constraint(aggregate_node,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(add_node,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
-            agg_node.nl_constraintmap[new_nl_constraint] = constraint_ref
             reference_map[constraint_ref] = new_nl_constraint
         end
     end
 
-    #SET OBJECTIVE FUNCTION
-    if !(_has_nonlinear_obj(add_node))
-        #AFFINE OR QUADTRATIC OBJECTIVE
-        new_objective = _copy_objective(add_node,reference_map)
-        agg_node.objective = new_objective
-    else
-        #NONLINEAR OBJECTIVE
+    #ADD TO OBJECTIVE Expression
+    if isa(graph_obj,Expr) #NLP
         if !nlp_initialized
-            d = JuMP.NLPEvaluator(add_node)           #Get the NLP evaluator object.  Initialize the expression graph
+            d = JuMP.NLPEvaluator(add_node)
             MOI.initialize(d,[:ExprGraph])
         end
         new_obj = _copy_nl_objective(d,reference_map)
-        agg_node.objective = new_obj
+        graph_obj = Expr(:call,:+,graph_obj,new_obj)  #update graph objective
+    else   #AFFINE OR QUADTRATIC OBJECTIVE
+        new_objective = _copy_objective(add_node,reference_map)
+        sense = JuMP.objective_sense(add_node)
+        s = sense == MOI.MAX_SENSE ? -1.0 : 1.0
+        JuMP.add_to_expression!(graph_obj,s,new_objective)
     end
 
     merge!(aggregate_map,reference_map)
 
     #TODO Get nonlinear object data to work.
     # COPY OBJECT DATA
-    # for (name, value) in JuMP.object_dictionary(add_node)
-    #     agg_node.obj_dict[name] = reference_map[value]
-    #     # if typeof(value) in [JuMP.VariableRef,JuMP.ConstraintRef,LinkVariableRef]
-    #     #     agg_node.obj_dict[name] = getindex.(reference_map, value)
-    #     # end
-    # end
+    node_obj_dict = Dict()
+    for (name, value) in JuMP.object_dictionary(add_node)
+        node_obj_dict[name] = reference_map[value]
+    end
+    push!(JuMP.object_dictionary(aggregate_node)[:nodes],node_obj_dict)
 
-    return reference_map
+    return reference_map, graph_obj
 end
 
 
@@ -225,6 +213,7 @@ function _set_node_objectives!(optigraph::OptiGraph)
     JuMP.set_objective(optigraph,MOI.MIN_SENSE,graph_obj)
 end
 
+#aggregate subgraphs in optigraph to given depth
 function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     println("Aggregating OptiGraph with a maximum subgraph depth of $max_depth")
 
@@ -326,32 +315,3 @@ function _set_edges(mg::OptiGraph,edges::Vector{OptiEdge})
     end
     return nothing
 end
-
-# mutable struct CombinedNode
-#     index::Int64
-#     obj_dict::Dict{Symbol,Any}
-#     variablemap::Dict{JuMP.VariableRef,JuMP.VariableRef}
-#     constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
-#     nl_constraintmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}
-#     objective::Union{JuMP.AbstractJuMPScalar,Expr}                          #copy of original node objective
-# end
-# CombinedNode(index::Int64) = CombinedNode(index,Dict{Symbol,Any}(),Dict{JuMP.VariableRef,JuMP.VariableRef}(),
-# Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}))
-
-#Combined Info
-# mutable struct CombinedInfo
-#     nodes::Vector{CombinedNode}
-#     linkconstraints::Vector{ConstraintRef}
-#     NLlinkconstraints::Vector{ConstraintRef}
-# end
-# CombinedInfo() = CombinedInfo(CombinedNode[],ConstraintRef[],ConstraintRef[])
-
-
-#Create a new new node on a CombinedModel
-# function add_combined_node!(m::JuMP.Model)
-#     assert_is_combined_model(m)
-#     i = getnumnodes(m)
-#     agg_node = CombinedNode(i+1)
-#     push!(m.ext[:CombinedInfo].nodes,agg_node)
-#     return agg_node
-# end

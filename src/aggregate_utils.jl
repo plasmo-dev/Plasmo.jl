@@ -9,8 +9,8 @@ function _has_nonlinear_obj(m::JuMP.Model)
 end
 
 #COPY OBJECTIVE FUNCTIONS
-function _copy_objective(m::JuMP.Model,ref_map::AggregateMap)
-    return _copy_objective(JuMP.objective_function(m),ref_map)
+function _copy_objective(node::OptiNode,ref_map::AggregateMap)
+    return _copy_objective(JuMP.objective_function(node),ref_map)
 end
 
 function _copy_objective(func::Union{JuMP.GenericAffExpr,JuMP.GenericQuadExpr},ref_map::AggregateMap)
@@ -23,23 +23,51 @@ function _copy_objective(func::JuMP.VariableRef,ref_map::AggregateMap)
     return new_func
 end
 
-function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::AggregateMap)#variablemap::Dict{Int,VariableRef})
-    new_obj = MOI.objective_expr(d)
-    _splice_nonlinear_variables!(new_obj,d.m,reference_map)
-    JuMP.objective_sense(d.m) == MOI.OptimizationSense(0) ? sense = 1 : sense = -1
-    new_obj = Expr(:call,:*,:($sense),new_obj)
+function _to_expression(func::JuMP.GenericQuadExpr)
+    expr = :(0)
+    for (term,coeff) in func.terms
+        t_expr = :($coeff)
+        t_expr = Expr(:call,:*,t_expr,:($(term.a.index)))
+        t_expr = Expr(:call,:*,t_expr,:($(term.b.index)))
+        expr = Expr(:call,:+,expr,t_expr)
+    end
+    aff_expr = _to_expression(func.aff)
+    expr = Expr(:call,:+,expr,aff_expr)
+    return expr
+end
+
+
+function _to_expression(func::JuMP.GenericAffExpr)
+    expr = :(0)
+    for (term,coeff) in func.terms
+        t_expr = Expr(:call,:*,:($coeff),:($(term.index)))
+        expr = Expr(:call,:+,expr,t_expr)
+    end
+    expr = Expr(:call,:+,expr,:($(func.constant)))
+    return expr
+end
+
+function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::AggregateMap)
+    if d.m.nlp_data.nlobj == nothing
+        new_obj = _to_expression(JuMP.objective_function(d.m))
+    else
+        new_obj = MOI.objective_expr(d)
+    end
+        _splice_nonlinear_variables!(new_obj,d.m,reference_map)
+        JuMP.objective_sense(d.m) == MOI.MAX_SENSE ? sense = -1 : sense = 1
+        new_obj = Expr(:call,:*,:($sense),new_obj)
     return new_obj
 end
 
 #splice variables into a constraint expression
-function _splice_nonlinear_variables!(expr::Expr,model::JuMP.Model,reference_map::AggregateMap)  #var_map needs to map the node_model index to the new model variable
+function _splice_nonlinear_variables!(expr::Expr,node::OptiNode,reference_map::AggregateMap)  #var_map needs to map the node_model index to the new model variable
     for i = 1:length(expr.args)
         if typeof(expr.args[i]) == Expr
             if expr.args[i].head != :ref             #keep calling _splice_nonlinear_variables! on the expression until it's a :ref. i.e. :(x[index])
-                _splice_nonlinear_variables!(expr.args[i],model,reference_map)
+                _splice_nonlinear_variables!(expr.args[i],node,reference_map)
             else  #it's a variable
                 var_index = expr.args[i].args[2]     #this is the actual MOI index (e.g. x[1], x[2]) in the node model
-                new_var = :($(reference_map.varmap[JuMP.VariableRef(model,var_index)]))
+                new_var = :($(reference_map.varmap[JuMP.VariableRef(node.model,var_index)]))
                 expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
             end
         end
@@ -71,7 +99,6 @@ function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::AggregateMap)
     new_func = JuMP.GenericQuadExpr{Float64,JuMP.VariableRef}()
     new_func.terms = new_terms
     new_func.aff = new_aff
-    #new_func.constant = func.constant
     return new_func
 end
 
