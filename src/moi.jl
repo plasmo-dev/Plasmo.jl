@@ -42,6 +42,25 @@ MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T} where T<:
 MOI.supports_constraint(optimizer.optimizer,func,set)
 
 MOI.supports(optimizer::AbstractNodeOptimizer, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) = MOI.supports(optimizer.optimizer,attr)
+MOIU.reset_optimizer(optimizer::AbstractNodeOptimizer,args...) = MOIU.reset_optimizer(optimizer.optimizer,args...)
+
+#Optimize the underlying optimizer and store the result in the node optimizer
+function MOI.optimize!(optimizer::AbstractNodeOptimizer)
+    MOI.optimize!(optimizer.optimizer)
+    vars = MOI.get(optimizer,MOI.ListOfVariableIndices())
+    cons = MOI.ConstraintIndex[]
+    con_list = MOI.get(optimizer,MOI.ListOfConstraints())
+    for FS in con_list
+        F = FS[1]
+        S = FS[2]
+        con = MOI.get(optimizer,MOI.ListOfConstraintIndices{F,S}())
+        append!(cons,con)
+    end
+    primals = OrderedDict(zip(vars,MOI.get(optimizer.optimizer,MOI.VariablePrimal(),vars)))
+    duals = OrderedDict(zip(cons,MOI.get(optimizer.optimizer,MOI.ConstraintDual(),cons)))
+    optimizer.primals = primals
+    optimizer.duals = duals
+end
 
 MOIU.state(optimizer::AbstractNodeOptimizer) = MOIU.state(optimizer.optimizer)
 
