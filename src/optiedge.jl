@@ -40,7 +40,7 @@ mutable struct OptiEdge <: AbstractOptiEdge
     #Link references
     linkrefs::Vector{AbstractLinkConstraintRef}
 
-    #TODO:
+    #TODO: go back to just linkconstraints
     #Link constraints
     linkconstraints::OrderedDict{Int64,LinkConstraint}                     #Link constraint.  Defined over variables in OptiNodes.
     linkeqconstraints::OrderedDict{Int64,LinkConstraint}
@@ -99,7 +99,7 @@ Base.show(io::IO,con::AbstractLinkConstraint) = print(io,con)
 
 function JuMP.constraint_string(mode::Any,ref::LinkConstraintRef)
     con = JuMP.constraint_object(ref)
-    return "$(getname(ref)): $(con.func), $(JuMP.in_set_string(mode,con.set))"
+    return "$(getname(ref)): $(con.func) $(JuMP.in_set_string(mode,con.set))"
 end
 
 function Base.show(io::IO, ref::LinkConstraintRef)

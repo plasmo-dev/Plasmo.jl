@@ -1,5 +1,3 @@
-
-
 #TODO
 # function adjacency_matrix(graph::HyperGraph)
 # end

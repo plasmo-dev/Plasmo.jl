@@ -173,46 +173,6 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
     return reference_map, graph_obj
 end
 
-
-#Set aggregate objective to sum of node objectives
-function _set_node_objectives!(optigraph::OptiGraph,aggregate_node::OptiNode,reference_map::AggregateMap,has_nonlinear_objective::Bool)
-    if has_nonlinear_objective
-        graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
-        for node in all_nodes(optigraph)
-            node_model = getmodel(node)
-            JuMP.objective_sense(node_model) == MOI.MIN_SENSE ? sense = 1 : sense = -1
-            d = JuMP.NLPEvaluator(node_model)
-            MOI.initialize(d,[:ExprGraph])
-            node_obj = MOI.objective_expr(d)
-            _splice_nonlinear_variables!(node_obj,node_model,reference_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
-            node_obj = Expr(:call,:*,:($sense),node_obj)
-            graph_obj = Expr(:call,:+,graph_obj,node_obj)  #update graph objective
-        end
-        JuMP.set_NL_objective(aggregate_node.model, MOI.MIN_SENSE, graph_obj)
-    else
-        #TODO: Fix issue with setting maximize
-        graph_obj = sum(JuMP.objective_function(agg_node) for agg_node in getnodes(combined_model))
-        JuMP.set_objective(aggregate_node,MOI.MIN_SENSE,graph_obj)
-    end
-end
-
-function _set_node_objectives!(optigraph::OptiGraph)
-    #check for quadratic objectives
-    if any(isa.(objective_function.(all_nodes(optigraph)),Ref(GenericQuadExpr)))
-        graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})
-    else
-        graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
-    end
-
-    for node in all_nodes(optigraph)
-        sense = JuMP.objective_sense(node)
-        s = sense == MOI.MAX_SENSE ? -1.0 : 1.0
-        JuMP.add_to_expression!(graph_obj,s,JuMP.objective_function(node))
-    end
-
-    JuMP.set_objective(optigraph,MOI.MIN_SENSE,graph_obj)
-end
-
 #aggregate subgraphs in optigraph to given depth
 function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     println("Aggregating OptiGraph with a maximum subgraph depth of $max_depth")
@@ -294,3 +254,44 @@ function copy(node::OptiNode)
     set_model(new_node,new_model)
     return new_node,reference_map
 end
+
+
+
+# #Set aggregate objective to sum of node objectives
+# function _set_node_objectives!(optigraph::OptiGraph,aggregate_node::OptiNode,reference_map::AggregateMap,has_nonlinear_objective::Bool)
+#     if has_nonlinear_objective
+#         graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
+#         for node in all_nodes(optigraph)
+#             node_model = getmodel(node)
+#             JuMP.objective_sense(node_model) == MOI.MIN_SENSE ? sense = 1 : sense = -1
+#             d = JuMP.NLPEvaluator(node_model)
+#             MOI.initialize(d,[:ExprGraph])
+#             node_obj = MOI.objective_expr(d)
+#             _splice_nonlinear_variables!(node_obj,node_model,reference_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
+#             node_obj = Expr(:call,:*,:($sense),node_obj)
+#             graph_obj = Expr(:call,:+,graph_obj,node_obj)  #update graph objective
+#         end
+#         JuMP.set_NL_objective(aggregate_node.model, MOI.MIN_SENSE, graph_obj)
+#     else
+#         #TODO: Fix issue with setting maximize
+#         graph_obj = sum(JuMP.objective_function(agg_node) for agg_node in getnodes(combined_model))
+#         JuMP.set_objective(aggregate_node,MOI.MIN_SENSE,graph_obj)
+#     end
+# end
+#
+# function _set_node_objectives!(optigraph::OptiGraph)
+#     #check for quadratic objectives
+#     if any(isa.(objective_function.(all_nodes(optigraph)),Ref(GenericQuadExpr)))
+#         graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})
+#     else
+#         graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
+#     end
+#
+#     for node in all_nodes(optigraph)
+#         sense = JuMP.objective_sense(node)
+#         s = sense == MOI.MAX_SENSE ? -1.0 : 1.0
+#         JuMP.add_to_expression!(graph_obj,s,JuMP.objective_function(node))
+#     end
+#
+#     JuMP.set_objective(optigraph,MOI.MIN_SENSE,graph_obj)
+# end

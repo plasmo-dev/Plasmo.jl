@@ -69,7 +69,7 @@ function clique_expansion(hypergraph::HyperGraph)
     return graph,projection_map
 end
 
-function star_expansion(graph::HyperGraph)
+function bipartite_expansion(graph::HyperGraph)
     new_graph = BipartiteGraph()
     projection_map = Dict()
     return new_graph,projection_map

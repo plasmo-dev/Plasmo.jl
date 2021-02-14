@@ -60,6 +60,9 @@ function test_optigraph2
     @objective(graph,Min,n1[:x] + n2[:x])
 
     @test has_nlp_data(graph) == true
+    @test has_objective(graph) == true
+    @test has_nl_objective(graph) == false
+    @test has_node_objective(graph) == false
 end
 
 
@@ -87,11 +90,7 @@ function test_set_model()
     #Link constraints take the same expressions as the JuMP @constraint macro
     @linkconstraint(graph,n1[:x] == n2[:x])
 
-    optimize!(graph,optimizer)
-
-    println("n1[:x]= ",value(n1,n1[:x]))
-    println("n2[:x]= ",value(n2,n2[:x]))
-    println("objective = ", objective_value(graph))
+    @test num_variables(graph) == 3
 end
 
 function test_subgraph()
@@ -125,9 +124,10 @@ function test_subgraph()
     @linkconstraint(graph,n0[:x] == ng2[1][:x])
 
     @test num_nodes(graph) == 1
-    @test length(all_nodes(graph)) == 11
+    @test num_all_nodes(graph) == 11
     @test num_optiedges(graph) == 2
     @test num_all_optiedges(graph) == 4
+    @test num_subgraphs(graph) == 2
 end
 
 function runtests()
