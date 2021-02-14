@@ -15,8 +15,9 @@ mutable struct OptiNode <: JuMP.AbstractModel
     label::String
 
     #TODO: Just store linkconstraints.  Make functions that can differentiate equality and inequality.
-    partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
-    partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
+    # partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
+    # partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
+    partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #nlp_data is a reference to `model.nlp_data`
     nlp_data::Union{Nothing,JuMP._NLPData}
@@ -33,7 +34,6 @@ mutable struct OptiNode <: JuMP.AbstractModel
         OrderedDict{Int,JuMP.VariableRef}(),
         Dict{Int,String}(),
         "node",
-        Dict{Int64,AbstractLinkConstraint}(),
         Dict{Int64,AbstractLinkConstraint}(),
         nothing,
         Dict{Symbol,Any}())

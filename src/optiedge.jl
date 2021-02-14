@@ -55,10 +55,10 @@ struct LinkConstraintRef <: AbstractLinkConstraintRef
     optiedge::OptiEdge
 end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
+getnodes(con::JuMP.ScalarConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge)
 num_nodes(con::LinkConstraint) = length(getnodes(con))
-@deprecate getnumnodes num_nodes
 getname(cref::LinkConstraintRef) = cref.optiedge.linkconstraint_names[cref.idx]
 
 JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstraints[linkref.idx]

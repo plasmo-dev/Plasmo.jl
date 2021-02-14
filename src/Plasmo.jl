@@ -13,7 +13,6 @@ using Reexport
 @reexport using JuMP
 
 import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
-import JuMP: _valid_model
 import Base: ==,show,print,string,getindex,copy
 import LightGraphs:AbstractGraph,AbstractEdge,Graph
 import DataStructures.OrderedDict

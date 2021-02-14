@@ -185,7 +185,7 @@ end
 ###################################################
 #OptiEdges
 ###################################################
-function add_link_edge!(graph::OptiGraph,optinodes::Vector{OptiNode})
+function add_optiedge!(graph::OptiGraph,optinodes::Vector{OptiNode})
     #Check for existing optiedge.  Return if edge already exists
     key = Set(optinodes)
     if haskey(graph.optiedge_map,key)
@@ -200,7 +200,8 @@ function add_link_edge!(graph::OptiGraph,optinodes::Vector{OptiNode})
     end
     return optiedge
 end
-add_edge!(graph::OptiGraph,optinodes::Vector{OptiNode}) = add_link_edge!(graph,optinodes)
+add_edge!(graph::OptiGraph,optinodes::Vector{OptiNode}) = add_optiedge!(graph,optinodes)
+@deprecate add_link_edge add_optiedge
 
 """
     getedges(graph::OptiGraph) = graph.optiedges
@@ -269,11 +270,15 @@ function has_nl_objective(graph::OptiGraph)
     return false
 end
 
+JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
+JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
+JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
+JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
+JuMP.all_constraints(graph::OptiGraph,F::DataType,S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph),Ref(F),Ref(S))...)
 
 num_nodes(graph::OptiGraph) = length(graph.optinodes)
 @deprecate getnumnodes num_nodes
 num_optiedges(graph::OptiGraph) = length(graph.optiedges)
-
 
 function num_all_nodes(graph::OptiGraph)
     n_nodes = sum(num_nodes.(all_subgraphs(graph)))
@@ -304,7 +309,7 @@ function getlinkconstraints(graph::OptiGraph)
     end
     return links
 end
-num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))  #length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
+num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
 """
     all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
@@ -381,8 +386,6 @@ function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericAffExpr)
         JuMP.set_objective_function(node,objective_function(node) + coef*term)
     end
     graph.objective_function = expr
-    # sense = objective_sense(graph)
-    # obj_sign = sense == MOI.MAX_SENSE ? -1 : 1
 end
 
 function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericQuadExpr)
@@ -408,7 +411,7 @@ end
 
 function JuMP.objective_value(graph::OptiGraph)
     objective = JuMP.objective_function(graph)
-    return value(objective) #nodevalue(objective)
+    return value(objective)
 end
 
 function getnodes(expr::JuMP.GenericAffExpr)
@@ -436,174 +439,72 @@ end
 
 #####################################################
 #  Link Constraints
-#  A linear constraint between JuMP Models (nodes).  Link constraints can be equality or inequality.
-# TODO: simplify link constraints.  Don't really need to distinguish between equality and inequality anymore
+#  A linear constraint between optinodes.  Link constraints can be equality or inequality.
 #####################################################
-function add_link_equality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
-    @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
-
-
-    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
-    link_con.attached_node = attached_node
-    optinodes = getnodes(link_con)
-
-    optiedge = add_link_edge!(graph,optinodes)
-
-    linkconstraint_index = length(optiedge.linkconstraints) + 1
-    linkeqconstraint_index = length(optiedge.linkeqconstraints) + 1
-    cref = LinkConstraintRef(linkconstraint_index,optiedge)
-    JuMP.set_name(cref, name)
-
-    push!(optiedge.linkrefs,cref)
-
-    optiedge.linkconstraints[linkconstraint_index] = link_con
-    optiedge.linkeqconstraints[linkeqconstraint_index] = link_con
-
-    #Add partial linkconstraint to nodes
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkeqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkeqconstraint_index)
-    end
-
-    return cref
-end
-
-function add_link_inequality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
-    @assert typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64}]
-
-
-    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
-    optinodes = getnodes(link_con)
-    optiedge = add_link_edge!(graph,optinodes)
-    linkconstraint_index = length(optiedge.linkconstraints) + 1
-    linkineqconstraint_index = length(optiedge.linkeqconstraints) + 1
-    link_con.attached_node = attached_node
-
-    cref = LinkConstraintRef(linkconstraint_index,optiedge)
-    JuMP.set_name(cref, name)
-    push!(optiedge.linkrefs,cref)
-
-    optiedge.linkconstraints[linkineqconstraint_index] = link_con
-    optiedge.linkineqconstraints[linkineqconstraint_index] = link_con
-
-    #Add partial linkconstraint to nodes
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkineqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkineqconstraint_index)
-    end
-
-    return cref
-end
-
-function add_link_equality_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
-    @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
-
-    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
-    link_con.attached_node = attached_node
-    optinodes = getnodes(link_con)
-
-    @assert issubset(optinodes,optiedge.nodes)
-
-    linkconstraint_index = length(optiedge.linkconstraints) + 1
-    linkeqconstraint_index = length(optiedge.linkeqconstraints) + 1
-    cref = LinkConstraintRef(linkconstraint_index,optiedge)
-    JuMP.set_name(cref, name)
-
-    push!(optiedge.linkrefs,cref)
-
-    optiedge.linkconstraints[linkconstraint_index] = link_con
-    optiedge.linkeqconstraints[linkeqconstraint_index] = link_con
-
-    #Add partial linkconstraint to nodes
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkeqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkeqconstraint_index)
-    end
-
-    return cref
-end
-
-function add_link_inequality_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
-    @assert typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64}]
-
-
-    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
-    optinodes = getnodes(link_con)
-    link_con.attached_node = attached_node
-
-    @assert issubset(optinodes,optiedge.nodes)
-
-    linkconstraint_index = length(optiedge.linkconstraints) + 1
-    linkineqconstraint_index = length(optiedge.linkeqconstraints) + 1
-    cref = LinkConstraintRef(linkconstraint_index,optiedge)
-    JuMP.set_name(cref, name)
-
-    push!(optiedge.linkrefs,cref)
-
-    optiedge.linkconstraints[linkineqconstraint_index] = link_con
-    optiedge.linkineqconstraints[linkineqconstraint_index] = link_con
-
-    #Add partial linkconstraint to nodes
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkineqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkineqconstraint_index)
-    end
-
-    return cref
+function JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, name::String="")
+    error("Cannot add constraint $con. An OptiGraph currently only supports Scalar LinkConstraints")
 end
 
 function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
-    if isa(con.set,MOI.EqualTo)
-        cref = add_link_equality_constraint(graph,con;name = name,attached_node = attached_node)
-    else
-        cref = add_link_inequality_constraint(graph,con;name = name,attached_node = attached_node)
-    end
+    cref = add_link_constraint(graph,con,name,attached_node = attached_node)
     return cref
 end
 
-
-_valid_model(m::OptiEdge, name) = nothing
+JuMP._valid_model(m::OptiEdge, name) = nothing
 function JuMP.add_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
-    if isa(con.set,MOI.EqualTo)
-        cref = add_link_equality_constraint(optiedge,con;name = name,attached_node = attached_node)
-    else
-        cref = add_link_inequality_constraint(optiedge,con;name = name,attached_node = attached_node)
-    end
+    cref = add_link_constraint(optiedge,con,name,attached_node = attached_node)
     return cref
 end
 
-#Add to a partial linkconstraint on a optinode
-function _add_to_partial_linkeqconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
-    @assert getnode(var) == node
-    if haskey(node.partial_linkeqconstraints,index)
-        linkcon = node.partial_linkeqconstraints[index]
-        JuMP.add_to_expression!(linkcon.func,coeff,var)
-    else
-        new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-        new_func.terms[var] = coeff
-        new_func.constant = constant
-        linkcon = LinkConstraint(new_func,set,nothing)
-        node.partial_linkeqconstraints[index] = linkcon
-    end
+#Create optiedge and add linkconstraint
+function add_link_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint,name::String = "";attached_node = nothing)
+    optinodes = getnodes(con)
+    optiedge = add_optiedge!(graph,optinodes)
+    cref = JuMP.add_constraint(optiedge,con,name,attached_node = attached_node)
+    return cref
 end
 
-#Add to a partial linkconstraint on a optinode
-function _add_to_partial_linkineqconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
-    @assert getnode(var) == node
-    if haskey(node.partial_linkineqconstraints,index)
-        linkcon = node.partial_linkineqconstraints[index]
-        JuMP.add_to_expression!(linkcon.func,coeff,var)
-    else
-        new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-        new_func.terms[var] = coeff
-        new_func.constant = constant
-        linkcon = LinkConstraint(new_func,set,nothing)
-        node.partial_linkineqconstraints[index] = linkcon
+#Add linkconstraint directly to optiedge
+function add_link_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstraint,name::String = "";attached_node = nothing)
+    typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64},MOI.EqualTo{Float64}] || error("Unsupported link constraint set of type $(con.set)")
+
+    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
+    link_con.attached_node = attached_node
+
+    optinodes = getnodes(link_con)
+    @assert issubset(optinodes,optiedge.nodes)
+
+    linkconstraint_index = length(optiedge.linkconstraints) + 1
+    cref = LinkConstraintRef(linkconstraint_index,optiedge)
+    JuMP.set_name(cref, name)
+    push!(optiedge.linkrefs,cref)
+    optiedge.linkconstraints[linkconstraint_index] = link_con
+
+    #Add partial linkconstraint to nodes
+    for (var,coeff) in link_con.func.terms
+      node = getnode(var)
+      _add_to_partial_linkconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkconstraint_index)
     end
+
+    return cref
 end
 
-function JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, name::String="")
-    error("Cannot add constraint $con. An OptiGraph currently only supports Scalar LinkConstraints")
+#Add partial link constraint to supporting optinodes
+function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
+    @assert getnode(var) == node
+    #multiple variables might be on the same node, so check here
+    if haskey(node.partial_linkconstraints,index)
+        linkcon = node.partial_linkconstraints[index]
+        JuMP.add_to_expression!(linkcon.func,coeff,var)
+        constant == linkcon.func.constant || error("Found a Link Constraint constant mismatch when adding partial constraint to optinode")
+        set == linkcon.set || error("Found a Link Constraint set mismatch when adding partial constraint to optinode")
+    else #create a new partial constraint
+        node_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+        node_func.terms[var] = coeff
+        node_func.constant = constant
+        linkcon = LinkConstraint(node_func,set,node)
+        node.partial_linkconstraints[index] = linkcon
+    end
 end
 
 JuMP.owner_model(cref::LinkConstraintRef) = cref.optiedge
@@ -626,6 +527,7 @@ function MOI.delete!(cref::LinkConstraintRef)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
 
+
 ####################################
 #Print Functions
 ####################################
@@ -639,15 +541,6 @@ function string(graph::OptiGraph)
 end
 print(io::IO, graph::OptiGraph) = print(io, string(graph))
 show(io::IO,graph::OptiGraph) = print(io,graph)
-
-# Model Extras
-JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
-JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
-JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
-JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
-JuMP.all_constraints(graph::OptiGraph,F::DataType,S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph),Ref(F),Ref(S))...)
-
-
 
 """
     empty!(graph::OptiGraph) -> graph
@@ -674,9 +567,3 @@ function Base.empty!(graph::OptiGraph)::OptiGraph
 
     return graph
 end
-
-
-#TODO
-#has_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
-#has_NLobjective(graph::OptiGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
-#num_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)

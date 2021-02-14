@@ -32,7 +32,7 @@ function getpartitionlist(graph::OptiGraph,membership_vector::Vector{Int64},ref_
     return parts
 end
 
-#NOTE: Currently inefficient neighborhood implementation.
+#TODO: Efficient neighborhood implementation
 """
     neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)::Vector{OptiNode}
 

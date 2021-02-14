@@ -1,4 +1,8 @@
-# LightGraphs.AbstractGraph
+"""
+    BipartiteGraph
+
+A simple bipartite type.  Tracks vertex sets of the bipartite graph.
+"""
 mutable struct BipartiteGraph <: LightGraphs.AbstractGraph{Int64}
     graph::LightGraphs.Graph
     vertexset1::Vector{Int64}
