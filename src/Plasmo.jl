@@ -29,7 +29,8 @@ AbstractOptiGraph, OptiGraph, ModelGraph,
 #ModelNode and LinkEdge
 OptiNode,OptiEdge,
 
-ModelNode,LinkEdge,
+#deprecated exports
+ModelNode,LinkEdge,getnumnodes, getnumedges,
 
 OptiGraphNLPEvaluator,
 
@@ -41,12 +42,11 @@ add_node!,add_edge!,add_subgraph!,
 
 getedge, getedges, all_edges, find_edge,
 
-getnumnodes, getnumedges,
 
 #Graph Functions
 incident_edges, neighborhood, induced_edges, expand,
 
-#LinkVariable and LinkConstraint
+#LinkConstraint
 LinkConstraint,LinkConstraintRef,
 
 #Partition
@@ -61,7 +61,7 @@ optimize!,
 # OptiGraph checks
 has_objective,has_NLobjective, has_NLlinkconstraints, has_subgraphs, has_model,
 
-num_linkconstraints, num_optiedges, num_nodes,
+num_linkconstraints, num_optiedges, num_nodes,num_subgraphs,
 
 num_all_optiedges, num_all_variables, num_all_constraints, num_all_linkconstraints,
 

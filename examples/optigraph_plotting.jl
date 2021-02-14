@@ -2,21 +2,21 @@ using Plasmo
 using Plots
 pyplot()
 
-graph2 = OptiGraph()
+graph = OptiGraph()
 
-n1 = add_node!(graph2)
+n1 = @optinode(graph)
 @variable(n1, y >= 2)
 @variable(n1,x >= 0)
 @constraint(n1,x + y >= 3)
 @objective(n1, Min, y)
 
-n2 = add_node!(graph2)
+n2 = @optinode(graph)
 @variable(n2, y)
 @variable(n2,x >= 0)
 @constraint(n2,x + y >= 3)
 @objective(n2, Min, y)
 
-n3 = add_node!(graph2)
+n3 = @optinode(graph)
 @variable(n3, y )
 @variable(n3,x >= 0)
 @constraint(n3,x + y >= 3)
@@ -28,7 +28,8 @@ n3 = add_node!(graph2)
 plt_graph = Plots.plot(graph2,node_labels = true, subgraph_colors = true,
 layout_options = Dict(:tol => 0.01,:C => 1, :K => 1, :iterations => 100),
 line_options = Dict(:linewidth => 3,:linecolor => :blue,:linealpha => 0.3),
-plt_options = Dict(:markersize => 40,:markercolor => :grey,:legend => false,:framestyle => :box,:grid => false, :size => (800,800),:axis => nothing),
+plt_options = Dict(:markersize => 40,:markercolor => :grey,:legend => false,
+:framestyle => :box,:grid => false, :size => (800,800),:axis => nothing),
 annotate_options = Dict(:markersize => 20,:markercolor => :black));
 
 plt_matrix = Plots.spy(graph2,node_labels = true);

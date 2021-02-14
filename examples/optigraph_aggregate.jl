@@ -1,4 +1,4 @@
-#Example depicting how to combine the nodes in a modelgraph and reference the original modelgraph
+#Example
 using Plasmo
 using GLPK
 
@@ -28,11 +28,11 @@ n2 = @optinode(graph)
 #Objective function
 @objective(graph,Min,n1[:y] + n2[:x] + n1[:z])
 
-#Combine modelnodes until a single node
+#Aggregate optinodes into a single optinode to solve using JuMP's interface
 aggregate_node,reference_map = aggregate(graph)
 set_optimizer(aggregate_node,optimizer)
 optimize!(aggregate_node)
 
-#Use the reference map to look up values
+#Use the reference map to look up values on the aggregate node
 println("n1[:x] = ",value(reference_map[n1[:x]]))
 println("n2[:x] = ",value(reference_map[n2[:x]]))

@@ -220,7 +220,6 @@ function _create_nlp_block_data(graph::OptiGraph)
     @assert has_nlp_data(graph)
 
     bounds = MOI.NLPBoundsPair[]
-
     has_nl_obj = false
     for node in all_nodes(graph)
         if node.model.nlp_data !== nothing
@@ -228,7 +227,7 @@ function _create_nlp_block_data(graph::OptiGraph)
                 push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
                 JuMP.backend(node).nl_idx_map[JuMP.NonlinearConstraintIndex(i)] = JuMP.NonlinearConstraintIndex(length(bounds))
             end
-            if !has_nl_obj && isa(node.nlp_data.nlobj, JuMP._NonlinearExprData)
+            if !has_nl_obj && isa(node.model.nlp_data.nlobj, JuMP._NonlinearExprData)
                 has_nl_obj = true
             end
         end

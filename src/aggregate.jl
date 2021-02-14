@@ -294,24 +294,3 @@ function copy(node::OptiNode)
     set_model(new_node,new_model)
     return new_node,reference_map
 end
-
-
-#Creata new set of nodes on a optigraph
-function _set_nodes(graph::OptiGraph,nodes::Vector{OptiNode})
-    graph.optinodes = nodes
-    for (idx,node) in enumerate(mg.optinodes)
-        graph.node_idx_map[node] = idx
-    end
-    return nothing
-end
-
-#Create a new set of edges on a optigraph
-function _set_edges(mg::OptiGraph,edges::Vector{OptiEdge})
-    mg.optiedges = edges
-    link_idx = 0
-    for (idx,optiedge) in enumerate(mg.optiedges)
-        mg.edge_idx_map[optiedge] = idx
-        mg.optiedge_map[optiedge.nodes] = optiedge
-    end
-    return nothing
-end

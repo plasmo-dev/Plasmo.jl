@@ -59,7 +59,8 @@ function MOI.initialize(d::OptiGraphNLPEvaluator,requested_features::Vector{Symb
     #@blas_safe_threads for k=1:length(optinodes)
     for k=1:length(optinodes)
         if optinodes[k].nlp_data == nothing
-            JuMP._init_NLP(optinodes[k].model)
+            # JuMP._init_NLP(optinodes[k].model)
+            JuMP._init_NLP(optinodes[k])
         end
         d_node = JuMP.NLPEvaluator(optinodes[k].model)     #Initialize each optinode evaluator
         MOI.initialize(d_node,requested_features)

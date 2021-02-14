@@ -45,9 +45,9 @@ function Partition(graph::OptiGraph,node_membership_vector::Vector{Int64},ref_ma
     return Partition(graph,optinode_vectors)
 end
 
-function Partition(mg::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
+function Partition(graph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
     partition = Partition()
-    optiedge_vectors,cross_edges = identify_edges(mg,optinode_vectors)
+    optiedge_vectors,cross_edges = identify_edges(graph,optinode_vectors)
     @assert length(optinode_vectors) == length(optiedge_vectors)
     partition.optiedges = cross_edges
     for i = 1:length(optinode_vectors)
@@ -111,6 +111,27 @@ function make_subgraphs!(graph::OptiGraph,partition::Partition)
     end
     return nothing
 end
+
+#Creata new set of nodes on a optigraph
+function _set_nodes(graph::OptiGraph,nodes::Vector{OptiNode})
+    graph.optinodes = nodes
+    for (idx,node) in enumerate(graph.optinodes)
+        graph.node_idx_map[node] = idx
+    end
+    return nothing
+end
+
+#Create a new set of edges on a optigraph
+function _set_edges(graph::OptiGraph,edges::Vector{OptiEdge})
+    graph.optiedges = edges
+    link_idx = 0
+    for (idx,optiedge) in enumerate(graph.optiedges)
+        graph.edge_idx_map[optiedge] = idx
+        graph.optiedge_map[optiedge.nodes] = optiedge
+    end
+    return nothing
+end
+
 
 ####################################
 #Print Functions
