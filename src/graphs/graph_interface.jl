@@ -1,3 +1,9 @@
+#TODO
+# function adjacency_matrix(graph::HyperGraph)
+# end
+LightGraphs.incidence_matrix(graph::OptiGraph) = sparse(graph)
+
+
 """
     hypergraph(graph::OptiGraph)
 

@@ -153,8 +153,6 @@ include("nlp_evaluator.jl")
 
 include("graphs/hypergraph.jl")
 
-include("graphs/projections.jl")
-
 include("graphs/graph_interface.jl")
 
 include("partition.jl")

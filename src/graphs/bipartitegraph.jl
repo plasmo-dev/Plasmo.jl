@@ -12,8 +12,20 @@ end
 BipartiteGraph() = BipartiteGraph(LightGraphs.Graph(),Vector{Int64}(),Vector{Int64}())
 
 
-LightGraphs.add_vertex!(graph::BipartiteGraph) = LightGraphs.add_vertex!(graph.lightgraph)
+function LightGraphs.add_vertex!(graph::BipartiteGraph;bipartite = 1)
+    added = LightGraphs.add_vertex!(graph.lightgraph)
+    vertex = nv(graph.lightgraph)
+    if bipartite == 1
+        push!(vertexset1,vertex)
+    else
+        @assert bipartite == 2
+        push!(vertexset1,vertex)
+    end
+    return added
+end
+
 LightGraphs.add_edge!(graph::BipartiteGraph,from::Int64,to::Int64) = LightGraphs.add_edge!(graph,from,int)
+
 LightGraphs.edges(graph::BipartiteGraph) = LightGraph.edges(graph.lightgraph)
 LightGraphs.edgetype(graph::BipartiteGraph) = LightGraphs.SimpleGraphs.SimpleEdge{Int64}
 LightGraphs.has_edge(graph::BipartiteGraph,from::Int64,to::Int64) = LightGraphs.has_edge(graph.lightgraph,from,to)

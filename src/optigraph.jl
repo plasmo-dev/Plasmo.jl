@@ -7,7 +7,6 @@
 Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports most JuMP.Model functions.
 """
 mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph ultimately extends a JuMP model to use its syntax)
-
     #Topology
     optinodes::Vector{OptiNode}                  #Local model nodes
     optiedges::Vector{OptiEdge}                  #Local link edges.  These can also connect nodes across subgraphs
@@ -22,6 +21,9 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
 
     # IDEA: Use MOI backend to interface with solvers.  We create a backend by aggregating optinode backends
     moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
+
+    #IDEA: graph backend for partitioning and quick analysis
+    graph_backend::Union{Nothing,LightGraphs.AbstractGraph}
 
     #optimizer: #NOTE: MadNLP uses optimizer field
 
@@ -49,6 +51,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
                     backend,
+                    nothing,
                     Dict{Symbol,Any}(),
                     Dict{Symbol,Any}()
                     )

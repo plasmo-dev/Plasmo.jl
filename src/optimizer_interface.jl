@@ -84,10 +84,6 @@ _set_idx_map(optimizer::NodeOptimizer,idx_map::MOIU.IndexMap) = optimizer.idx_ma
 _set_primals(optimizer::NodeOptimizer,primals::OrderedDict) = optimizer.primals = primals
 _set_duals(optimizer::NodeOptimizer,duals::OrderedDict) = optimizer.duals = duals
 
-
-function _set_link_duals()
-end
-
 function _populate_node_results!(graph::OptiGraph)
     graph_backend = JuMP.backend(graph)
 
