@@ -159,15 +159,24 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #check optimizer state.  Create new backend if optimize not called
     backend = JuMP.backend(graph)
 
+    if backend.state == MOIU.NO_OPTIMIZER
+        error("Please set an optimizer on optigraph before calling optimize!")
+    end
+
+    has_nl_obj = has_nl_objective(graph)
+
+    #set graph objective if it's empty and there are node objectives
+    if !(has_nl_obj)
+        _set_graph_objective(graph)
+    end
+
+    #aggregate optinode backends if it is the first optimization call
     #TODO: Incremental changes
     #check backend state. We don't always want to recreate the backend.
     #we could check for incremental changes in the optinode backends and update the graph backend accordingly
-
-    #set graph objective if it's empty and there are node objectives
-    _set_graph_objective(graph)
-
-    #combine optinode backends
-    _aggregate_backends!(graph)
+    if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+        _aggregate_backends!(graph)
+    end
 
     #NLP data
     if has_nlp_data(graph)
@@ -180,7 +189,11 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
         end
     end
 
-    _set_backend_objective(graph)
+    if has_nl_obj
+        MOI.set(backend,MOI.ObjectiveSense(),MOI.MIN_SENSE)
+    else
+        _set_backend_objective(graph)
+    end
 
     try
         MOI.optimize!(backend)

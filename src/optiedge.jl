@@ -40,18 +40,17 @@ mutable struct OptiEdge <: AbstractOptiEdge
     #Link references
     linkrefs::Vector{AbstractLinkConstraintRef}
 
-    #TODO: go back to just linkconstraints
     #Link constraints
     linkconstraints::OrderedDict{Int64,LinkConstraint}                     #Link constraint.  Defined over variables in OptiNodes.
-    linkeqconstraints::OrderedDict{Int64,LinkConstraint}
-    linkineqconstraints::OrderedDict{Int64,LinkConstraint}
     linkconstraint_names::Dict{Int64,String}
-
     idx_map::OrderedDict
+
+    # linkeqconstraints::OrderedDict{Int64,LinkConstraint}
+    # linkineqconstraints::OrderedDict{Int64,LinkConstraint}
 end
 
 struct LinkConstraintRef <: AbstractLinkConstraintRef
-    idx::Int                        # index in `model.linkconstraints`
+    idx::Int                        # index in optiedge
     optiedge::OptiEdge
 end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
@@ -68,16 +67,16 @@ OptiEdge() = OptiEdge(OrderedSet{OptiNode}(),
                 Dict{LinkConstraint,Float64}(),
                 Vector{LinkConstraintRef}(),
                 OrderedDict{Int, LinkConstraint}(),
-                OrderedDict{Int, LinkConstraint}(),
-                OrderedDict{Int, LinkConstraint}(),
+                # OrderedDict{Int, LinkConstraint}(),
+                # OrderedDict{Int, LinkConstraint}(),
                 OrderedDict{Int64,String}(),
                 OrderedDict{LinkConstraintRef,MOI.ConstraintIndex}())
 OptiEdge(nodes::Vector{OptiNode}) = OptiEdge(OrderedSet(nodes),
                                         Dict{LinkConstraint,Float64}(),
                                         Vector{LinkConstraintRef}(),
                                         OrderedDict{Int, LinkConstraint}(),
-                                        OrderedDict{Int, LinkConstraint}(),
-                                        OrderedDict{Int, LinkConstraint}(),
+                                        # OrderedDict{Int, LinkConstraint}(),
+                                        # OrderedDict{Int, LinkConstraint}(),
                                         OrderedDict{Int64,String}(),
                                         OrderedDict{LinkConstraintRef,MOI.ConstraintIndex}())
 

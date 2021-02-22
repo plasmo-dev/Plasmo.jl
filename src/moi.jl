@@ -133,7 +133,7 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
 end
 
 
-#NOTE: May no longer need these
+#NOTE: May no longer need these in the future
 ##########################################################
 function _swap_indices!(obj::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
     terms = obj.terms

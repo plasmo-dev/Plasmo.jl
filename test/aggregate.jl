@@ -38,7 +38,7 @@ function test_nonlinear_aggregate()
     @NLobjective(n1,Max,x[1]^2 + x[2]^2)
 
     @optinode(graph,n2)
-    @variable(n2,x[1:2] >= 0 )
+    @variable(n2,x[1:2] >= 0)
     set_start_value(x[1],2)
     set_start_value(x[2],2)
     @NLobjective(n2,Min,x[1]^3 + x[2]^2)
@@ -53,7 +53,7 @@ function test_nonlinear_aggregate()
     @test all(start_value.(all_vars) .== [2,1,2,2])
 end
 
-function runtests()
+function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")
             continue

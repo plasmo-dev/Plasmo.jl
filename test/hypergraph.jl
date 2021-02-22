@@ -33,13 +33,13 @@ function test_hypergraph()
     @test size(A) == (4,3)
 
     #Project to standard graph
-    clique_graph,projection_map = clique_expansion(hyper)
-    @test nv(clique_graph) == 6
-    @test ne(clique_graph) == 5
+    # clique_graph,graph_map= clique_graph)
+    # @test nv(clique_graph) == 6
+    # @test ne(clique_graph) == 5
 
 end
 
-function runtests()
+function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")
             continue

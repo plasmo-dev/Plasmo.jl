@@ -22,10 +22,10 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     # IDEA: Use MOI backend to interface with solvers.  We create a backend by aggregating optinode backends
     moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
 
-    #IDEA: graph backend for partitioning and quick analysis
+    #IDEA: graph backend for partitioning and analysis
     graph_backend::Union{Nothing,LightGraphs.AbstractGraph}
 
-    #optimizer: #NOTE: MadNLP uses optimizer field
+    optimizer::Any #NOTE: MadNLP uses optimizer field.  This can be used by parallel solvers to store objects
 
     obj_dict::Dict{Symbol,Any}
 
@@ -51,6 +51,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
                     backend,
+                    nothing,
                     nothing,
                     Dict{Symbol,Any}(),
                     Dict{Symbol,Any}()
@@ -483,10 +484,13 @@ function add_link_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstraint,name:
     push!(optiedge.linkrefs,cref)
     optiedge.linkconstraints[linkconstraint_index] = link_con
 
+
     #Add partial linkconstraint to nodes
+    node_partial_indices = Dict(node => length(node.partial_linkconstraints) + 1 for node in optiedge.nodes)
     for (var,coeff) in link_con.func.terms
       node = getnode(var)
-      _add_to_partial_linkconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkconstraint_index)
+      index = node_partial_indices[node] #index of current linkconstraint for this node
+      _add_to_partial_linkconstraint!(node,var,coeff,link_con.func.constant,link_con.set,index)
     end
 
     return cref

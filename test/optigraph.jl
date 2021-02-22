@@ -1,14 +1,14 @@
+module TestOptiGraph
+
 using Plasmo
 using JuMP
 using Test
 
-module TestOptiGraph
-
-function test_optigraph1
+function test_optigraph1()
     graph = OptiGraph()
     @optinode(graph,n1)
-    @optinode(graph,nodes[1:5])
-    @optinode(graph,nodes[1:3,1:3])
+    @optinode(graph,nodes1[1:5])
+    @optinode(graph,nodes2[1:3,1:3])
 
     for node in all_nodes(graph)
         @variable(node,x>=0)
@@ -17,9 +17,9 @@ function test_optigraph1
         @objective(node,Min,y)
     end
 
-    @linkconstraint(graph,n1[:x] == nodes[1][:x])
-    @linkconstraint(graph,sum(nodes[i][:x] for i = 1:5) == 5)
-    @linkconstraint(graph,nodes[2][:y] == nodes[3][:y],attach = nodes[2])
+    @linkconstraint(graph,n1[:x] == nodes1[1][:x])
+    @linkconstraint(graph,sum(nodes1[i][:x] for i = 1:5) == 5)
+    @linkconstraint(graph,nodes2[2][:y] == nodes2[3][:y],attach = nodes2[2])
 
     @test num_nodes(graph) == 15
     @test num_optiedges(graph) == 3
@@ -27,7 +27,7 @@ function test_optigraph1
     @test num_variables(graph) == 30
 end
 
-function test_optigraph2
+function test_optigraph2()
     graph = OptiGraph()
 
     @optinode(graph,n1)
@@ -59,19 +59,18 @@ function test_optigraph2
 
     @objective(graph,Min,n1[:x] + n2[:x])
 
-    @test has_nlp_data(graph) == true
-    @test has_objective(graph) == true
-    @test has_nl_objective(graph) == false
-    @test has_node_objective(graph) == false
+    @test Plasmo.has_nlp_data(graph) == true
+    @test Plasmo.has_objective(graph) == true
+    @test Plasmo.has_nl_objective(graph) == false
+    @test Plasmo.has_node_objective(graph) == true
 end
 
 
 function test_set_model()
     graph = OptiGraph()
-    optimizer = Ipopt.Optimizer
 
-    n1 = @node(graph)
-    n2 = @node(graph)
+    n1 = @optinode(graph)
+    n2 = @optinode(graph)
 
     m1 = JuMP.Model()
     JuMP.@variable(m1,0 <= x <= 2)
@@ -130,7 +129,7 @@ function test_subgraph()
     @test num_subgraphs(graph) == 2
 end
 
-function runtests()
+function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")
             continue

@@ -3,7 +3,7 @@ module TestPartition
 using Plasmo
 using Test
 
-function test_partition1
+function test_partition1()
     graph = OptiGraph()
 
     @optinode(graph,nodes[1:100])
@@ -12,7 +12,7 @@ function test_partition1
     end
 
     for j = 1:99
-        @linkconstraint(mg,nodes[j][:x] == nodes[j+1][:x])
+        @linkconstraint(graph,nodes[j][:x] == nodes[j+1][:x])
     end
 
     A = reshape(nodes,20,5)
@@ -26,10 +26,10 @@ function test_partition1
     make_subgraphs!(graph,partition)
 
     @test num_nodes(graph) == 0
-    @test length(all_nodes(graph)) == 100
+    @test num_all_nodes(graph) == 100
 end
 
-function runtests()
+function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")
             continue

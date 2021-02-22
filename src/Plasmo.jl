@@ -62,7 +62,7 @@ has_objective,has_NLobjective, has_NLlinkconstraints, has_subgraphs, has_model,
 
 num_linkconstraints, num_optiedges, num_nodes,num_subgraphs,
 
-num_all_optiedges, num_all_variables, num_all_constraints, num_all_linkconstraints,
+num_all_nodes,num_all_optiedges, num_all_variables, num_all_constraints, num_all_linkconstraints,
 
 # OptiGraph getters
 getoptiedge, getoptiedges, getmodel,
@@ -80,10 +80,7 @@ is_nodevariable, is_linked_variable,
 # Aggregation
 make_subgraphs!,aggregate,combine,
 
-# Distribute
-distribute,
-
-# solution management
+# these are deprecated
 nodevalue, nodedual, linkdual,
 
 # extras, plotting, etc...
@@ -113,13 +110,11 @@ BipartiteGraph,
 
 copy_graph,
 
-#Projections
-clique_expansion, star_expansion,
-
 #macros
-@node, @optinode, @linkconstraint,
+@optinode, @linkconstraint,
 
-@NLnodeconstraint, @NLnodeobjective
+#deprecated
+@node, @NLnodeconstraint, @NLnodeobjective
 
 
 #Abstract Types

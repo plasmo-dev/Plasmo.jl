@@ -39,7 +39,7 @@ end
 Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
 that maps hypernodes and hyperedges to the original optinodes and optiedges.
 """
-function line_hypergraph(graph::OptiGraph)
+function edge_hypergraph(graph::OptiGraph)
     hypergraph = HyperGraph()
     hyper_map = Dict()
 
@@ -98,7 +98,7 @@ end
 Retrieve the line graph clique representation of the optigraph `graph`. Returns a [`LightGraphs.Graph`](@ref) object, as well as a dictionary
 that maps vertices and edges to the optinodes and optiedges. The dual cliquegraph inverts nodes and edges to allow edge partitioning.
 """
-function line_clique_graph(optigraph::OptiGraph)
+function edge_clique_graph(optigraph::OptiGraph)
 end
 
 #Create a bipartite graph using a optigraph

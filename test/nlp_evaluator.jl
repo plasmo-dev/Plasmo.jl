@@ -29,7 +29,7 @@ function _make_plasmo_graph()
 
     @linkconstraint(graph,[i = 1:5],n1[:y][i] == n2[:y][i])
 
-    return
+    return graph
 end
 
 #########################################################
@@ -57,6 +57,8 @@ function _make_jump_model()
 
     #This sets local objective functions on the corresponding "nodes"
     @NLobjective(model,Min,sum(x1[i] for i = 1:5)^3 + sum(x2[i]^2 for i = 1:5))
+
+    return model
 end
 
 
@@ -80,7 +82,7 @@ function test_plasmo_nlp_evaluator()
     @test length(hess_structure1) == 24
 
     jac_structure1 = MOI.jacobian_structure(d1)
-    @test length(jac_structure) == 4
+    @test length(jac_structure1) == 4
 
     MOI.eval_constraint(d1,c1,x1)
     @test c1 == [-3,-3]
@@ -154,7 +156,7 @@ function test_evaluator_matches_jump_result()
     @test val_graph == val_model
 end
 
-function runtests()
+function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")
             continue

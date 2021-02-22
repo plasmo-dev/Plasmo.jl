@@ -15,8 +15,6 @@ mutable struct OptiNode <: JuMP.AbstractModel
     label::String
 
     #TODO: Just store linkconstraints.  Make functions that can differentiate equality and inequality.
-    # partial_linkeqconstraints::Dict{Int64,AbstractLinkConstraint}
-    # partial_linkineqconstraints::Dict{Int64,AbstractLinkConstraint}
     partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #nlp_data is a reference to `model.nlp_data`
@@ -206,6 +204,7 @@ JuMP.num_variables(node::OptiNode) = JuMP.num_variables(getmodel(node))
 JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(getmodel(node))
 
 JuMP.set_objective(optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar) = JuMP.set_objective(getmodel(optinode),sense,func)
+JuMP.set_NL_objective(optinode::OptiNode,sense::MOI.OptimizationSense,obj::Any) = JuMP.set_NL_objective(optinode.model,sense,obj)
 JuMP.set_objective_function(optinode::OptiNode,func::JuMP.AbstractJuMPScalar) = JuMP.set_objective_function(optinode.model,func)
 JuMP.set_objective_function(optinode::OptiNode,real::Real) = JuMP.set_objective_function(optinode.model,real)
 JuMP.set_objective_sense(optinode::OptiNode,sense::MOI.OptimizationSense) = JuMP.set_objective_sense(optinode.model,sense)
