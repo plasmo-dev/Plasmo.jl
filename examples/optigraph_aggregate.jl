@@ -1,10 +1,12 @@
+#Example
 using Plasmo
-using Ipopt
+using GLPK
 
+#Create a modelgraph
 graph = OptiGraph()
-optimizer = Ipopt.Optimizer
+optimizer = GLPK.Optimizer
 
-#Add nodes to a ModelGraph
+#Add nodes to optigraph
 n1 = @optinode(graph)
 n2 = @optinode(graph)
 
@@ -16,7 +18,6 @@ n2 = @optinode(graph)
 
 #Node 2 Model
 @variable(n2,x)
-@NLnodeconstraint(n2,ref,exp(x) >= 2)
 @variable(n2,z >= 0)
 @constraint(n2,z + x >= 4)
 
@@ -24,15 +25,14 @@ n2 = @optinode(graph)
 @linkconstraint(graph,n1[:x] == n2[:x])
 @linkconstraint(graph,n1[:z] == n2[:z])
 
-#Graph objective
+#Objective function
 @objective(graph,Min,n1[:y] + n2[:x] + n1[:z])
 
-#Optimize with Ipopt.
-optimize!(graph,optimizer)
+#Aggregate optinodes into a single optinode to solve using JuMP's interface
+aggregate_node,reference_map = aggregate(graph)
+set_optimizer(aggregate_node,optimizer)
+optimize!(aggregate_node)
 
-println("n1[:z]= ",value(n1,n1[:z]))
-println("n2[:z]= ",value(n2,n2[:z]))
-println("n1[:x]= ",value(n1,n1[:x]))
-println("n1[:y]= ",value(n1,n1[:y]))
-println("n2[:x]= ",value(n2,n2[:x]))
-println("objective = ", objective_value(graph))
+#Use the reference map to look up values on the aggregate node
+println("n1[:x] = ",value(reference_map[n1[:x]]))
+println("n2[:x] = ",value(reference_map[n2[:x]]))

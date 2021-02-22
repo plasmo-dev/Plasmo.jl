@@ -1,4 +1,8 @@
-# LightGraphs.AbstractGraph
+"""
+    BipartiteGraph
+
+A simple bipartite type.  Tracks vertex sets of the bipartite graph.
+"""
 mutable struct BipartiteGraph <: LightGraphs.AbstractGraph{Int64}
     graph::LightGraphs.Graph
     vertexset1::Vector{Int64}
@@ -8,8 +12,20 @@ end
 BipartiteGraph() = BipartiteGraph(LightGraphs.Graph(),Vector{Int64}(),Vector{Int64}())
 
 
-LightGraphs.add_vertex!(graph::BipartiteGraph) = LightGraphs.add_vertex!(graph.lightgraph)
+function LightGraphs.add_vertex!(graph::BipartiteGraph;bipartite = 1)
+    added = LightGraphs.add_vertex!(graph.lightgraph)
+    vertex = nv(graph.lightgraph)
+    if bipartite == 1
+        push!(vertexset1,vertex)
+    else
+        @assert bipartite == 2
+        push!(vertexset1,vertex)
+    end
+    return added
+end
+
 LightGraphs.add_edge!(graph::BipartiteGraph,from::Int64,to::Int64) = LightGraphs.add_edge!(graph,from,int)
+
 LightGraphs.edges(graph::BipartiteGraph) = LightGraph.edges(graph.lightgraph)
 LightGraphs.edgetype(graph::BipartiteGraph) = LightGraphs.SimpleGraphs.SimpleEdge{Int64}
 LightGraphs.has_edge(graph::BipartiteGraph,from::Int64,to::Int64) = LightGraphs.has_edge(graph.lightgraph,from,to)

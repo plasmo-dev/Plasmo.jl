@@ -4,36 +4,44 @@
 """
     OptiGraph()
 
-Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports many JuMP.Model functions.
+Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports most JuMP.Model functions.
 """
-mutable struct OptiGraph <: AbstractOptiGraph
-
+mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph ultimately extends a JuMP model to use its syntax)
     #Topology
-    optinodes::Vector{OptiNode}                #Local model nodes
+    optinodes::Vector{OptiNode}                  #Local model nodes
     optiedges::Vector{OptiEdge}                  #Local link edges.  These can also connect nodes across subgraphs
-    node_idx_map::Dict{OptiNode,Int64}          #Local map of model nodes to indices
+    node_idx_map::Dict{OptiNode,Int64}           #Local map of model nodes to indices
     edge_idx_map::Dict{OptiEdge,Int64}           #Local map of link edges indices
-    subgraphs::Vector{AbstractOptiGraph}        #Subgraphs contained in the model graph
-
-    #graphindex::Int64
-    optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of vertices map to a optiedge
+    subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the model graph
+    optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
 
     #Objective
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    #Optimizer
-    optimizer
+    # IDEA: Use MOI backend to interface with solvers.  We create a backend by aggregating optinode backends
+    moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
 
-    #Model Information
+    #IDEA: graph backend for partitioning and analysis
+    graph_backend::Union{Nothing,LightGraphs.AbstractGraph}
+
+    optimizer::Any #NOTE: MadNLP uses optimizer field.  This can be used by parallel solvers to store objects
+
     obj_dict::Dict{Symbol,Any}
+
+    #Extension Information
     ext::Dict{Symbol,Any}
 
-    #TODO Nonlinear Link Constraints using NLP Data
-    nlp_data::Union{Nothing,JuMP._NLPData}
+    #TODO Someday
+    #Capture nonlinear linking constraints and (separable) nonlinear objective functions
+    #nlp_data::Union{Nothing,JuMP._NLPData}
 
     #Constructor
     function OptiGraph()
+        caching_mode = MOIU.AUTOMATIC
+        universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
+        backend = MOIU.CachingOptimizer(universal_fallback,caching_mode)
+
         optigraph = new(Vector{OptiNode}(),
                     Vector{OptiEdge}(),
                     Dict{OptiNode,Int64}(),
@@ -42,10 +50,11 @@ mutable struct OptiGraph <: AbstractOptiGraph
                     OrderedDict{OrderedSet,OptiEdge}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
+                    backend,
+                    nothing,
                     nothing,
                     Dict{Symbol,Any}(),
-                    Dict{Symbol,Any}(),
-                    nothing
+                    Dict{Symbol,Any}()
                     )
         return optigraph
     end
@@ -75,6 +84,7 @@ end
 Retrieve the local subgraphs of `optigraph`.
 """
 getsubgraphs(optigraph::OptiGraph) = optigraph.subgraphs
+num_subgraphs(optigraph::OptiGraph) = length(optigraph.subgraphs)
 
 """
     all_subgraphs(optigraph::OptiGraph)::Vector{OptiGraph}
@@ -89,6 +99,8 @@ function all_subgraphs(optigraph::OptiGraph)
     end
     return subgraphs
 end
+num_all_subgraphs(optigraph::OptiGraph) = length(all_subgraphs(optigraph))
+has_subgraphs(graph::OptiGraph) = !(isempty(graph.subgraphs))
 #################
 #OptiNodes
 #################
@@ -109,7 +121,7 @@ function add_node!(graph::OptiGraph)
     optinode = OptiNode()
     push!(graph.optinodes,optinode)
     i = length(graph.optinodes)
-    optinode.label = "$i"
+    optinode.label = "n$i"
     graph.node_idx_map[optinode] = length(graph.optinodes)
     return optinode
 end
@@ -154,14 +166,16 @@ function all_nodes(graph::OptiGraph)
 end
 
 """
-    find_node(graph::OptiGraph,index::Int64)
+    all_node(graph::OptiGraph,index::Int64)
 
 Find the optinode in `graph` at `index`. This traverses all of the nodes in the subgraphs of `graph`.
 """
-function find_node(graph::OptiGraph,index::Int64)
+function all_node(graph::OptiGraph,index::Int64)
     nodes = all_nodes(graph)
     return nodes[index]
 end
+@deprecate(find_node,all_node)
+
 
 """
     Base.getindex(graph::OptiGraph,node::OptiNode)
@@ -175,7 +189,7 @@ end
 ###################################################
 #OptiEdges
 ###################################################
-function add_link_edge!(graph::OptiGraph,optinodes::Vector{OptiNode})
+function add_optiedge!(graph::OptiGraph,optinodes::Vector{OptiNode})
     #Check for existing optiedge.  Return if edge already exists
     key = Set(optinodes)
     if haskey(graph.optiedge_map,key)
@@ -190,7 +204,8 @@ function add_link_edge!(graph::OptiGraph,optinodes::Vector{OptiNode})
     end
     return optiedge
 end
-add_edge!(graph::OptiGraph,optinodes::Vector{OptiNode}) = add_link_edge!(graph,optinodes)
+add_edge!(graph::OptiGraph,optinodes::Vector{OptiNode}) = add_optiedge!(graph,optinodes)
+@deprecate add_link_edge add_optiedge
 
 """
     getedges(graph::OptiGraph) = graph.optiedges
@@ -242,19 +257,32 @@ function Base.getindex(graph::OptiGraph,optiedge::OptiEdge)
 end
 
 ########################################################
-# Model Management
+# Model Interaction
 ########################################################
-has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
-has_NLobjective(graph::OptiGraph) = graph.nlp_data != nothing && graph.nlp_data.nlobj != nothing
-has_subgraphs(graph::OptiGraph) = !(isempty(graph.subgraphs))
-has_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data != nothing && !(isempty(graph.nlp_data.nlconstr))
+has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.AffExpr) && graph.objective_function != zero(JuMP.QuadExpr)
+has_node_objective(graph::OptiGraph) = any(has_objective.(all_nodes(graph)))
+has_quad_objective(graph::OptiGraph) = any((node) -> isa(objective_function(node),JuMP.QuadExpr),all_nodes(graph))
+has_nlp_data(graph::OptiGraph) = any(node -> (node.nlp_data !== nothing),all_nodes(graph))
+function has_nl_objective(graph::OptiGraph)
+    for node in all_nodes(graph)
+        if node.nlp_data != nothing
+            if node.nlp_data.nlobj != nothing
+                return true
+            end
+        end
+    end
+    return false
+end
 
-num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))  #length(graph.linkeqconstraints) + length(graph.linkineqconstraints)
-num_NLlinkconstraints(graph::OptiGraph) = graph.nlp_data == nothing ? 0 : length(graph.nlp_data.nlconstr)
+JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
+JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
+JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
+JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
+JuMP.all_constraints(graph::OptiGraph,F::DataType,S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph),Ref(F),Ref(S))...)
 
 num_nodes(graph::OptiGraph) = length(graph.optinodes)
+@deprecate getnumnodes num_nodes
 num_optiedges(graph::OptiGraph) = length(graph.optiedges)
-getnumnodes(graph::OptiGraph) = num_nodes(graph)
 
 function num_all_nodes(graph::OptiGraph)
     n_nodes = sum(num_nodes.(all_subgraphs(graph)))
@@ -268,26 +296,31 @@ function num_all_optiedges(graph::OptiGraph)
     return n_link_edges
 end
 
+function JuMP.all_variables(graph::OptiGraph)
+    vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
+    return vars
+end
 """
-    getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraint}
+    getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
 Retrieve the local linking constraints in `graph`. Returns a vector of the linking constraints.
 """
 function getlinkconstraints(graph::OptiGraph)
-    links = LinkConstraint[]
-    for ledge in graph.optiedges
-        append!(links,collect(values(ledge.linkconstraints)))
+    links = LinkConstraintRef[]
+    for edge in graph.optiedges
+        # append!(links,collect(values(ledge.linkconstraints)))
+        append!(links,edge.linkrefs)
     end
     return links
 end
-
+num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
 """
-    all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraint}
+    all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
 Retrieve all of the linking constraints in `graph`, including linking constraints in its subgraphs. Returns a vector of the linking constraints.
 """
 function all_linkconstraints(graph::OptiGraph)
-    links = LinkConstraint[]
+    links = LinkConstraintRef[]
     for subgraph in all_subgraphs(graph)
         append!(links,getlinkconstraints(subgraph))
     end
@@ -333,207 +366,155 @@ end
 ####################################
 # Objective
 ###################################
+JuMP.objective_sense(graph::OptiGraph) = graph.objective_sense
+JuMP.set_objective_sense(graph::OptiGraph,sense::MOI.OptimizationSense) = graph.objective_sense = sense
 """
     JuMP.objective_function(graph::OptiGraph)
 
 Retrieve the current graph objective function.
 """
 JuMP.objective_function(graph::OptiGraph) = graph.objective_function
-JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef) = JuMP.set_objective_function(graph, convert(AffExpr,x))
-JuMP.set_objective_function(graph::OptiGraph, func::JuMP.AbstractJuMPScalar) = graph.objective_function = func  #JuMP.set_objective_function(graph, func)
+function JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
+    x_affine = convert(JuMP.AffExpr,x)
+    JuMP.set_objective_function(graph,x_affine)
+end
+
+function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericAffExpr)
+    #clear optinodes objective functions
+    for node in all_nodes(graph)
+        JuMP.set_objective_function(node,0)
+    end
+    #put objective terms onto nodes
+    for (coef,term) in JuMP.linear_terms(expr)
+        node = getnode(term)
+        JuMP.set_objective_function(node,objective_function(node) + coef*term)
+    end
+    graph.objective_function = expr
+end
+
+function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericQuadExpr)
+    for node in all_nodes(graph)
+        JuMP.set_objective_function(node,0)
+    end
+    for (coef,term1,term2) in JuMP.quad_terms(expr)
+        @assert getnode(term1) == getnode(term2)
+        node = getnode(term1)
+        JuMP.set_objective_function(node,objective_function(node) + coef*term1*term2)
+    end
+    for (coef,term) in JuMP.linear_terms(expr)
+        node = getnode(term)
+        JuMP.set_objective_function(node,objective_function(node) + coef*term)
+    end
+    graph.objective_function = expr
+end
 
 function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
-    graph.objective_sense = sense
-    graph.objective_function = func
+    JuMP.set_objective_sense(graph,sense)
+    JuMP.set_objective_function(graph,func)
 end
 
 function JuMP.objective_value(graph::OptiGraph)
     objective = JuMP.objective_function(graph)
-    return nodevalue(objective)
+    return value(objective)
 end
 
-JuMP.object_dictionary(m::OptiGraph) = m.obj_dict
-JuMP.objective_sense(m::OptiGraph) = m.objective_sense
+function getnodes(expr::JuMP.GenericAffExpr)
+    nodes = OptiNode[]
+    for (coef,term) in JuMP.linear_terms(expr)
+        node = getnode(term)
+        push!(nodes,node)
+    end
+    return unique(nodes)
+end
 
-# Model Extras
-JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
-JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
+function getnodes(expr::JuMP.GenericQuadExpr)
+    nodes = OptiNode[]
+    for (coef,term1,term2) in JuMP.quad_terms(expr)
+        @assert getnode(term1) == getnode(term2)
+        node = getnode(term1)
+        push!(nodes,node)
+    end
+    for (coef,term) in JuMP.linear_terms(expr)
+        node = getnode(term)
+        push!(nodes,node)
+    end
+    return unique(nodes)
+end
 
 #####################################################
 #  Link Constraints
-#  A linear constraint between JuMP Models (nodes).  Link constraints can be equality or inequality.
+#  A linear constraint between optinodes.  Link constraints can be equality or inequality.
 #####################################################
-
-
-function add_link_equality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
-    @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
-
-
-    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
-    link_con.attached_node = attached_node
-    optinodes = getnodes(link_con)
-
-    optiedge = add_link_edge!(graph,optinodes)
-
-    linkconstraint_index = length(optiedge.linkconstraints) + 1
-    linkeqconstraint_index = length(optiedge.linkeqconstraints) + 1
-    cref = LinkConstraintRef(linkconstraint_index,optiedge)
-    JuMP.set_name(cref, name)
-
-    push!(optiedge.linkrefs,cref)
-
-    optiedge.linkconstraints[linkconstraint_index] = link_con
-    optiedge.linkeqconstraints[linkeqconstraint_index] = link_con
-
-    #Add partial linkconstraint to nodes
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkeqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkeqconstraint_index)
-    end
-
-    return cref
-end
-
-function add_link_inequality_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
-    @assert typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64}]
-
-
-    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
-    optinodes = getnodes(link_con)
-    optiedge = add_link_edge!(graph,optinodes)
-    linkconstraint_index = length(optiedge.linkconstraints) + 1
-    linkineqconstraint_index = length(optiedge.linkeqconstraints) + 1
-    link_con.attached_node = attached_node
-
-    cref = LinkConstraintRef(linkconstraint_index,optiedge)
-    JuMP.set_name(cref, name)
-    push!(optiedge.linkrefs,cref)
-
-    optiedge.linkconstraints[linkineqconstraint_index] = link_con
-    optiedge.linkineqconstraints[linkineqconstraint_index] = link_con
-
-    #Add partial linkconstraint to nodes
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkineqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkineqconstraint_index)
-    end
-
-    return cref
-end
-
-function add_link_equality_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
-    @assert isa(con.set,MOI.EqualTo)  #EQUALITY CONSTRAINTS
-
-    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
-    link_con.attached_node = attached_node
-    optinodes = getnodes(link_con)
-
-    @assert issubset(optinodes,optiedge.nodes)
-
-    linkconstraint_index = length(optiedge.linkconstraints) + 1
-    linkeqconstraint_index = length(optiedge.linkeqconstraints) + 1
-    cref = LinkConstraintRef(linkconstraint_index,optiedge)
-    JuMP.set_name(cref, name)
-
-    push!(optiedge.linkrefs,cref)
-
-    optiedge.linkconstraints[linkconstraint_index] = link_con
-    optiedge.linkeqconstraints[linkeqconstraint_index] = link_con
-
-    #Add partial linkconstraint to nodes
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkeqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkeqconstraint_index)
-    end
-
-    return cref
-end
-
-function add_link_inequality_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstraint;name::String = "",attached_node = nothing)
-    @assert typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64}]
-
-
-    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
-    optinodes = getnodes(link_con)
-    link_con.attached_node = attached_node
-
-    @assert issubset(optinodes,optiedge.nodes)
-
-    linkconstraint_index = length(optiedge.linkconstraints) + 1
-    linkineqconstraint_index = length(optiedge.linkeqconstraints) + 1
-    cref = LinkConstraintRef(linkconstraint_index,optiedge)
-    JuMP.set_name(cref, name)
-
-    push!(optiedge.linkrefs,cref)
-
-    optiedge.linkconstraints[linkineqconstraint_index] = link_con
-    optiedge.linkineqconstraints[linkineqconstraint_index] = link_con
-
-    #Add partial linkconstraint to nodes
-    for (var,coeff) in link_con.func.terms
-      node = getnode(var)
-      _add_to_partial_linkineqconstraint!(node,var,coeff,link_con.func.constant,link_con.set,linkineqconstraint_index)
-    end
-
-    return cref
-end
-
-function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
-    if isa(con.set,MOI.EqualTo)
-        cref = add_link_equality_constraint(graph,con;name = name,attached_node = attached_node)
-    else
-        cref = add_link_inequality_constraint(graph,con;name = name,attached_node = attached_node)
-    end
-    return cref
-end
-
-import JuMP: _valid_model
-_valid_model(m::OptiEdge, name) = nothing
-function JuMP.add_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
-    if isa(con.set,MOI.EqualTo)
-        cref = add_link_equality_constraint(optiedge,con;name = name,attached_node = attached_node)
-    else
-        cref = add_link_inequality_constraint(optiedge,con;name = name,attached_node = attached_node)
-    end
-    return cref
-end
-
-#Add to a partial linkconstraint on a optinode
-function _add_to_partial_linkeqconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
-    @assert getnode(var) == node
-    if haskey(node.partial_linkeqconstraints,index)
-        linkcon = node.partial_linkeqconstraints[index]
-        JuMP.add_to_expression!(linkcon.func,coeff,var)
-    else
-        new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-        new_func.terms[var] = coeff
-        new_func.constant = constant
-        linkcon = LinkConstraint(new_func,set,nothing)
-        node.partial_linkeqconstraints[index] = linkcon
-    end
-end
-
-#Add to a partial linkconstraint on a optinode
-function _add_to_partial_linkineqconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
-    @assert getnode(var) == node
-    if haskey(node.partial_linkineqconstraints,index)
-        linkcon = node.partial_linkineqconstraints[index]
-        JuMP.add_to_expression!(linkcon.func,coeff,var)
-    else
-        new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-        new_func.terms[var] = coeff
-        new_func.constant = constant
-        linkcon = LinkConstraint(new_func,set,nothing)
-        node.partial_linkineqconstraints[index] = linkcon
-    end
-end
-
 function JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, name::String="")
     error("Cannot add constraint $con. An OptiGraph currently only supports Scalar LinkConstraints")
 end
 
+function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
+    cref = add_link_constraint(graph,con,name,attached_node = attached_node)
+    return cref
+end
+
+JuMP._valid_model(m::OptiEdge, name) = nothing
+function JuMP.add_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
+    cref = add_link_constraint(optiedge,con,name,attached_node = attached_node)
+    return cref
+end
+
+#Create optiedge and add linkconstraint
+function add_link_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint,name::String = "";attached_node = nothing)
+    optinodes = getnodes(con)
+    optiedge = add_optiedge!(graph,optinodes)
+    cref = JuMP.add_constraint(optiedge,con,name,attached_node = attached_node)
+    return cref
+end
+
+#Add linkconstraint directly to optiedge
+function add_link_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstraint,name::String = "";attached_node = nothing)
+    typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64},MOI.EqualTo{Float64}] || error("Unsupported link constraint set of type $(con.set)")
+
+    link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
+    link_con.attached_node = attached_node
+
+    optinodes = getnodes(link_con)
+    @assert issubset(optinodes,optiedge.nodes)
+
+    linkconstraint_index = length(optiedge.linkconstraints) + 1
+    cref = LinkConstraintRef(linkconstraint_index,optiedge)
+    JuMP.set_name(cref, name)
+    push!(optiedge.linkrefs,cref)
+    optiedge.linkconstraints[linkconstraint_index] = link_con
+
+
+    #Add partial linkconstraint to nodes
+    node_partial_indices = Dict(node => length(node.partial_linkconstraints) + 1 for node in optiedge.nodes)
+    for (var,coeff) in link_con.func.terms
+      node = getnode(var)
+      index = node_partial_indices[node] #index of current linkconstraint for this node
+      _add_to_partial_linkconstraint!(node,var,coeff,link_con.func.constant,link_con.set,index)
+    end
+
+    return cref
+end
+
+#Add partial link constraint to supporting optinodes
+function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
+    @assert getnode(var) == node
+    #multiple variables might be on the same node, so check here
+    if haskey(node.partial_linkconstraints,index)
+        linkcon = node.partial_linkconstraints[index]
+        JuMP.add_to_expression!(linkcon.func,coeff,var)
+        constant == linkcon.func.constant || error("Found a Link Constraint constant mismatch when adding partial constraint to optinode")
+        set == linkcon.set || error("Found a Link Constraint set mismatch when adding partial constraint to optinode")
+    else #create a new partial constraint
+        node_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+        node_func.terms[var] = coeff
+        node_func.constant = constant
+        linkcon = LinkConstraint(node_func,set,node)
+        node.partial_linkconstraints[index] = linkcon
+    end
+end
+
 JuMP.owner_model(cref::LinkConstraintRef) = cref.optiedge
-# JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
 JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
 JuMP.jump_function(constraint::LinkConstraint) = constraint.func
 JuMP.moi_set(constraint::LinkConstraint) = constraint.set
@@ -553,15 +534,6 @@ function MOI.delete!(cref::LinkConstraintRef)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
 
-#################################
-# Optimizer
-#################################
-"""
-    JuMP.set_optimizer(graph::OptiGraph,optimizer::Any)
-
-Set an optimizer for the optigraph `graph`.
-"""
-JuMP.set_optimizer(graph::OptiGraph,optimizer) = graph.optimizer = optimizer
 
 ####################################
 #Print Functions
@@ -569,10 +541,36 @@ JuMP.set_optimizer(graph::OptiGraph,optimizer) = graph.optimizer = optimizer
 function string(graph::OptiGraph)
     """
     OptiGraph:
-    local nodes: $(getnumnodes(graph)), total nodes: $(length(all_nodes(graph)))
+    local nodes: $(num_nodes(graph)), total nodes: $(length(all_nodes(graph)))
     local link constraints: $(num_linkconstraints(graph)), total link constraints $(length(all_linkconstraints(graph)))
     local subgraphs: $(length(getsubgraphs(graph))), total subgraphs $(length(all_subgraphs(graph)))
     """
 end
 print(io::IO, graph::OptiGraph) = print(io, string(graph))
 show(io::IO,graph::OptiGraph) = print(io,graph)
+
+"""
+    empty!(graph::OptiGraph) -> graph
+Empty the optigraph, that is, remove all variables, constraints and model
+attributes but not optimizer attributes. Always return the argument.
+Note: removes extensions data.
+"""
+function Base.empty!(graph::OptiGraph)::OptiGraph
+    MOI.empty!(graph.moi_backend)
+    empty!(graph.obj_dict)
+    empty!(graph.ext)
+
+    optinodes::Vector{OptiNode}
+    optiedges::Vector{OptiEdge}
+    node_idx_map::Dict{OptiNode,Int64}
+    edge_idx_map::Dict{OptiEdge,Int64}
+    subgraphs::Vector{AbstractOptiGraph}
+
+    optiedge_map::OrderedDict{Set,OptiEdge}
+
+    #Objective
+    objective_sense::MOI.OptimizationSense
+    objective_function::JuMP.AbstractJuMPScalar
+
+    return graph
+end

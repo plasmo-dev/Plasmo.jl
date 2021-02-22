@@ -1,6 +1,3 @@
-import Base: ==,string,print,show
-using LightGraphs
-
 abstract type AbstractHyperGraph <: LightGraphs.AbstractGraph{Int64} end
 abstract type AbstractHyperEdge <: LightGraphs.AbstractEdge{Int64} end
 
@@ -279,11 +276,6 @@ end
 print(io::IO, graph::HyperGraph) = print(io, string(graph))
 show(io::IO,graph::HyperGraph) = print(io,graph)
 
-# function string(node::HyperNode)
-#     "Hypernode: "*"$(node.index)" #_map))"
-# end
-# print(io::IO,node::HyperNode) = print(io, string(node))
-# show(io::IO,node::HyperNode) = print(io,node)
 
 function string(edge::HyperEdge)
     "HyperEdge: "*"$(collect(edge.vertices))"
@@ -294,12 +286,13 @@ show(io::IO,edge::HyperEdge) = print(io,edge)
 
 
 # LightGraphs.rem_edge!
-#TODO This shouldn't be too bad
+#TODO
 LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal not yet supported on hypergraphs"))
 
-# LightGraphs.rem_vertex!
 #TODO Delete any associated edges with the vertex
 LightGraphs.rem_vertex!(g::HyperGraph) = throw(error("Vertex removal not yet supported on hypergraphs"))
+
+
 
 #TODO: Copy, remove degree
 # #Copy hypergraph.  Retain subgraphs too

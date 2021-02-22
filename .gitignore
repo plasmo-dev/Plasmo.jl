@@ -2,4 +2,8 @@
 *.jl.*.cov
 *.jl.mem
 
+
 docs/build/
+src/test_ipopt.jl
+src/ideas.jl
+src/prototyping*
