@@ -21,24 +21,6 @@ mutable struct HyperGraph <: AbstractHyperGraph
 end
 HyperGraph() = HyperGraph(HyperNode[],OrderedDict{Int64,HyperEdge}(),OrderedDict{Set,HyperEdge}(),Dict{HyperNode,Vector{HyperEdge}}())
 
-#Create sparse incident matrix from HyperGraph
-function SparseArrays.sparse(hypergraph::HyperGraph)
-    #Build up I and J.  Assume V = 1
-    I = []
-    J = []
-    for (edge_index,hyperedge) in hypergraph.hyperedge_map
-        node_indices = sort(collect(hyperedge.vertices))
-        for node_index in node_indices
-            push!(I,node_index)
-            push!(J,edge_index)
-        end
-    end
-    V = Int.(ones(length(I)))
-    return SparseArrays.sparse(I,J,V)
-end
-LightGraphs.incidence_matrix(hypergraph::HyperGraph) = SparseArrays.sparse(hypergraph)
-#TODO adjacency_matrix
-
 #HyperNode
 function LightGraphs.add_vertex!(hypergraph::HyperGraph)
     (nv(hypergraph) + one(Int) <= nv(hypergraph)) && return false       # test for overflow
@@ -83,16 +65,13 @@ gethyperedge(hypergraph::HyperGraph,edge_index::Int64) = hypergraph.hyperedge_ma
 gethyperedges(hypergraph::HyperGraph) = values(hypergraph.hyperedges)
 getedges(hypergraph::HyperGraph) = gethyperedges(hypergraph)
 LightGraphs.vertices(hyperedge::HyperEdge) = collect(hyperedge.vertices)
-Base.getindex(hypergraph::HyperGraph,edge::HyperEdge) = edge.index       #_map[hypergraph]
+Base.getindex(hypergraph::HyperGraph,edge::HyperEdge) = edge.index
 
 #LightGraphs Interface
 LightGraphs.edges(graph::HyperGraph) = graph.hyperedges
 LightGraphs.edgetype(graph::HyperGraph) = HyperEdge
 LightGraphs.has_edge(graph::HyperGraph,edge::HyperEdge) = edge in values(graph.hyperedges)
-function LightGraphs.has_edge(graph::HyperGraph,hypernodes::Set{HyperNode})
-    return haskey(graph.hyperedges,hypernodes)
-end
-
+LightGraphs.has_edge(graph::HyperGraph,hypernodes::Set{HyperNode}) = haskey(graph.hyperedges,hypernodes)
 LightGraphs.has_vertex(graph::HyperGraph, v::Integer) = v in vertices(graph)
 LightGraphs.is_directed(graph::HyperGraph) = false
 LightGraphs.is_directed(::Type{HyperGraph}) = false
@@ -101,8 +80,29 @@ LightGraphs.nv(graph::HyperGraph) = length(graph.vertices)
 LightGraphs.vertices(graph::HyperGraph) = graph.vertices
 
 
+#ANALYSIS FUNCTIONS
+function LightGraphs.incidence_matrix(hypergraph::HyperGraph)
+    I = []
+    J = []
+    for (edge_index,hyperedge) in hypergraph.hyperedge_map
+        node_indices = sort(collect(hyperedge.vertices))
+        for node_index in node_indices
+            push!(I,node_index)
+            push!(J,edge_index)
+        end
+    end
+    V = Int.(ones(length(I)))
+    return SparseArrays.sparse(I,J,V)
+end
+SparseArrays.sparse(hypergraph::HyperGraph) = LightGraphs.incidence_matrix(hypergraph)
+
+#TODO adjacency_matrix
+function LightGraphs.adjacency_matrix(hypergraph::HyperGraph)
+    nothing
+end
+
 #NOTE Inefficient neighbors implementation
-#Could use a SparseArray to do this faster
+#Could use incidence matrix to do this faster
 function LightGraphs.all_neighbors(g::HyperGraph,node::HyperNode)
     hyperedges = g.node_map[node]  #incident hyperedges to the hypernode
     neighbors = HyperNode[]
@@ -134,6 +134,12 @@ function neighborhood(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
         newnbr = setdiff(nbr,oldnbr)
     end
     return nbr
+end
+
+function expand(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
+    new_nodes = neighborhood(g,nodes,distance)
+    new_edges =  induced_edges(g,new_nodes)
+    return new_nodes, new_edges
 end
 
 #Get the induced edges from a vector of hypernodes
@@ -255,17 +261,28 @@ function identify_edges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNo
 end
 
 #Partition Functions
-function getpartitionlist(hypergraph::HyperGraph,membership_vector::Vector)
-    unique_parts = unique(membership_vector)  #get unique membership entries
+function partition_list(hypergraph::HyperGraph,membership_vector::Vector)
+    unique_parts = unique(membership_vector)
     unique_parts = sort(unique_parts)
-    nparts = length(unique_parts)             #number of partitions
 
-    partitions = OrderedDict{Int64,Vector{HyperNode}}((k,[]) for k in unique_parts)
-    for (vertex,part) in enumerate(membership_vector)
-        push!(partitions[part],getnode(hypergraph,vertex))
+    #map unique parts to partitions
+    part_map = Dict()
+    for (i,part) in enumerate(unique_parts)
+        part_map[part] = i
     end
-    return collect(values(partitions))
+
+    nparts = length(unique_parts)
+    partitions =[HyperNode[] for _ = 1:nparts]
+    for (vertex,part) in enumerate(membership_vector)
+        push!(partitions[part_map[part]],getnode(hypergraph,vertex))
+    end
+    return partitions
 end
+
+#LightGraphs.degree(g::HyperGraph,v::Int) = length(all_neighbors(g,v))
+
+LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal not yet supported on hypergraphs"))
+LightGraphs.rem_vertex!(g::HyperGraph) = throw(error("Vertex removal not yet supported on hypergraphs"))
 
 ####################################
 #Print Functions
@@ -282,45 +299,3 @@ function string(edge::HyperEdge)
 end
 print(io::IO,edge::HyperEdge) = print(io, string(edge))
 show(io::IO,edge::HyperEdge) = print(io,edge)
-
-
-
-# LightGraphs.rem_edge!
-#TODO
-LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal not yet supported on hypergraphs"))
-
-#TODO Delete any associated edges with the vertex
-LightGraphs.rem_vertex!(g::HyperGraph) = throw(error("Vertex removal not yet supported on hypergraphs"))
-
-
-
-#TODO: Copy, remove degree
-# #Copy hypergraph.  Retain subgraphs too
-# function Base.copy(hypergraph::HyperGraph)
-#     copy_hypergraph = HyperGraph()
-#     for node in getnodes(hypergraph)
-#         add_node!(copy_hypergraph)
-#     end
-#     for edge in get
-# end
-
-
-#LightGraphs.degree(g::HyperGraph,v::Int) = length(all_neighbors(g,v))
-
-# function rem_edge!(g::SimpleGraph, e::SimpleGraphEdge)
-#     i = searchsorted(g.fadjlist[src(e)], dst(e))
-#     isempty(i) && return false   # edge not in graph
-#     j = first(i)
-#     deleteat!(g.fadjlist[src(e)], j)
-#     if src(e) != dst(e)     # not a self loop
-#         j = searchsortedfirst(g.fadjlist[dst(e)], src(e))
-#         deleteat!(g.fadjlist[dst(e)], j)
-#     end
-#     g.ne -= 1
-#     return true # edge successfully removed
-# end
-
-# function add_hyperedge!(hypergraph::HyperGraph,vertices::Int64...)
-#     hypernodes = map(x -> getnode(hypergraph,x),vertices)
-#     return add_hyperedge!(hypergraph,hypernodes...)
-# end

@@ -95,7 +95,7 @@ export_graph,
 HyperGraph, HyperEdge, HyperNode,
 
 # Hypergraph getters
-gethypergraph, gethyperedge, gethyperedges,
+hyper_graph,gethypergraph, gethyperedge, gethyperedges,
 
 # Hypergraph adders
 add_hypernode!,add_hyperedge!,
@@ -121,8 +121,11 @@ copy_graph,
 abstract type AbstractOptiGraph <: JuMP.AbstractModel end
 abstract type AbstractOptiEdge end
 abstract type AbstractLinkConstraintRef end
-abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
+
+include("graphs/hypergraph.jl")
+
+include("graphs/bipartitegraph.jl")
 
 include("moi.jl")
 
@@ -140,15 +143,11 @@ include("aggregate_utils.jl")
 
 include("optimizer_interface.jl")
 
-include("graph_functions.jl")
+include("graph_interface.jl")
 
 include("nlp_macro.jl")
 
 include("nlp_evaluator.jl")
-
-include("graphs/hypergraph.jl")
-
-include("graphs/graph_interface.jl")
 
 include("partition.jl")
 

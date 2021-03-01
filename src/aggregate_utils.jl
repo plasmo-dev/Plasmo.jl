@@ -130,3 +130,10 @@ function _copy_constraint(constraint::LinkConstraint,var_map::Dict{JuMP.Variable
     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
     return new_con
 end
+
+function _copy_node(node::OptiNode)
+    new_node = OptiNode()
+    reference_map = AggregateMap()
+    node_ref_map = _add_to_combined_model!(new_node,node,reference_map)
+    return new_node,reference_map
+end

@@ -43,9 +43,9 @@ set_optimizer(optigraph,Ipopt.Optimizer)
 optimize!(optigraph)
 
 #Partition with KaHyPar
-hypergraph,hyper_map = gethypergraph(optigraph)
-partition_vector = KaHyPar.partition(hypergraph,2;configuration = :edge_cut)
-partition = Partition(hypergraph,partition_vector,hyper_map)
+hg,hyper_map = Plasmo.hyper_graph(optigraph)
+partition_vector = KaHyPar.partition(hg,2;configuration = :edge_cut)
+partition = Partition(hg,partition_vector,hyper_map)
 make_subgraphs!(optigraph,partition)
 set_optimizer(optigraph,Ipopt.Optimizer)
 optimize!(optigraph)

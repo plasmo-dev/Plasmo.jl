@@ -161,7 +161,11 @@ function JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, name:
     return cref
 end
 
-JuMP.add_NL_constraint(node::OptiNode,expr::Expr) = JuMP.add_NL_constraint(getmodel(node),expr)
+function JuMP.add_NL_constraint(node::OptiNode,expr::Expr)
+    con = JuMP.add_NL_constraint(getmodel(node),expr)
+    node.nlp_data = node.model.nlp_data #Could also just update node nlp_data here with new constraint
+    return con
+end
 
 function JuMP.num_constraints(node::OptiNode)
     m = getmodel(node)

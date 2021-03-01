@@ -560,17 +560,17 @@ function Base.empty!(graph::OptiGraph)::OptiGraph
     empty!(graph.obj_dict)
     empty!(graph.ext)
 
-    optinodes::Vector{OptiNode}
-    optiedges::Vector{OptiEdge}
-    node_idx_map::Dict{OptiNode,Int64}
-    edge_idx_map::Dict{OptiEdge,Int64}
-    subgraphs::Vector{AbstractOptiGraph}
+    graph.optinodes = Vector{OptiNode}()
+    graph.optiedges = Vector{OptiEdge}()
+    graph.node_idx_map = Dict{OptiNode,Int64}()
+    graph.edge_idx_map = Dict{OptiEdge,Int64}()
+    graph.subgraphs = Vector{AbstractOptiGraph}()
 
-    optiedge_map::OrderedDict{Set,OptiEdge}
+    graph.optiedge_map = OrderedDict{Set,OptiEdge}()
 
     #Objective
-    objective_sense::MOI.OptimizationSense
-    objective_function::JuMP.AbstractJuMPScalar
+    graph.objective_sense = MOI.FEASIBILITY_SENSE
+    graph.objective_function = zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef})
 
     return graph
 end
