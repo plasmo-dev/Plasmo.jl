@@ -5,7 +5,6 @@ function KaHyPar.partition(graph::HyperGraph,n_parts::Int64;edge_weights = ones(
     node_sizes = Int64.(node_sizes)
     edge_weights = Int64.(edge_weights)
 
-
     kgraph = KaHyPar.hypergraph(A,node_sizes,edge_weights)
     partition_vector = KaHyPar.partition(kgraph,n_parts;kwargs...)
     return partition_vector

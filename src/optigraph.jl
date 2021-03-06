@@ -1,3 +1,14 @@
+"""
+    GraphBackend(graph::OptiGraph)
+
+Create a graph backend for `graph` corresponding to a `LightGraphs` object.  A `GraphBackend` is used to do graph analysis on an optigraph
+by mapping optigraph elements to lightgraph objects.
+"""
+mutable struct HyperGraphBackend
+    hypergraph::HyperGraph
+    hyper_map::Dict
+    update_backend::Bool
+end
 ##############################################################################
 # OptiGraph
 ##############################################################################
@@ -23,7 +34,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
 
     #IDEA: graph backend for partitioning and analysis
-    graph_backend::Union{Nothing,LightGraphs.AbstractGraph}
+    graph_backend::Union{Nothing,HyperGraphBackend}
 
     optimizer::Any #NOTE: MadNLP uses optimizer field.  This can be used by parallel solvers to store objects
 
@@ -60,11 +71,27 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     end
 end
 
+function OptiGraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
+    graph = OptiGraph()
+    graph.optinodes = nodes
+    graph.optiedges = edges
+    graph.node_idx_map = Dict([(node,getindex(optigraph,node)) for node in nodes])
+    graph.edge_idx_map = Dict([(edge,getindex(optigraph,edge)) for edge in edges])
+    return graph
+end
+
 @deprecate ModelGraph OptiGraph
 
 ########################################################
 # OptiGraph Interface
 ########################################################
+#Backend Check
+function _flag_graph_backend(graph::OptiGraph)
+    if graph.graph_backend != nothing
+        graph.graph_backend.update_backend = true
+    end
+end
+
 #################
 #Subgraphs
 #################
@@ -75,6 +102,7 @@ Add the sub-optigraph `subgraph` to the higher level optigraph `graph`. Returns 
 """
 function add_subgraph!(graph::OptiGraph,subgraph::OptiGraph)
     push!(graph.subgraphs,subgraph)
+    _flag_graph_backend(graph)
     return graph
 end
 
@@ -119,15 +147,15 @@ Add the existing `optinode` (Created with `OptiNode()`) to `graph`.
 """
 function add_node!(graph::OptiGraph)
     optinode = OptiNode()
-    push!(graph.optinodes,optinode)
-    i = length(graph.optinodes)
+    i = length(graph.optinodes) + 1
     optinode.label = "n$i"
-    graph.node_idx_map[optinode] = length(graph.optinodes)
+    #graph.node_idx_map[optinode] = length(graph.optinodes)
+    add_node!(graph,optinode)
     return optinode
 end
 
 function add_node!(graph::OptiGraph,m::JuMP.Model)
-    node = add_node!(graph)
+    optinode = add_node!(graph)
     set_model(node,m)
     return node
 end
@@ -135,6 +163,7 @@ end
 function add_node!(graph::OptiGraph,optinode::OptiNode)
     push!(graph.optinodes,optinode)
     graph.node_idx_map[optinode] = length(graph.optinodes)
+    _flag_graph_backend(graph)
     return optinode
 end
 
@@ -201,6 +230,7 @@ function add_optiedge!(graph::OptiGraph,optinodes::Vector{OptiNode})
         idx = n_links + 1
         graph.optiedge_map[optiedge.nodes] = optiedge
         graph.edge_idx_map[optiedge] = idx
+        _flag_graph_backend(graph)
     end
     return optiedge
 end

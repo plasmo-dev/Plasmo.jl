@@ -123,9 +123,9 @@ abstract type AbstractOptiEdge end
 abstract type AbstractLinkConstraintRef end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 
-include("graphs/hypergraph.jl")
+include("graph_backends/hypergraph.jl")
 
-include("graphs/bipartitegraph.jl")
+include("graph_backends/bipartitegraph.jl")
 
 include("moi.jl")
 
@@ -143,7 +143,7 @@ include("aggregate_utils.jl")
 
 include("optimizer_interface.jl")
 
-include("graph_interface.jl")
+include("hypergraph_interface.jl")
 
 include("nlp_macro.jl")
 

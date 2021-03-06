@@ -19,12 +19,16 @@ function LightGraphs.add_vertex!(graph::BipartiteGraph;bipartite = 1)
         push!(vertexset1,vertex)
     else
         @assert bipartite == 2
-        push!(vertexset1,vertex)
+        push!(vertexset2,vertex)
     end
     return added
 end
 
-LightGraphs.add_edge!(graph::BipartiteGraph,from::Int64,to::Int64) = LightGraphs.add_edge!(graph,from,int)
+#Edges must connect nodes in different vertex sets
+function LightGraphs.add_edge!(graph::BipartiteGraph,from::Int64,to::Int64)
+    length(intersect((from,to),graph.vertexset1)) == 1 || error("$from and $to must be in separate vertex sets")
+    return LightGraphs.add_edge!(graph,from,int)
+end
 
 LightGraphs.edges(graph::BipartiteGraph) = LightGraph.edges(graph.lightgraph)
 LightGraphs.edgetype(graph::BipartiteGraph) = LightGraphs.SimpleGraphs.SimpleEdge{Int64}

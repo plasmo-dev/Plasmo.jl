@@ -80,7 +80,7 @@ LightGraphs.nv(graph::HyperGraph) = length(graph.vertices)
 LightGraphs.vertices(graph::HyperGraph) = graph.vertices
 
 
-#ANALYSIS FUNCTIONS
+#HYPERGRAPH FUNCTIONS
 function LightGraphs.incidence_matrix(hypergraph::HyperGraph)
     I = []
     J = []
@@ -96,9 +96,17 @@ function LightGraphs.incidence_matrix(hypergraph::HyperGraph)
 end
 SparseArrays.sparse(hypergraph::HyperGraph) = LightGraphs.incidence_matrix(hypergraph)
 
-#TODO adjacency_matrix
 function LightGraphs.adjacency_matrix(hypergraph::HyperGraph)
-    nothing
+    I = []
+    J = []
+    for vertex in vertices(hypergraph)
+        for neighbor in LightGraphs.all_neighbors(hypergraph,vertex)
+            push!(I,vertex)
+            push!(J,neighbor)
+        end
+    end
+    V = Int.(ones(length(I)))
+    return SparseArrays.sparse(I,J,V)
 end
 
 #NOTE Inefficient neighbors implementation
@@ -118,28 +126,6 @@ function incident_edges(g::HyperGraph,node::HyperNode)
         push!(hyperedges,hedge)
     end
     return hyperedges
-end
-
-#Get all of the neighbors within a distance of a set of nodes
-function neighborhood(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
-    V = collect(nodes)
-    nbr = copy(V)
-    newnbr = copy(V)
-    oldnbr = []
-    for k=1:distance
-        for i in newnbr
-            union!(nbr, all_neighbors(g,i))
-        end
-        union!(oldnbr,newnbr)
-        newnbr = setdiff(nbr,oldnbr)
-    end
-    return nbr
-end
-
-function expand(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
-    new_nodes = neighborhood(g,nodes,distance)
-    new_edges =  induced_edges(g,new_nodes)
-    return new_nodes, new_edges
 end
 
 #Get the induced edges from a vector of hypernodes
@@ -259,6 +245,35 @@ function identify_edges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNo
 
     return partition_edges,shared_edges
 end
+
+"""
+    neighborhood(g::HyperGraph,nodes::Vector{OptiNode},distance::Int64)
+
+Retrieve the neighborhood within `distance` of `nodes`.  Returns a vector of the original vertices and added vertices
+"""
+function neighborhood(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
+    V = collect(nodes)
+    nbr = copy(V)
+    newnbr = copy(V)
+    oldnbr = []
+    for k=1:distance
+        for i in newnbr
+            union!(nbr, all_neighbors(g,i))
+        end
+        union!(oldnbr,newnbr)
+        newnbr = setdiff(nbr,oldnbr)
+    end
+    return nbr
+end
+
+function expand(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
+    new_nodes = neighborhood(g,nodes,distance)
+    new_edges =  induced_edges(g,new_nodes)
+    return new_nodes, new_edges
+end
+
+#TODO: Expand multiple sets of nodes
+
 
 #Partition Functions
 function partition_list(hypergraph::HyperGraph,membership_vector::Vector)
