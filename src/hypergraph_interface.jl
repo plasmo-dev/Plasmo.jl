@@ -83,6 +83,7 @@ end
 incident_edges(graph::OptiGraph,node::OptiNode) = incident_edges(graph,[node])
 
 function induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+    Plasmo._init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     hypernodes = getindex.(Ref(hyper_map),nodes)
     inducededges = induced_edges(hypergraph,hypernodes)
@@ -90,6 +91,7 @@ function induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
 end
 
 function identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
+    Plasmo._init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     hypernode_vectors = [getindex.(Ref(hyper_map),nodes) for nodes in node_vectors]
     part_edges,cross_edges = identify_edges(hypergraph,hypernode_vectors)
@@ -105,10 +107,10 @@ end
 Return a list of optinode partitions given a `membership_vector`
 """
 function partition_list(graph::OptiGraph,membership_vector::Vector{Int64})
-    backend = graph_backend(graph)
-    lightgraph,graph_map = [backend.lightgraph,backend.graph_map]
-    partitions = partition_list(lightgraph,memebership_vector)
-    return [getindex.(Ref(graph_map),partitions[i] for i = 1:length(partitions))]
+    Plasmo._init_graph_backend(graph)
+    hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+    partitions = partition_list(hypergraph,memebership_vector)
+    return [getindex.(Ref(hyper_map_map),partitions[i] for i = 1:length(partitions))]
 end
 @deprecate getpartitionlist partition_list
 
@@ -118,6 +120,7 @@ end
 Return the optinodes within `distance` of the given `nodes` in the optigraph `graph`.
 """
 function neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)
+    Plasmo._init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     vertices = getindex.(Ref(hyper_map),nodes)
     new_nodes = neighborhood(hypergraph,vertices,distance)
@@ -132,6 +135,7 @@ Return a new expanded subgraph given the optigraph `graph` and an existing subgr
 The returned subgraph contains the expanded neighborhood within `distance` of the given `subgraph`.
 """
 function expand(graph::OptiGraph,subgraph::OptiGraph,distance::Int64)
+    Plasmo._init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
 
     nodes = all_nodes(subgraph)
