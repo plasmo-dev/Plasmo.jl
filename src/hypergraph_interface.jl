@@ -119,7 +119,7 @@ Return the optinodes within `distance` of the given `nodes` in the optigraph `gr
 """
 function neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
-    vertices = getindex(Ref(hyper_map),nodes)
+    vertices = getindex.(Ref(hyper_map),nodes)
     new_nodes = neighborhood(hypergraph,vertices,distance)
     return getindex.(Ref(hyper_map),new_nodes)
 end

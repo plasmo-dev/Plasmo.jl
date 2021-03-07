@@ -57,6 +57,8 @@ make_subgraphs!(optigraph,partition)
 overlap = 1
 expanded_subs = expand.(Ref(optigraph),getsubgraphs(optigraph),Ref(overlap))
 
+
+
 #Set Clique graph
 
 

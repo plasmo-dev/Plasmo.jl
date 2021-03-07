@@ -254,15 +254,15 @@ Retrieve the neighborhood within `distance` of `nodes`.  Returns a vector of the
 function neighborhood(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
     V = collect(nodes)
     nbr = copy(V)
-    newnbr = copy(V)
-    oldnbr = []
+    newnbr = copy(V) #neighbors to check
+    addnbr = Int64[]
     for k=1:distance
         for i in newnbr
-            union!(nbr, all_neighbors(g,i))
+            append!(addnbr,all_neighbors(g,i)) #NOTE: union! is slow
         end
-        union!(oldnbr,newnbr)
-        newnbr = setdiff(nbr,oldnbr)
+        newnbr = setdiff(addnbr,nbr)
     end
+    nbr = unique([nbr;addnbr])
     return nbr
 end
 
@@ -271,9 +271,6 @@ function expand(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
     new_edges =  induced_edges(g,new_nodes)
     return new_nodes, new_edges
 end
-
-#TODO: Expand multiple sets of nodes
-
 
 #Partition Functions
 function partition_list(hypergraph::HyperGraph,membership_vector::Vector)
@@ -314,3 +311,22 @@ function string(edge::HyperEdge)
 end
 print(io::IO,edge::HyperEdge) = print(io, string(edge))
 show(io::IO,edge::HyperEdge) = print(io,edge)
+
+
+#Old neighborhood implementation
+# function neighborhood(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
+#     V = collect(nodes)
+#     nbr = copy(V)
+#     newnbr = copy(V)
+#     oldnbr = []
+#     addnbr = []
+#     for k=1:distance
+#         for i in newnbr
+#             #NOTE: union! is slow
+#             union!(nbr, all_neighbors(g,i))
+#         end
+#         union!(oldnbr,newnbr)
+#         newnbr = setdiff(nbr,oldnbr)
+#     end
+#     return nbr
+# end
