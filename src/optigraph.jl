@@ -75,8 +75,10 @@ function OptiGraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
     graph = OptiGraph()
     graph.optinodes = nodes
     graph.optiedges = edges
-    graph.node_idx_map = Dict([(node,getindex(optigraph,node)) for node in nodes])
-    graph.edge_idx_map = Dict([(edge,getindex(optigraph,edge)) for edge in edges])
+    graph.node_idx_map = Dict([(node,i) for (i,node) in enumerate(nodes)])
+    graph.edge_idx_map = Dict([(edge,i) for (i,edge) in enumerate(edges)])
+    # graph.node_idx_map = Dict([(node,getindex(graph,node)) for node in nodes])
+    # graph.edge_idx_map = Dict([(edge,getindex(graph,edge)) for edge in edges])
     return graph
 end
 

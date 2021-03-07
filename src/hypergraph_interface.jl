@@ -91,10 +91,10 @@ end
 
 function identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
-    hypernode_vectors = [getindex.(Ref(ref),nodes) for nodes in node_vectors]
+    hypernode_vectors = [getindex.(Ref(hyper_map),nodes) for nodes in node_vectors]
     part_edges,cross_edges = identify_edges(hypergraph,hypernode_vectors)
-    link_part_edges = [getindex.(Ref(ref),edges) for edges in part_edges]
-    link_cross_edges = getindex.(Ref(ref),cross_edges)
+    link_part_edges = [getindex.(Ref(hyper_map),edges) for edges in part_edges]
+    link_cross_edges = getindex.(Ref(hyper_map),cross_edges)
     return link_part_edges,link_cross_edges
 end
 

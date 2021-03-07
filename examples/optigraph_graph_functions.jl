@@ -41,7 +41,6 @@ optigraph = create_optigraph()
 n1 = getnode(optigraph,1)
 n2 = getnode(optigraph,2)
 
-
 all_neighbors(optigraph,n1)
 all_neighbors(optigraph,n2)
 
@@ -50,8 +49,16 @@ n3 = @optinode(optigraph)
 @linkconstraint(optigraph,n2[:x] == n3[:x])
 all_neighbors(optigraph,n2)
 
+nodes = all_nodes(optigraph)
+node_vectors = [[nodes[1],nodes[2],nodes[5]],[nodes[3],nodes[4]]]
+partition = Partition(optigraph,node_vectors)
+make_subgraphs!(optigraph,partition)
+
+overlap = 1
+expanded_subs = expand.(Ref(optigraph),getsubgraphs(optigraph),Ref(overlap))
 
 #Set Clique graph
+
 
 
 #Set Bipartite graph
