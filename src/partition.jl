@@ -16,17 +16,22 @@ Manually create a partition using `optigraph` and a vector of vectors containing
 """
 mutable struct Partition <: AbstractPartition
     optinodes::Vector{OptiNode}   #optinodes at partition level
-    optiedges::Vector{OptiEdge}   #hyperedges at partition level
+    optiedges::Vector{OptiEdge}   #optiedges at partition level
     subpartitions::Vector{AbstractPartition}      #subpartitions
 end
 Partition() = Partition(Vector{OptiNode}(),Vector{OptiEdge}(),Vector{Partition}())
 
 #TODO: Check partition structure
+function _check_valid_partition()
+    #No duplicate nodes in partition
+    #Edges cover the nodes
+end
 
 #NODE PARTITION
+#Use a HyperGraph and reference map
 function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
     partition = Partition()
-    hypernode_vectors = getpartitionlist(hypergraph,node_membership_vector)
+    hypernode_vectors = partition_list(hypergraph,node_membership_vector)
     induced_edge_partitions,cross_edges = identify_edges(hypergraph,hypernode_vectors)
     @assert length(hypernode_vectors) == length(induced_edge_partitions)
 
@@ -40,11 +45,7 @@ function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},
     return partition
 end
 
-function Partition(graph::OptiGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
-    optinode_vectors = getpartitionlist(graph,node_membership_vector,ref_map)
-    return Partition(graph,optinode_vectors)
-end
-
+#Use vector of optinodes
 function Partition(graph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
     partition = Partition()
     optiedge_vectors,cross_edges = identify_edges(graph,optinode_vectors)
@@ -59,16 +60,45 @@ function Partition(graph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
     return partition
 end
 
+#Use an OptiGraph and a reference map
+function Partition(graph::OptiGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
+    optinode_vectors = partition_list(graph,node_membership_vector,ref_map)
+    return Partition(graph,optinode_vectors)
+end
+
+#Use graph_backend to make Partition
+function Partition(graph::OptiGraph,node_membership_vector::Vector{Int64})
+    hypergraph,ref_map = graph_backend(graph)
+    optinode_vectors = partition_list(graph,node_membership_vector,ref_map)
+    return Partition(graph,optinode_vectors)
+end
+
 #EDGE PARTITION
 function Partition(graph::OptiGraph,optiedge_vectors::Vector{Vector{OptiEdge}})
+    partition = Partition()
+    optinode_vectors,cross_nodes = identify_nodes(graph,optiedge_vectors)
+    @assert length(optinode_vectors) == length(optiedge_vectors)
+    node_incident_edges = Plasmo.incident_edges(graph,cross_nodes) #incident edges to root partition nodes are also in root
+    partition.optinodes = cross_nodes
+    partition.optiedges = node_incident_edges
+    for i = 1:length(optiedge_vectors)
+        subpartition = Partition()
+        subpartition.optinodes = optinode_vectors[i]
+        subpartition.optiedges = setdiff(optiedge_vectors[i],node_incident_edges) #cut out the root incident edges
+        push!(partition.subpartitions,subpartition)
+    end
+    return partition
+end
+
+#NODE-EDGE PARTITION (e.g. partitioning a bipartite graph)
+function Partition(graph::OptiGraph,cross_nodes::Vector{OptiNode},cross_edges::Vector{OptiEdge})
 end
 
 
-#NODE EDGE PARTITION
 
 getnodes(partition::Partition) = partition.optinodes
 getedges(partition::Partition) = partition.optiedges
-getsubparts(partition::Partition) = partition.subpartitions
+getsubpartitions(partition::Partition) = partition.subpartitions
 
 function all_subpartitions(partition::Partition)
     subparts = partition.subpartitions
@@ -87,7 +117,6 @@ function n_subpartitions(partition::Partition)
     return n_subparts
 end
 
-#Turn graph into subgraph-based structure
 """
     make_subgraphs!(optigraph::OptiGraph,partition::Partition)
 

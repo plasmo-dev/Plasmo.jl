@@ -9,6 +9,7 @@ MOI.set(node::OptiNode, args...) = MOI.set(getmodel(node), args...)
 MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
 
 #Create an moi backend for an optigraph using the underlying optinodes and optiedges
+#TODO: Make sure bridges work.
 function _aggregate_backends!(graph::OptiGraph)
     dest = JuMP.backend(graph)
     nodes = all_nodes(graph)
@@ -145,11 +146,18 @@ JuMP.optimize!(graph::OptiGraph,optimizer;kwargs...) = error("The optimizer keyw
 
 Set an optimizer for the optigraph `graph`.
 """
-function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor)
+function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor,bridge_constraints::Bool = true)
     caching_mode = MOIU.AUTOMATIC
     universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
     backend = MOIU.CachingOptimizer(universal_fallback,caching_mode)
-    optimizer = MOI.instantiate(optimizer_constructor)
+    if bridge_constraints
+        optimizer = MOI.instantiate(optimizer_constructor, with_bridge_type=Float64, with_names=false)
+        for bridge_type in graph.bridge_types
+            JuMP._moi_add_bridge(optimizer, bridge_type)
+        end
+    else
+        optimizer = MOI.instantiate(optimizer_constructor)
+    end
     MOIU.reset_optimizer(backend,optimizer)
     graph.moi_backend = backend
     return nothing
@@ -174,9 +182,11 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     #TODO: Incremental changes
     #check backend state. We don't always want to recreate the backend.
     #we could check for incremental changes in the optinode backends and update the graph backend accordingly
-    if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-        _aggregate_backends!(graph)
-    end
+    #if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+    _aggregate_backends!(graph)
+    # #else
+    #     #_update_backend(graph) #check for flags for changes (e.g. new )
+    # end
 
     #NLP data
     if has_nlp_data(graph)
@@ -223,7 +233,6 @@ function JuMP.optimize!(node::OptiNode;kwargs...)
     JuMP.optimize!(getmodel(node);kwargs...)
     return nothing
 end
-
 
 function _create_nlp_block_data(graph::OptiGraph)
     @assert has_nlp_data(graph)

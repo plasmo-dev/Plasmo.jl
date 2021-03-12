@@ -18,35 +18,6 @@ function _init_graph_backend(graph::OptiGraph)
     return nothing
 end
 
-"""
-    hyper_graph(graph::OptiGraph)
-
-Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
-that maps hypernodes and hyperedges to the original optinodes and optiedges.
-"""
-function hyper_graph(graph::OptiGraph)
-    hypergraph = HyperGraph()
-    hyper_map = Dict()  #two-way mapping from hypergraph nodes to optinodes and link_edges
-
-    for node in all_nodes(graph)
-        hypernode = add_node!(hypergraph)
-        hyper_map[hypernode] = node
-        hyper_map[node] = hypernode
-    end
-
-    for edge in all_edges(graph)
-        nodes = edge.nodes
-        hypernodes = [hyper_map[optinode] for optinode in nodes]
-        if length(hypernodes) >= 2
-            hyperedge = add_hyperedge!(hypergraph,hypernodes...)
-            hyper_map[hyperedge] = edge
-            hyper_map[edge] = hyperedge
-        end
-    end
-
-    return hypergraph,hyper_map
-end
-@deprecate gethypergraph hyper_graph
 
 """
     LightGraphs.all_neighbors(graph::OptiGraph,node::OptiNode)
@@ -100,6 +71,16 @@ function identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
     return link_part_edges,link_cross_edges
 end
 
+#optinode_vectors,cross_nodes = identify_nodes(graph,optiedge_vectors)
+function identify_nodes(graph::OptiGraph,edge_vectors::Vector{Vector{OptiEdge}})
+    Plasmo._init_graph_backend(graph)
+    hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+    hyperedge_vectors = [getindex.(Ref(hyper_map),edges) for edges in edge_vectors]
+    part_nodes,cross_nodes = identify_nodes(hypergraph,hyperedge_vectors)
+    part_optinodes = [getindex.(Ref(hyper_map),nodes) for nodes in part_nodes]
+    cross_optinodes = getindex.(Ref(hyper_map),cross_nodes)
+    return part_optinodes,cross_optinodes
+end
 
 """
     partition_list(graph::OptiGraph,membership_vector::Vector{Int64})

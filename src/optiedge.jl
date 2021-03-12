@@ -82,6 +82,7 @@ OptiEdge(nodes::Vector{OptiNode}) = OptiEdge(OrderedSet(nodes),
 
 num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
 getlinkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
+getnodes(edge::OptiEdge) = edge.nodes
 
 
 function Base.string(edge::OptiEdge)

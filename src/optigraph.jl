@@ -1,13 +1,13 @@
 """
-    GraphBackend(graph::OptiGraph)
+    HyperGraphBackend
 
-Create a graph backend for `graph` corresponding to a `LightGraphs` object.  A `GraphBackend` is used to do graph analysis on an optigraph
-by mapping optigraph elements to lightgraph objects.
+Graph backend corresponding to a `LightGraphs` HyperGraph object.  A `HyperGraphBackend` is used to do graph analysis on an optigraph
+by mapping optigraph elements to hypergraph elements.
 """
 mutable struct HyperGraphBackend
     hypergraph::HyperGraph
     hyper_map::Dict
-    update_backend::Bool
+    update_backend::Bool  #flag that graph backend needs to be re-created when querying graph attributes
 end
 ##############################################################################
 # OptiGraph
@@ -30,13 +30,14 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    # IDEA: Use MOI backend to interface with solvers.  We create a backend by aggregating optinode backends
-    moi_backend::Union{Nothing,MOI.ModelLike} #The backend can be created on the fly if we create an induced subgraph
+    # IDEA: moi_backend interfaces with solvers.  For standard optimization solvers, we aggregate a MOI backend on the fly using optinodes
+    moi_backend::Union{Nothing,MOI.ModelLike}
 
-    #IDEA: graph backend for partitioning and analysis
+    #IDEA: graph_backend used for graph functions (e.g. neighbors)
     graph_backend::Union{Nothing,HyperGraphBackend}
 
-    optimizer::Any #NOTE: MadNLP uses optimizer field.  This can be used by parallel solvers to store objects
+    bridge_types::Set{Any}
+    optimizer::Any #NOTE: MadNLP uses the optimizer field.  This could also be used by parallel solvers to store objects
 
     obj_dict::Dict{Symbol,Any}
 
@@ -63,6 +64,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
                     backend,
                     nothing,
+                    Set{Any}(),
                     nothing,
                     Dict{Symbol,Any}(),
                     Dict{Symbol,Any}()
@@ -71,16 +73,26 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     end
 end
 
+#Create an OptiGraph given a set of optinodes and optiedges
 function OptiGraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
+    is_valid_optigraph(nodes,edges) || error("Cannot create optigraph from given nodes and edges.  At least one edge node is not in the provided vector of optinodes.")
     graph = OptiGraph()
-    graph.optinodes = nodes
-    graph.optiedges = edges
+    for node in nodes
+        add_node!(graph,node)
+    end
+    for edge in edges
+        push!(graph.optiedges,edge)
+    end
     graph.node_idx_map = Dict([(node,i) for (i,node) in enumerate(nodes)])
     graph.edge_idx_map = Dict([(edge,i) for (i,edge) in enumerate(edges)])
-    # graph.node_idx_map = Dict([(node,getindex(graph,node)) for node in nodes])
-    # graph.edge_idx_map = Dict([(edge,getindex(graph,edge)) for edge in edges])
     return graph
 end
+
+function _is_valid_optigraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
+    edge_nodes = union(getnodes.(edges)...)
+    return issubset(edge_nodes,nodes)
+end
+
 
 @deprecate ModelGraph OptiGraph
 
@@ -88,7 +100,7 @@ end
 # OptiGraph Interface
 ########################################################
 #Backend Check
-function _flag_graph_backend(graph::OptiGraph)
+function _flag_graph_backend!(graph::OptiGraph)
     if graph.graph_backend != nothing
         graph.graph_backend.update_backend = true
     end
@@ -104,7 +116,7 @@ Add the sub-optigraph `subgraph` to the higher level optigraph `graph`. Returns 
 """
 function add_subgraph!(graph::OptiGraph,subgraph::OptiGraph)
     push!(graph.subgraphs,subgraph)
-    _flag_graph_backend(graph)
+    _flag_graph_backend!(graph)
     return graph
 end
 
@@ -113,7 +125,7 @@ end
 
 Retrieve the local subgraphs of `optigraph`.
 """
-getsubgraphs(optigraph::OptiGraph) = optigraph.subgraphs
+getsubgraphs(optigraph::OptiGraph) = OptiGraph[subgraph for subgraph in optigraph.subgraphs]
 num_subgraphs(optigraph::OptiGraph) = length(optigraph.subgraphs)
 
 """
@@ -165,7 +177,7 @@ end
 function add_node!(graph::OptiGraph,optinode::OptiNode)
     push!(graph.optinodes,optinode)
     graph.node_idx_map[optinode] = length(graph.optinodes)
-    _flag_graph_backend(graph)
+    _flag_graph_backend!(graph)
     return optinode
 end
 
@@ -232,7 +244,7 @@ function add_optiedge!(graph::OptiGraph,optinodes::Vector{OptiNode})
         idx = n_links + 1
         graph.optiedge_map[optiedge.nodes] = optiedge
         graph.edge_idx_map[optiedge] = idx
-        _flag_graph_backend(graph)
+        _flag_graph_backend!(graph)
     end
     return optiedge
 end
@@ -279,6 +291,11 @@ function all_edges(graph::OptiGraph)
     return edges
 end
 
+function all_edge(graph::OptiGraph,index::Int64)
+    edges = all_nodes(graph)
+    return edges[index]
+end
+
 """
     Base.getindex(graph::OptiGraph,optiedge::OptiEdge)
 
@@ -288,8 +305,23 @@ function Base.getindex(graph::OptiGraph,optiedge::OptiEdge)
     return graph.edge_idx_map[optiedge]
 end
 
+function num_all_nodes(graph::OptiGraph)
+    n_nodes = sum(num_nodes.(all_subgraphs(graph)))
+    n_nodes += num_nodes(graph)
+    return n_nodes
+end
+
+function num_all_optiedges(graph::OptiGraph)
+    n_link_edges = sum(num_optiedges.(all_subgraphs(graph)))
+    n_link_edges += num_optiedges(graph)
+    return n_link_edges
+end
+
+num_nodes(graph::OptiGraph) = length(graph.optinodes)
+@deprecate getnumnodes num_nodes
+num_optiedges(graph::OptiGraph) = length(graph.optiedges)
 ########################################################
-# Model Interaction
+# OptiGraph Model Interaction
 ########################################################
 has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.AffExpr) && graph.objective_function != zero(JuMP.QuadExpr)
 has_node_objective(graph::OptiGraph) = any(has_objective.(all_nodes(graph)))
@@ -311,22 +343,6 @@ JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
 JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
 JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
 JuMP.all_constraints(graph::OptiGraph,F::DataType,S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph),Ref(F),Ref(S))...)
-
-num_nodes(graph::OptiGraph) = length(graph.optinodes)
-@deprecate getnumnodes num_nodes
-num_optiedges(graph::OptiGraph) = length(graph.optiedges)
-
-function num_all_nodes(graph::OptiGraph)
-    n_nodes = sum(num_nodes.(all_subgraphs(graph)))
-    n_nodes += num_nodes(graph)
-    return n_nodes
-end
-
-function num_all_optiedges(graph::OptiGraph)
-    n_link_edges = sum(num_optiedges.(all_subgraphs(graph)))
-    n_link_edges += num_optiedges(graph)
-    return n_link_edges
-end
 
 function JuMP.all_variables(graph::OptiGraph)
     vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
@@ -566,7 +582,11 @@ function MOI.delete!(cref::LinkConstraintRef)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
 
-
+function JuMP.add_bridge(graph::OptiGraph,BridgeType::Type{<:MOI.Bridges.AbstractBridge})
+    push!(graph.bridge_types, BridgeType)
+    #_moi_add_bridge(JuMP.backend(model), BridgeType)
+    return
+end
 ####################################
 #Print Functions
 ####################################

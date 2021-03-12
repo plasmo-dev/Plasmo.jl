@@ -143,6 +143,8 @@ include("aggregate_utils.jl")
 
 include("optimizer_interface.jl")
 
+include("graph_projections.jl")
+
 include("hypergraph_interface.jl")
 
 include("nlp_macro.jl")

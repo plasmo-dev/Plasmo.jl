@@ -1,4 +1,34 @@
 """
+    hyper_graph(graph::OptiGraph)
+
+Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
+that maps hypernodes and hyperedges to the original optinodes and optiedges.
+"""
+function hyper_graph(graph::OptiGraph)
+    hypergraph = HyperGraph()
+    hyper_map = Dict()  #two-way mapping from hypergraph nodes to optinodes and link_edges
+
+    for node in all_nodes(graph)
+        hypernode = add_node!(hypergraph)
+        hyper_map[hypernode] = node
+        hyper_map[node] = hypernode
+    end
+
+    for edge in all_edges(graph)
+        nodes = edge.nodes
+        hypernodes = [hyper_map[optinode] for optinode in nodes]
+        if length(hypernodes) >= 2
+            hyperedge = add_hyperedge!(hypergraph,hypernodes...)
+            hyper_map[hyperedge] = edge
+            hyper_map[edge] = hyperedge
+        end
+    end
+
+    return hypergraph,hyper_map
+end
+@deprecate gethypergraph hyper_graph
+
+"""
     edge_hypergraph(graph::OptiGraph)
 
 Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary

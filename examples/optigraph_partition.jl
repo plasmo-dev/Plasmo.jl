@@ -9,7 +9,7 @@ function create_optigraph()
     #node 1
     @variable(nodes[1],0 <= x <= 2)
     @variable(nodes[1],0 <= y <= 3)
-    @constraint(nodes[1],x+y <= 4)
+    @constraint(nodes[1],0 <= x+y <= 4)
     @objective(nodes[1],Min,x)
 
     #node 2
@@ -50,11 +50,20 @@ make_subgraphs!(optigraph,partition)
 set_optimizer(optigraph,Ipopt.Optimizer)
 optimize!(optigraph)
 
-#Partiton manually
+#Partition nodes manually
 optigraph = create_optigraph()
 nodes = all_nodes(optigraph)
 node_vectors = [[nodes[1],nodes[2]],[nodes[3],nodes[4]]]
 partition = Partition(optigraph,node_vectors)
+make_subgraphs!(optigraph,partition)
+set_optimizer(optigraph,Ipopt.Optimizer)
+optimize!(optigraph)
+
+#Partition edges manually
+optigraph = create_optigraph()
+es = all_edges(optigraph)
+edge_vectors = [[es[1],es[2]],[es[3]]]
+partition = Partition(optigraph,edge_vectors)
 make_subgraphs!(optigraph,partition)
 set_optimizer(optigraph,Ipopt.Optimizer)
 optimize!(optigraph)
