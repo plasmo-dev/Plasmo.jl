@@ -1,36 +1,50 @@
-#abstract type AbstractNodeOptimizer <: MOI.ModelLike end
 abstract type AbstractNodeOptimizer <: MOI.AbstractOptimizer end
 
 #An optinode can be solved just like a JuMP model, but sometimes we just want to store a solution on it
+# mutable struct NodeOptimizer <: AbstractNodeOptimizer
+#     optimizer::MOI.ModelLike # optimizer::MOIU.CachingOptimizer
+#     primals::OrderedDict#{MOI.VariableIndex,Float64}
+#     duals::OrderedDict#{MOI.ConstraintIndex,Float64}
+#     status::MOI.TerminationStatusCode
+#
+#
+#     idx_map::MOIU.IndexMap#{node => graph}
+#     nl_idx_map::OrderedDict#{node => graph}
+#
+#     #Multiple graph solutions are possible.  OptiGraphs and OptiNodes have unique symbols
+#     id::Symbol
+#     idx_maps::Dict{Symbol,OrderedDict}
+#     nl_idx_maps::Dict{Symbol,OrderedDict}
+#     last_solution_symbol::Union{Nothing,Symbol}
+# end
+#Multiple graph solutions are possible.  OptiGraphs and OptiNodes have unique symbols
 mutable struct NodeOptimizer <: AbstractNodeOptimizer
     optimizer::MOI.ModelLike # optimizer::MOIU.CachingOptimizer
-    primals::OrderedDict#{MOI.VariableIndex,Float64}
-    duals::OrderedDict#{MOI.ConstraintIndex,Float64}
+    id::Symbol
+    primals::DefaultDict{Symbol,OrderedDict{MOI.VariableIndex,Float64}}
+    duals::DefaultDict{Symbol,OrderedDict{MOI.ConstraintIndex,Float64}}
     status::MOI.TerminationStatusCode
-    idx_map::MOIU.IndexMap
-    nl_idx_map::OrderedDict
+
+    idx_maps::DefaultDict{Symbol,MOIU.IndexMap} #{node => graph}
+    nl_idx_maps::DefaultDict{Symbol,OrderedDict} #{node => graph}
+    last_solution_id::Symbol
 end
 
-NodeOptimizer(caching_opt::MOIU.CachingOptimizer) = NodeOptimizer(caching_opt,
-OrderedDict{MOI.VariableIndex,Float64}(),
-OrderedDict{MOI.ConstraintIndex,Float64}(),
-MOI.OPTIMIZE_NOT_CALLED,
-MOIU.IndexMap(),
-OrderedDict())
-
-function NodeOptimizer()
-    caching_mode = MOIU.AUTOMATIC
-    universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
-    caching_opt = MOIU.CachingOptimizer(universal_fallback,caching_mode)
-    return NodeOptimizer(caching_opt)
+function NodeOptimizer(caching_opt::MOIU.CachingOptimizer,id::Symbol)
+    return NodeOptimizer(
+    caching_opt,
+    id,
+    DefaultDict{Symbol,OrderedDict{MOI.VariableIndex,Float64}}(OrderedDict{MOI.VariableIndex,Float64}()),
+    DefaultDict{Symbol,OrderedDict{MOI.ConstraintIndex,Float64}}(OrderedDict{MOI.ConstraintIndex,Float64}()),
+    MOI.OPTIMIZE_NOT_CALLED,
+    DefaultDict{Symbol,MOIU.IndexMap}(MOIU.IndexMap()),
+    DefaultDict{Symbol,OrderedDict}(OrderedDict()),
+    id)
 end
 
 #Forward methods
 MOI.add_variable(node_optimizer::AbstractNodeOptimizer) = MOI.add_variable(node_optimizer.optimizer)
 MOI.add_constraint(node_optimizer::AbstractNodeOptimizer,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_optimizer.optimizer,func,set)
-
-#MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.get(optimizer.optimizer,attr,args...)
-#This is ambiguous with: get(model::MathOptInterface.ModelLike, attr::MOI.AnyAttribute, idxs::Array{T,1} where T)
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute) = MOI.get(optimizer.optimizer,attr)
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idx) = MOI.get(optimizer.optimizer,attr,idx)
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(optimizer.optimizer,attr,idxs)
@@ -38,8 +52,9 @@ MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idxs::Array{T,1}
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
 MOI.set(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.set(optimizer.optimizer,attr,args...)
 
-MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T} where T<:MathOptInterface.AbstractFunction, set::Type{S} where S <: MathOptInterface.AbstractSet) =
-MOI.supports_constraint(optimizer.optimizer,func,set)
+MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T}
+    where T<:MathOptInterface.AbstractFunction, set::Type{S}
+    where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(optimizer.optimizer,func,set)
 
 MOI.supports(optimizer::AbstractNodeOptimizer, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) = MOI.supports(optimizer.optimizer,attr)
 MOIU.reset_optimizer(optimizer::AbstractNodeOptimizer,args...) = MOIU.reset_optimizer(optimizer.optimizer,args...)
@@ -58,32 +73,28 @@ function MOI.optimize!(optimizer::AbstractNodeOptimizer)
     end
     primals = OrderedDict(zip(vars,MOI.get(optimizer.optimizer,MOI.VariablePrimal(),vars)))
     duals = OrderedDict(zip(cons,MOI.get(optimizer.optimizer,MOI.ConstraintDual(),cons)))
-    optimizer.primals = primals
-    optimizer.duals = duals
+
+    # optimizer.primals = primals
+    # optimizer.duals = duals
+    id = optimizer.id
+    optimizer.primals[id] = primals
+    optimizer.duals[id] = duals
 end
 
 MOIU.state(optimizer::AbstractNodeOptimizer) = MOIU.state(optimizer.optimizer)
 
-# moi_mode(optimizer::AbstractNodeOptimizer) =
-# moi_bridge_constraints(optimizer::AbstractNodeOptimizer) =
-
-#Specialized methods
-# function MOI.get(node_optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
-#     return MOI.get(node_optimizer.optimizer,attr)
-# end
-
 #Get single variable index
 function MOI.get(optimizer::NodeOptimizer, attr::MOI.VariablePrimal, idx::MOI.VariableIndex)
-    return optimizer.primals[idx]
+    return optimizer.primals[optimizer.last_solution_id][idx]
 end
 
 function MOI.get(optimizer::NodeOptimizer, attr::MOI.ConstraintDual, idx::MOI.ConstraintIndex)
-    return optimizer.duals[idx]
+    return optimizer.duals[optimizer.last_solution_id][idx]
 end
 
 #Get vector of primal values
 function MOI.get(optimizer::NodeOptimizer, attr::MOI.VariablePrimal, idx::Vector{MOI.VariableIndex})
-    return getindex.(Ref(optimizer.primals),idx)
+    return getindex.(Ref(optimizer.primals[optimizer.last_solution_id]),idx)
 end
 
 #Need to set a termination status for a node optimizer.  This is what JuMP checks for.
@@ -133,7 +144,7 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
 end
 
 
-#NOTE: May no longer need these in the future
+#NOTE: TODO: just set objective function from optigraph
 ##########################################################
 function _swap_indices!(obj::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
     terms = obj.terms
@@ -182,3 +193,23 @@ function _set_sum_of_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vecto
     return dest_obj
 end
 ##########################################################
+
+
+# moi_mode(optimizer::AbstractNodeOptimizer) =
+# moi_bridge_constraints(optimizer::AbstractNodeOptimizer) =
+
+#Specialized methods
+# function MOI.get(node_optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
+#     return MOI.get(node_optimizer.optimizer,attr)
+# end
+
+#MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.get(optimizer.optimizer,attr,args...)
+#This is ambiguous with: get(model::MathOptInterface.ModelLike, attr::MOI.AnyAttribute, idxs::Array{T,1} where T)
+
+
+# function NodeOptimizer()
+#     caching_mode = MOIU.AUTOMATIC
+#     universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
+#     caching_opt = MOIU.CachingOptimizer(universal_fallback,caching_mode)
+#     return NodeOptimizer(caching_opt)
+# end

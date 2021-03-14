@@ -44,6 +44,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     #Extension Information
     ext::Dict{Symbol,Any}
 
+    id::Symbol
+
     #TODO Someday
     #Capture nonlinear linking constraints and (separable) nonlinear objective functions
     #nlp_data::Union{Nothing,JuMP._NLPData}
@@ -67,7 +69,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
                     Set{Any}(),
                     nothing,
                     Dict{Symbol,Any}(),
-                    Dict{Symbol,Any}()
+                    Dict{Symbol,Any}(),
+                    gensym()
                     )
         return optigraph
     end
@@ -562,26 +565,8 @@ function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,co
     end
 end
 
-JuMP.owner_model(cref::LinkConstraintRef) = cref.optiedge
+
 JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
-JuMP.jump_function(constraint::LinkConstraint) = constraint.func
-JuMP.moi_set(constraint::LinkConstraint) = constraint.set
-JuMP.shape(::LinkConstraint) = JuMP.ScalarShape()
-function JuMP.constraint_object(cref::LinkConstraintRef, F::Type, S::Type)
-   con = cref.optiedge.linkconstraints[cref.idx]
-   con.func::F
-   con.set::S
-   return con
-end
-JuMP.set_name(cref::LinkConstraintRef, s::String) = JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
-JuMP.name(con::LinkConstraintRef) =  JuMP.owner_model(con).linkconstraint_names[con.idx]
-
-function MOI.delete!(cref::LinkConstraintRef)
-    delete!(cref.optiedge.linkconstraints, cref.idx)
-    delete!(cref.optiedge.linkconstraint_names, cref.idx)
-end
-MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
-
 function JuMP.add_bridge(graph::OptiGraph,BridgeType::Type{<:MOI.Bridges.AbstractBridge})
     push!(graph.bridge_types, BridgeType)
     #_moi_add_bridge(JuMP.backend(model), BridgeType)

@@ -7,14 +7,11 @@
 Creates an empty OptiNode.  Does not add it to a graph.
 """
 mutable struct OptiNode <: JuMP.AbstractModel
-    #The underlying optinode model
-    model::JuMP.AbstractModel #JuMP.Model
+    model::JuMP.AbstractModel
     nodevariable_index::Int64
     nodevariables::OrderedDict{Int,AbstractVariableRef}
     nodevarnames::Dict{Int,String}
     label::String
-
-    #TODO: Just store linkconstraints.  Make functions that can differentiate equality and inequality.
     partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
 
     #nlp_data is a reference to `model.nlp_data`
@@ -23,9 +20,12 @@ mutable struct OptiNode <: JuMP.AbstractModel
     #Extension data
     ext::Dict{Symbol,Any}
 
+    id::Symbol
+
     function OptiNode()
         model = JuMP.Model()
-        node_backend = NodeOptimizer(JuMP.backend(model))
+        id = gensym()
+        node_backend = NodeOptimizer(JuMP.backend(model),id)
         model.moi_backend = node_backend
         node = new(model,
         0,
@@ -34,9 +34,9 @@ mutable struct OptiNode <: JuMP.AbstractModel
         "node",
         Dict{Int64,AbstractLinkConstraint}(),
         nothing,
-        Dict{Symbol,Any}())
+        Dict{Symbol,Any}(),
+        id)
         node.model.ext[:optinode] = node
-
         return node
     end
 end
@@ -50,7 +50,9 @@ end
 Get the variable value of `vref` on the optinode `node`.
 """
 JuMP.value(node::OptiNode,vref::VariableRef) = node.variable_values[vref]
-getmodel(node::OptiNode) = node.model
+jump_model(node::OptiNode) = node.model
+@deprecate getmodel jump_model
+# getmodel(node::OptiNode) = node.model
 getnodevariable(node::OptiNode,index::Integer) = JuMP.VariableRef(getmodel(node),MOI.VariableIndex(index))
 
 """

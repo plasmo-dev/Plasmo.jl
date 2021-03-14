@@ -2,8 +2,6 @@ using Plasmo
 using GLPK
 
 graph = OptiGraph()
-optimizer = GLPK.Optimizer
-set_optimizer(graph,optimizer)
 
 #Add nodes to optigraph
 n1 = @optinode(graph)
@@ -28,6 +26,8 @@ n2 = @optinode(graph)
 @objective(graph,Min,n1[:y] + n2[:x] + n1[:z])
 
 #Optimize with glpk.
+optimizer = GLPK.Optimizer
+set_optimizer(graph,optimizer)
 optimize!(graph)
 
 #Get results

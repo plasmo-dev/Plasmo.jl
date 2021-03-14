@@ -34,26 +34,59 @@ references to its underlying linking constraints.
 """
 mutable struct OptiEdge <: AbstractOptiEdge
     nodes::OrderedSet{OptiNode}
-
-    dual_values::Dict{Int64,Float64}
+    dual_values::DefaultDict{Symbol,Dict{Int64,Float64}}
 
     #Link references
     linkrefs::Vector{AbstractLinkConstraintRef}
 
     #Link constraints
-    linkconstraints::OrderedDict{Int64,LinkConstraint}                     #Link constraint.  Defined over variables in OptiNodes.
+    linkconstraints::OrderedDict{Int64,LinkConstraint}
     linkconstraint_names::Dict{Int64,String}
-    idx_map::OrderedDict
+    idx_maps::DefaultDict{Symbol,OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}}
 
-    # linkeqconstraints::OrderedDict{Int64,LinkConstraint}
-    # linkineqconstraints::OrderedDict{Int64,LinkConstraint}
+    #Last result id from an optimize!(graph)
+    last_result_id::Union{Nothing,Symbol}
 end
 
 struct LinkConstraintRef <: AbstractLinkConstraintRef
-    idx::Int                        # index in optiedge
+    idx::Int # index in optiedge
     optiedge::OptiEdge
 end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
+
+OptiEdge() = OptiEdge(OrderedSet{OptiNode}(),
+                DefaultDict{Symbol,Dict{LinkConstraint,Float64}}(Dict{Int64,Float64}()),
+                Vector{LinkConstraintRef}(),
+                OrderedDict{Int, LinkConstraint}(),
+                OrderedDict{Int64,String}(),
+                DefaultDict{Symbol,OrderedDict{LinkConstraintRef,MOI.ConstraintIndex}}(OrderedDict{LinkConstraintRef,MOI.ConstraintIndex}()),
+                nothing)
+
+function OptiEdge(nodes::Vector{OptiNode})
+    optiedge = OptiEdge()
+    optiedge.nodes = OrderedSet(nodes)
+    return optiedge
+end
+
+JuMP.owner_model(cref::LinkConstraintRef) = cref.optiedge
+JuMP.jump_function(constraint::LinkConstraint) = constraint.func
+JuMP.moi_set(constraint::LinkConstraint) = constraint.set
+JuMP.shape(::LinkConstraint) = JuMP.ScalarShape()
+function JuMP.constraint_object(cref::LinkConstraintRef, F::Type, S::Type)
+   con = cref.optiedge.linkconstraints[cref.idx]
+   con.func::F
+   con.set::S
+   return con
+end
+JuMP.set_name(cref::LinkConstraintRef, s::String) = JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
+JuMP.name(con::LinkConstraintRef) =  JuMP.owner_model(con).linkconstraint_names[con.idx]
+
+function MOI.delete!(cref::LinkConstraintRef)
+    delete!(cref.optiedge.linkconstraints, cref.idx)
+    delete!(cref.optiedge.linkconstraint_names, cref.idx)
+end
+MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
+
 getnodes(con::JuMP.ScalarConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge)
@@ -61,24 +94,14 @@ num_nodes(con::LinkConstraint) = length(getnodes(con))
 getname(cref::LinkConstraintRef) = cref.optiedge.linkconstraint_names[cref.idx]
 
 JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstraints[linkref.idx]
-JuMP.dual(linkref::LinkConstraintRef) = linkref.optiedge.dual_values[linkref.idx]
 
-OptiEdge() = OptiEdge(OrderedSet{OptiNode}(),
-                Dict{LinkConstraint,Float64}(),
-                Vector{LinkConstraintRef}(),
-                OrderedDict{Int, LinkConstraint}(),
-                # OrderedDict{Int, LinkConstraint}(),
-                # OrderedDict{Int, LinkConstraint}(),
-                OrderedDict{Int64,String}(),
-                OrderedDict{LinkConstraintRef,MOI.ConstraintIndex}())
-OptiEdge(nodes::Vector{OptiNode}) = OptiEdge(OrderedSet(nodes),
-                                        Dict{LinkConstraint,Float64}(),
-                                        Vector{LinkConstraintRef}(),
-                                        OrderedDict{Int, LinkConstraint}(),
-                                        # OrderedDict{Int, LinkConstraint}(),
-                                        # OrderedDict{Int, LinkConstraint}(),
-                                        OrderedDict{Int64,String}(),
-                                        OrderedDict{LinkConstraintRef,MOI.ConstraintIndex}())
+function JuMP.dual(linkref::LinkConstraintRef)
+    optiedge = JuMP.owner_model(linkref)
+    id = optiedge.last_result_id
+    link_idx = linkref.idx
+    return optiedge.dual_values[id][link_idx]
+end
+
 
 num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
 getlinkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
