@@ -19,7 +19,6 @@ function _aggregate_backends!(graph::OptiGraph)
     srces = JuMP.backend.(nodes)
     id = graph.id
 
-    #TODO: An optinode can have a different idx_map for each graph.  Populating results depends on the optigraph used to optimize!
     for src in srces
         idx_map = append_to_backend!(dest, src, false; filter_constraints=nothing)
 
@@ -40,8 +39,31 @@ function _update_backend!(graph::OptiGraph)
     nodes = all_nodes(graph)
     srces = JuMP.backend.(nodes)
 
-    #TODO: copy updated attributes on sources to destination.  might be able to do something with filters here
-    #This will require some knowledge of MOI copy utilities
+    #Update wtih optinode backend changes
+    for src in srces
+        _update_backend_with_src!(graph.id,dest,src)
+    end
+
+    #Update linkconstraints
+    # for edge in all_edges(graph)
+    #     _update_link_constraints!(graph.id,edge)
+    # end
+
+    return nothing
+end
+
+function empty_backend!(graph::OptiGraph)
+    MOI.empty!(JuMP.backend(graph))
+    for node in all_nodes(graph)
+        src = JuMP.backend(node)
+        delete!(src.idx_maps,graph.id)
+        delete!(src.nl_idx_maps,graph.id)
+    end
+    for edge in all_edges(graph)
+        delete!(edge.idx_maps,graph.id)
+    end
+
+    return nothing
 end
 
 function _set_graph_objective(graph::OptiGraph)
@@ -66,7 +88,9 @@ function _set_backend_objective(graph::OptiGraph)
     srces = JuMP.backend.(nodes)
     idx_maps = _get_idx_map.(Ref(graph.id),srces)
     _set_sum_of_objectives!(backend,srces,idx_maps)
+    return nothing
 end
+
 
 #Add a LinkConstraint to the MOI backend.  This is used as part of _aggregate_backends!
 function _add_link_constraint!(id::Symbol,dest::MOI.ModelLike,link::LinkConstraint)
@@ -129,20 +153,21 @@ function _populate_node_results!(graph::OptiGraph)
         edge.dual_values[id][linkref.idx] = MOI.get(graph_backend,MOI.ConstraintDual(),edge.idx_maps[id][linkref])
     end
 
-    #Nonlinear duals
+    #Nonlinear duals #TODO: multiple node solutions
     if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
         nlp_duals = MOI.get(graph_backend,MOI.NLPBlockDual())
         for node in nodes
             if node.nlp_data != nothing
-                nl_idx_map = JuMP.backend(node).nl_idx_map[id]
+                nl_idx_map = JuMP.backend(node).nl_idx_maps[id]
                 node.nlp_data.nlconstr_duals = Vector{Float64}(undef,length(node.nlp_data.nlconstr))
                 #TODO: Store multiple nlp dual results. They would need to go somewhere else
-                for (src_index,graph_index) in nl_idx_map[id]
+                for (src_index,graph_index) in nl_idx_map
                     node.nlp_data.nlconstr_duals[src_index.value] = nlp_duals[graph_index.value]
                 end
             end
         end
     end
+    return nothing
 end
 
 JuMP.optimize!(graph::OptiGraph,optimizer;kwargs...) = error("The optimizer keyword argument is no longer supported. Use `set_optimizer` first, and then `optimize!`.")
@@ -173,11 +198,10 @@ function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor,bridge_const
 end
 
 function JuMP.optimize!(graph::OptiGraph;kwargs...)
-    #check optimizer state.  Create new backend if optimize not called
-    backend = JuMP.backend(graph)
 
+    backend = JuMP.backend(graph)
     if backend.state == MOIU.NO_OPTIMIZER
-        error("Please set an optimizer on optigraph before calling optimize!")
+        error("Please set an optimizer on optigraph before calling optimize! using set_optimizer(graph,optimizer)")
     end
 
     has_nl_obj = has_nl_objective(graph)
@@ -188,15 +212,11 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     end
 
     #aggregate optinode backends if it is the first optimization call
-    #TODO: Incremental changes
-    #check backend state. We don't always want to recreate the backend.
-    #we could check for incremental changes in the optinode backends and update the graph backend accordingly
-    # if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-    #     _aggregate_backends!(graph)
-    # else
-    #     _update_backend(graph)
-    # end
-     _aggregate_backends!(graph)
+    if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+        _aggregate_backends!(graph)
+    else
+        _update_backend!(graph)
+    end
 
     #NLP data
     if has_nlp_data(graph)
@@ -209,7 +229,7 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
         end
     end
 
-    if has_nl_obj
+    if has_nl_obj #set default sense if there is a nonlinear objective function
         MOI.set(backend,MOI.ObjectiveSense(),MOI.MIN_SENSE)
     else
         _set_backend_objective(graph)
@@ -241,6 +261,7 @@ end
 
 function _create_nlp_block_data(graph::OptiGraph)
     @assert has_nlp_data(graph)
+    id = graph.id
 
     bounds = MOI.NLPBoundsPair[]
     has_nl_obj = false
@@ -248,7 +269,7 @@ function _create_nlp_block_data(graph::OptiGraph)
         if node.model.nlp_data !== nothing
             for (i,constr) in enumerate(node.model.nlp_data.nlconstr)
                 push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
-                JuMP.backend(node).nl_idx_map[JuMP.NonlinearConstraintIndex(i)] = JuMP.NonlinearConstraintIndex(length(bounds))
+                JuMP.backend(node).nl_idx_maps[id][JuMP.NonlinearConstraintIndex(i)] = JuMP.NonlinearConstraintIndex(length(bounds))
             end
             if !has_nl_obj && isa(node.model.nlp_data.nlobj, JuMP._NonlinearExprData)
                 has_nl_obj = true
@@ -258,16 +279,12 @@ function _create_nlp_block_data(graph::OptiGraph)
     return MOI.NLPBlockData(bounds,OptiGraphNLPEvaluator(graph),has_nl_obj)
 end
 
-# function _set_primals(graph::OptiGraph,optimizer::NodeOptimizer,primals::OrderedDict)
-#     id = graph.id
-#     optimizer.primals[id] = primals
-# end
-# function _set_duals(graph::OptiGraph,optimizer::NodeOptimizer,duals::OrderedDict)
-#     id = graph.id
-#     optimizer.duals[id] = duals
-# end
+
 # function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
 #     optimizer = MOI.instantiate(optimizer_constructor)
 #     node.model.moi_backend.optimizer = optimizer
 #     return nothing
 # end
+
+# MOI.empty!(backend)
+# _aggregate_backends!(graph)

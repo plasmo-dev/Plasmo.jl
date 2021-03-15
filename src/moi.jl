@@ -1,23 +1,5 @@
 abstract type AbstractNodeOptimizer <: MOI.AbstractOptimizer end
 
-#An optinode can be solved just like a JuMP model, but sometimes we just want to store a solution on it
-# mutable struct NodeOptimizer <: AbstractNodeOptimizer
-#     optimizer::MOI.ModelLike # optimizer::MOIU.CachingOptimizer
-#     primals::OrderedDict#{MOI.VariableIndex,Float64}
-#     duals::OrderedDict#{MOI.ConstraintIndex,Float64}
-#     status::MOI.TerminationStatusCode
-#
-#
-#     idx_map::MOIU.IndexMap#{node => graph}
-#     nl_idx_map::OrderedDict#{node => graph}
-#
-#     #Multiple graph solutions are possible.  OptiGraphs and OptiNodes have unique symbols
-#     id::Symbol
-#     idx_maps::Dict{Symbol,OrderedDict}
-#     nl_idx_maps::Dict{Symbol,OrderedDict}
-#     last_solution_symbol::Union{Nothing,Symbol}
-# end
-#Multiple graph solutions are possible.  OptiGraphs and OptiNodes have unique symbols
 mutable struct NodeOptimizer <: AbstractNodeOptimizer
     optimizer::MOI.ModelLike # optimizer::MOIU.CachingOptimizer
     id::Symbol
@@ -48,14 +30,16 @@ MOI.add_constraint(node_optimizer::AbstractNodeOptimizer,func::MOI.AbstractFunct
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute) = MOI.get(optimizer.optimizer,attr)
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idx) = MOI.get(optimizer.optimizer,attr,idx)
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(optimizer.optimizer,attr,idxs)
-
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
 MOI.set(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.set(optimizer.optimizer,attr,args...)
+
+#MOI.is_valid(optimizer::AbstractNodeOptimizer,args...) = MOI.is_valid(optimizer.optimizer,args...)
+MOI.is_valid(optimizer::AbstractNodeOptimizer, ref::Union{MOI.VariableIndex,MOI.ConstraintIndex}) = MOI.is_valid(optimizer.optimizer,ref)
+MOI.delete(optimizer::NodeOptimizer, cidx::MOI.ConstraintIndex) = MOI.delete(optimizer.optimizer,cidx)
 
 MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T}
     where T<:MathOptInterface.AbstractFunction, set::Type{S}
     where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(optimizer.optimizer,func,set)
-
 MOI.supports(optimizer::AbstractNodeOptimizer, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) = MOI.supports(optimizer.optimizer,attr)
 MOIU.reset_optimizer(optimizer::AbstractNodeOptimizer,args...) = MOIU.reset_optimizer(optimizer.optimizer,args...)
 
@@ -128,19 +112,61 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     #Copy free variables
     MOI.Utilities.copy_free_variables(dest, idxmap, vis_src, MOI.add_variables)
 
-    # Copy variable attributes
+    #Copy variable attributes
     MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap, vis_src)
 
     # Normally, this copies the objective function, but we don't want to do that here
-    # MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
+    #MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
 
-    # Copy constraints
+    #Copy constraints
     MOI.Utilities.pass_constraints(dest, src, copy_names, idxmap,
                      single_variable_types, single_variable_not_added,
                      vector_of_variables_types, vector_of_variables_not_added,
                      filter_constraints=filter_constraints)
 
     return idxmap    #return an idxmap for each source model
+end
+
+function _update_backend_with_src!(id::Symbol,dest::MOI.ModelLike,src::MOI.ModelLike)
+    vis_src = MOI.get(src,MOI.ListOfVariableIndices())
+    src_idx_map = src.idx_maps[id]
+    src_var_map = src_idx_map.varmap
+    src_con_vamp = src_idx_map.conmap
+
+    #COPY NEW VARIABLES TO GRAPH
+    filter_to_add = filter((var) -> !(var in keys(src_var_map)), vis_src)
+    update_idxmap = MOI.Utilities.index_map_for_variable_indices(filter_to_add)
+    MOI.Utilities.copy_free_variables(dest, update_idxmap, filter_to_add, MOI.add_variables)
+    merge!(src_idx_map,update_idxmap)
+
+    #SET VARIABLE ATTRIBUTES TO CATCH MODIFIED VARIABLES
+    MOI.Utilities.pass_attributes(dest, src, false, src_idx_map, vis_src)
+
+    #COPY NEW CONSTRAINTS TO BACKEND
+    src_con_map = src_idx_map.conmap
+    constraint_types = MOI.get(src,MOI.ListOfConstraints())
+    cis_src = vcat([MOI.get(src,MOI.ListOfConstraintIndices{F,S}()) for (F,S) in constraint_types]...)
+    filter_constraints = (cidx) -> !(cidx in keys(src_con_map))
+
+
+    #GET SINGLE VARIABLE CONSTRAINTS
+    single_variable_types = [S for (F, S) in constraint_types if F == MOI.SingleVariable]
+    vector_of_variables_types = [S for (F, S) in constraint_types if F == MOI.VectorOfVariables]
+    vector_of_variables_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables, S}()) for S in vector_of_variables_types]
+    single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
+
+
+    #PASS NEW CONSTRAINTS
+    dest_constraint_types = MOI.get(dest,MOI.ListOfConstraints())
+    cis_dest = vcat([MOI.get(dest,MOI.ListOfConstraintIndices{F,S}()) for (F,S) in dest_constraint_types]...)
+    MOI.Utilities.pass_constraints(dest, src, false, src_idx_map,
+                     single_variable_types, single_variable_not_added,
+                     vector_of_variables_types, vector_of_variables_not_added,
+                     filter_constraints=filter_constraints)
+
+    #TODO: PASS MODIFIED CONSTRAINTS
+
+    return src_idx_map
 end
 
 
@@ -192,24 +218,3 @@ function _set_sum_of_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vecto
     MOI.set(dest,MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),dest_obj)
     return dest_obj
 end
-##########################################################
-
-
-# moi_mode(optimizer::AbstractNodeOptimizer) =
-# moi_bridge_constraints(optimizer::AbstractNodeOptimizer) =
-
-#Specialized methods
-# function MOI.get(node_optimizer::NodeOptimizer, attr::Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute})
-#     return MOI.get(node_optimizer.optimizer,attr)
-# end
-
-#MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.get(optimizer.optimizer,attr,args...)
-#This is ambiguous with: get(model::MathOptInterface.ModelLike, attr::MOI.AnyAttribute, idxs::Array{T,1} where T)
-
-
-# function NodeOptimizer()
-#     caching_mode = MOIU.AUTOMATIC
-#     universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
-#     caching_opt = MOIU.CachingOptimizer(universal_fallback,caching_mode)
-#     return NodeOptimizer(caching_opt)
-# end
