@@ -32,11 +32,8 @@ MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idx) = MOI.get(o
 MOI.get(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(optimizer.optimizer,attr,idxs)
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
 MOI.set(optimizer::AbstractNodeOptimizer,attr::MOI.AnyAttribute,args...) = MOI.set(optimizer.optimizer,attr,args...)
-
-#MOI.is_valid(optimizer::AbstractNodeOptimizer,args...) = MOI.is_valid(optimizer.optimizer,args...)
-MOI.is_valid(optimizer::AbstractNodeOptimizer, ref::Union{MOI.VariableIndex,MOI.ConstraintIndex}) = MOI.is_valid(optimizer.optimizer,ref)
-MOI.delete(optimizer::NodeOptimizer, cidx::MOI.ConstraintIndex) = MOI.delete(optimizer.optimizer,cidx)
-
+MOI.is_valid(optimizer::AbstractNodeOptimizer,idx::MOI.Index) = MOI.is_valid(optimizer.optimizer,idx)
+MOI.delete(optimizer::NodeOptimizer, idx::MOI.Index) = MOI.delete(optimizer.optimizer,idx)
 MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T}
     where T<:MathOptInterface.AbstractFunction, set::Type{S}
     where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(optimizer.optimizer,func,set)
@@ -57,9 +54,6 @@ function MOI.optimize!(optimizer::AbstractNodeOptimizer)
     end
     primals = OrderedDict(zip(vars,MOI.get(optimizer.optimizer,MOI.VariablePrimal(),vars)))
     duals = OrderedDict(zip(cons,MOI.get(optimizer.optimizer,MOI.ConstraintDual(),cons)))
-
-    # optimizer.primals = primals
-    # optimizer.duals = duals
     id = optimizer.id
     optimizer.primals[id] = primals
     optimizer.duals[id] = duals
@@ -92,33 +86,22 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
     idxmap = MOI.Utilities.index_map_for_variable_indices(vis_src)
 
-    # The `NLPBlock` assumes that the order of variables does not change (#849)
-    if MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
-        constraint_types = MOI.get(src, MOI.ListOfConstraints())
+    constraint_types = MOI.get(src, MOI.ListOfConstraints())
+    single_variable_types = [S for (F, S) in constraint_types if F == MOI.SingleVariable]
+    vector_of_variables_types = [S for (F, S) in constraint_types if F == MOI.VectorOfVariables]
+    vector_of_variables_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables, S}()) for S in vector_of_variables_types]
+    single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
 
-        single_variable_types = [S for (F, S) in constraint_types if F == MOI.SingleVariable]
-        vector_of_variables_types = [S for (F, S) in constraint_types if F == MOI.VectorOfVariables]
-
-        vector_of_variables_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables, S}()) for S in vector_of_variables_types]
-        single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
-    else
-        #this collects the variable set types that the destination model supports
-        vector_of_variables_types, _, vector_of_variables_not_added,
-        single_variable_types, _, single_variable_not_added =
-        MOI.Utilities.try_constrain_variables_on_creation(dest, src, idxmap, MOI.add_constrained_variables, MOI.add_constrained_variable)
-    end
-
-
-    #Copy free variables
+    #Copy free variables into graph optimizer
     MOI.Utilities.copy_free_variables(dest, idxmap, vis_src, MOI.add_variables)
 
-    #Copy variable attributes
+    #Copy variable attributes (e.g. name, and VariablePrimalStart())
     MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap, vis_src)
 
-    # Normally, this copies the objective function, but we don't want to do that here
+    # Normally, this copies ObjectiveSense and ObjectiveFunction, but we don't want to do that here
     #MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
 
-    #Copy constraints
+    #Copy constraints into graph optimizer
     MOI.Utilities.pass_constraints(dest, src, copy_names, idxmap,
                      single_variable_types, single_variable_not_added,
                      vector_of_variables_types, vector_of_variables_not_added,
@@ -139,15 +122,24 @@ function _update_backend_with_src!(id::Symbol,dest::MOI.ModelLike,src::MOI.Model
     MOI.Utilities.copy_free_variables(dest, update_idxmap, filter_to_add, MOI.add_variables)
     merge!(src_idx_map,update_idxmap)
 
-    #SET VARIABLE ATTRIBUTES TO CATCH MODIFIED VARIABLES
+    #SET VARIABLE ATTRIBUTES TO CATCH VARIABLE UPDATES (e.g. primal starts)
     MOI.Utilities.pass_attributes(dest, src, false, src_idx_map, vis_src)
 
-    #COPY NEW CONSTRAINTS TO BACKEND
+    #MODIFY CONSTRAINTS
     src_con_map = src_idx_map.conmap
     constraint_types = MOI.get(src,MOI.ListOfConstraints())
-    cis_src = vcat([MOI.get(src,MOI.ListOfConstraintIndices{F,S}()) for (F,S) in constraint_types]...)
-    filter_constraints = (cidx) -> !(cidx in keys(src_con_map))
+    cis_src = [MOI.get(src,MOI.ListOfConstraintIndices{F,S}()) for (F,S) in constraint_types]
 
+    #DELETE CONSTRAINTS
+    cis_src_vcat = vcat(cis_src...)
+    cis_remove_from_idx_map = setdiff(keys(src_idx_map.conmap),cis_src_vcat)
+    for cidx in cis_remove_from_idx_map
+        MOI.delete(dest,src_idx_map.conmap[cidx])
+        Base.delete!(src_idx_map,cidx)
+    end
+
+    #GET FILTER FOR NEWLY ADDED CONSTRAINTS
+    filter_constraints = (cidx) -> !(cidx in keys(src_con_map))
 
     #GET SINGLE VARIABLE CONSTRAINTS
     single_variable_types = [S for (F, S) in constraint_types if F == MOI.SingleVariable]
@@ -156,7 +148,7 @@ function _update_backend_with_src!(id::Symbol,dest::MOI.ModelLike,src::MOI.Model
     single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
 
 
-    #PASS NEW CONSTRAINTS
+    #PASS NEW CONSTRAINTS INTO GRAPH BACKEND
     dest_constraint_types = MOI.get(dest,MOI.ListOfConstraints())
     cis_dest = vcat([MOI.get(dest,MOI.ListOfConstraintIndices{F,S}()) for (F,S) in dest_constraint_types]...)
     MOI.Utilities.pass_constraints(dest, src, false, src_idx_map,
@@ -164,7 +156,29 @@ function _update_backend_with_src!(id::Symbol,dest::MOI.ModelLike,src::MOI.Model
                      vector_of_variables_types, vector_of_variables_not_added,
                      filter_constraints=filter_constraints)
 
-    #TODO: PASS MODIFIED CONSTRAINTS
+    #This would update constraint attributes, such as names and possibly dual start
+    for i = 1:length(cis_src)
+        MOI.Utilities.pass_attributes(dest, src, false, src_idx_map,cis_src[i], MOI.set)
+    end
+
+    #TODO DELETE VARIABLES
+
+
+    #UPDATE CONSTRAINT SETS
+    for i = 1:length(cis_src)
+        cis_src_to_check = cis_src[i]
+        cis_dest_to_check = getindex.(Ref(src_idx_map),cis_src_to_check)
+
+        src_con_set = MOI.get(src,MOI.ConstraintSet(),cis_src_to_check)
+        dest_con_set = MOI.get(dest,MOI.ConstraintSet(),cis_dest_to_check)
+
+        idx_to_set = findall(src_con_set .!= dest_con_set)
+        for idx in idx_to_set
+            MOI.set(dest,MOI.ConstraintSet(),cis_dest_to_check[idx],src_con_set[idx])
+        end
+    end
+
+    #TODO: UPDATE CONSTRAINT FUNCS
 
     return src_idx_map
 end
@@ -218,3 +232,21 @@ function _set_sum_of_objectives!(dest::MOI.ModelLike,srcs::Vector,idxmaps::Vecto
     MOI.set(dest,MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),dest_obj)
     return dest_obj
 end
+
+
+# NOTE: JuMP checks for NLPBlock and tries to constrain variables on creation otherwise
+# The `NLPBlock` assumes that the order of variables does not change (#849)
+# if MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
+#     constraint_types = MOI.get(src, MOI.ListOfConstraints())
+#
+#     single_variable_types = [S for (F, S) in constraint_types if F == MOI.SingleVariable]
+#     vector_of_variables_types = [S for (F, S) in constraint_types if F == MOI.VectorOfVariables]
+#
+#     vector_of_variables_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables, S}()) for S in vector_of_variables_types]
+#     single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
+# else
+#     #this collects the variable set types that the destination model supports
+#     vector_of_variables_types, _, vector_of_variables_not_added,
+#     single_variable_types, _, single_variable_not_added =
+#     MOI.Utilities.try_constrain_variables_on_creation(dest, src, idxmap, MOI.add_constrained_variables, MOI.add_constrained_variable)
+# end

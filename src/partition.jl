@@ -28,7 +28,7 @@ function _check_valid_partition()
 end
 
 #NODE PARTITION
-#Use a HyperGraph and reference map
+#Partition with a HyperGraph and a reference map
 function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
     partition = Partition()
     hypernode_vectors = partition_list(hypergraph,node_membership_vector)
@@ -45,7 +45,7 @@ function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},
     return partition
 end
 
-#Use vector of optinodes
+#Partition with vectors of optinodes
 function Partition(graph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
     partition = Partition()
     optiedge_vectors,cross_edges = identify_edges(graph,optinode_vectors)
@@ -74,6 +74,7 @@ function Partition(graph::OptiGraph,node_membership_vector::Vector{Int64})
 end
 
 #EDGE PARTITION
+#Partition with vectors of optiedges
 function Partition(graph::OptiGraph,optiedge_vectors::Vector{Vector{OptiEdge}})
     partition = Partition()
     optinode_vectors,cross_nodes = identify_nodes(graph,optiedge_vectors)
@@ -91,8 +92,12 @@ function Partition(graph::OptiGraph,optiedge_vectors::Vector{Vector{OptiEdge}})
 end
 
 #NODE-EDGE PARTITION (e.g. partitioning a bipartite graph)
-function Partition(graph::OptiGraph,cross_nodes::Vector{OptiNode},cross_edges::Vector{OptiEdge})
+function Partition(graph::OptiGraph,subgraphs::Vector{OptiGraph})
 end
+#Partition with vectors of shared nodes and edges
+# function Partition(graph::OptiGraph,cross_nodes::Vector{OptiNode},cross_edges::Vector{OptiEdge})
+# end
+
 
 
 
@@ -141,7 +146,7 @@ function make_subgraphs!(graph::OptiGraph,partition::Partition)
     return nothing
 end
 
-#Creata new set of nodes on a optigraph
+#Create a new set of nodes on a optigraph
 function _set_nodes(graph::OptiGraph,nodes::Vector{OptiNode})
     graph.optinodes = nodes
     for (idx,node) in enumerate(graph.optinodes)

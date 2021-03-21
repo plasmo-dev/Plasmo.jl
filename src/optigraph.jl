@@ -31,7 +31,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     objective_function::JuMP.AbstractJuMPScalar
 
     # IDEA: moi_backend interfaces with solvers.  For standard optimization solvers, we aggregate a MOI backend on the fly using optinodes
-    moi_backend::Union{Nothing,MOI.ModelLike}
+    moi_backend::Union{Nothing,MOI.ModelLike} #could just make this the optimizer.
 
     #IDEA: graph_backend used for graph functions (e.g. neighbors)
     graph_backend::Union{Nothing,HyperGraphBackend}

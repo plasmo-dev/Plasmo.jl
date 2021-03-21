@@ -34,6 +34,7 @@ function _aggregate_backends!(graph::OptiGraph)
     return nothing
 end
 
+#TODO: complete incremental updates.  Figure out changes to make to graph optimizer
 function _update_backend!(graph::OptiGraph)
     dest = JuMP.backend(graph)
     nodes = all_nodes(graph)
