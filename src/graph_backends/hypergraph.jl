@@ -129,7 +129,7 @@ SparseArrays.sparse(hypergraph::HyperGraph) = LightGraphs.incidence_matrix(hyper
 """
     incident_edges(hypergraph::HyperGraph,hypernode::HyperNode)
 
-    Identify the incident hyperedges to a `HyperNode`.
+Identify the incident hyperedges to a `HyperNode`.
 """
 function incident_edges(g::HyperGraph,node::HyperNode)
     hyperedges = HyperEdge[]
@@ -142,7 +142,7 @@ end
 """
     induced_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
 
-    Identify the induced hyperedges to a vector of `HyperNode`s.
+Identify the induced hyperedges to a vector of `HyperNode`s.
 """
 function induced_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
     external_nodes = setdiff(hypergraph.vertices,hypernodes) #nodes in hypergraph that aren't in hypernodes
@@ -182,7 +182,7 @@ end
 """
     incident_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
 
-    Identify the incident hyperedges to a vector of `HyperNode`s.
+Identify the incident hyperedges to a vector of `HyperNode`s.
 """
 function incident_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
     external_nodes = setdiff(hypergraph.vertices,hypernodes) #nodes in hypergraph that aren't in hypernodes
@@ -222,7 +222,7 @@ end
 """
     identify_edges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
 
-    Identify both induced partition edges and cut edges given a partition of `HyperNode` vectors.
+Identify both induced partition edges and cut edges given a partition of `HyperNode` vectors.
 """
 function identify_edges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
     nparts = length(partitions)
@@ -271,7 +271,7 @@ end
 """
     identify_nodes(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}})
 
-    Identify both induced partition nodes and cut nodes given a partition of `HyperEdge` vectors.
+Identify both induced partition nodes and cut nodes given a partition of `HyperEdge` vectors.
 """
 function identify_nodes(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}})
     nparts = length(partitions)
@@ -318,6 +318,9 @@ function identify_nodes(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEd
     return partition_nodes,shared_nodes
 end
 
+identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}}) = identify_edges(hypergraph,partitions)
+identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}}) = identify_nodes(hypergraph,partitions)
+
 """
     neighborhood(g::HyperGraph,nodes::Vector{OptiNode},distance::Int64)
 
@@ -343,28 +346,6 @@ function expand(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
     new_edges =  induced_edges(g,new_nodes)
     return new_nodes, new_edges
 end
-
-#Partition Functions
-function partition_list(hypergraph::HyperGraph,membership_vector::Vector)
-    unique_parts = unique(membership_vector)
-    unique_parts = sort(unique_parts)
-
-    #map unique parts to partitions
-    part_map = Dict()
-    for (i,part) in enumerate(unique_parts)
-        part_map[part] = i
-    end
-
-    nparts = length(unique_parts)
-    partitions =[HyperNode[] for _ = 1:nparts]
-    for (vertex,part) in enumerate(membership_vector)
-        push!(partitions[part_map[part]],getnode(hypergraph,vertex))
-    end
-    return partitions
-end
-
-
-
 
 LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal not yet supported on hypergraphs"))
 LightGraphs.rem_vertex!(g::HyperGraph) = throw(error("Vertex removal not yet supported on hypergraphs"))

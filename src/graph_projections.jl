@@ -27,30 +27,6 @@ function hyper_graph(graph::OptiGraph)
     return hypergraph,hyper_map
 end
 @deprecate gethypergraph hyper_graph
-
-"""
-    edge_hypergraph(graph::OptiGraph)
-
-Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
-that maps hypernodes and hyperedges to the original optinodes and optiedges.
-"""
-function edge_hyper_graph(graph::OptiGraph)
-    hypergraph = HyperGraph()
-    hyper_map = Dict()
-
-    for edge in all_edges(graph)
-        hypernode = add_node!(hypergraph)
-        hyper_map[hypernode] = edge
-        hyper_map[edge] = hypernode
-    end
-
-    #TODO: get nodes that connect edges. Some optinodes won't have a mapping to the edge hyper graph
-
-
-    return hypergraph,hyper_map
-end
-
-
 """
     clique_graph(graph::OptiGraph)
 
@@ -90,15 +66,6 @@ function clique_graph(optigraph::OptiGraph)
     return graph,graph_map
 end
 @deprecate getcliquegraph clique_graph
-"""
-    edge_clique_graph(graph::OptiGraph)
-
-Retrieve the line graph clique representation of the optigraph `graph`. Returns a [`LightGraphs.Graph`](@ref) object, as well as a dictionary
-that maps vertices and edges to the optinodes and optiedges. The dual cliquegraph inverts nodes and edges to allow edge partitioning.
-"""
-function edge_clique_graph(optigraph::OptiGraph)
-end
-
 
 """
     bipartite_graph(graph::OptiGraph)
@@ -110,20 +77,57 @@ function bipartite_graph(optigraph::OptiGraph)
     graph_map = Dict()
 
     for optinode in all_nodes(optigraph)
-        add_vertex!(graph,bipartite = 1)
+        LightGraphs.add_vertex!(graph,bipartite = 1)
         node_vertex = nv(graph)
-        graph_map[vertex] = optinode
+        graph_map[node_vertex] = optinode
         graph_map[optinode] = node_vertex
     end
 
     for edge in all_edges(optigraph)
-        add_vertex!(graph,bipartite = 2)
+        LightGraphs.add_vertex!(graph,bipartite = 2)
         edge_vertex = nv(graph)
         graph_map[edge] = edge_vertex
+        graph_map[edge_vertex] = edge
         nodes = edge.nodes
         edge_vertices = [graph_map[optinode] for optinode in nodes]
         for node_vertex in edge_vertices
             LightGraphs.add_edge!(graph,edge_vertex,node_vertex)
         end
     end
+    return graph,graph_map
+end
+
+
+#TODO
+"""
+    edge_clique_graph(graph::OptiGraph)
+
+Retrieve the line graph clique representation of the optigraph `graph`. Returns a [`LightGraphs.Graph`](@ref) object, as well as a dictionary
+that maps vertices and edges to the optinodes and optiedges. The dual cliquegraph inverts nodes and edges to allow edge partitioning.
+"""
+function edge_clique_graph(optigraph::OptiGraph)
+end
+
+
+#TODO
+"""
+    edge_hypergraph(graph::OptiGraph)
+
+Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
+that maps hypernodes and hyperedges to the original optinodes and optiedges.
+"""
+function edge_hyper_graph(graph::OptiGraph)
+    hypergraph = HyperGraph()
+    hyper_map = Dict()
+
+    for edge in all_edges(graph)
+        hypernode = add_node!(hypergraph)
+        hyper_map[hypernode] = edge
+        hyper_map[edge] = hypernode
+    end
+
+    #TODO: get nodes that connect edges. Some optinodes won't have a mapping to the edge hyper graph
+
+
+    return hypergraph,hyper_map
 end

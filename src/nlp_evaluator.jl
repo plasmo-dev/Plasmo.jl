@@ -1,4 +1,4 @@
-#NOTE Code inspired by JuMP NLPEvaluator and MadNLP.jl NLP implementation
+#NOTE Code inspired by JuMP's NLPEvaluator and MadNLP.jl implementation
 #OptiGraph NLP Evaluator.  Wraps Local JuMP NLP Evaluators.
 
 #IDEA: evaluator could work in multiple modes.
@@ -389,7 +389,6 @@ function MOI.eval_constraint_jacobian(d::OptiGraphNLPEvaluator,jac,x)
     end
 end
 
-#TODO
+#TODO:
 MOI.objective_expr(d::OptiGraphNLPEvaluator) = 0
-
 MOI.constraint_expr(d::OptiGraphNLPEvaluator) = 0

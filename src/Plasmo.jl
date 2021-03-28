@@ -41,7 +41,6 @@ add_node!,add_edge!,add_subgraph!,
 
 getedge, getedges, all_edges, find_edge,
 
-
 #Graph Functions
 incident_edges, neighborhood, induced_edges, expand,
 
@@ -145,7 +144,7 @@ include("optimizer_interface.jl")
 
 include("graph_projections.jl")
 
-include("hypergraph_interface.jl")
+include("graph_interface.jl")
 
 include("nlp_macro.jl")
 

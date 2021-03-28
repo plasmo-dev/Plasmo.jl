@@ -1,7 +1,7 @@
 """
     BipartiteGraph
 
-A simple bipartite type.  Tracks vertex sets of the bipartite graph.
+A simple bipartite graph.  Contains two vertex sets to enforce bipartite structure.
 """
 mutable struct BipartiteGraph <: LightGraphs.AbstractGraph{Int64}
     graph::LightGraphs.Graph
@@ -12,32 +12,44 @@ end
 BipartiteGraph() = BipartiteGraph(LightGraphs.Graph(),Vector{Int64}(),Vector{Int64}())
 
 
-function LightGraphs.add_vertex!(graph::BipartiteGraph;bipartite = 1)
-    added = LightGraphs.add_vertex!(graph.lightgraph)
-    vertex = nv(graph.lightgraph)
+function LightGraphs.add_vertex!(bgraph::BipartiteGraph;bipartite = 1)
+    added = LightGraphs.add_vertex!(bgraph.graph)
+    vertex = nv(bgraph.graph)
     if bipartite == 1
-        push!(vertexset1,vertex)
+        push!(bgraph.vertexset1,vertex)
     else
         @assert bipartite == 2
-        push!(vertexset2,vertex)
+        push!(bgraph.vertexset2,vertex)
     end
     return added
 end
 
 #Edges must connect nodes in different vertex sets
-function LightGraphs.add_edge!(graph::BipartiteGraph,from::Int64,to::Int64)
-    length(intersect((from,to),graph.vertexset1)) == 1 || error("$from and $to must be in separate vertex sets")
-    return LightGraphs.add_edge!(graph,from,int)
+function LightGraphs.add_edge!(bgraph::BipartiteGraph,from::Int64,to::Int64)
+    length(intersect((from,to),bgraph.vertexset1)) == 1 || error("$from and $to must be in separate vertex sets")
+    return LightGraphs.add_edge!(bgraph.graph,from,to)
 end
 
-LightGraphs.edges(graph::BipartiteGraph) = LightGraph.edges(graph.lightgraph)
-LightGraphs.edgetype(graph::BipartiteGraph) = LightGraphs.SimpleGraphs.SimpleEdge{Int64}
-LightGraphs.has_edge(graph::BipartiteGraph,from::Int64,to::Int64) = LightGraphs.has_edge(graph.lightgraph,from,to)
+LightGraphs.edges(bgraph::BipartiteGraph) = LightGraph.edges(bgraph.graph)
+LightGraphs.edgetype(bgraph::BipartiteGraph) = LightGraphs.SimpleGraphs.SimpleEdge{Int64}
 
+LightGraphs.has_edge(bgraph::BipartiteGraph,from::Int64,to::Int64) = LightGraphs.has_edge(bgraph.graph,from,to)
+LightGraphs.has_vertex(bgraph::BipartiteGraph, v::Integer) = LightGraphs.has_vertex(bgraph.graph,v)
 
-LightGraphs.has_vertex(graph::BipartiteGraph, v::Integer) = LightGraphs.has_vertex(graph.lightgraph,v)
-LightGraphs.is_directed(graph::BipartiteGraph) = false
+LightGraphs.is_directed(bgraph::BipartiteGraph) = false
 LightGraphs.is_directed(::Type{BipartiteGraph}) = false
-LightGraphs.ne(graph::BipartiteGraph) = LightGraphs.ne(graph.lightgraph)
-LightGraphs.nv(graph::BipartiteGraph) = LightGraphs.nv(graph.lightgraph)
-LightGraphs.vertices(graph::BipartiteGraph) = LightGraphs.vertices(graph.lightgraph)
+
+LightGraphs.ne(bgraph::BipartiteGraph) = LightGraphs.ne(bgraph.graph)
+LightGraphs.nv(bgraph::BipartiteGraph) = LightGraphs.nv(bgraph.graph)
+LightGraphs.vertices(bgraph::BipartiteGraph) = LightGraphs.vertices(bgraph.graph)
+
+#TODO: try forwarding methods this way
+macro forward_bipartite_method(func)
+    return quote
+        function $(func)(bgraph::BipartiteGraph,args...)
+            output = $func(bgraph.graph,args...)
+            return output
+        end
+    end
+end
+@forward_bipartite_method(LightGraphs.all_neighbors)

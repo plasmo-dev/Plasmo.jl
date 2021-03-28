@@ -21,7 +21,6 @@ function _aggregate_backends!(graph::OptiGraph)
 
     for src in srces
         idx_map = append_to_backend!(dest, src, false; filter_constraints=nothing)
-
         #remember idx_map: {src_attribute => dest_attribute}
         _set_idx_map(id,src,idx_map) #this retains an index map on each src (node) model
     end
@@ -34,7 +33,6 @@ function _aggregate_backends!(graph::OptiGraph)
     return nothing
 end
 
-#TODO: complete incremental updates.  Figure out changes to make to graph optimizer
 function _update_backend!(graph::OptiGraph)
     dest = JuMP.backend(graph)
     nodes = all_nodes(graph)
@@ -45,7 +43,7 @@ function _update_backend!(graph::OptiGraph)
         _update_backend_with_src!(graph.id,dest,src)
     end
 
-    #Update linkconstraints
+    #TODO: Update linkconstraints
     # for edge in all_edges(graph)
     #     _update_link_constraints!(graph.id,edge)
     # end
@@ -279,13 +277,3 @@ function _create_nlp_block_data(graph::OptiGraph)
     end
     return MOI.NLPBlockData(bounds,OptiGraphNLPEvaluator(graph),has_nl_obj)
 end
-
-
-# function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
-#     optimizer = MOI.instantiate(optimizer_constructor)
-#     node.model.moi_backend.optimizer = optimizer
-#     return nothing
-# end
-
-# MOI.empty!(backend)
-# _aggregate_backends!(graph)

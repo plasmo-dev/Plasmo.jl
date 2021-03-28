@@ -110,6 +110,7 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
+#IDEA: Update an existing graph optimizer (backend) with src model changes
 function _update_backend_with_src!(id::Symbol,dest::MOI.ModelLike,src::MOI.ModelLike)
     vis_src = MOI.get(src,MOI.ListOfVariableIndices())
     src_idx_map = src.idx_maps[id]
