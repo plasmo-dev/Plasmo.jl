@@ -96,6 +96,12 @@ function LightGraphs.all_neighbors(g::HyperGraph,node::HyperNode)
     return unique(neighbors)
 end
 
+"""
+    LightGraphs.incidence_matrix(hypergraph::HyperGraph)
+
+Obtain the incidence matrix representation of `hypergraph`.  Rows correspond to vertices. Columns correspond to hyperedges.
+Returns a sparse matrix.
+"""
 function LightGraphs.incidence_matrix(hypergraph::HyperGraph)
     I = []
     J = []
@@ -110,6 +116,11 @@ function LightGraphs.incidence_matrix(hypergraph::HyperGraph)
     return SparseArrays.sparse(I,J,V)
 end
 
+"""
+    LightGraphs.adjacency_matrix(hypergraph::HyperGraph)
+
+Obtain the adjacency matrix from `hypergraph.` Returns a sparse matrix.
+"""
 function LightGraphs.adjacency_matrix(hypergraph::HyperGraph)
     I = []
     J = []
@@ -281,7 +292,6 @@ function identify_nodes(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEd
     J = []
     for i = 1:nparts
        for hyperedge in partitions[i]
-           #vertices = hyperedge.vertices
            j = getindex(hypergraph,hyperedge)
            push!(I,i)
            push!(J,j)
@@ -318,8 +328,37 @@ function identify_nodes(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEd
     return partition_nodes,shared_nodes
 end
 
-identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}}) = identify_edges(hypergraph,partitions)
-identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}}) = identify_nodes(hypergraph,partitions)
+"""
+    identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode})
+
+Identify the edge cut separators given a vector of hypernode partitions. Returns induced elements (nodes and edges) and cut edges.
+
+    identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}})
+
+Identify the node separators given a vector of hyperedge partitions. Returns induced elements (nodes and edges) and cut nodes.
+
+"""
+function identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
+     induced_edges, cross_edges = identify_edges(hypergraph,partitions)
+     @assert length(induced_edges) == length(partitions)
+     induced_elements = [[] for _ = 1:length(partitions)]
+     for i = 1:length(partitions)
+         append!(induced_elements[i],induced_edges[i])
+         append!(induced_elements[i],partitions[i])
+     end
+     return induced_elements,cross_edges
+end
+
+function identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}})
+    incuded_nodes, cross_nodes = identify_nodes(hypergraph,partitions)
+    @assert length(induced_nodes) == length(partitions)
+    induced_elements = [[] for _ = 1:length(partitions)]
+    for i = 1:length(partitions)
+        append!(induced_elements[i],induced_nodes[i])
+        append!(induced_elements[i],partitions[i])
+    end
+    return induced_elements,cross_nodes
+end
 
 """
     neighborhood(g::HyperGraph,nodes::Vector{OptiNode},distance::Int64)

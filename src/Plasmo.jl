@@ -25,15 +25,14 @@ export
 ################################
 AbstractOptiGraph, OptiGraph, ModelGraph,
 
-#ModelNode and LinkEdge
-OptiNode,OptiEdge,
+OptiNode, OptiEdge,
 
 #deprecated exports
 ModelNode,LinkEdge,getnumnodes, getnumedges,
 
 OptiGraphNLPEvaluator,
 
-getsubgraph,getsubgraphs,all_subgraphs,
+getsubgraph, getsubgraphs, all_subgraphs,
 
 getnode, getnodes, all_nodes, find_node,
 
@@ -48,7 +47,7 @@ incident_edges, neighborhood, induced_edges, expand,
 LinkConstraint,LinkConstraintRef,
 
 #Partition
-Partition,
+Partition, make_subgraphs!, apply_partition!,
 
 #Solvers/Optimizers
 AbstractGraphOptimizer,
@@ -77,7 +76,7 @@ set_model, set_optimizer, reset_model, setattribute, set_attached_node,
 is_nodevariable, is_linked_variable,
 
 # Aggregation
-make_subgraphs!,aggregate,combine,
+aggregate,combine,
 
 # these are deprecated
 nodevalue, nodedual, linkdual,
@@ -96,13 +95,10 @@ HyperGraph, HyperEdge, HyperNode,
 # Hypergraph getters
 hyper_graph,gethypergraph, gethyperedge, gethyperedges,
 
-# Hypergraph adders
-add_hypernode!,add_hyperedge!,
-
 # Hypergraph functions
 in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to,get_connected_from,
 
-in_neighbors,out_neighbors,neighbors, has_edge, in_edges, out_edges,
+in_neighbors,out_neighbors, neighbors, has_edge, in_edges, out_edges,
 
 # Hypergraph Projections
 BipartiteGraph,

@@ -122,20 +122,19 @@ end
 function Partition(graph::LightGraphs.AbstractGraph,membership_vector::Vector{Int64},ref_map::Dict)
     partition_elements = _partition_list(membership_vector)
     induced_elements,cross_elements = identify_separators(graph,partition_elements)
-    @assert length(partition_elements) == length(induced_elements)
-    partition = Partition(partition_elements,induced_elements,cross_elements,ref_map)
+    partition = Partition(induced_elements,cross_elements,ref_map)
     return partition
 end
 
 #Partition(partition_elements::Vector{Vector},induced_elements::Vector{Vector},cross_elements::Vector,ref_map::Dict)
-function Partition(partition_elements::Vector,induced_elements::Vector,cross_elements::Vector,ref_map::Dict)
+function Partition(induced_elements::Vector,cross_elements::Vector,ref_map::Dict)
     partition = Partition()
-    subpart_optinodes,subpart_optiedges = identify_elements(partition_elements,induced_elements,ref_map)
-    cross_nodes,cross_edges = identify_elements(cross_elements,ref_map)
+    subpart_optinodes,subpart_optiedges = identify_induced_elements(induced_elements,ref_map)
+    cross_nodes,cross_edges = identify_cross_elements(cross_elements,ref_map)
 
     partition.optinodes = cross_nodes
     partition.optiedges = cross_edges
-    for i = 1:length(partition_elements)
+    for i = 1:length(induced_elements)
         subpartition = Partition()
         subpartition.optinodes = subpart_optinodes[i]
         subpartition.optiedges = subpart_optiedges[i]
@@ -146,7 +145,7 @@ function Partition(partition_elements::Vector,induced_elements::Vector,cross_ele
 end
 
 #Identify cross elements
-function identify_elements(elements::Vector,ref_map::Dict)
+function identify_cross_elements(elements::Vector where T,ref_map::Dict)
     optinodes = OptiNode[]
     optiedges = OptiEdge[]
     opti_elements = getindex.(Ref(ref_map),elements)
@@ -162,25 +161,15 @@ function identify_elements(elements::Vector,ref_map::Dict)
 end
 
 #Identify partition elements
-function identify_elements(partition_elements::Vector,induced_elements::Vector,ref_map::Dict)
-    parts = [getindex.(Ref(ref_map),partition_elements[i]) for i = 1:length(partition_elements)]
+function identify_induced_elements(induced_elements::Vector where T,ref_map::Dict)
     induced = [getindex.(Ref(ref_map),induced_elements[i]) for i = 1:length(induced_elements)]
-    n_parts = length(parts)
+    n_parts = length(induced)
 
     optinode_parts = Vector{Vector}(undef,n_parts)
     optiedge_parts = Vector{Vector}(undef,n_parts)
     for i = 1:n_parts
         optinode_parts[i] = OptiNode[]
         optiedge_parts[i] = OptiEdge[]
-    end
-    for i = 1:n_parts
-        for element in parts[i]
-            if isa(element,OptiNode)
-                push!(optinode_parts[i],element)
-            elseif isa(element,OptiEdge)
-                push!(optiedge_parts[i],element)
-            end
-        end
     end
     for i = 1:n_parts
         for element in induced[i]
@@ -262,7 +251,7 @@ end
 
 Create subgraphs in `optigraph` using a 'partition'.
 """
-function make_subgraphs!(graph::OptiGraph,partition::Partition)
+function apply_partition!(graph::OptiGraph,partition::Partition)
     root = partition
     graph.subgraphs = OptiGraph[]
 
@@ -281,6 +270,7 @@ function make_subgraphs!(graph::OptiGraph,partition::Partition)
     end
     return nothing
 end
+@deprecate make_subgraphs! apply_partition!
 
 
 #Create a new set of nodes on a optigraph
