@@ -68,9 +68,9 @@ end
 @deprecate getcliquegraph clique_graph
 
 """
-    bipartite_graph(graph::OptiGraph)
+    bipartite_graph(optigraph::OptiGraph)
 
-Create a bipartite graph using a optigraph
+Create a bipartite graph representation from `optigraph`.  The bipartite graph contains two sets of vertices corresponding to optinodes and optiedges respectively.
 """
 function bipartite_graph(optigraph::OptiGraph)
     graph = BipartiteGraph()
@@ -126,7 +126,10 @@ function edge_hyper_graph(graph::OptiGraph)
         hyper_map[edge] = hypernode
     end
 
-    #TODO: get nodes that connect edges. Some optinodes won't have a mapping to the edge hyper graph
+    for node in all_nodes(graph)
+    end
+
+    #TODO: get nodes that connect edges. Periphery nodes won't be in the mapping.
 
 
     return hypergraph,hyper_map
