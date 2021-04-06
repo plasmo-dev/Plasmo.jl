@@ -33,6 +33,7 @@ function _aggregate_backends!(graph::OptiGraph)
     return nothing
 end
 
+#NOTE: I think current update implementation is too slow on large models
 function _update_backend!(graph::OptiGraph)
     dest = JuMP.backend(graph)
     nodes = all_nodes(graph)
@@ -139,8 +140,12 @@ function _populate_node_results!(graph::OptiGraph)
             append!(dest_cons,dest_con)
         end
 
-        primals = OrderedDict(zip(vars,MOI.get(graph_backend,MOI.VariablePrimal(),dest_vars)))
-        duals = OrderedDict(zip(cons,MOI.get(graph_backend,MOI.ConstraintDual(),dest_cons)))
+        if length(dest_vars) > 0
+            primals = OrderedDict(zip(vars,MOI.get(graph_backend,MOI.VariablePrimal(),dest_vars)))
+        end
+        if length(dest_cons) > 0
+            duals = OrderedDict(zip(cons,MOI.get(graph_backend,MOI.ConstraintDual(),dest_cons)))
+        end
         src.primals[id] = primals
         src.duals[id] = duals
         src.last_solution_id = id
@@ -152,7 +157,7 @@ function _populate_node_results!(graph::OptiGraph)
         edge.dual_values[id][linkref.idx] = MOI.get(graph_backend,MOI.ConstraintDual(),edge.idx_maps[id][linkref])
     end
 
-    #Nonlinear duals #TODO: multiple node solutions
+    #Nonlinear duals #TODO: multiple node solutions with nlp duals
     if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
         nlp_duals = MOI.get(graph_backend,MOI.NLPBlockDual())
         for node in nodes
