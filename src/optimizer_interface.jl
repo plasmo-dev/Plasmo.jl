@@ -142,12 +142,12 @@ function _populate_node_results!(graph::OptiGraph)
 
         if length(dest_vars) > 0
             primals = OrderedDict(zip(vars,MOI.get(graph_backend,MOI.VariablePrimal(),dest_vars)))
+            src.primals[id] = primals
         end
         if length(dest_cons) > 0
             duals = OrderedDict(zip(cons,MOI.get(graph_backend,MOI.ConstraintDual(),dest_cons)))
+            src.duals[id] = duals
         end
-        src.primals[id] = primals
-        src.duals[id] = duals
         src.last_solution_id = id
     end
 
