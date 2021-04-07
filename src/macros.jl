@@ -225,7 +225,7 @@ function _get_name(c::Expr)
     end
 end
 
-#TODO
+#TODO: parallel model building
 #@blas_safe_threads
 # const blas_num_threads = Ref{Int}()
 # function set_blas_num_threads(n::Integer;permanent::Bool=false)

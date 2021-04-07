@@ -25,63 +25,41 @@ export
 ################################
 AbstractOptiGraph, OptiGraph, ModelGraph,
 
-#ModelNode and LinkEdge
-OptiNode,OptiEdge,
+OptiNode, OptiEdge,
 
 #deprecated exports
-ModelNode,LinkEdge,getnumnodes, getnumedges,
+ModelNode, LinkEdge, getnumnodes, getnumedges,
 
 OptiGraphNLPEvaluator,
 
-getsubgraph,getsubgraphs,all_subgraphs,
+add_node!, getnode, getnodes, all_nodes, find_node, all_node,  num_nodes, num_all_nodes,
 
-getnode, getnodes, all_nodes, find_node,
+add_edge!, getedge, getoptiedge, getedges,  getoptiedges, all_edges, find_edge, all_edge, num_optiedges, num_all_optiedges,
 
-add_node!,add_edge!,add_subgraph!,
-
-getedge, getedges, all_edges, find_edge,
-
+add_subgraph!, getsubgraph, getsubgraphs, all_subgraphs, num_subgraphs, has_subgraphs,
 
 #Graph Functions
 incident_edges, neighborhood, induced_edges, expand,
 
 #LinkConstraint
-LinkConstraint,LinkConstraintRef,
+LinkConstraint, LinkConstraintRef,
 
 #Partition
-Partition,
+Partition, apply_partition!,
 
-#Solvers/Optimizers
-AbstractGraphOptimizer,
+# OptiGraph Modeling
+getlinkconstraints, all_linkconstraints, num_all_variables, num_linkconstraints, num_all_constraints, num_all_linkconstraints,
 
-# solve handles
-optimize!,
+has_objective, has_NLobjective,
 
-# OptiGraph checks
-has_objective,has_NLobjective, has_NLlinkconstraints, has_subgraphs, has_model,
+getmodel, set_model, has_model, getattribute,
 
-num_linkconstraints, num_optiedges, num_nodes,num_subgraphs,
+setattribute, set_attached_node,
 
-num_all_nodes,num_all_optiedges, num_all_variables, num_all_constraints, num_all_linkconstraints,
-
-# OptiGraph getters
-getoptiedge, getoptiedges, getmodel,
-
-incidence_matrix, getlinkconstraints, getattribute,
-
-all_linkconstraints,
-
-# OptiGraph setters
-set_model, set_optimizer, reset_model, setattribute, set_attached_node,
-
-# Variable functions
 is_nodevariable, is_linked_variable,
 
 # Aggregation
-make_subgraphs!,aggregate,combine,
-
-# these are deprecated
-nodevalue, nodedual, linkdual,
+aggregate,
 
 # extras, plotting, etc...
 plot, spy,
@@ -94,35 +72,34 @@ export_graph,
 ######################################
 HyperGraph, HyperEdge, HyperNode,
 
-# Hypergraph getters
-gethypergraph, gethyperedge, gethyperedges,
-
-# Hypergraph adders
-add_hypernode!,add_hyperedge!,
+hyper_graph,  gethyperedge, gethyperedges,
 
 # Hypergraph functions
-in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to,get_connected_from,
+in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to, get_connected_from,
 
-in_neighbors,out_neighbors,neighbors, has_edge, in_edges, out_edges,
+in_neighbors, out_neighbors, neighbors, has_edge, in_edges, out_edges, adjacency_matrix, incidence_matrix,
 
 # Hypergraph Projections
 BipartiteGraph,
-
-copy_graph,
 
 #macros
 @optinode, @linkconstraint,
 
 #deprecated
-@node, @NLnodeconstraint, @NLnodeobjective
+@node, @NLnodeconstraint, @NLnodeobjective,
+
+nodevalue, nodedual, linkdual, gethypergraph, combine, make_subgraphs!
 
 
 #Abstract Types
 abstract type AbstractOptiGraph <: JuMP.AbstractModel end
 abstract type AbstractOptiEdge end
 abstract type AbstractLinkConstraintRef end
-abstract type AbstractGraphOptimizer end
 abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
+
+include("graph_representations/hypergraph.jl")
+
+include("graph_representations/bipartitegraph.jl")
 
 include("moi.jl")
 
@@ -140,15 +117,13 @@ include("aggregate_utils.jl")
 
 include("optimizer_interface.jl")
 
+include("graph_projections.jl")
+
 include("graph_functions.jl")
 
 include("nlp_macro.jl")
 
 include("nlp_evaluator.jl")
-
-include("graphs/hypergraph.jl")
-
-include("graphs/graph_interface.jl")
 
 include("partition.jl")
 

@@ -1,81 +1,125 @@
-struct GraphBackend
-    lightgraph::LightGraphs.AbstractGraph
-    graph_map::Dict
-end
-function GraphBackend(optigraph::OptiGraph)
-    hyper_graph,hyper_map = hypergraph(optigraph)
-    backend = GraphBackend(hyper_graph,hyper_map)
-end
+#Graph Interface for an OptiGraph.  An OptiGraph backend is a hypergraph.  We store the backend to avoid re-creating a hypergraph everytime
+#a graph function is called.  Currently, backend is not kept in sync with optigraph, so we hit _init_graph_backend which catches
+#updates using a flag when new nodes or edges are added.
 
-function set_graph_backend(graph::OptiGraph,backend::GraphBackend = GraphBackend())
-    graph.graph_backend = backend
+#Set graph backend
+function set_graph_backend(graph::OptiGraph)
+    hypergraph,hypermap = hyper_graph(graph)
+    graph.graph_backend = HyperGraphBackend(hypergraph,hypermap,false)
 end
-graph_backend(graph::OptiGraph) = (graph.graph_backend.lightgraph,graph.graph_backend.graph_map)
+set_graph_backend(graph::OptiGraph,backend::HyperGraphBackend) = graph.graph_backend = backend
 
-function LightGraphs.all_neighbors(graph::OptiGraph,node::OptiNode)
-    hyper_graph,hyper_map = graph_backend(graph)
-    hypernode = hyper_map[node]
-    neighbors = LightGraphs.all_neighbors(hyper_graph,hypernode)
-    return [hypermap[neighbor] for neighbor in neighbors]
+graph_backend(graph::OptiGraph) = (graph.graph_backend)
+function graph_backend_data(graph::OptiGraph)
+    return graph.graph_backend.hypergraph,graph.graph_backend.hyper_map
 end
-
-function incident_edges(graph::OptiGraph,node::OptiNode)
-    hyper_graph,hyper_map = graph_backend(graph)
-    hypernode = hypermap[node]
-    i_edges = incident_edges(hypergraph,hypernode)
-    return [hypermap[edge] for edge in i_edges]
-end
-
-function partition_list(graph::OptiGraph,membership_vector::Vector{Int64},ref_map::Dict)
-    unique_parts = unique(membership_vector)  #get unique membership entries
-    unique_parts = sort(unique_parts)
-    nparts = length(unique_parts)             #number of partitions
-
-    partitions = OrderedDict{Int64,Vector{OptiNode}}((k,[]) for k in unique_parts)
-    for (vertex,part) in enumerate(membership_vector)
-        push!(partitions[part],ref_map[vertex])
+function _init_graph_backend(graph::OptiGraph)
+    if graph.graph_backend == nothing
+        set_graph_backend(graph)
+    elseif graph.graph_backend.update_backend == true
+        set_graph_backend(graph)
     end
-    parts = collect(values(partitions))
-    # return [getindex.(Ref(ref_map),parts[i] for i = 1:nparts)]
-    return parts
+    return nothing
 end
-@deprecate getpartitionlist partition_list
 
-#TODO: remove this interface.  It makes more sense to just maintain the mapping and work with the actual graph structure.
-#TODO: Efficient neighborhood implementation
 """
-    neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)::Vector{OptiNode}
+    LightGraphs.all_neighbors(graph::OptiGraph,node::OptiNode)
+
+Retrieve the optinode neighbors of `node` in the optigraph `graph`.  Uses an underlying hypergraph to query for neighbors.
+"""
+function LightGraphs.all_neighbors(graph::OptiGraph,node::OptiNode)
+    _init_graph_backend(graph)
+    lightgraph,graph_map = graph_backend_data(graph)
+    vertex = graph_map[node]
+    neighbors = LightGraphs.all_neighbors(lightgraph,vertex)
+    return getindex.(Ref(graph_map),neighbors)
+end
+
+"""
+    LightGraphs.induced_subgraph(graph::OptiGraph,nodes::Vector{OptiNode})
+
+Create an induced subgraph of optigraph given a vector of optinodes.
+"""
+function LightGraphs.induced_subgraph(graph::OptiGraph,nodes::Vector{OptiNode})
+    _init_graph_backend(graph)
+    edges = induced_edges(graph,nodes)
+    subgraph = OptiGraph(nodes,edges)
+    return subgraph
+end
+
+#Incident edges to a set of optinodes
+"""
+    incident_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+
+Retrieve incident edges to a set of optinodes.
+
+    incident_edges(graph::OptiGraph,node::OptiNode)
+
+Retrieve incident edges to a single optinode.
+"""
+function incident_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+    _init_graph_backend(graph)
+    hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+    hypernodes = getindex.(Ref(hyper_map),nodes)
+    incidentedges = incident_edges(hypergraph,hypernodes)
+    return getindex.(Ref(hyper_map),incidentedges)
+end
+incident_edges(graph::OptiGraph,node::OptiNode) = incident_edges(graph,[node])
+
+"""
+    induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+
+Retrieve induced edges to a set of optinodes.
+"""
+function induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+    _init_graph_backend(graph)
+    hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+    hypernodes = getindex.(Ref(hyper_map),nodes)
+    inducededges = induced_edges(hypergraph,hypernodes)
+    return getindex.(Ref(hyper_map),inducededges)
+end
+
+"""
+    identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
+
+Identify induced edges and edge separators from a vector of optinode partitions.
+"""
+function identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
+    _init_graph_backend(graph)
+    hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+    hypernode_vectors = [getindex.(Ref(hyper_map),nodes) for nodes in node_vectors]
+    part_edges,cross_edges = identify_edges(hypergraph,hypernode_vectors)
+    link_part_edges = [getindex.(Ref(hyper_map),edges) for edges in part_edges]
+    link_cross_edges = getindex.(Ref(hyper_map),cross_edges)
+    return link_part_edges,link_cross_edges
+end
+
+"""
+    identify_nodes(graph::OptiGraph,node_vectors::Vector{Vector{OptiEdge}})
+
+Identify induced nodes and node separators from a vector of optiedge partitions.
+"""
+function identify_nodes(graph::OptiGraph,edge_vectors::Vector{Vector{OptiEdge}})
+    _init_graph_backend(graph)
+    hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+    hyperedge_vectors = [getindex.(Ref(hyper_map),edges) for edges in edge_vectors]
+    part_nodes,cross_nodes = identify_nodes(hypergraph,hyperedge_vectors)
+    part_optinodes = [getindex.(Ref(hyper_map),nodes) for nodes in part_nodes]
+    cross_optinodes = getindex.(Ref(hyper_map),cross_nodes)
+    return part_optinodes,cross_optinodes
+end
+
+"""
+    neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)::Vector{OptiNode})
 
 Return the optinodes within `distance` of the given `nodes` in the optigraph `graph`.
 """
 function neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)
-    hypergraph,hyper_map = gethypergraph(graph)
-    hypernodes = [hyper_map[node] for node in nodes]
-    new_nodes = neighborhood(hypergraph,hypernodes,distance)
-    return [hyper_map[node] for node in new_nodes]
-end
-
-function induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
-    hypergraph,hyper_map = gethypergraph(graph)
-    hypernodes = [hyper_map[node] for node in nodes]
-    induced = induced_edges(hypergraph,hypernodes)
-    return [hyper_map[edge] for edge in induced]
-end
-
-function incident_edges(graph::OptiGraph,nodes::Vector{OptiNode})
-    hypergraph,hyper_map = gethypergraph(graph)
-    hypernodes = [hyper_map[node] for node in nodes]
-    incident = incident_edges(hypergraph,hypernodes)
-    return [hyper_map[edge] for edge in incident]
-end
-
-function identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
-    hypergraph,ref = gethypergraph(graph)
-    hypernode_vectors = [getindex.(Ref(ref),nodes) for nodes in node_vectors]
-    part_edges,cross_edges = identify_edges(hypergraph,hypernode_vectors)
-    link_part_edges = [getindex.(Ref(ref),edges) for edges in part_edges]
-    link_cross_edges = getindex.(Ref(ref),cross_edges)
-    return link_part_edges,link_cross_edges
+    _init_graph_backend(graph)
+    hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+    vertices = getindex.(Ref(hyper_map),nodes)
+    new_nodes = neighborhood(hypergraph,vertices,distance)
+    return getindex.(Ref(hyper_map),new_nodes)
 end
 
 """
@@ -85,27 +129,32 @@ Return a new expanded subgraph given the optigraph `graph` and an existing subgr
 The returned subgraph contains the expanded neighborhood within `distance` of the given `subgraph`.
 """
 function expand(graph::OptiGraph,subgraph::OptiGraph,distance::Int64)
-    hypergraph,hyper_map = gethypergraph(graph)
+    _init_graph_backend(graph)
+    hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+
     nodes = all_nodes(subgraph)
-    hypernodes = [hyper_map[node] for node in nodes]
+    hypernodes = getindex.(Ref(hyper_map),nodes)
 
     new_nodes = neighborhood(hypergraph,hypernodes,distance)
     new_edges =  induced_edges(hypergraph,new_nodes)
 
-    new_optinodes = [hyper_map[node] for node in new_nodes]
-    new_optiedges = [hyper_map[edge] for edge in new_edges]
-
-    new_subgraph = OptiGraph()
-    new_subgraph.optinodes = new_optinodes
-    new_subgraph.optiedges = new_optiedges
+    new_optinodes = getindex.(Ref(hyper_map),new_nodes)
+    new_optiedges = getindex.(Ref(hyper_map),new_edges)
+    new_subgraph = OptiGraph(new_optinodes,new_optiedges)
 
     return new_subgraph
 end
 
-function LightGraphs.induced_subgraph(graph::OptiGraph,nodes::Vector{OptiGraph})
-    edges = OptiGraphs.induced_edges(graph,nodes)
-    subgraph = OptiGraph()
-    subgraph.optinodes = nodes
-    subgraph.optiedges = edges
-    return subgraph
-end
+#TODO: try forwarding methods this way
+# macro forward_graph_node_method(func)
+#     return quote
+#         function $(func)(graph::OptiGraph,node::OptiNode)
+#             Plasmo._init_graph_backend(graph)
+#             hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
+#             vertex = hyper_map[node]
+#             output = $func(hypergraph,vertex)
+#             return getindex.(Ref(hyper_map),output)
+#         end
+#     end
+# end
+#@forward_graph_node_method(LightGraphs.all_neighbors)

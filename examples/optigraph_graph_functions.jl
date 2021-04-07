@@ -1,6 +1,5 @@
 using Plasmo
-using Ipopt
-using KaHyPar
+using LightGraphs
 
 function create_optigraph()
     optigraph = OptiGraph()
@@ -9,7 +8,7 @@ function create_optigraph()
     #node 1
     @variable(nodes[1],0 <= x <= 2)
     @variable(nodes[1],0 <= y <= 3)
-    @constraint(nodes[1],0 <= x+y <= 4)
+    @constraint(nodes[1],x+y <= 4)
     @objective(nodes[1],Min,x)
 
     #node 2
@@ -39,31 +38,29 @@ function create_optigraph()
 end
 
 optigraph = create_optigraph()
-set_optimizer(optigraph,Ipopt.Optimizer)
-optimize!(optigraph)
+n1 = getnode(optigraph,1)
+n2 = getnode(optigraph,2)
 
-#Partition with KaHyPar
-hg,hyper_map = Plasmo.hyper_graph(optigraph)
-partition_vector = KaHyPar.partition(hg,2;configuration = :edge_cut)
-partition = Partition(hg,partition_vector,hyper_map)
-make_subgraphs!(optigraph,partition)
-set_optimizer(optigraph,Ipopt.Optimizer)
-optimize!(optigraph)
+all_neighbors(optigraph,n1)
+all_neighbors(optigraph,n2)
 
-#Partition nodes manually
-optigraph = create_optigraph()
+n3 = @optinode(optigraph)
+@variable(n3,x >= 0)
+@linkconstraint(optigraph,n2[:x] == n3[:x])
+all_neighbors(optigraph,n2)
+
 nodes = all_nodes(optigraph)
-node_vectors = [[nodes[1],nodes[2]],[nodes[3],nodes[4]]]
+node_vectors = [[nodes[1],nodes[2],nodes[5]],[nodes[3],nodes[4]]]
 partition = Partition(optigraph,node_vectors)
 make_subgraphs!(optigraph,partition)
-set_optimizer(optigraph,Ipopt.Optimizer)
-optimize!(optigraph)
 
-#Partition edges manually
-optigraph = create_optigraph()
-es = all_edges(optigraph)
-edge_vectors = [[es[1],es[2]],[es[3]]]
-partition = Partition(optigraph,edge_vectors)
-make_subgraphs!(optigraph,partition)
-set_optimizer(optigraph,Ipopt.Optimizer)
-optimize!(optigraph)
+overlap = 1
+expanded_subs = expand.(Ref(optigraph),getsubgraphs(optigraph),Ref(overlap))
+
+
+
+#Set Clique graph
+
+
+
+#Set Bipartite graph

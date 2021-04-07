@@ -1,9 +1,8 @@
-using JuMP
 using Plasmo
 using Ipopt
 
-function nl_model!(node::OptiNode)
-    @variable(node,x >= rand())
+function set_nl_model(node::OptiNode)
+    @variable(node,x >= 0)
     @variable(node,y >= 1)
     @constraint(node,x + y <= 5)
     @NLconstraint(node,exp(x) >= 2)
@@ -18,16 +17,16 @@ graph = OptiGraph()
 subgraph1 = OptiGraph()
 @optinode(subgraph1,n1)
 @optinode(subgraph1,n2)
-nl_model!(n1)
-nl_model!(n2)
+set_nl_model(n1)
+set_nl_model(n2)
 @linkconstraint(subgraph1,n1[:x] == n2[:x])  #linkconstraint is local to graph1
 
 #System 2
 subgraph2 = OptiGraph()
 @optinode(subgraph2,n3)
 @optinode(subgraph2,n4)
-nl_model!(n3)
-nl_model!(n4)
+set_nl_model(n3)
+set_nl_model(n4)
 @linkconstraint(subgraph2,n3[:x] == n4[:x])
 
 #Top level links

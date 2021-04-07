@@ -1,16 +1,10 @@
-#TODO
-# function adjacency_matrix(graph::HyperGraph)
-# end
-LightGraphs.incidence_matrix(graph::OptiGraph) = sparse(graph)
-
-
 """
-    hypergraph(graph::OptiGraph)
+    hyper_graph(graph::OptiGraph)
 
 Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
 that maps hypernodes and hyperedges to the original optinodes and optiedges.
 """
-function hypergraph(graph::OptiGraph)
+function hyper_graph(graph::OptiGraph)
     hypergraph = HyperGraph()
     hyper_map = Dict()  #two-way mapping from hypergraph nodes to optinodes and link_edges
 
@@ -32,27 +26,7 @@ function hypergraph(graph::OptiGraph)
 
     return hypergraph,hyper_map
 end
-
-"""
-    line_hypergraph(graph::OptiGraph)
-
-Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
-that maps hypernodes and hyperedges to the original optinodes and optiedges.
-"""
-function edge_hypergraph(graph::OptiGraph)
-    hypergraph = HyperGraph()
-    hyper_map = Dict()
-
-    for edge in all_edges(graph)
-        hypernode = add_node!(hypergraph)
-        hyper_map[hypernode] = edge
-        hyper_map[edge] = hypernode
-    end
-
-    return hypergraph,hyper_map
-end
-
-
+@deprecate gethypergraph hyper_graph
 """
     clique_graph(graph::OptiGraph)
 
@@ -70,7 +44,7 @@ function clique_graph(optigraph::OptiGraph)
         graph_map[optinode] = vertex
     end
 
-    #HyperEdges
+    #Optiedges
     for edge in all_edges(optigraph)
         graph_map[edge] = []
         nodes = edge.nodes
@@ -91,9 +65,42 @@ function clique_graph(optigraph::OptiGraph)
     end
     return graph,graph_map
 end
+@deprecate getcliquegraph clique_graph
 
 """
-    line_clique_graph(graph::OptiGraph)
+    bipartite_graph(optigraph::OptiGraph)
+
+Create a bipartite graph representation from `optigraph`.  The bipartite graph contains two sets of vertices corresponding to optinodes and optiedges respectively.
+"""
+function bipartite_graph(optigraph::OptiGraph)
+    graph = BipartiteGraph()
+    graph_map = Dict()
+
+    for optinode in all_nodes(optigraph)
+        LightGraphs.add_vertex!(graph,bipartite = 1)
+        node_vertex = nv(graph)
+        graph_map[node_vertex] = optinode
+        graph_map[optinode] = node_vertex
+    end
+
+    for edge in all_edges(optigraph)
+        LightGraphs.add_vertex!(graph,bipartite = 2)
+        edge_vertex = nv(graph)
+        graph_map[edge] = edge_vertex
+        graph_map[edge_vertex] = edge
+        nodes = edge.nodes
+        edge_vertices = [graph_map[optinode] for optinode in nodes]
+        for node_vertex in edge_vertices
+            LightGraphs.add_edge!(graph,edge_vertex,node_vertex)
+        end
+    end
+    return graph,graph_map
+end
+
+
+#TODO
+"""
+    edge_clique_graph(graph::OptiGraph)
 
 Retrieve the line graph clique representation of the optigraph `graph`. Returns a [`LightGraphs.Graph`](@ref) object, as well as a dictionary
 that maps vertices and edges to the optinodes and optiedges. The dual cliquegraph inverts nodes and edges to allow edge partitioning.
@@ -101,9 +108,29 @@ that maps vertices and edges to the optinodes and optiedges. The dual cliquegrap
 function edge_clique_graph(optigraph::OptiGraph)
 end
 
-#Create a bipartite graph using a optigraph
-function bipartite_graph(graph::OptiGraph)
-end
 
-@deprecate gethypergraph hypergraph
-@deprecate getcliquegraph clique_graph
+#TODO
+"""
+    edge_hypergraph(graph::OptiGraph)
+
+Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
+that maps hypernodes and hyperedges to the original optinodes and optiedges.
+"""
+function edge_hyper_graph(graph::OptiGraph)
+    hypergraph = HyperGraph()
+    hyper_map = Dict()
+
+    for edge in all_edges(graph)
+        hypernode = add_node!(hypergraph)
+        hyper_map[hypernode] = edge
+        hyper_map[edge] = hypernode
+    end
+
+    for node in all_nodes(graph)
+    end
+
+    #TODO: get nodes that connect edges. Periphery nodes won't be in the mapping.
+
+
+    return hypergraph,hyper_map
+end

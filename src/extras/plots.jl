@@ -5,7 +5,7 @@ using Colors
 using ColorTypes
 using Statistics
 
-#TODO other plotting options:  plot bipartite, node-pins, or clique-
+#TODO other plotting options:  plot bipartite, node-pins, or clique-graph
 """
     Plots.plot(graph::OptiGraph; node_labels = false, subgraph_colors = false, node_colors = false, linewidth = 2.0,linealpha = 1.0, markersize = 30,labelsize = 20, markercolor = :grey,
     layout_options = Dict(:tol => 0.01,:C => 2, :K => 4, :iterations => 2),
@@ -71,7 +71,7 @@ function Plots.plot(graph::OptiGraph; node_labels = false, subgraph_colors = fal
         markercolor = markercolor
     end
 
-    hypergraph,hyper_map = gethypergraph(graph)
+    hypergraph,hyper_map = hyper_graph(graph)
     clique_graph,clique_map = clique_expansion(hypergraph)
     lgraph = clique_graph#.lightgraph
 

@@ -13,9 +13,9 @@ function test_hypergraph()
     add_node!(hyper)
     add_node!(hyper)
 
-    add_hyperedge!(hyper,1,2,3)
-    add_hyperedge!(hyper,1,2)
-    add_hyperedge!(hyper,4,1,3)
+    Plasmo.add_hyperedge!(hyper,1,2,3)
+    Plasmo.add_hyperedge!(hyper,1,2)
+    Plasmo.add_hyperedge!(hyper,4,1,3)
 
     @test hyper.hyperedge_map[1] == HyperEdge(1,2,3)
     @test hyper.hyperedge_map[2] == HyperEdge(1,2)

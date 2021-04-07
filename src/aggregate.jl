@@ -10,7 +10,7 @@
     The reference of the combined model can be obtained by indexing the map with the reference of the corresponding original optinode.
 """
 struct AggregateMap
-    optinode::OptiNode
+    #optinode::OptiNode
     varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}                 #map variables in original optigraph to optinode
     conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}             #map constraints in original optigraph to optinode
     linkconstraintmap::Dict{LinkConstraint,JuMP.ConstraintRef}
@@ -33,8 +33,9 @@ function Base.setindex!(reference_map::AggregateMap, graph_vref::JuMP.VariableRe
     reference_map.varmap[node_vref] = graph_vref
 end
 
-AggregateMap(node::OptiNode) = AggregateMap(node,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{LinkConstraintRef,JuMP.ConstraintRef}())
+# AggregateMap(node::OptiNode) = AggregateMap(node,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{LinkConstraintRef,JuMP.ConstraintRef}())
 
+AggregateMap() = AggregateMap(Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{LinkConstraintRef,JuMP.ConstraintRef}())
 function Base.merge!(ref_map1::AggregateMap,ref_map2::AggregateMap)
     merge!(ref_map1.varmap,ref_map2.varmap)
     merge!(ref_map1.conmap,ref_map2.conmap)
@@ -62,7 +63,8 @@ function aggregate(optigraph::OptiGraph)
     aggregate_node = OptiNode()
     JuMP.object_dictionary(aggregate_node)[:nodes] = []
 
-    reference_map = AggregateMap(aggregate_node)
+    # reference_map = AggregateMap(aggregate_node)
+    reference_map = AggregateMap()
 
     #CHECK OBJECTIVE FORM
     has_nonlinear_objective = has_nl_objective(optigraph)
@@ -100,10 +102,12 @@ function aggregate(optigraph::OptiGraph)
     return aggregate_node,reference_map
 end
 @deprecate combine aggregate
-#Modify graph by combining subgraphs
+
+#add optinode model to aggregate optinode model
 function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,aggregate_map::AggregateMap,graph_obj::Any)
 
-    reference_map = AggregateMap(aggregate_node)
+    # reference_map = AggregateMap(aggregate_node)
+    reference_map = AggregateMap()
     constraint_types = JuMP.list_of_constraint_types(add_node)
 
     #COPY VARIABLES
@@ -126,7 +130,6 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
             new_constraint = _copy_constraint(constraint,reference_map)
             new_ref= JuMP.add_constraint(aggregate_node,new_constraint)
             reference_map[constraint_ref] = new_ref
-            #agg_node.constraintmap[new_ref] = constraint_ref
         end
     end
 
@@ -162,11 +165,9 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
 
     merge!(aggregate_map,reference_map)
 
-    #TODO Get nonlinear object data to work.
     # COPY OBJECT DATA
     node_obj_dict = Dict()
     for (name, value) in JuMP.object_dictionary(add_node)
-        #node_obj_dict[name] = reference_map[value]
         node_obj_dict[name] = getindex.(Ref(reference_map),value)
     end
     push!(JuMP.object_dictionary(aggregate_node)[:nodes],node_obj_dict)
@@ -175,16 +176,15 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
 end
 
 #aggregate subgraphs in optigraph to given depth
-#TODO: Update for new release
 function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     println("Aggregating OptiGraph with a maximum subgraph depth of $max_depth")
 
     sg_dict = Dict()
     root_optigraph = OptiGraph()
-    reference_map = AggregateMap(root_optigraph)  #old model graph => new optigraph
+    reference_map = AggregateMap()  #old optigraph => new optigraph
     sg_dict[graph] = root_optigraph
 
-    #iterate through depth until we get to last level.  last level is the leaf subgraphs that get converted to nodes
+    #iterate through depth until we get to last level.  last level contains the leaf subgraphs that get converted to optinodes
     depth = 0
     parents = [graph]
     final_parents = [graph]
@@ -209,7 +209,7 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     for parent in parents
         name_idx = 1
         for leaf_subgraph in getsubgraphs(parent)
-            combined_node,combine_ref_map = aggregate(leaf_subgraph) #creates new optinode
+            combined_node,combine_ref_map = aggregate(leaf_subgraph) #creates a new optinode
             merge!(reference_map,combine_ref_map)
             new_parent = sg_dict[parent]
             add_node!(new_parent,combined_node)
@@ -224,7 +224,6 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
 
         mnodes = getnodes(graph)
         ledges = getedges(graph)
-
         new_graph = sg_dict[graph]
 
         #Add copy optinodes
@@ -247,50 +246,20 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     return root_optigraph,reference_map
 end
 
-function _copy_node(node::OptiNode)
-    new_node = OptiNode()
-    reference_map = AggregateMap(new_node)
-    node_ref_map = _add_to_combined_model!(new_node,node,reference_map)
-    return new_node,reference_map
+#Aggregate an optigraph without making a new one
+function aggregate!(graph::OptiGraph,max_depth::Int64)
+    new_graph,ref_map = aggregate(graph,max_depth)
+    Base.empty!(graph)
+
+    graph.obj_dict = new_graph.obj_dict
+    graph.ext = new_graph.ext
+    graph.optinodes = new_graph.optinodes
+    graph.optiedges = new_graph.optiedges
+    graph.node_idx_map = new_graph.node_idx_map
+    graph.edge_idx_map = new_graph.edge_idx_map
+    graph.subgraphs = new_graph.subgraphs
+    graph.optiedge_map = new_graph.optiedge_map
+    graph.objective_sense = new_graph.objective_sense
+    graph.objective_function = new_graph.objective_function
+    return graph #no reference map
 end
-
-
-
-# #Set aggregate objective to sum of node objectives
-# function _set_node_objectives!(optigraph::OptiGraph,aggregate_node::OptiNode,reference_map::AggregateMap,has_nonlinear_objective::Bool)
-#     if has_nonlinear_objective
-#         graph_obj = :(0) #NOTE Strategy: Build up a Julia expression (expr) and then call JuMP.set_NL_objective(expr)
-#         for node in all_nodes(optigraph)
-#             node_model = getmodel(node)
-#             JuMP.objective_sense(node_model) == MOI.MIN_SENSE ? sense = 1 : sense = -1
-#             d = JuMP.NLPEvaluator(node_model)
-#             MOI.initialize(d,[:ExprGraph])
-#             node_obj = MOI.objective_expr(d)
-#             _splice_nonlinear_variables!(node_obj,node_model,reference_map)  #_splice_nonlinear_variables!(node_obj,var_maps[node])
-#             node_obj = Expr(:call,:*,:($sense),node_obj)
-#             graph_obj = Expr(:call,:+,graph_obj,node_obj)  #update graph objective
-#         end
-#         JuMP.set_NL_objective(aggregate_node.model, MOI.MIN_SENSE, graph_obj)
-#     else
-#         #TODO: Fix issue with setting maximize
-#         graph_obj = sum(JuMP.objective_function(agg_node) for agg_node in getnodes(combined_model))
-#         JuMP.set_objective(aggregate_node,MOI.MIN_SENSE,graph_obj)
-#     end
-# end
-#
-# function _set_node_objectives!(optigraph::OptiGraph)
-#     #check for quadratic objectives
-#     if any(isa.(objective_function.(all_nodes(optigraph)),Ref(GenericQuadExpr)))
-#         graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})
-#     else
-#         graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
-#     end
-#
-#     for node in all_nodes(optigraph)
-#         sense = JuMP.objective_sense(node)
-#         s = sense == MOI.MAX_SENSE ? -1.0 : 1.0
-#         JuMP.add_to_expression!(graph_obj,s,JuMP.objective_function(node))
-#     end
-#
-#     JuMP.set_objective(optigraph,MOI.MIN_SENSE,graph_obj)
-# end
