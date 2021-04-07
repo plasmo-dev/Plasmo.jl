@@ -1,11 +1,11 @@
 #Get backends
 JuMP.backend(graph::OptiGraph) = graph.moi_backend
-JuMP.backend(node::OptiNode) = JuMP.backend(getmodel(node))
+JuMP.backend(node::OptiNode) = JuMP.backend(jump_model(node))
 JuMP.moi_mode(node_optimizer::NodeOptimizer) = JuMP.moi_mode(node_optimizer.optimizer)
 
 #Extend OptiNode and OptiGraph with MOI interface
-MOI.get(node::OptiNode, args...) = MOI.get(getmodel(node), args...)
-MOI.set(node::OptiNode, args...) = MOI.set(getmodel(node), args...)
+MOI.get(node::OptiNode, args...) = MOI.get(jump_model(node), args...)
+MOI.set(node::OptiNode, args...) = MOI.set(jump_model(node), args...)
 MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
 
 _get_idx_map(id::Symbol,optimizer::NodeOptimizer) = optimizer.idx_maps[id]
@@ -155,6 +155,7 @@ function _populate_node_results!(graph::OptiGraph)
     for linkref in all_linkconstraints(graph)
         edge = JuMP.owner_model(linkref)
         edge.dual_values[id][linkref.idx] = MOI.get(graph_backend,MOI.ConstraintDual(),edge.idx_maps[id][linkref])
+        edge.last_result_id = id
     end
 
     #Nonlinear duals #TODO: multiple node solutions with nlp duals
@@ -259,7 +260,7 @@ end
 JuMP.set_optimizer(node::OptiNode,optimizer) = JuMP.set_optimizer(jump_model(node),optimizer)
 
 function JuMP.optimize!(node::OptiNode;kwargs...)
-    JuMP.optimize!(getmodel(node);kwargs...)
+    JuMP.optimize!(jump_model(node);kwargs...)
     return nothing
 end
 

@@ -266,7 +266,7 @@ function apply_partition!(graph::OptiGraph,partition::Partition)
     for subpartition in subparts
         subgraph = OptiGraph()
         add_subgraph!(graph,subgraph)
-        make_subgraphs!(subgraph,subpartition)
+        apply_partition!(subgraph,subpartition)
     end
     return nothing
 end

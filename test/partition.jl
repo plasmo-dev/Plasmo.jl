@@ -23,7 +23,7 @@ function test_partition1()
     @test length(partition.subpartitions) == 20
     @test num_nodes(graph) == 100
 
-    make_subgraphs!(graph,partition)
+    apply_partition!(graph,partition)
 
     @test num_nodes(graph) == 0
     @test num_all_nodes(graph) == 100

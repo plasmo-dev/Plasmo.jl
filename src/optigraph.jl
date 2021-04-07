@@ -78,7 +78,8 @@ end
 
 #Create an OptiGraph given a set of optinodes and optiedges
 function OptiGraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
-    is_valid_optigraph(nodes,edges) || error("Cannot create optigraph from given nodes and edges.  At least one edge node is not in the provided vector of optinodes.")
+    #TODO
+    #is_valid_optigraph(nodes,edges) || error("Cannot create optigraph from given nodes and edges.  At least one edge node is not in the provided vector of optinodes.")
     graph = OptiGraph()
     for node in nodes
         add_node!(graph,node)
@@ -571,6 +572,13 @@ function JuMP.add_bridge(graph::OptiGraph,BridgeType::Type{<:MOI.Bridges.Abstrac
     push!(graph.bridge_types, BridgeType)
     #_moi_add_bridge(JuMP.backend(model), BridgeType)
     return
+end
+
+function JuMP.dual(graph::OptiGraph,linkref::LinkConstraintRef)
+    optiedge = JuMP.owner_model(linkref)
+    id = graph.id
+    link_idx = linkref.idx
+    return optiedge.dual_values[id][link_idx]
 end
 ####################################
 #Print Functions
