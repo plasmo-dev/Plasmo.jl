@@ -82,6 +82,8 @@ in_neighbors, out_neighbors, neighbors, has_edge, in_edges, out_edges, adjacency
 # Hypergraph Projections
 BipartiteGraph,
 
+bipartite_graph, clique_graph,
+
 #macros
 @optinode, @linkconstraint,
 
@@ -128,7 +130,7 @@ include("nlp_evaluator.jl")
 include("partition.jl")
 
 function __init__()
-    @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
+    # @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
     @require KaHyPar = "2a6221f6-aa48-11e9-3542-2d9e0ef01880" include("extras/kahypar.jl")
 end
 

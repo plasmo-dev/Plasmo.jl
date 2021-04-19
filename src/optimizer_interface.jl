@@ -140,6 +140,7 @@ function _populate_node_results!(graph::OptiGraph)
             append!(dest_cons,dest_con)
         end
 
+        #TODO: function: set_node_solution(graph,node,vars)
         if length(dest_vars) > 0
             primals = OrderedDict(zip(vars,MOI.get(graph_backend,MOI.VariablePrimal(),dest_vars)))
             src.primals[id] = primals
