@@ -191,7 +191,7 @@ Return a list of optinode partitions given a `membership_vector`
 function partition_list(graph::OptiGraph,membership_vector::Vector{Int64})
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
-    partitions = _partition_list(memebership_vector)
+    partitions = _partition_list(membership_vector)
     return [getindex.(Ref(hyper_map),partitions[i] for i = 1:length(partitions))]
 end
 @deprecate getpartitionlist partition_list
@@ -303,29 +303,3 @@ function string(partition::Partition)
 end
 print(io::IO, partition::Partition) = print(io, string(partition))
 show(io::IO,partition::Partition) = print(io,partition)
-
-
-# function Partition(graph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}},optiedge_vectors::Vector{Vector{OptiEdge}})
-#     partition = Partition()
-#     @assert length(optinode_vectors) == length(optiedge_vectors)
-#     optinode_vectors,cross_nodes = identify_nodes(graph,optiedge_vectors)
-# end
-
-# #HYPERGRAPH PARTITION
-# #Partition with a HyperGraph and a reference map
-# function Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
-#     partition = Partition()
-#     hypernode_vectors = _partition_list(node_membership_vector)
-#
-#     induced_edge_partitions,cross_edges = identify_edges(hypergraph,hypernode_vectors)
-#     @assert length(hypernode_vectors) == length(induced_edge_partitions)
-#
-#     partition.optiedges = getindex.(Ref(ref_map),cross_edges)
-#     for i = 1:length(hypernode_vectors)
-#         subpartition = Partition()
-#         subpartition.optinodes = getindex.(Ref(ref_map),hypernode_vectors[i])
-#         subpartition.optiedges = getindex.(Ref(ref_map),induced_edge_partitions[i])
-#         push!(partition.subpartitions,subpartition)
-#     end
-#     return partition
-# end

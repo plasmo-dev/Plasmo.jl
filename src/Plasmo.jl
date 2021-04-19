@@ -82,6 +82,8 @@ in_neighbors, out_neighbors, neighbors, has_edge, in_edges, out_edges, adjacency
 # Hypergraph Projections
 BipartiteGraph,
 
+bipartite_graph, clique_graph,
+
 #macros
 @optinode, @linkconstraint,
 
