@@ -29,6 +29,9 @@ function test_partition1()
     @test num_all_nodes(graph) == 100
 end
 
+function test_partition_bipartite()
+end
+
 function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")

@@ -33,7 +33,7 @@ function _aggregate_backends!(graph::OptiGraph)
     return nothing
 end
 
-#NOTE: I think current update implementation is too slow on large models
+#NOTE: This is too slow.  The implementation needs to be thought out more.
 function _update_backend!(graph::OptiGraph)
     dest = JuMP.backend(graph)
     nodes = all_nodes(graph)
@@ -218,11 +218,13 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     end
 
     #aggregate optinode backends if it is the first optimization call
-    if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-        _aggregate_backends!(graph)
-    else
-        _update_backend!(graph)
-    end
+
+    _aggregate_backends!(graph)
+    # if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+    #     _aggregate_backends!(graph)
+    # else
+    #     _update_backend!(graph)
+    # end
 
     #NLP data
     if has_nlp_data(graph)

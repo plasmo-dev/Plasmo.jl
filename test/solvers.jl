@@ -57,6 +57,12 @@ function test_madnlp()
     end
 end
 
+function test_ipopt()
+end
+
+function test_glpk()
+end
+
 function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")

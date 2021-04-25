@@ -23,6 +23,12 @@ end
 function Base.getindex(reference_map::AggregateMap, cref::JuMP.ConstraintRef)
     return reference_map.conmap[cref]
 end
+
+#NOTE: Quick fix for aggregating object dictionaries 
+function Base.getindex(reference_map::AggregateMap, value::Any)
+    return value
+end
+
 Base.broadcastable(reference_map::AggregateMap) = Ref(reference_map)
 
 function Base.setindex!(reference_map::AggregateMap, graph_cref::JuMP.ConstraintRef,node_cref::JuMP.ConstraintRef)
@@ -166,6 +172,7 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
     merge!(aggregate_map,reference_map)
 
     # COPY OBJECT DATA
+    #BUG: The object dictionary can really have anything
     node_obj_dict = Dict()
     for (name, value) in JuMP.object_dictionary(add_node)
         node_obj_dict[name] = getindex.(Ref(reference_map),value)

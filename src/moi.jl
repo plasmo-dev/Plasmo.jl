@@ -38,6 +38,7 @@ MOI.supports_constraint(optimizer::AbstractNodeOptimizer,func::Type{T}
     where T<:MathOptInterface.AbstractFunction, set::Type{S}
     where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(optimizer.optimizer,func,set)
 MOI.supports(optimizer::AbstractNodeOptimizer, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) = MOI.supports(optimizer.optimizer,attr)
+MOIU.attach_optimizer(optimizer::AbstractNodeOptimizer,args...) = MOIU.attach_optimizer(optimizer.optimizer,args...)
 MOIU.reset_optimizer(optimizer::AbstractNodeOptimizer,args...) = MOIU.reset_optimizer(optimizer.optimizer,args...)
 
 #Optimize the underlying optimizer and store the result in the node optimizer
