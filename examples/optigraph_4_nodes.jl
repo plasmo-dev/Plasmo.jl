@@ -57,8 +57,6 @@ println()
 println("nonlinear dual values on nodes:")
 println("($conref) = $(dual(conref))")
 println("($nlcon) = $(dual(nlcon))")
-# println(conref," = ",dual(conref))
-# println(nlcon," = ",dual(nlcon))
 
 println()
 println("dual values on link constraints")

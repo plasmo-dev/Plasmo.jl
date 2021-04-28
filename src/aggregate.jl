@@ -10,7 +10,6 @@
     The reference of the combined model can be obtained by indexing the map with the reference of the corresponding original optinode.
 """
 struct AggregateMap
-    #optinode::OptiNode
     varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}                 #map variables in original optigraph to optinode
     conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}             #map constraints in original optigraph to optinode
     linkconstraintmap::Dict{LinkConstraint,JuMP.ConstraintRef}
@@ -24,7 +23,7 @@ function Base.getindex(reference_map::AggregateMap, cref::JuMP.ConstraintRef)
     return reference_map.conmap[cref]
 end
 
-#NOTE: Quick fix for aggregating object dictionaries 
+#NOTE: Quick fix for aggregating object dictionaries
 function Base.getindex(reference_map::AggregateMap, value::Any)
     return value
 end

@@ -45,7 +45,11 @@ mutable struct OptiEdge <: AbstractOptiEdge
     idx_maps::DefaultDict{Symbol,OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}}
 
     #Last result id from an optimize!(graph)
-    last_result_id::Union{Nothing,Symbol}
+    last_solution_id::Union{Nothing,Symbol}
+
+    #TODO Someday
+    #Capture nonlinear linking constraints
+    #nlp_data::Union{Nothing,JuMP._NLPData}
 end
 
 struct LinkConstraintRef <: AbstractLinkConstraintRef
@@ -97,7 +101,7 @@ JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstr
 
 function JuMP.dual(linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
-    id = optiedge.last_result_id
+    id = optiedge.last_solution_id
     link_idx = linkref.idx
     return optiedge.dual_values[id][link_idx]
 end
