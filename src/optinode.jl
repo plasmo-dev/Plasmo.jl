@@ -13,6 +13,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
 
     #nlp_data is a reference to `model.nlp_data`
     nlp_data::Union{Nothing,JuMP._NLPData}
+    nlp_duals::DefaultDict{Symbol,OrderedDict{Int64,Float64}}
 
     #Extension data
     ext::Dict{Symbol,Any}
@@ -28,6 +29,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
         "node",
         Dict{Int64,AbstractLinkConstraint}(),
         nothing,
+        DefaultDict{Symbol,OrderedDict}(OrderedDict()),
         Dict{Symbol,Any}(),
         id)
         node.model.ext[:optinode] = node
@@ -95,13 +97,16 @@ nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) 
 @deprecate nodedual dual
 
 function JuMP.dual(c::JuMP.ConstraintRef{OptiNode,NonlinearConstraintIndex})
-    JuMP._init_NLP(c.model)
-    nldata::JuMP._NLPData = c.model.nlp_data
-    # The array is cleared on every solve.
-    if length(nldata.nlconstr_duals) != length(nldata.nlconstr)
-        nldata.nlconstr_duals = MOI.get(c.model, MOI.NLPBlockDual())
-    end
-    return nldata.nlconstr_duals[c.index.value]
+    # JuMP._init_NLP(c.model)
+    # nldata::JuMP._NLPData = c.model.nlp_data
+    # # The array is cleared on every solve.
+    # if length(nldata.nlconstr_duals) != length(nldata.nlconstr)
+    #     nldata.nlconstr_duals = MOI.get(c.model, MOI.NLPBlockDual())
+    # end
+    # return nldata.nlconstr_duals[c.index.value]
+    node = c.model
+    node_backend = JuMP.backend(node)
+    return node.nlp_duals[node_backend.last_solution_id][c.index.value]
 end
 
 """

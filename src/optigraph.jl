@@ -461,8 +461,12 @@ function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func
 end
 
 function JuMP.objective_value(graph::OptiGraph)
-    objective = JuMP.objective_function(graph)
-    return value(objective)
+    if has_nl_objective(graph)
+        return MOI.get(backend(graph),MOI.ObjectiveValue())
+    else
+        objective = JuMP.objective_function(graph)
+        return value(objective)
+    end
 end
 
 function getnodes(expr::JuMP.GenericAffExpr)
