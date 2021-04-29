@@ -39,6 +39,12 @@ function test_hypergraph()
 
 end
 
+function test_clique_graph()
+end
+
+function test_bipartite_graph()
+end
+
 function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")

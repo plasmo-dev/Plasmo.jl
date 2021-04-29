@@ -10,7 +10,6 @@
     The reference of the combined model can be obtained by indexing the map with the reference of the corresponding original optinode.
 """
 struct AggregateMap
-    #optinode::OptiNode
     varmap::Dict{JuMP.VariableRef,JuMP.VariableRef}                 #map variables in original optigraph to optinode
     conmap::Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}             #map constraints in original optigraph to optinode
     linkconstraintmap::Dict{LinkConstraint,JuMP.ConstraintRef}
@@ -23,6 +22,12 @@ end
 function Base.getindex(reference_map::AggregateMap, cref::JuMP.ConstraintRef)
     return reference_map.conmap[cref]
 end
+
+#NOTE: Quick fix for aggregating object dictionaries
+function Base.getindex(reference_map::AggregateMap, value::Any)
+    return value
+end
+
 Base.broadcastable(reference_map::AggregateMap) = Ref(reference_map)
 
 function Base.setindex!(reference_map::AggregateMap, graph_cref::JuMP.ConstraintRef,node_cref::JuMP.ConstraintRef)
@@ -166,6 +171,7 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
     merge!(aggregate_map,reference_map)
 
     # COPY OBJECT DATA
+    #BUG: The object dictionary can really have anything
     node_obj_dict = Dict()
     for (name, value) in JuMP.object_dictionary(add_node)
         node_obj_dict[name] = getindex.(Ref(reference_map),value)

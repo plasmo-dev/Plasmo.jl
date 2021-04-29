@@ -54,11 +54,9 @@ for constraint_type in list_of_constraint_types(graph)
     end
 end
 println()
-println("nonlinear dual values on nodes:")
 println("($conref) = $(dual(conref))")
+println("nonlinear dual values on nodes:")
 println("($nlcon) = $(dual(nlcon))")
-# println(conref," = ",dual(conref))
-# println(nlcon," = ",dual(nlcon))
 
 println()
 println("dual values on link constraints")

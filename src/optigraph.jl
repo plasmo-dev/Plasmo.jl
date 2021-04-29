@@ -31,13 +31,12 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     objective_function::JuMP.AbstractJuMPScalar
 
     # IDEA: moi_backend interfaces with solvers.  For standard optimization solvers, we aggregate a MOI backend on the fly using optinodes
-    moi_backend::Union{Nothing,MOI.ModelLike} #could just make this the optimizer.
+    optimizer::Any #MOI.ModelLike
 
     #IDEA: graph_backend used for graph functions (e.g. neighbors)
     graph_backend::Union{Nothing,HyperGraphBackend}
 
     bridge_types::Set{Any}
-    optimizer::Any #NOTE: MadNLP uses the optimizer field.  This could also be used by parallel solvers to store objects
 
     obj_dict::Dict{Symbol,Any}
 
@@ -46,15 +45,11 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
 
     id::Symbol
 
-    #TODO Someday
-    #Capture nonlinear linking constraints and (separable) nonlinear objective functions
-    #nlp_data::Union{Nothing,JuMP._NLPData}
-
     #Constructor
     function OptiGraph()
         caching_mode = MOIU.AUTOMATIC
         universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
-        backend = MOIU.CachingOptimizer(universal_fallback,caching_mode)
+        optimizer = MOIU.CachingOptimizer(universal_fallback,caching_mode)
 
         optigraph = new(Vector{OptiNode}(),
                     Vector{OptiEdge}(),
@@ -64,10 +59,9 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
                     OrderedDict{OrderedSet,OptiEdge}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
-                    backend,
+                    optimizer,
                     nothing,
                     Set{Any}(),
-                    nothing,
                     Dict{Symbol,Any}(),
                     Dict{Symbol,Any}(),
                     gensym()
@@ -352,6 +346,7 @@ function JuMP.all_variables(graph::OptiGraph)
     vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
     return vars
 end
+JuMP.value(graph::OptiGraph,var::JuMP.VariableRef) = JuMP.backend(var.model).primals[graph.id]
 """
     getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
@@ -466,8 +461,12 @@ function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func
 end
 
 function JuMP.objective_value(graph::OptiGraph)
-    objective = JuMP.objective_function(graph)
-    return value(objective)
+    if has_nl_objective(graph)
+        return MOI.get(backend(graph),MOI.ObjectiveValue())
+    else
+        objective = JuMP.objective_function(graph)
+        return value(objective)
+    end
 end
 
 function getnodes(expr::JuMP.GenericAffExpr)

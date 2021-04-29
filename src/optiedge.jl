@@ -34,18 +34,24 @@ references to its underlying linking constraints.
 """
 mutable struct OptiEdge <: AbstractOptiEdge
     nodes::OrderedSet{OptiNode}
-    dual_values::DefaultDict{Symbol,Dict{Int64,Float64}}
+    #dual_values::DefaultDict{Symbol,Dict{Int64,Float64}}
 
-    #Link references
+    #Link constraint references
     linkrefs::Vector{AbstractLinkConstraintRef}
 
     #Link constraints
     linkconstraints::OrderedDict{Int64,LinkConstraint}
     linkconstraint_names::Dict{Int64,String}
-    idx_maps::DefaultDict{Symbol,OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}}
 
+    backend::EdgeBackend
+
+    #idx_maps::DefaultDict{Symbol,OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}}
     #Last result id from an optimize!(graph)
-    last_result_id::Union{Nothing,Symbol}
+    #last_solution_id::Union{Nothing,Symbol}
+
+    #TODO Someday
+    #Capture nonlinear linking constraints
+    #nlp_data::Union{Nothing,JuMP._NLPData}
 end
 
 struct LinkConstraintRef <: AbstractLinkConstraintRef
@@ -55,12 +61,10 @@ end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
 
 OptiEdge() = OptiEdge(OrderedSet{OptiNode}(),
-                DefaultDict{Symbol,Dict{LinkConstraint,Float64}}(Dict{Int64,Float64}()),
                 Vector{LinkConstraintRef}(),
                 OrderedDict{Int, LinkConstraint}(),
                 OrderedDict{Int64,String}(),
-                DefaultDict{Symbol,OrderedDict{LinkConstraintRef,MOI.ConstraintIndex}}(OrderedDict{LinkConstraintRef,MOI.ConstraintIndex}()),
-                nothing)
+                EdgeBackend())
 
 function OptiEdge(nodes::Vector{OptiNode})
     optiedge = OptiEdge()
@@ -95,18 +99,16 @@ getname(cref::LinkConstraintRef) = cref.optiedge.linkconstraint_names[cref.idx]
 
 JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstraints[linkref.idx]
 
+#TODO: Update this
 function JuMP.dual(linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
-    id = optiedge.last_result_id
-    link_idx = linkref.idx
-    return optiedge.dual_values[id][link_idx]
+    id = optiedge.backend.last_solution_id
+    return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
 end
-
 
 num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
 getlinkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
 getnodes(edge::OptiEdge) = edge.nodes
-
 
 function Base.string(edge::OptiEdge)
     "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"

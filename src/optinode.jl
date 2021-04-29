@@ -8,14 +8,12 @@ Creates an empty OptiNode.  Does not add it to a graph.
 """
 mutable struct OptiNode <: JuMP.AbstractModel
     model::JuMP.AbstractModel
-    nodevariable_index::Int64
-    nodevariables::OrderedDict{Int,AbstractVariableRef}
-    nodevarnames::Dict{Int,String}
-    label::String
-    partial_linkconstraints::Dict{Int64,AbstractLinkConstraint}
+    label::String                                               #what gets printed
+    partial_linkconstraints::Dict{Int64,AbstractLinkConstraint} #node contribution to link constraint
 
     #nlp_data is a reference to `model.nlp_data`
     nlp_data::Union{Nothing,JuMP._NLPData}
+    nlp_duals::DefaultDict{Symbol,OrderedDict{Int64,Float64}}
 
     #Extension data
     ext::Dict{Symbol,Any}
@@ -25,15 +23,13 @@ mutable struct OptiNode <: JuMP.AbstractModel
     function OptiNode()
         model = JuMP.Model()
         id = gensym()
-        node_backend = NodeOptimizer(JuMP.backend(model),id)
+        node_backend = NodeBackend(JuMP.backend(model),id)
         model.moi_backend = node_backend
         node = new(model,
-        0,
-        OrderedDict{Int,JuMP.VariableRef}(),
-        Dict{Int,String}(),
         "node",
         Dict{Int64,AbstractLinkConstraint}(),
         nothing,
+        DefaultDict{Symbol,OrderedDict}(OrderedDict()),
         Dict{Symbol,Any}(),
         id)
         node.model.ext[:optinode] = node
@@ -49,11 +45,10 @@ end
 
 Get the variable value of `vref` on the optinode `node`.
 """
-JuMP.value(node::OptiNode,vref::VariableRef) = node.variable_values[vref]
+JuMP.value(node::OptiNode,vref::VariableRef) = JuMP.backend(node).primals[node.id]
 jump_model(node::OptiNode) = node.model
 @deprecate getmodel jump_model
-# getmodel(node::OptiNode) = node.model
-getnodevariable(node::OptiNode,index::Integer) = JuMP.VariableRef(jump_model(node),MOI.VariableIndex(index))
+#Variable(node,index)
 
 """
     JuMP.all_variables(node::OptiNode)::Vector{JuMP.VariableRef}
@@ -61,11 +56,9 @@ getnodevariable(node::OptiNode,index::Integer) = JuMP.VariableRef(jump_model(nod
 Retrieve all of the variables on the optinode `node`.
 """
 JuMP.all_variables(node::OptiNode) = JuMP.all_variables(jump_model(node))
-
 setattribute(node::OptiNode,symbol::Symbol,attribute::Any) = jump_model(node).obj_dict[symbol] = attribute
 getattribute(node::OptiNode,symbol::Symbol) = jump_model(node).obj_dict[symbol]
 
-#TODO deprecate nodevalue and nodedual
 """
     nodevalue(var::JuMP.VariableRef)
 
@@ -103,16 +96,19 @@ nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) 
 @deprecate nodevalue value
 @deprecate nodedual dual
 
-#TODO: Nonlinear constraint duals
 function JuMP.dual(c::JuMP.ConstraintRef{OptiNode,NonlinearConstraintIndex})
-    JuMP._init_NLP(c.model)
-    nldata::JuMP._NLPData = c.model.nlp_data
-    # The array is cleared on every solve.
-    if length(nldata.nlconstr_duals) != length(nldata.nlconstr)
-        nldata.nlconstr_duals = MOI.get(c.model, MOI.NLPBlockDual())
-    end
-    return nldata.nlconstr_duals[c.index.value]
+    # JuMP._init_NLP(c.model)
+    # nldata::JuMP._NLPData = c.model.nlp_data
+    # # The array is cleared on every solve.
+    # if length(nldata.nlconstr_duals) != length(nldata.nlconstr)
+    #     nldata.nlconstr_duals = MOI.get(c.model, MOI.NLPBlockDual())
+    # end
+    # return nldata.nlconstr_duals[c.index.value]
+    node = c.model
+    node_backend = JuMP.backend(node)
+    return node.nlp_duals[node_backend.last_solution_id][c.index.value]
 end
+
 """
     set_model(node::OptiNode,m::AbstractModel)
 
@@ -124,6 +120,7 @@ function set_model(node::OptiNode,m::JuMP.AbstractModel;preserve_links = false)
     m.ext[:optinode] = node
 end
 @deprecate setmodel set_model
+
 """
     is_node_variable(node::OptiNode,var::JuMP.AbstractVariableRef)
 

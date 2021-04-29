@@ -129,6 +129,12 @@ function test_subgraph()
     @test num_subgraphs(graph) == 2
 end
 
+function test_multiple_solves()
+end
+
+function test_fix_variable()
+end
+
 function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")
