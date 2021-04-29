@@ -262,36 +262,12 @@ end
 function JuMP.set_optimizer(node::OptiNode,optimizer)
     JuMP.set_optimizer(jump_model(node),optimizer)
     JuMP.backend(node).last_solution_id = node.id
+    JuMP.backend(node).result_location[node.id] = JuMP.backend(node).optimizer
 end
 
 function JuMP.optimize!(node::OptiNode;kwargs...)
     JuMP.optimize!(jump_model(node);kwargs...)
-    JuMP.backend(node).result_location[node.id] = JuMP.backend(node).optimizer
+
     #set nl duals
     return nothing
 end
-
-#point each node to the solved MOI model
-# for (src,idx_map)
-#
-# end
-
-#for each optinode
-# for (src,idxmap) in zip(srces,idxmaps)
-#     #copy variable primals
-#     src_vars = MOI.get(src,MOI.ListOfVariableIndices())
-#     dest_vars = MOI.VariableIndex[idxmap[var] for var in src_vars]
-#     dest_values = MOI.get(graph_backend,MOI.VariablePrimal(),dest_vars)
-#     set_node_primals!(src,src_vars,dest_values,id)
-#
-#     #copy variable duals
-#     con_list = MOI.get(src,MOI.ListOfConstraints())
-#     src_cons = vcat([MOI.get(src,MOI.ListOfConstraintIndices{FS[1],FS[2]}()) for FS in con_list]...)
-#     dest_cons = [getindex(idxmap,src_con) for src_con in src_cons]
-#     dest_values = MOI.get(graph_backend,MOI.ConstraintDual(),dest_cons)
-#     set_node_duals!(src,src_cons,dest_values,id)
-#
-#     #set last solution id
-#     src.last_solution_id = id
-#     src.status = MOI.get(graph_backend,MOI.TerminationStatus())
-# end

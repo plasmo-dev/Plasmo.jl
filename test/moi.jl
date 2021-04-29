@@ -89,3 +89,5 @@ function run_tests()
 end
 
 end
+
+TestMOI.run_tests()
