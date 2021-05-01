@@ -157,11 +157,9 @@ Add a new optinode to `graph` and set its model to the `JuMP.Model` `m`.
 
 Add the existing `optinode` (Created with `OptiNode()`) to `graph`.
 """
-function add_node!(graph::OptiGraph)
+function add_node!(graph::OptiGraph;label::String = "n$(length(graph.optinodes) + 1)")
     optinode = OptiNode()
-    i = length(graph.optinodes) + 1
-    optinode.label = "n$i"
-    #graph.node_idx_map[optinode] = length(graph.optinodes)
+    optinode.label = label
     add_node!(graph,optinode)
     return optinode
 end
@@ -346,7 +344,7 @@ function JuMP.all_variables(graph::OptiGraph)
     vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
     return vars
 end
-JuMP.value(graph::OptiGraph,var::JuMP.VariableRef) = JuMP.backend(var.model).primals[graph.id]
+JuMP.value(graph::OptiGraph,var::JuMP.VariableRef) = JuMP.backend(var.model).result_location[graph.id]
 """
     getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
@@ -585,9 +583,9 @@ end
 function string(graph::OptiGraph)
     """
     OptiGraph:
-    local nodes: $(num_nodes(graph)), total nodes: $(length(all_nodes(graph)))
-    local link constraints: $(num_linkconstraints(graph)), total link constraints $(length(all_linkconstraints(graph)))
-    local subgraphs: $(length(getsubgraphs(graph))), total subgraphs $(length(all_subgraphs(graph)))
+    nodes: $(num_nodes(graph)), nodes (including subgraphs): $(length(all_nodes(graph)))
+    link constraints: $(num_linkconstraints(graph)), link constraints (including subgraphs): $(length(all_linkconstraints(graph)))
+    subgraphs: $(length(getsubgraphs(graph))), subgraphs (including nested subgraphs): $(length(all_subgraphs(graph)))
     """
 end
 print(io::IO, graph::OptiGraph) = print(io, string(graph))

@@ -202,34 +202,6 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
-##########################################################
-#TODO: just set objective function from optigraph
-##########################################################
-function _swap_indices!(obj::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
-    terms = obj.terms
-    for i = 1:length(terms)
-        coeff = terms[i].coefficient
-        var_idx = terms[i].variable_index
-        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
-    end
-end
-
-function _swap_indices!(obj::MOI.ScalarQuadraticFunction,idxmap::MOIU.IndexMap)
-    quad_terms = obj.quadratic_terms
-    for i = 1:length(quad_terms)
-        coeff = quad_terms[i].coefficient
-        var_idx1 = quad_terms[i].variable_index_1
-        var_idx2 = quad_terms[i].variable_index_2
-        quad_terms[i] = MOI.ScalarQuadraticTerm{Float64}(coeff,idxmap[var_idx1],idxmap[var_idx2])
-    end
-    aff_terms = obj.affine_terms
-    for i = 1:length(aff_terms)
-        coeff = aff_terms[i].coefficient
-        var_idx = aff_terms[i].variable_index
-        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
-    end
-end
-
 #####################################################
 #The edge backend is very simple
 #####################################################

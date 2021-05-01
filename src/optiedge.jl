@@ -34,23 +34,13 @@ references to its underlying linking constraints.
 """
 mutable struct OptiEdge <: AbstractOptiEdge
     nodes::OrderedSet{OptiNode}
-    #dual_values::DefaultDict{Symbol,Dict{Int64,Float64}}
-
     #Link constraint references
     linkrefs::Vector{AbstractLinkConstraintRef}
-
     #Link constraints
     linkconstraints::OrderedDict{Int64,LinkConstraint}
     linkconstraint_names::Dict{Int64,String}
-
     backend::EdgeBackend
-
-    #idx_maps::DefaultDict{Symbol,OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}}
-    #Last result id from an optimize!(graph)
-    #last_solution_id::Union{Nothing,Symbol}
-
-    #TODO Someday
-    #Capture nonlinear linking constraints
+    #TODO Capture nonlinear linking constraints
     #nlp_data::Union{Nothing,JuMP._NLPData}
 end
 
@@ -106,8 +96,10 @@ function JuMP.dual(linkref::LinkConstraintRef)
     return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
 end
 
-num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
-getlinkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
+num_link_constraints(edge::OptiEdge) = length(edge.linkconstraints)
+@deprecate num_linkconstraints num_link_constraints
+link_constraints(edge::OptiEdge) = values(edge.linkconstraints)
+@deprecate getlinkconstraints link_constraints
 getnodes(edge::OptiEdge) = edge.nodes
 
 function Base.string(edge::OptiEdge)
