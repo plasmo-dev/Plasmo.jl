@@ -293,6 +293,22 @@ function _set_edges(graph::OptiGraph,edges::Vector{OptiEdge})
     return nothing
 end
 
+
+#################################
+# Convenience functions for making custom partitions
+#################################
+function partition_graph()
+end
+#Convenience functions for specific partitions
+#Find shared nodes
+function partition_tree(part_func::Function,graph::OptiGraph,depth::Int64 = 1)
+    #Return a partition that is a TREE
+end
+
+function partition_tree_recursive()
+end
+
+
 ####################################
 #Print Functions
 ####################################

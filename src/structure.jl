@@ -3,13 +3,22 @@
     GRAPH = 1                   #No subgraphs
     TREE = 2                    #One subgraph w/ (possibly) parent node
     LINKED_TREE = 3             #One subgraph with linked subgraph nodes
-    RECURSIVE_GRAPH = 4         #
-    RECURSIVE_TREE = 5
+    RECURSIVE_GRAPH = 4         #Graph with subgraphs.  No local nodes in graph.
+    RECURSIVE_TREE = 5          #Graph with subgraphs.  Graph can have local nodes
     RECURSIVE_LINKED_TREE = 6
 end
 
-#Inspect optigraph and figure out the structure
-#TODO: RECURSIVE_LINKED_TREE
+"""
+    graph_structure(graph::OptiGraph)
+
+Return a value corresponding to the hierarchical structure of an optigraph.  Values correspond to:
+GRAPH = 1
+TREE = 2
+LINKED_TREE = 3
+RECURSIVE_GRAPH = 4
+RECURSIVE_TREE = 5
+RECURSIVE_LINKED_TREE = 6
+"""
 function graph_structure(graph::OptiGraph)
     if !(has_subgraphs(graph))
         return GRAPH
@@ -27,34 +36,57 @@ function graph_structure(graph::OptiGraph)
         if num_nodes(graph) == 0
             return RECURSIVE_GRAPH
         else
-            return RECURSIVE_TREE
+            if _links_subgraphs(graph)
+                return RECURSIVE_LINKED_TREE
+            else
+                return RECURSIVE_TREE
+            end
         end
     end
-
 end
 
-function recursive_depth(graph::OptiGraph)
+#Recurisely calculate depth
+function graph_depth(graph::OptiGraph)
     depth = 0
     if has_subgraphs(graph)
+        depth += 1
+        depth += _subgraph_depth(getsubgraphs(graph))
     end
-
     return depth
 end
 
-# function _links_subgraphs(graph::OptiGraph)
-#     if num_subgraphs(graph) > 1
-#         for subgraph in getsubgraphs(graph)
-#             for edge in getedges(graph)
-#
-#             #if !any((node) -> node in getnodes(graph),getnodes(edge))
-#
-#                 #if !all((node) -> node in getnodes(graph),getnodes(edge))
-#                     return true
-#                 end
-#             end
-#         else
-#             for subgraph in getsubgraphs(graph)
-#
-#         end
-#         return false
-# end
+#Helper: Recursively check whether any edges link subgraphs
+function _links_subgraphs(graph::OptiGraph)
+    return_val = false
+    if num_subgraphs(graph) > 1
+        for subgraph in getsubgraphs(graph)
+            sub_incident_edges = incident_edges(graph,getnodes(subgraph))
+            hier_edges = hierarchical_edges(graph)
+            if length(setdiff(sub_incident_edges,hier_edges)) > 0
+                return_val = true
+                break
+            else
+                return_val = _links_subgraphs(subgraph)
+            end
+        end
+    end
+    return return_val
+end
+
+#Helper: recursive check subgraph depth
+function _subgraph_depth(subgraphs::Vector{OptiGraph})
+    depth = 0
+    if any((g) -> has_subgraphs(g),subgraphs)
+        depth += 1
+        for sub in subgraphs
+            depth += _subgraph_depth(getsubgraphs(sub))
+        end
+    end
+    return depth
+end
+
+
+#Other model traits we can communicate to solvers:
+#NLLinkConstraints
+#Integer variables in subgraphs
+#Incident hyper-edge (a hyper-edge that connects first stage to multiple 2nd stage nodes)

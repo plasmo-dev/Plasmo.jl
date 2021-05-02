@@ -103,7 +103,6 @@ function _flag_graph_backend!(graph::OptiGraph)
         graph.graph_backend.update_backend = true
     end
 end
-
 #################
 #Subgraphs
 #################

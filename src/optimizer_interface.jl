@@ -61,7 +61,7 @@ function _set_backend_objective(graph::OptiGraph)
     return nothing
 end
 
-function _set_backend_objective(graph::OptiGraph,obj::GenericAffExpr{Float64,VariableRef})
+function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericAffExpr{Float64,VariableRef})
     graph_backend = JuMP.backend(graph)
     moi_obj = moi_function(obj)
     for (i,terms) in enumerate(linear_terms(obj))
@@ -77,7 +77,7 @@ function _set_backend_objective(graph::OptiGraph,obj::GenericAffExpr{Float64,Var
     return nothing
 end
 
-function _set_backend_objective(graph::OptiGraph,obj::GenericQuadExpr{Float64,VariableRef})
+function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericQuadExpr{Float64,VariableRef})
     graph_backend = JuMP.backend(graph)
     moi_obj = moi_function(obj)
     for (i,terms) in enumerate(quad_terms(obj))

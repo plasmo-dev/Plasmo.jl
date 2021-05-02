@@ -60,9 +60,9 @@ Retrieve incident edges to a single optinode.
 function incident_edges(graph::OptiGraph,nodes::Vector{OptiNode})
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
-    hypernodes = getindex.(Ref(hyper_map),nodes)
+    hypernodes = convert(Vector{HyperNode},getindex.(Ref(hyper_map),nodes))
     incidentedges = incident_edges(hypergraph,hypernodes)
-    return getindex.(Ref(hyper_map),incidentedges)
+    return convert(Vector{OptiEdge},getindex.(Ref(hyper_map),incidentedges))
 end
 incident_edges(graph::OptiGraph,node::OptiNode) = incident_edges(graph,[node])
 
@@ -143,6 +143,24 @@ function expand(graph::OptiGraph,subgraph::OptiGraph,distance::Int64)
     new_subgraph = OptiGraph(new_optinodes,new_optiedges)
 
     return new_subgraph
+end
+
+"""
+    hierarchical_edges(graph::OptiGraph)::Vector{OptiEdge}
+
+Query the edges in `graph` that connect its local nodes to nodes in its subgraphs.
+"""
+function hierarchical_edges(graph::OptiGraph)
+    return incident_edges(graph,getnodes(graph))
+end
+
+"""
+    linking_edges(graph::OptiGraph)::Vector{OptiEdge}
+
+Query the edges in `graph` that connect nodes within the graph or between subgraphs.
+"""
+function linking_edges(graph::OptiGraph)
+    return setdiff(getedges(graph),incident_edges(graph,getnodes(graph)))
 end
 
 #TODO: try forwarding methods this way
