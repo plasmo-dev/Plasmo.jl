@@ -1,3 +1,5 @@
+
+#Abstract type for custom optigraph optimizers.  Allows the same attributes as a MOI.ModelLike.
 abstract type OptiGraphOptimizer <: MOI.ModelLike end
 
 #Get backends
@@ -221,9 +223,8 @@ function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor, bridge_cons
     return nothing
 end
 
-#TODO
-function set_graph_optimizer(graph::OptiGraph,optimizer_constructor)
-end
+JuMP.set_optimizer(graph::OptiGraph,optimizer::OptiGraphOptimizer) = graph.optimizer = optimizer
+
 
 #optimize with MOI interfaced optimizer
 function _moi_optimize!(graph::OptiGraph)
@@ -270,7 +271,7 @@ function _moi_optimize!(graph::OptiGraph)
     _set_node_results!(graph)     #populate optimizer solutions onto each node backend
 end
 
-#optimize with meta-algorithm (graph) optimizer
+#optimize with optigraph optimizer (i.e. a meta-algorithm)
 function _optigraph_optimize!(graph)
 end
 
@@ -281,13 +282,11 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
         error("Please set an optimizer on optigraph before calling optimize! using set_optimizer(graph,optimizer)")
     end
     MOI.empty!(graph_optimizer)
-
     if !isa(graph_optimizer,Plasmo.OptiGraphOptimizer)
         _moi_optimize!(graph)
     else
         _optigraph_optimize!(graph)
     end
-
     return nothing
 end
 

@@ -22,6 +22,8 @@ function set_attached_node(con::LinkConstraint,node::OptiNode)
     @assert node in getnodes(con)
     con.attached_node = node
 end
+
+attached_node(con::LinkConstraint) = con.attached_node
 ##############################################################################
 # OptiEdges
 # OptiEdges describe connections between model nodes

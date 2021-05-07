@@ -135,6 +135,10 @@ end
 function test_fix_variable()
 end
 
+#set optigraph optimizer attributes
+function test_set_optimizer_attributes()
+end
+
 function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")

@@ -12,6 +12,8 @@ end
 ##############################################################################
 # OptiGraph
 ##############################################################################
+#TODO: Set optigraph model attributes.  (e.g. set_optimizer_attribute(graph)) An optigraph can be solved just like any JuMP model in many cases.
+#IDEA: Update optigraph backend depending on state.  If we empty out a graph backend, we unhook the optinodes
 """
     OptiGraph()
 
@@ -27,8 +29,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph
     optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
 
     #Objective
-    objective_sense::MOI.OptimizationSense
-    objective_function::JuMP.AbstractJuMPScalar
+    objective_sense::MOI.OptimizationSense          #Could be on the MOI backend
+    objective_function::JuMP.AbstractJuMPScalar     #Could be on the MOI backend
 
     # IDEA: moi_backend interfaces with solvers.  For standard optimization solvers, we aggregate a MOI backend on the fly using optinodes
     optimizer::Any #MOI.ModelLike
@@ -91,6 +93,8 @@ function _is_valid_optigraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
     return issubset(edge_nodes,nodes)
 end
 
+optigraph_reference(graph::OptiGraph) = OptiGraph(all_nodes(graph),all_edges(graph))
+
 
 @deprecate ModelGraph OptiGraph
 
@@ -124,6 +128,7 @@ Retrieve the local subgraphs of `optigraph`.
 """
 getsubgraphs(optigraph::OptiGraph) = OptiGraph[subgraph for subgraph in optigraph.subgraphs]
 num_subgraphs(optigraph::OptiGraph) = length(optigraph.subgraphs)
+getsubgraph(optigraph::OptiGraph,idx::Int64) = optigraph.subgraphs[idx]
 
 """
     all_subgraphs(optigraph::OptiGraph)::Vector{OptiGraph}

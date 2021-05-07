@@ -295,17 +295,23 @@ end
 
 
 #################################
-# Convenience functions for making custom partitions
+# Convenience partition functions.  All use METIS
 #################################
-function partition_graph()
+function partition_to_subgraphs!(graph::OptiGraph,partition_func::Function)
 end
+
+
 #Convenience functions for specific partitions
 #Find shared nodes
-function partition_tree(part_func::Function,graph::OptiGraph,depth::Int64 = 1)
+function partition_to_tree!(graph::OptiGraph,partition_func::Function)
     #Return a partition that is a TREE
 end
 
-function partition_tree_recursive()
+function partition_to_linked_tree!(part_func::Function,graph::OptiGraph,depth::Int64 = 1)
+    #Return a partition that is a LINKED_TREE
+end
+
+function partition_to_recursive_tree!(graph::OptiGraph,partition_func::Function,depth::Int64 = 1)
 end
 
 
