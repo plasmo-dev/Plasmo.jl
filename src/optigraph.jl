@@ -470,32 +470,27 @@ function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func
     JuMP.set_objective_function(graph,func)
 end
 
+JuMP.objective_function_type(graph::OptiGraph) = typeof(objective_function(graph))
+
+#NOTE: Plasmo stores the objective expression on the optigraph
 function JuMP.set_objective_coefficient(graph::OptiGraph,variable::JuMP.VariableRef,coefficient::Real)
     if has_nl_objective(graph)
         error("A nonlinear objective is already set in the model")
     end
-    coeff = convert(Float64, coeff)::Float64
+    coeff = convert(Float64, coefficient)::Float64
+    current_obj = objective_function(graph)
     obj_fct_type = objective_function_type(graph)
     if obj_fct_type == VariableRef
-        current_obj = objective_function(graph)
         if index(current_obj) == index(variable)
             set_objective_function(graph, coeff * variable)
         else
-            set_objective_function(
-                graph,
-                add_to_expression!(coeff * variable, current_obj),
-            )
+            set_objective_function(graph,add_to_expression!(coeff * variable, current_obj))
         end
-    elseif obj_fct_type == AffExpr || obj_fct_type == QuadExpr
-        #Find the variable in terms and update
-
-
-
-        # MOI.modify(
-        #     backend(model),
-        #     MOI.ObjectiveFunction{moi_function_type(obj_fct_type)}(),
-        #     MOI.ScalarCoefficientChange(index(variable), coeff),
-        # )
+    #TODO: add new variables
+    elseif obj_fct_type == AffExpr
+        current_obj.terms[variable] = coefficient
+    elseif obj_fct_type == QuadExpr
+        current_obj.aff.terms[variable] = coefficient
     else
         error("Objective function type not supported: $(obj_fct_type)")
     end
@@ -606,7 +601,6 @@ function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,co
     end
 end
 
-
 JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
 function JuMP.add_bridge(graph::OptiGraph,BridgeType::Type{<:MOI.Bridges.AbstractBridge})
     push!(graph.bridge_types, BridgeType)
@@ -617,9 +611,22 @@ end
 function JuMP.dual(graph::OptiGraph,linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
     id = graph.id
-    link_idx = linkref.idx
-    return optiedge.dual_values[id][link_idx]
+    return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
 end
+
+#Set start value for a graph backend
+function JuMP.set_start_value(graph::OptiGraph,variable::JuMP.VariableRef,value::Number)
+    if MOIU.state(graph.optimizer) == MOIU.NO_OPTIMIZER
+        error("Cannot set start value for optigraph with no optimizer")
+    end
+    if MOI.get(JuMP.backend(graph),MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+        error("Start values can only be set for an optigraph optimizer after the initial `optimize!` has been called.  Use `set_start_value(var::JuMP.VariableRef,value::Number)` to set a start value before `optimize!`")
+    end
+    node_pointer = JuMP.backend(getnode(variable)).optimizers[graph.id]
+    var_idx = node_pointer.node_to_optimizer_map[index(variable)]
+    MOI.set(node_pointer,MOI.VariablePrimalStart(),var_idx,value)
+end
+
 ####################################
 #Print Functions
 ####################################

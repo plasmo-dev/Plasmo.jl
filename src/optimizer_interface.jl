@@ -285,7 +285,7 @@ function JuMP.optimize!(graph::OptiGraph;kwargs...)
     if MOIU.state(graph_optimizer) == MOIU.NO_OPTIMIZER
         error("Please set an optimizer on optigraph before calling `optimize!` using `set_optimizer(graph,optimizer)`")
     end
-    MOI.empty!(graph_optimizer)
+    #MOI.empty!(graph_optimizer)
     if !isa(graph_optimizer,Plasmo.OptiGraphOptimizer)
         _moi_optimize!(graph)
     else

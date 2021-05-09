@@ -100,15 +100,17 @@ function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
 end
 
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
-# function MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...)
-#     MOI.set(node_backend.optimizer,attr,args...)
-#     for id in node_backend.graph_ids
-#         node_pointer = node_backend.optimizers[id]
-#         graph_args = getindex.(Ref(node_pointer.node_to_optimizer_map[node_index])
-#         MOI.set(node_pointer.optimizer,attr,graph_args...)
-#     end
-# end
-MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...) = MOI.set(node_backend.optimizer,attr,args...)
+function MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...)
+    MOI.set(node_backend.optimizer,attr,args...)
+    index_args = [arg for arg in args if isa(arg,MOI.Index)]
+    other_args = [arg for arg in args if !isa(arg,MOI.Index)]
+    for id in node_backend.graph_ids
+        node_pointer = node_backend.optimizers[id]
+        graph_indices = getindex.(Ref(node_pointer.node_to_optimizer_map),index_args)
+        MOI.set(node_pointer.optimizer,attr,graph_indices...,other_args...)
+    end
+end
+#MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...) = MOI.set(node_backend.optimizer,attr,args...)
 
 
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute) = MOI.get(node_backend.optimizer,attr)
@@ -194,6 +196,8 @@ function MOI.get(node_pointer::NodePointer,attr::MOI.ConstraintDual, idx::MOI.Co
     return value_other
 end
 MOI.get(node_pointer::NodePointer, attr::MOI.TerminationStatus) = MOI.get(node_pointer.optimizer,attr)
+MOI.set(node_pointer::NodePointer,attr::MOI.AnyAttribute,args...) = MOI.set(node_pointer.optimizer,attr,args...)
+
 
 #Grab results from the underlying "optimizer"
 #Get single variable index
