@@ -13,9 +13,6 @@ MOI.get(node::OptiNode, args...) = MOI.get(jump_model(node), args...)
 MOI.set(node::OptiNode, args...) = MOI.set(jump_model(node), args...)
 MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
 
-_get_idx_map(id::Symbol,backend::NodeBackend) = backend.result_location[id].node_to_optimizer_map
-_get_idx_map(id::Symbol,node::OptiNode) = _get_idx_map(id,JuMP.backend(node))
-
 #Create an moi backend for an optigraph by aggregating MOI backends of underlying optinodes and optiedges
 function _aggregate_backends!(graph::OptiGraph)
     dest = JuMP.backend(graph)
@@ -25,12 +22,18 @@ function _aggregate_backends!(graph::OptiGraph)
     for node in all_nodes(graph)
         src = JuMP.backend(node)
         idx_map = append_to_backend!(dest, src, false; filter_constraints=nothing)
-        src.result_location[id] = NodePointer(dest,idx_map)
+        node_pointer = NodePointer(dest,idx_map)
+        src.optimizers[id] = node_pointer
+        if !(id in src.graph_ids)
+            push!(src.graph_ids,id)
+        end
     end
 
     #Set edge backends
     for edge in all_edges(graph)
-        edge.backend.result_location[id] = EdgePointer(dest)
+        edge_pointer = EdgePointer(dest)
+        edge.backend.result_location[id] = edge_pointer
+        edge.backend.optimizers[id] = edge_pointer
     end
     for linkref in all_linkconstraints(graph)
         constraint_index = _add_link_constraint!(id,dest,JuMP.constraint_object(linkref))
@@ -70,7 +73,7 @@ function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericAffExpr{Float6
         term = terms[2]
         moi_term = index(term)
         node = getnode(term)
-        node_idx_map = backend(node).result_location[graph.id].node_to_optimizer_map
+        node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
         new_moi_idx = node_idx_map[moi_term]
         moi_obj = _swap_linear_term!(moi_obj,i,new_moi_idx)
     end
@@ -89,8 +92,7 @@ function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericQuadExpr{Float
         @assert getnode(term1) == getnode(term2)
         moi_term1 = index(term1)
         moi_term2 = index(term2)
-
-        node_idx_map = backend(node).result_location[graph.id].node_to_optimizer_map
+        node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
         new_moi_idx_1 = node_idx_map[moi_term1]
         new_moi_idx_2 = node_idx_map[moi_term2]
         moi_obj = _swap_quad_term!(moi_obj,i,new_moi_idx_1,new_moi_idx_2)
@@ -100,7 +102,7 @@ function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericQuadExpr{Float
         term = terms[2]
         moi_term = index(term)
         node = getnode(term)
-        node_idx_map = backend(node).result_location[graph.id].node_to_optimizer_map
+        node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
         new_moi_idx = node_idx_map[moi_term]
         moi_obj = _swap_linear_term!(moi_obj,i,new_moi_idx)
     end
@@ -142,8 +144,7 @@ function _add_link_constraint!(id::Symbol,dest::MOI.ModelLike,link::LinkConstrai
         var = term[2]
 
         src = JuMP.backend(getnode(var))
-        idx_map = src.result_location[id].node_to_optimizer_map
-        #idx_map = _get_idx_map(id,src)
+        idx_map = src.optimizers[id].node_to_optimizer_map
 
         var_idx = JuMP.index(var)
         dest_idx = idx_map[var_idx]
@@ -163,10 +164,11 @@ function _set_node_results!(graph::OptiGraph)
 
     nodes = all_nodes(graph)
     srces = JuMP.backend.(nodes)
-    idxmaps = _get_idx_map.(Ref(id),nodes)
+    #idxmaps = _get_idx_map.(Ref(id),nodes)
 
     for src in srces
         src.last_solution_id = graph.id
+        src.result_location[id] = src.optimizers[id]
     end
 
     #edges (links)
@@ -174,7 +176,7 @@ function _set_node_results!(graph::OptiGraph)
     for linkref in all_linkconstraints(graph)
         edge = JuMP.owner_model(linkref)
         JuMP.backend(edge).last_solution_id = graph.id
-        # edge.dual_values[id][linkref.idx] = MOI.get(graph_backend,MOI.ConstraintDual(),edge.idx_maps[id][linkref])
+        edge.backend.result_location[id] = edge.backend.optimizers[id]
     end
 
     #Set NLP dual solution for node
@@ -193,6 +195,9 @@ function _set_node_results!(graph::OptiGraph)
             end
         end
     end
+
+
+
     return nothing
 end
 
@@ -229,14 +234,12 @@ JuMP.set_optimizer(graph::OptiGraph,optimizer::OptiGraphOptimizer) = graph.optim
 #optimize with MOI interfaced optimizer
 function _moi_optimize!(graph::OptiGraph)
     #Build a standard MOI interface
-    _aggregate_backends!(graph)
+     if MOI.get(JuMP.backend(graph),MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+         _aggregate_backends!(graph)
+     end
+     #else, changes SHOULD have been captured
 
-    #TODO: Efficient incremental solves.  We do not have an efficient implementation yet. Try directly updating graph backend by passing MOI.set commands to both optimizer and pointed model
-    # if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-    #     _aggregate_backends!(graph)  #build up backend
-    # else
-    #     _update_backend!(graph)      #changes SHOULD already be on the backend
-    # end
+    #Set objective function
     has_nl_obj = has_nl_objective(graph)
 
     #set the optigraph objective if it is:
@@ -273,13 +276,14 @@ end
 
 #optimize with optigraph optimizer (i.e. a meta-algorithm)
 function _optigraph_optimize!(graph)
+    Plasmo.optimize!(graph.optimizer)
 end
 
 #optimize with given backend.  Could be an MOI optimizer, or a high-level graph optimizer
 function JuMP.optimize!(graph::OptiGraph;kwargs...)
     graph_optimizer = JuMP.backend(graph)
     if MOIU.state(graph_optimizer) == MOIU.NO_OPTIMIZER
-        error("Please set an optimizer on optigraph before calling optimize! using set_optimizer(graph,optimizer)")
+        error("Please set an optimizer on optigraph before calling `optimize!` using `set_optimizer(graph,optimizer)`")
     end
     MOI.empty!(graph_optimizer)
     if !isa(graph_optimizer,Plasmo.OptiGraphOptimizer)
@@ -323,3 +327,16 @@ function JuMP.optimize!(node::OptiNode;kwargs...)
     JuMP.optimize!(jump_model(node);kwargs...)
     return nothing
 end
+
+
+#TODO: Efficient incremental solves.  We do not have an efficient implementation yet. Try directly updating graph backend by passing MOI.set commands to both optimizer and pointed model
+# if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+#     _aggregate_backends!(graph)  #build up backend
+# else
+#     _update_backend!(graph)      #changes SHOULD already be on the backend
+# end
+
+
+# _get_idx_map(id::Symbol,backend::NodeBackend) = backend.result_location[id].node_to_optimizer_map
+# _get_idx_map(id::Symbol,backend::NodeBackend) = backend.optimizers[id].node_to_optimizer_map
+# _get_idx_map(id::Symbol,node::OptiNode) = _get_idx_map(id,JuMP.backend(node))

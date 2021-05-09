@@ -14,38 +14,44 @@ end
 ##############################################################################
 #TODO: Set optigraph model attributes.  (e.g. set_optimizer_attribute(graph)) An optigraph can be solved just like any JuMP model in many cases.
 #IDEA: Update optigraph backend depending on state.  If we empty out a graph backend, we unhook the optinodes
+# @enum OptiGraphMode begin
+#     SYNCHRONIZED = 1   #optigraph backend is build up in parallel to optinodes
+#     NODES_ONLY = 2     #optigraph backend is not built.  Aggregates backend if optimize!(graph) is called
+#     GRAPH_ONLY = 3     #optinode backend points to graph backend
+# end
 """
     OptiGraph()
 
 Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports most JuMP.Model functions.
 """
-mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph ultimately extends a JuMP model to use its syntax)
+mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     #Topology
-    optinodes::Vector{OptiNode}                  #Local model nodes
-    optiedges::Vector{OptiEdge}                  #Local link edges.  These can also connect nodes across subgraphs
-    node_idx_map::Dict{OptiNode,Int64}           #Local map of model nodes to indices
-    edge_idx_map::Dict{OptiEdge,Int64}           #Local map of link edges indices
-    subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the model graph
+    optinodes::Vector{OptiNode}                  #Local optinodes
+    optiedges::Vector{OptiEdge}                  #Local optiedges
+    node_idx_map::Dict{OptiNode,Int64}           #Local map of optinodes to indices
+    edge_idx_map::Dict{OptiEdge,Int64}           #Local map of optiedges indices
+    subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the optigraph
     optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
 
     #Objective
-    objective_sense::MOI.OptimizationSense          #Could be on the MOI backend
-    objective_function::JuMP.AbstractJuMPScalar     #Could be on the MOI backend
+    objective_sense::MOI.OptimizationSense
+    objective_function::JuMP.AbstractJuMPScalar
 
-    # IDEA: moi_backend interfaces with solvers.  For standard optimization solvers, we aggregate a MOI backend on the fly using optinodes
+    # IDEA: An optigraph optimizer can be a MOI model.  For standard optimization solvers, we can either 1) aggregate a MOI backend on the fly using optinodes or 2) build up the MOI backend with nodes simultaneously
     optimizer::Any #MOI.ModelLike
 
-    #IDEA: graph_backend used for graph functions (e.g. neighbors)
+    #IDEA: graph_backend is used for hypergraph topology functions (e.g. neighbors,expand,etc...)
     graph_backend::Union{Nothing,HyperGraphBackend}
 
     bridge_types::Set{Any}
 
     obj_dict::Dict{Symbol,Any}
 
-    #Extension Information
-    ext::Dict{Symbol,Any}
+    ext::Dict{Symbol,Any} #Extension Information
 
     id::Symbol
+
+    #mode::OptiGraphMode
 
     #Constructor
     function OptiGraph()
@@ -426,6 +432,7 @@ JuMP.objective_function(graph::OptiGraph) = graph.objective_function
 function JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
     x_affine = convert(JuMP.AffExpr,x)
     JuMP.set_objective_function(graph,x_affine)
+    #_moi_update_objective() #update the optigraph backend if we're doing incremental solves
 end
 
 function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericAffExpr)
@@ -455,11 +462,43 @@ function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericQuadExpr
         JuMP.set_objective_function(node,objective_function(node) + coef*term)
     end
     graph.objective_function = expr
+
 end
 
 function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     JuMP.set_objective_sense(graph,sense)
     JuMP.set_objective_function(graph,func)
+end
+
+function JuMP.set_objective_coefficient(graph::OptiGraph,variable::JuMP.VariableRef,coefficient::Real)
+    if has_nl_objective(graph)
+        error("A nonlinear objective is already set in the model")
+    end
+    coeff = convert(Float64, coeff)::Float64
+    obj_fct_type = objective_function_type(graph)
+    if obj_fct_type == VariableRef
+        current_obj = objective_function(graph)
+        if index(current_obj) == index(variable)
+            set_objective_function(graph, coeff * variable)
+        else
+            set_objective_function(
+                graph,
+                add_to_expression!(coeff * variable, current_obj),
+            )
+        end
+    elseif obj_fct_type == AffExpr || obj_fct_type == QuadExpr
+        #Find the variable in terms and update
+
+
+
+        # MOI.modify(
+        #     backend(model),
+        #     MOI.ObjectiveFunction{moi_function_type(obj_fct_type)}(),
+        #     MOI.ScalarCoefficientChange(index(variable), coeff),
+        # )
+    else
+        error("Objective function type not supported: $(obj_fct_type)")
+    end
 end
 
 function JuMP.objective_value(graph::OptiGraph)

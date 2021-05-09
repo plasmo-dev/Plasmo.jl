@@ -10,6 +10,7 @@ abstract type AbstractNodeBackend <: MOI.AbstractOptimizer end
     NodeSolution
 
         A struct hold primal, dual, and termination status values.  Used for setting custom solutions on optinodes without using an optimizer.
+        Supports MOI.get(backend::NodeSolution,MOI.VariablePrimal())
 """
 mutable struct NodeSolution <: MOI.ModelLike
     primals::OrderedDict{MOI.VariableIndex,Float64}
@@ -25,7 +26,6 @@ NodeSolution(duals::OrderedDict{MOI.ConstraintIndex,Float64}) = NodeSolution(Ord
 duals,
 MOI.OPTIMIZE_NOT_CALLED)
 
-#Point to optimizer
 """
     NodePointer
 
@@ -44,31 +44,79 @@ NodePointer(optimizer::MOI.ModelLike,idx_map::MOIU.IndexMap) = NodePointer(optim
     is helpful when the same node is part of multiple `OptiGraph` objects.
 """
 mutable struct NodeBackend <: AbstractNodeBackend
-    optimizer::MOI.ModelLike                        #the actual MOI model(e.g. a MOIU.CachingOptimizer)
-    id::Symbol                                      #unique id
-    last_solution_id::Symbol                        #the last solution for this node backend
-    result_location::Dict{Symbol,MOI.ModelLike}     #can be the optimizer, a NodeSolution, or a pointer to another optimizer object (e.g. a graph solution)
+    optimizer::MOI.ModelLike                        #the base MOI model (e.g. a MOIU.CachingOptimizer)
+    node_id::Symbol                                 #unique node id
+    graph_ids::Vector{Symbol}                       #optigraph ids this node is a part of
+    last_solution_id::Symbol                        #the last solution for this node
+    optimizers::Dict{Symbol,MOI.ModelLike}          #All of the "optimizers" this node points to. can be the node itself, a custom NodeSolution, or a pointer to an optigraph optimizer
+    result_location::Dict{Symbol,MOI.ModelLike}     #location to look up results (e.g. MOI.VariablePrimal())
 end
 
-function NodeBackend(model_cache::MOIU.CachingOptimizer,id::Symbol)
-    return NodeBackend(
-    model_cache,
+function NodeBackend(model::MOIU.CachingOptimizer,id::Symbol)
+    node_backend = NodeBackend(
+    model,
     id,
+    Vector{Symbol}(),
     id,
+    Dict{Symbol,MOI.ModelLike}(),
     Dict{Symbol,MOI.ModelLike}())
+    node_backend.optimizers[node_backend.node_id] = node_backend.optimizer #TODO: decide whether this is necessary
+    return node_backend
 end
 
-#Forward methods
+#Custom MOI methods for optinodes
 #NodeBackend
-MOI.add_variable(node_backend::NodeBackend) = MOI.add_variable(node_backend.optimizer)
-MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_backend.optimizer,func,set)
+function MOI.add_variable(node_backend::NodeBackend)
+    node_index = MOI.add_variable(node_backend.optimizer)
+    for id in node_backend.graph_ids
+        node_pointer = node_backend.optimizers[id]
+        graph_index = MOI.add_variable(node_pointer.optimizer)
+        node_pointer.node_to_optimizer_map[node_index] = graph_index
+    end
+    return node_index
+end
+
+#MOI.add_variable(node_backend::NodeBackend) = = MOI.add_variable(node_backend.optimizer)
+#MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_backend.optimizer,func,set)
+
+function MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet)
+    node_index = MOI.add_constraint(node_backend.optimizer,func,set)
+    for id in node_backend.graph_ids
+        node_pointer = node_backend.optimizers[id]
+        graph_index = MOI.add_constraint(node_pointer.optimizer,func,set)
+        node_pointer.node_to_optimizer_map[node_index] = graph_index
+    end
+    return node_index
+end
+
+#MOI.delete(node_backend::NodeBackend, idx::MOI.Index) = MOI.delete(node_backend.optimizer,idx)
+function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
+    for id in node_backend.graph_ids
+        node_pointer = node_backend.optimizers[id]
+        graph_index = node_pointer.node_to_optimizer_map[node_index]
+        MOI.delete(node_pointer.optimizer,graph_index)
+    end
+    MOI.delete(node_backend.optimizer,node_index)
+end
+
+#NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
+# function MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...)
+#     MOI.set(node_backend.optimizer,attr,args...)
+#     for id in node_backend.graph_ids
+#         node_pointer = node_backend.optimizers[id]
+#         graph_args = getindex.(Ref(node_pointer.node_to_optimizer_map[node_index])
+#         MOI.set(node_pointer.optimizer,attr,graph_args...)
+#     end
+# end
+MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...) = MOI.set(node_backend.optimizer,attr,args...)
+
+
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute) = MOI.get(node_backend.optimizer,attr)
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute,idx) = MOI.get(node_backend.optimizer,attr,idx)
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(node_backend.optimizer,attr,idxs)
-#NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
-MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...) = MOI.set(node_backend.optimizer,attr,args...)
+
 MOI.is_valid(node_backend::NodeBackend,idx::MOI.Index) = MOI.is_valid(node_backend.optimizer,idx)
-MOI.delete(node_backend::NodeBackend, idx::MOI.Index) = MOI.delete(node_backend.optimizer,idx)
+
 MOI.supports_constraint(node_backend::NodeBackend,func::Type{T}
     where T<:MathOptInterface.AbstractFunction, set::Type{S}
     where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(node_backend.optimizer,func,set)
@@ -121,7 +169,6 @@ end
 """
 function MOI.optimize!(backend::NodeBackend)
     MOI.optimize!(backend.optimizer)
-    backend.result_location[backend.id] = backend.optimizer
     backend.last_solution_id = backend.id
     return nothing
 end
@@ -203,7 +250,7 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
 end
 
 #####################################################
-#The edge backend is very simple
+#The edge backend
 #####################################################
 #A custom-set edge dual solution
 mutable struct EdgeSolution <: MOI.ModelLike
@@ -211,7 +258,7 @@ mutable struct EdgeSolution <: MOI.ModelLike
     status::MOI.TerminationStatusCode
 end
 
-#An EdgePointer 'points' to a solution
+#An EdgePointer 'points' to an optimizer
 mutable struct EdgePointer <: MOI.ModelLike
     optimizer::MOI.ModelLike
     edge_to_optimizer_map::OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}
@@ -219,10 +266,11 @@ end
 EdgePointer(optimizer::MOI.ModelLike) = EdgePointer(optimizer,OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}())
 
 mutable struct EdgeBackend <: MOI.AbstractOptimizer
+    optimizers::Dict{Symbol,MOI.ModelLike}
     last_solution_id::Union{Nothing,Symbol}                        #the last solution for this node backend
     result_location::Dict{Symbol,MOI.ModelLike}
 end
-EdgeBackend() = EdgeBackend(nothing,Dict{Symbol,MOI.ModelLike}())
+EdgeBackend() = EdgeBackend(Dict{Symbol,MOI.ModelLike}(),nothing,Dict{Symbol,MOI.ModelLike}())
 
 #get EdgeBackend
 function MOI.get(edge_backend::EdgeBackend,  attr::MOI.ConstraintDual, ref::AbstractLinkConstraintRef)
