@@ -354,7 +354,11 @@ function JuMP.all_variables(graph::OptiGraph)
     vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
     return vars
 end
-JuMP.value(graph::OptiGraph,var::JuMP.VariableRef) = JuMP.backend(var.model).result_location[graph.id]
+function JuMP.value(graph::OptiGraph,var::JuMP.VariableRef)
+    node_pointer = JuMP.backend(var.model).result_location[graph.id]
+    var_idx = node_pointer.node_to_optimizer_map[index(var)]
+    return MOI.get(graph.optimizer,MOI.VariablePrimal(),var_idx)
+end
 """
     getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
@@ -363,7 +367,6 @@ Retrieve the local linking constraints in `graph`. Returns a vector of the linki
 function getlinkconstraints(graph::OptiGraph)
     links = LinkConstraintRef[]
     for edge in graph.optiedges
-        # append!(links,collect(values(ledge.linkconstraints)))
         append!(links,edge.linkrefs)
     end
     return links
@@ -626,6 +629,8 @@ function JuMP.set_start_value(graph::OptiGraph,variable::JuMP.VariableRef,value:
     var_idx = node_pointer.node_to_optimizer_map[index(variable)]
     MOI.set(node_pointer,MOI.VariablePrimalStart(),var_idx,value)
 end
+
+JuMP.termination_status(graph::OptiGraph) = MOI.get(graph.optimizer,MOI.TerminationStatus())
 
 ####################################
 #Print Functions

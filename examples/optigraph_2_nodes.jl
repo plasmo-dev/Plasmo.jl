@@ -30,8 +30,6 @@ optimizer = GLPK.Optimizer
 set_optimizer(graph,optimizer)
 optimize!(graph)
 
-
-
 #Get results
 println()
 println("objective value = ", objective_value(graph))
