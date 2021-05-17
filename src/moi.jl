@@ -9,8 +9,8 @@ abstract type AbstractNodeBackend <: MOI.AbstractOptimizer end
 """
     NodeSolution
 
-        A struct hold primal, dual, and termination status values.  Used for setting custom solutions on optinodes without using an optimizer.
-        Supports MOI.get(backend::NodeSolution,MOI.VariablePrimal())
+        A struct holding primal values, dual values, and termination status values.  Used for setting custom solutions on optinodes without requiring an optimizer backend.
+        For example, the `NodeSolution` backend supports MOI.get(backend::NodeSolution,MOI.VariablePrimal()) and MOI.set(backend::NodeSolution,MOI.VariablePrimal())
 """
 mutable struct NodeSolution <: MOI.ModelLike
     primals::OrderedDict{MOI.VariableIndex,Float64}
@@ -29,7 +29,7 @@ MOI.OPTIMIZE_NOT_CALLED)
 """
     NodePointer
 
-        A struct containing a reference to an MOI optimizer object.  'Points' from node variables and constraints to the solution on the optimizer.
+        A struct containing a reference to an MOI optimizer object.  The `NodePointer` "points" from local optinode variables and constraints to their location within an optimizer.
 """
 mutable struct NodePointer <: MOI.ModelLike
     optimizer::MOI.ModelLike
@@ -79,31 +79,40 @@ end
 #MOI.add_variable(node_backend::NodeBackend) = = MOI.add_variable(node_backend.optimizer)
 #MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_backend.optimizer,func,set)
 
+#Add constraint to node MOI model and each graph optimizer it points to
+#TODO: check graph index.  Something is going on here...
 function MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet)
     node_index = MOI.add_constraint(node_backend.optimizer,func,set)
     for id in node_backend.graph_ids
         node_pointer = node_backend.optimizers[id]
-        graph_index = MOI.add_constraint(node_pointer.optimizer,func,set)
+        graph_func = _swap_indices(func,node_pointer.node_to_optimizer_map)
+        graph_index = MOI.add_constraint(node_pointer.optimizer,graph_func,set)
         node_pointer.node_to_optimizer_map[node_index] = graph_index
     end
     return node_index
 end
 
 #MOI.delete(node_backend::NodeBackend, idx::MOI.Index) = MOI.delete(node_backend.optimizer,idx)
+#TODO: we should also delete from the node_to_optimizer_map
 function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
+    MOI.delete(node_backend.optimizer,node_index)
     for id in node_backend.graph_ids
         node_pointer = node_backend.optimizers[id]
         graph_index = node_pointer.node_to_optimizer_map[node_index]
         MOI.delete(node_pointer.optimizer,graph_index)
     end
-    MOI.delete(node_backend.optimizer,node_index)
+    delete!(node_pointer.node_to_optimizer_map,node_index)
 end
 
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
-function MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...)
+#BUG: This might be causing problems with fixing variables.  I think the node backend is getting a constraint index somewhere that the graph backend might not have.
+function MOI.set(node_backend::Plasmo.NodeBackend,attr::MOI.AnyAttribute,args...)
+    #println(args)
     MOI.set(node_backend.optimizer,attr,args...)
     index_args = [arg for arg in args if isa(arg,MOI.Index)]
     other_args = [arg for arg in args if !isa(arg,MOI.Index)]
+    # println(index_args)
+    # println(other_args)
     for id in node_backend.graph_ids
         node_pointer = node_backend.optimizers[id]
         graph_indices = getindex.(Ref(node_pointer.node_to_optimizer_map),index_args)
@@ -293,3 +302,36 @@ function MOI.get(edge_pointer::EdgePointer,attr::MOI.ConstraintDual, ref::Abstra
     return optimizer_value
 end
 MOI.get(edge_pointer::EdgePointer, attr::MOI.TerminationStatus) = MOI.get(edge_pointer.optimizer,attr)
+
+
+#Helpful utilities
+function _swap_indices(variable::MOI.SingleVariable,idxmap::MOIU.IndexMap)
+    return idxmap[variable.variable]
+end
+
+function _swap_indices(func::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
+    new_func = copy(func)
+    terms = new_func.terms
+    for i = 1:length(terms)
+        coeff = terms[i].coefficient
+        var_idx = terms[i].variable_index
+        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
+    end
+    return new_func
+end
+
+# function _swap_indices(obj::MOI.ScalarQuadraticFunction,idxmap::MOIU.IndexMap)
+#     quad_terms = obj.quadratic_terms
+#     for i = 1:length(quad_terms)
+#         coeff = quad_terms[i].coefficient
+#         var_idx1 = quad_terms[i].variable_index_1
+#         var_idx2 = quad_terms[i].variable_index_2
+#         quad_terms[i] = MOI.ScalarQuadraticTerm{Float64}(coeff,idxmap[var_idx1],idxmap[var_idx2])
+#     end
+#     aff_terms = obj.affine_terms
+#     for i = 1:length(aff_terms)
+#         coeff = aff_terms[i].coefficient
+#         var_idx = aff_terms[i].variable_index
+#         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
+#     end
+# end
