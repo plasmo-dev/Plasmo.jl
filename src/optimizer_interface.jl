@@ -282,8 +282,10 @@ end
 #optimize with given backend.  Could be an MOI optimizer, or a high-level graph optimizer
 function JuMP.optimize!(graph::OptiGraph;kwargs...)
     graph_optimizer = JuMP.backend(graph)
-    if MOIU.state(graph_optimizer) == MOIU.NO_OPTIMIZER
-        error("Please set an optimizer on optigraph before calling `optimize!` using `set_optimizer(graph,optimizer)`")
+    if isa(graph_optimizer,MOIU.CachingOptimizer)
+        if MOIU.state(graph_optimizer) == MOIU.NO_OPTIMIZER
+            error("Please set an optimizer on optigraph before calling `optimize!` using `set_optimizer(graph,optimizer)`")
+        end
     end
     #MOI.empty!(graph_optimizer)
     if !isa(graph_optimizer,Plasmo.OptiGraphOptimizer)
