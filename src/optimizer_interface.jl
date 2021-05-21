@@ -305,7 +305,7 @@ function _create_nlp_block_data(graph::OptiGraph)
     for node in all_nodes(graph)
         if node.model.nlp_data !== nothing
             src = JuMP.backend(node)
-            nl_idx_map = src.result_location[id].nl_node_to_optimizer_map
+            nl_idx_map = src.optimizers[id].nl_node_to_optimizer_map
             for (i,constr) in enumerate(node.model.nlp_data.nlconstr)
                 push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
                 nl_idx_map[JuMP.NonlinearConstraintIndex(i)] = JuMP.NonlinearConstraintIndex(length(bounds))
