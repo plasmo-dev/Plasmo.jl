@@ -431,7 +431,21 @@ JuMP.set_objective_sense(graph::OptiGraph,sense::MOI.OptimizationSense) = graph.
 
 Retrieve the current graph objective function.
 """
-JuMP.objective_function(graph::OptiGraph) = graph.objective_function
+function JuMP.objective_function(graph::OptiGraph)
+    if has_objective(graph)
+        return graph.objective_function
+    elseif has_node_objective(graph) #check for node objective
+        obj = 0
+        for node in all_nodes(graph)
+            scl = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
+            obj += scl*objective_function(node)
+        end
+        return obj
+    else #it's just 0
+        return graph.objective_function
+    end
+end
+
 function JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
     x_affine = convert(JuMP.AffExpr,x)
     JuMP.set_objective_function(graph,x_affine)
@@ -500,12 +514,12 @@ function JuMP.set_objective_coefficient(graph::OptiGraph,variable::JuMP.Variable
 end
 
 function JuMP.objective_value(graph::OptiGraph)
-    if has_nl_objective(graph)
-        return MOI.get(backend(graph),MOI.ObjectiveValue())
-    else
-        objective = JuMP.objective_function(graph)
-        return value(objective)
-    end
+    #if has_nl_objective(graph)
+    return MOI.get(backend(graph),MOI.ObjectiveValue())
+    # else
+    #     objective = JuMP.objective_function(graph)
+    #     return value(objective)
+    # end
 end
 
 function getnodes(expr::JuMP.GenericAffExpr)
