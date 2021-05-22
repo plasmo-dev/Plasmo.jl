@@ -100,8 +100,8 @@ function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
         node_pointer = node_backend.optimizers[id]
         graph_index = node_pointer.node_to_optimizer_map[node_index]
         MOI.delete(node_pointer.optimizer,graph_index)
+        delete!(node_pointer.node_to_optimizer_map,node_index)
     end
-    delete!(node_pointer.node_to_optimizer_map,node_index)
 end
 
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
