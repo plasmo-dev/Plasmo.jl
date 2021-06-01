@@ -330,15 +330,6 @@ function JuMP.optimize!(node::OptiNode;kwargs...)
     return nothing
 end
 
-
-#TODO: Efficient incremental solves.  We do not have an efficient implementation yet. Try directly updating graph backend by passing MOI.set commands to both optimizer and pointed model
-# if MOI.get(backend,MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-#     _aggregate_backends!(graph)  #build up backend
-# else
-#     _update_backend!(graph)      #changes SHOULD already be on the backend
-# end
-
-
 # _get_idx_map(id::Symbol,backend::NodeBackend) = backend.result_location[id].node_to_optimizer_map
 # _get_idx_map(id::Symbol,backend::NodeBackend) = backend.optimizers[id].node_to_optimizer_map
 # _get_idx_map(id::Symbol,node::OptiNode) = _get_idx_map(id,JuMP.backend(node))

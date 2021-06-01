@@ -21,7 +21,7 @@ mutable struct Partition <: AbstractPartition
 end
 Partition() = Partition(Vector{OptiNode}(),Vector{OptiEdge}(),Vector{Partition}())
 
-#TODO: Check partition structure
+
 function _check_valid_partition(graph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
     all_subnodes = vcat(optinode_vectors...)
     all_graph_nodes = all_nodes(graph)
@@ -95,6 +95,7 @@ function Partition(graph::OptiGraph,optiedge_vectors::Vector{Vector{OptiEdge}})
 end
 
 #NODE-EDGE PARTITION
+#Partition with pre-defined subgraphs
 function Partition(graph::OptiGraph,subgraphs::Vector{OptiGraph})
     _check_valid_partition(graph,subgraphs)
     n_parts = length(subgraphs)
@@ -116,9 +117,9 @@ function Partition(graph::OptiGraph,subgraphs::Vector{OptiGraph})
     return partition
 end
 
-##################################################################
+########################################################################################################
 #PARTITION USING DIFFERENT OPTIGRAPH REPRESENTATIONS (e.g. a hypergraph, cliquegraph, or bipartitegraph)
-##################################################################
+########################################################################################################
 function Partition(graph::LightGraphs.AbstractGraph,membership_vector::Vector{Int64},ref_map::Dict)
     partition_elements = _partition_list(membership_vector)
     induced_elements,cross_elements = identify_separators(graph,partition_elements)
@@ -225,7 +226,7 @@ end
 ##################################################################
 getnodes(partition::Partition) = partition.optinodes
 getedges(partition::Partition) = partition.optiedges
-getsubpartitions(partition::Partition) = partition.subpartitions
+sub_partitions(partition::Partition) = partition.subpartitions
 
 function all_subpartitions(partition::Partition)
     subparts = partition.subpartitions
@@ -244,10 +245,8 @@ function n_subpartitions(partition::Partition)
     return n_subparts
 end
 
-
-#apply a partition to an optigraph
 """
-    make_subgraphs!(optigraph::OptiGraph,partition::Partition)
+    apply_partition!(optigraph::OptiGraph,partition::Partition)
 
 Create subgraphs in `optigraph` using a 'partition'.
 """
@@ -272,7 +271,6 @@ function apply_partition!(graph::OptiGraph,partition::Partition)
 end
 @deprecate make_subgraphs! apply_partition!
 
-
 #Create a new set of nodes on a optigraph
 function _set_nodes(graph::OptiGraph,nodes::Vector{OptiNode})
     graph.optinodes = nodes
@@ -293,25 +291,33 @@ function _set_edges(graph::OptiGraph,edges::Vector{OptiEdge})
     return nothing
 end
 
-
-#################################
-# Convenience partition functions.  All use METIS
-#################################
-function partition_to_subgraphs!(graph::OptiGraph,partition_func::Function)
+#swap vertex and edge separators in the partition.  Return a new partition.
+function swap_separators!(graph::OptiGraph,partition::Partition)
 end
 
+##################################################################
+# Convenience partition functions.  These are meant to provide simple interfaces to generate hybrid partitions
+##################################################################
+function partition_to_subgraphs!(graph::OptiGraph,partition_func::Function = Metis.partition,args...;depth::Int64 = 1,kwargs...)
+    #Return an optigraph that is a RECURSIVE_GRAPH
+    #uses hyper_graph
+    membership_vector = partition_func(graph,args...;kwargs...)
+    partition = Partition(graph,membership_vector)
+    apply_partition!(graph,partition)
+    @assert graph_structure(graph) == RECURSIVE_GRAPH
+    return nothing
+end
 
 #Convenience functions for specific partitions
-#Find shared nodes
-function partition_to_tree!(graph::OptiGraph,partition_func::Function)
-    #Return a partition that is a TREE
+#Find shared nodes - or swap separators
+function partition_to_tree!(graph::OptiGraph,partition_func::Function;method = :edge_hypergraph,depth = 1) #method = :edge_hypergraph
+    #Return an optigraph that is a TREE
+    #currently: uses edge_hypergraph
 end
 
-function partition_to_linked_tree!(part_func::Function,graph::OptiGraph,depth::Int64 = 1)
-    #Return a partition that is a LINKED_TREE
-end
-
-function partition_to_recursive_tree!(graph::OptiGraph,partition_func::Function,depth::Int64 = 1)
+function partition_to_linked_tree!(part_func::Function,graph::OptiGraph;depth = 1)
+    #Return an optigraph that is a LINKED_TREE
+    #currently: partition a bipartite graph
 end
 
 

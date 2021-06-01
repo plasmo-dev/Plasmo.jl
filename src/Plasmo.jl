@@ -72,8 +72,6 @@ export_graph,
 ######################################
 HyperGraph, HyperEdge, HyperNode,
 
-hyper_graph,  gethyperedge, gethyperedges,
-
 # Hypergraph functions
 in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to, get_connected_from,
 
@@ -82,7 +80,9 @@ in_neighbors, out_neighbors, neighbors, has_edge, in_edges, out_edges, adjacency
 # Hypergraph Projections
 BipartiteGraph,
 
-bipartite_graph, clique_graph,
+bipartite_graph, clique_graph, hyper_graph, edge_graph, edge_hyper_graph,
+
+gethyperedge, gethyperedges,
 
 #macros
 @optinode, @linkconstraint,
@@ -102,6 +102,8 @@ abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 include("graph_representations/hypergraph.jl")
 
 include("graph_representations/bipartitegraph.jl")
+
+include("graph_representations/cliquegraph.jl")
 
 include("moi.jl")
 

@@ -43,10 +43,10 @@ set_optimizer(optigraph,Ipopt.Optimizer)
 optimize!(optigraph)
 
 #Partition with KaHyPar
-hg,hyper_map = Plasmo.hyper_graph(optigraph)
+hg,hyper_map = hyper_graph(optigraph)
 partition_vector = KaHyPar.partition(hg,2;configuration = :edge_cut)
 partition = Partition(hg,partition_vector,hyper_map)
-make_subgraphs!(optigraph,partition)
+apply_partition!(optigraph,partition)
 set_optimizer(optigraph,Ipopt.Optimizer)
 optimize!(optigraph)
 
@@ -55,7 +55,7 @@ optigraph = create_optigraph()
 nodes = all_nodes(optigraph)
 node_vectors = [[nodes[1],nodes[2]],[nodes[3],nodes[4]]]
 partition = Partition(optigraph,node_vectors)
-make_subgraphs!(optigraph,partition)
+apply_partition!(optigraph,partition)
 set_optimizer(optigraph,Ipopt.Optimizer)
 optimize!(optigraph)
 
@@ -64,6 +64,6 @@ optigraph = create_optigraph()
 es = all_edges(optigraph)
 edge_vectors = [[es[1],es[2]],[es[3]]]
 partition = Partition(optigraph,edge_vectors)
-make_subgraphs!(optigraph,partition)
+apply_partition!(optigraph,partition)
 set_optimizer(optigraph,Ipopt.Optimizer)
 optimize!(optigraph)

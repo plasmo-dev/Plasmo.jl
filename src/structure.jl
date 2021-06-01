@@ -73,7 +73,7 @@ function _links_subgraphs(graph::OptiGraph)
     return return_val
 end
 
-#Helper: recursive check subgraph depth
+#Helper: recursively check subgraph depth
 function _subgraph_depth(subgraphs::Vector{OptiGraph})
     depth = 0
     if any((g) -> has_subgraphs(g),subgraphs)

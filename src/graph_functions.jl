@@ -47,7 +47,6 @@ function LightGraphs.induced_subgraph(graph::OptiGraph,nodes::Vector{OptiNode})
     return subgraph
 end
 
-#Incident edges to a set of optinodes
 """
     incident_edges(graph::OptiGraph,nodes::Vector{OptiNode})
 
