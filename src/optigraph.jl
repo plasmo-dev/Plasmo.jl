@@ -6,7 +6,7 @@ by mapping optigraph elements to hypergraph elements.
 """
 mutable struct HyperGraphBackend
     hypergraph::HyperGraph
-    hyper_map::Dict
+    hyper_map#::ProjectionMap
     update_backend::Bool  #flag that graph backend needs to be re-created when querying graph attributes
 end
 ##############################################################################

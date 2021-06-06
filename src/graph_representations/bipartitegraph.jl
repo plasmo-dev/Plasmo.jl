@@ -53,7 +53,7 @@ function LightGraphs.adjacency_matrix(bgraph::BipartiteGraph)
     return A
 end
 
-function identify_separators(bgraph::BipartiteGraph,partitions::Vector;cut_selector = LightGraphs.degree)
+function _identify_separators(bgraph::BipartiteGraph,partitions::Vector;cut_selector = LightGraphs.degree)
     nparts = length(partitions)
 
     #Create partition matrix
@@ -107,4 +107,8 @@ function identify_separators(bgraph::BipartiteGraph,partitions::Vector;cut_selec
     end
 
     return partition_elements,cross_elements
+end
+
+function induced_elements(bgraph::BipartiteGraph,partitions::Vector;cut_selector = LightGraphs.degree)
+    return _identify_separators(bgraph,partitions;cut_selector = cut_selector)[1]
 end
