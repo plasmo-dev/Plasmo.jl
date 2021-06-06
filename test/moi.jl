@@ -9,8 +9,8 @@ function test_node_backend_1()
     @variable(node,x,start = 1)
     node_backend = backend(node)
 
-    @test node.id == node_backend.id
-    @test node_backend.id == node_backend.last_solution_id
+    @test node.id == node_backend.node_id
+    @test node_backend.node_id == node_backend.last_solution_id
     @test MOI.get(node_backend,MOI.NumberOfVariables()) == 1
 
     @variable(node,y,start = 2)
@@ -56,7 +56,7 @@ function test_set_solution()
     vars = MOI.get(node_backend,MOI.ListOfVariableIndices())
     values = [1.0,1.0]
 
-    @test Plasmo.has_node_solution(node_backend,node_backend.id) == false
+    @test Plasmo.has_node_solution(node_backend,node_backend.node_id) == false
 
     Plasmo.set_node_primals!(node_backend,vars,values,node.id)
     @test MOI.get(node_backend,MOI.VariablePrimal(),vars) == [1.0,1.0]
