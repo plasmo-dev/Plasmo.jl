@@ -1,8 +1,7 @@
 ![Logo](./docs/plasmo3.svg)
 
-[![Build Status](https://travis-ci.org/zavalab/Plasmo.jl.svg?branch=master)](https://travis-ci.org/zavalab/Plasmo.jl)
-[![codecov](https://codecov.io/gh/zavalab/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/zavalab/Plasmo.jl)
-[![coveralls](https://coveralls.io/repos/github/zavalab/Plasmo.jl/badge.svg?branch=master)](https://coveralls.io/github/zavalab/Plasmo.jl?branch=master)
+[![CI](https://github.com/jalving/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/jalving/Plasmo.jl/actions)
+[![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://zavalab.github.io/Plasmo.jl/dev/)
 
 # Plasmo.jl
@@ -17,14 +16,13 @@ using linking constraints, which induces the underlying graph structure.  An `Op
 These hierarchical structures provide a natural framework to harness distributed optimization solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
 
 ## Documentation
-Documentation is available through [GitHub Pages](https://jalving.github.io/Plasmo.jl/dev).
-Additional examples can be found in the [examples](https://github.com/jalving/Plasmo.jl/tree/master/examples/) folder.
+Documentation is available through [GitHub Pages](https://zavalab.github.io/Plasmo.jl/dev/).
+Additional examples can be found in the [examples](https://github.com/zavalab/Plasmo.jl/tree/master/examples/) folder.
 
 ## Installation
 
 ```julia
-using Pkg
-Pkg.add("Plasmo")
+pkg> add Plasmo
 ```
 
 ## Simple Example
@@ -52,12 +50,12 @@ graph = OptiGraph()
 @linkconstraint(graph,n1[:x] == n2[:x])
 
 #Optimize with Ipopt
-ipopt = Ipopt.Optimizer
-optimize!(graph,ipopt)
+set_optimizer(graph,Ipopt.Optimizer)
+optimize!(graph)
 
 #Print solution values
-println("n1[:x]= ",value(n1,n1[:x]))
-println("n2[:x]= ",value(n2,n2[:x]))
+println("n1[:x]= ",value(n1[:x]))
+println("n2[:x]= ",value(n2[:x]))
 ```
 
 ## Acknowledgments
