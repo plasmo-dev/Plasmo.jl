@@ -145,10 +145,10 @@ function test_evaluator_matches_jump_result()
     @test hess_vals1[hess_inds1] == hess_vals2[hess_inds2]
     @test jac_vals1 == jac_vals2
 
-    set_optimizer(graph,Ipopt.Optimizer)
+    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(graph)
 
-    set_optimizer(model,Ipopt.Optimizer)
+    set_optimizer(model,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(model)
 
     val_graph = value.(all_variables(graph))

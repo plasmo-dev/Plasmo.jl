@@ -5,7 +5,7 @@ using LightGraphs
 using Test
 
 function test_hypergraph()
-    hyper = HyperGraph()
+    hyper = Plasmo.HyperGraph()
     add_node!(hyper)
     add_node!(hyper)
     add_node!(hyper)
@@ -17,9 +17,9 @@ function test_hypergraph()
     Plasmo.add_hyperedge!(hyper,1,2)
     Plasmo.add_hyperedge!(hyper,4,1,3)
 
-    @test hyper.hyperedge_map[1] == HyperEdge(1,2,3)
-    @test hyper.hyperedge_map[2] == HyperEdge(1,2)
-    @test hyper.hyperedge_map[3] == HyperEdge(1,3,4)
+    @test hyper.hyperedge_map[1] == Plasmo.HyperEdge(1,2,3)
+    @test hyper.hyperedge_map[2] == Plasmo.HyperEdge(1,2)
+    @test hyper.hyperedge_map[3] == Plasmo.HyperEdge(1,3,4)
 
     @test Set([1,2,3]) == hyper.hyperedge_map[1].vertices
     @test Set([1,2]) == hyper.hyperedge_map[2].vertices
@@ -32,17 +32,39 @@ function test_hypergraph()
     A = incidence_matrix(hyper)
     @test size(A) == (4,3)
 
-    #Project to standard graph
-    # clique_graph,graph_map= clique_graph)
-    # @test nv(clique_graph) == 6
-    # @test ne(clique_graph) == 5
-
 end
 
 function test_clique_graph()
+    graph = Plasmo.CliqueGraph()
+    add_vertex!(graph)
+    add_vertex!(graph)
+    add_vertex!(graph)
+    @test nv(graph) == 3
+    add_edge!(graph,1,2)
+    add_edge!(graph,2,3)
+    add_edge!(graph,1,3)
+    @test ne(graph) == 3
 end
 
 function test_bipartite_graph()
+    graph = Plasmo.BipartiteGraph()
+
+    #optinodes => vertices
+    add_vertex!(graph,bipartite = 1)
+    add_vertex!(graph,bipartite = 1)
+    add_vertex!(graph,bipartite = 1)
+    @test nv(graph) == 3
+
+
+    add_vertex!(graph,bipartite = 2)
+    add_vertex!(graph,bipartite = 2)
+    add_vertex!(graph,bipartite = 2)
+    @test nv(graph) == 6
+
+    add_edge!(graph,1,4)
+    add_edge!(graph,2,5)
+    add_edge!(graph,3,6)
+    @test ne(graph) == 3
 end
 
 function run_tests()

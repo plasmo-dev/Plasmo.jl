@@ -23,7 +23,7 @@ function test_optigraph1()
 
     @test num_nodes(graph) == 15
     @test num_optiedges(graph) == 3
-    @test num_linkconstraints(graph) == 3
+    @test num_link_constraints(graph) == 3
     @test num_variables(graph) == 30
 end
 

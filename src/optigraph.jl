@@ -371,7 +371,8 @@ function getlinkconstraints(graph::OptiGraph)
     end
     return links
 end
-num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
+num_link_constraints(graph::OptiGraph) = sum(num_link_constraints.(graph.optiedges))
+@deprecate num_linkconstraints num_link_constraints
 """
     all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 

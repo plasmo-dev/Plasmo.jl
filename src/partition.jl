@@ -311,7 +311,7 @@ end
 
 Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
 """
-function partition_to_tree!(graph::OptiGraph,partition_func::Function;method = :edge_hypergraph,depth = 1) #method = :edge_hypergraph
+function partition_to_tree!(graph::OptiGraph,partition_func::Function,args...;depth = 1,kwargs...) #method = :edge_hypergraph
     partitioned_graph,ref_map = edge_hyper_graph(graph)
     membership_vector = partition_func(partitioned_graph,args...;kwargs...)
     partition = Partition(membership_vector,ref_map)
@@ -324,7 +324,7 @@ end
 
 Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
 """
-function partition_to_linked_tree!(part_func::Function,graph::OptiGraph;depth = 1)
+function partition_to_linked_tree!(graph::OptiGraph,partition_func::Function,args...;depth = 1,kwargs...)
     partitioned_graph,ref_map = bipartite_graph(graph)
     membership_vector = partition_func(partitioned_graph,args...;kwargs...)
     partition = Partition(membership_vector,ref_map)
@@ -342,66 +342,3 @@ function string(partition::Partition)
 end
 print(io::IO, partition::Partition) = print(io, string(partition))
 show(io::IO,partition::Partition) = print(io,partition)
-
-
-
-#Identify cross elements
-# function identify_cross_elements(elements::Vector where T,ref_map::Dict)
-#     optinodes = OptiNode[]
-#     optiedges = OptiEdge[]
-#     opti_elements = getindex.(Ref(ref_map),elements)
-#
-#     for element in opti_elements
-#         if isa(element,OptiNode)
-#             push!(optinodes,element)
-#         elseif isa(element,OptiEdge)
-#             push!(optiedges,element)
-#         end
-#     end
-#     return optinodes,optiedges
-# end
-
-# function Partition(induced_elements::Vector,cross_elements::Vector,ref_map::Dict)
-#     partition = Partition()
-#     subpart_optinodes,subpart_optiedges = identify_induced_elements(induced_elements,ref_map)
-#     cross_nodes,cross_edges = identify_cross_elements(cross_elements,ref_map)
-#
-#     partition.optinodes = cross_nodes
-#     partition.optiedges = cross_edges
-#     for i = 1:length(induced_elements)
-#         subpartition = Partition()
-#         subpartition.optinodes = subpart_optinodes[i]
-#         subpartition.optiedges = subpart_optiedges[i]
-#         push!(partition.subpartitions,subpartition)
-#     end
-#
-#     return partition
-# end
-
-# #Identify partition elements
-# function identify_induced_elements(induced_elements::Vector where T,ref_map::Dict)
-#     induced = [getindex.(Ref(ref_map),induced_elements[i]) for i = 1:length(induced_elements)]
-#     n_parts = length(induced)
-#
-#     optinode_parts = Vector{Vector}(undef,n_parts)
-#     optiedge_parts = Vector{Vector}(undef,n_parts)
-#     for i = 1:n_parts
-#         optinode_parts[i] = OptiNode[]
-#         optiedge_parts[i] = OptiEdge[]
-#     end
-#     for i = 1:n_parts
-#         for element in induced[i]
-#             if isa(element,OptiNode)
-#                 push!(optinode_parts[i],element)
-#             elseif isa(element,OptiEdge)
-#                 push!(optiedge_parts[i],element)
-#             end
-#         end
-#     end
-#     return optinode_parts,optiedge_parts
-# end
-
-# partition_elements = _partition_list(membership_vector)
-# induced_elements,cross_elements = identify_separators(graph,partition_elements)
-# partition = Partition(induced_elements,cross_elements,ref_map)
-# induced_elements,cross_elements = identify_separators(graph,partition_elements)
