@@ -4,8 +4,6 @@
 #3.) Just use the node optimizer backend
 
 abstract type AbstractNodeBackend <: MOI.AbstractOptimizer end
-
-#Set solution directly on an optinode
 """
     NodeSolution
 
@@ -18,13 +16,20 @@ mutable struct NodeSolution <: MOI.ModelLike
     status::MOI.TerminationStatusCode
 end
 
-NodeSolution(primals::OrderedDict{MOI.VariableIndex,Float64}) = NodeSolution(primals,
+NodeSolution(primals::OrderedDict{MOI.VariableIndex,Float64}) = NodeSolution(
+primals,
 OrderedDict{MOI.ConstraintIndex,Float64}(),
 MOI.OPTIMIZE_NOT_CALLED)
 
-NodeSolution(duals::OrderedDict{MOI.ConstraintIndex,Float64}) = NodeSolution(OrderedDict{MOI.VariableIndex,Float64}(),
+NodeSolution(duals::OrderedDict{MOI.ConstraintIndex,Float64}) = NodeSolution(
+OrderedDict{MOI.VariableIndex,Float64}(),
 duals,
 MOI.OPTIMIZE_NOT_CALLED)
+
+NodeSolution(status::MOI.TerminationStatusCode) = NodeSolution(
+OrderedDict{MOI.VariableIndex,Float64}(),
+OrderedDict{MOI.ConstraintIndex,Float64}(),
+status)
 
 """
     NodePointer
@@ -65,7 +70,6 @@ function NodeBackend(model::MOIU.CachingOptimizer,id::Symbol)
 end
 
 #Custom MOI methods for optinodes
-#NodeBackend
 function MOI.add_variable(node_backend::NodeBackend)
     node_index = MOI.add_variable(node_backend.optimizer)
     for id in node_backend.graph_ids
@@ -75,9 +79,6 @@ function MOI.add_variable(node_backend::NodeBackend)
     end
     return node_index
 end
-
-#MOI.add_variable(node_backend::NodeBackend) = = MOI.add_variable(node_backend.optimizer)
-#MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_backend.optimizer,func,set)
 
 #Add constraint to node MOI model and each graph optimizer it points to
 #TODO: check graph index.  Something is going on here...
@@ -107,25 +108,19 @@ end
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
 #BUG: This might be causing problems with fixing variables.  I think the node backend is getting a constraint index somewhere that the graph backend might not have.
 function MOI.set(node_backend::Plasmo.NodeBackend,attr::MOI.AnyAttribute,args...)
-    #println(args)
     MOI.set(node_backend.optimizer,attr,args...)
     index_args = [arg for arg in args if isa(arg,MOI.Index)]
     other_args = [arg for arg in args if !isa(arg,MOI.Index)]
-    # println(index_args)
-    # println(other_args)
     for id in node_backend.graph_ids
         node_pointer = node_backend.optimizers[id]
         graph_indices = getindex.(Ref(node_pointer.node_to_optimizer_map),index_args)
         MOI.set(node_pointer.optimizer,attr,graph_indices...,other_args...)
     end
 end
-#MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...) = MOI.set(node_backend.optimizer,attr,args...)
-
 
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute) = MOI.get(node_backend.optimizer,attr)
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute,idx) = MOI.get(node_backend.optimizer,attr,idx)
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(node_backend.optimizer,attr,idxs)
-
 MOI.is_valid(node_backend::NodeBackend,idx::MOI.Index) = MOI.is_valid(node_backend.optimizer,idx)
 
 MOI.supports_constraint(node_backend::NodeBackend,func::Type{T}
@@ -146,7 +141,7 @@ function has_node_solution(backend::NodeBackend,id::Symbol)
 end
 
 #These functions can be used to set custom solutions on a node.  Useful for meta-algorithms
-function set_node_primals!(backend::NodeBackend,vars::Vector{MOI.VariableIndex},values::Vector{Float64},id::Symbol)
+function set_backend_primals!(backend::NodeBackend,vars::Vector{MOI.VariableIndex},values::Vector{Float64},id::Symbol)
     if length(vars) > 0
         #create node solution if necessary
         primals = OrderedDict(zip(vars,values))
@@ -157,11 +152,12 @@ function set_node_primals!(backend::NodeBackend,vars::Vector{MOI.VariableIndex},
             node_solution.primals = primals
         end
         backend.result_location[id] = node_solution
+        backend.last_solution_id = id
     end
     return nothing
 end
 
-function set_node_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintIndex},values::Vector{Float64},id::Symbol)
+function set_backend_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintIndex},values::Vector{Float64},id::Symbol)
     if length(cons) > 0
         #create node solution if necessary
         duals = OrderedDict(zip(cons,values))
@@ -171,7 +167,20 @@ function set_node_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintIndex},
             node_solution = backend.result_location[id]
             node_solution.duals = duals
         end
+        backend.last_solution_id = id
     end
+    return nothing
+end
+
+function set_backend_status!(backend::NodeBackend,status::MOI.TerminationStatusCode,id::Symbol)
+    if !has_node_solution(backend,id)
+        node_solution = NodeSolution(status)
+    else
+        node_solution = backend.result_location[id]
+        node_solution.status = status
+    end
+    backend.result_location[id] = node_solution
+    backend.last_solution_id = id
     return nothing
 end
 
@@ -207,9 +216,7 @@ end
 MOI.get(node_pointer::NodePointer, attr::MOI.TerminationStatus) = MOI.get(node_pointer.optimizer,attr)
 MOI.set(node_pointer::NodePointer,attr::MOI.AnyAttribute,args...) = MOI.set(node_pointer.optimizer,attr,args...)
 
-
 #Grab results from the underlying "optimizer"
-#Get single variable index
 function MOI.get(node_backend::NodeBackend, attr::MOI.VariablePrimal, idx::MOI.VariableIndex)
     return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr,idx)
 end
@@ -320,6 +327,7 @@ function _swap_indices(func::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
     return new_func
 end
 
+#TODO: Quadratic swap
 # function _swap_indices(obj::MOI.ScalarQuadraticFunction,idxmap::MOIU.IndexMap)
 #     quad_terms = obj.quadratic_terms
 #     for i = 1:length(quad_terms)

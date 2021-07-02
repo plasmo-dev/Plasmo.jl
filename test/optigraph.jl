@@ -2,32 +2,10 @@ module TestOptiGraph
 
 using Plasmo
 using JuMP
+using Ipopt
 using Test
 
-function test_optigraph1()
-    graph = OptiGraph()
-    @optinode(graph,n1)
-    @optinode(graph,nodes1[1:5])
-    @optinode(graph,nodes2[1:3,1:3])
-
-    for node in all_nodes(graph)
-        @variable(node,x>=0)
-        @variable(node,y>=2)
-        @constraint(node,x + y == 3)
-        @objective(node,Min,y)
-    end
-
-    @linkconstraint(graph,n1[:x] == nodes1[1][:x])
-    @linkconstraint(graph,sum(nodes1[i][:x] for i = 1:5) == 5)
-    @linkconstraint(graph,nodes2[2][:y] == nodes2[3][:y],attach = nodes2[2])
-
-    @test num_nodes(graph) == 15
-    @test num_optiedges(graph) == 3
-    @test num_link_constraints(graph) == 3
-    @test num_variables(graph) == 30
-end
-
-function test_optigraph2()
+function _create_optigraph()
     graph = OptiGraph()
 
     @optinode(graph,n1)
@@ -58,13 +36,39 @@ function test_optigraph2()
     @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
     @objective(graph,Min,n1[:x] + n2[:x])
+    return graph
+end
 
+function test_optigraph1()
+    graph = OptiGraph()
+    @optinode(graph,n1)
+    @optinode(graph,nodes1[1:5])
+    @optinode(graph,nodes2[1:3,1:3])
+
+    for node in all_nodes(graph)
+        @variable(node,x>=0)
+        @variable(node,y>=2)
+        @constraint(node,x + y == 3)
+        @objective(node,Min,y)
+    end
+
+    @linkconstraint(graph,n1[:x] == nodes1[1][:x])
+    @linkconstraint(graph,sum(nodes1[i][:x] for i = 1:5) == 5)
+    @linkconstraint(graph,nodes2[2][:y] == nodes2[3][:y],attach = nodes2[2])
+
+    @test num_nodes(graph) == 15
+    @test num_optiedges(graph) == 3
+    @test num_link_constraints(graph) == 3
+    @test num_variables(graph) == 30
+end
+
+function test_optigraph2()
+    graph = _create_optigraph()
     @test Plasmo.has_nlp_data(graph) == true
     @test Plasmo.has_objective(graph) == true
     @test Plasmo.has_nl_objective(graph) == false
     @test Plasmo.has_node_objective(graph) == true
 end
-
 
 function test_set_model()
     graph = OptiGraph()
@@ -130,13 +134,76 @@ function test_subgraph()
 end
 
 function test_multiple_solves()
+    graph = _create_optigraph()
+    n1 = getnode(graph,1)
+    set_optimizer(graph,Ipopt.Optimizer)
+    optimize!(graph)
+    @test isapprox(value(n1[:x]),0,atol = 1e-6)
+
+    set_lower_bound(n1[:x],1)
+    optimize!(graph)
+    isapprox(value(n1[:x]),1,atol = 1e-6)
 end
 
 function test_fix_variable()
+    graph = _create_optigraph()
+    n1 = getnode(graph,1)
+    fix(n1[:x],1,force = true)
+    set_optimizer(graph,Ipopt.Optimizer)
+    optimize!(graph)
+    @test value(n1[:x]) == 1
+
+    fix(n1[:x],2)
+    optimize!(graph)
+    @test value(n1[:x]) == 2
+
+    fix(n1[:x],0)
+    optimize!(graph)
+    @test value(n1[:x]) == 0
 end
 
-#set optigraph optimizer attributes
 function test_set_optimizer_attributes()
+    graph = _create_optigraph()
+    JuMP.set_optimizer_attribute(graph,"mu_strategy","adaptive")
+    set_optimizer(graph,Ipopt.Optimizer)
+    optimize!(graph)
+    @test MOI.get(graph,MOI.RawParameter("mu_strategy")) == "adaptive"
+end
+
+# Test optigraph optimizer.  This is a way to set custom optimize calls on an optimizer
+# to make it work with an optigraph.
+mutable struct TestOptimizer <: MOI.AbstractOptimizer
+    status::MOI.TerminationStatusCode
+end
+TestOptimizer() = TestOptimizer(MOI.OPTIMIZE_NOT_CALLED)
+MOI.get(optimizer::TestOptimizer,::MOI.TerminationStatus) = optimizer.status
+MOI.get(optimizer::TestOptimizer,::Plasmo.OptiGraphOptimizeHook) = optigraph_optimize!
+
+MOI.is_empty(::TestOptimizer) = true
+MOI.empty!(::TestOptimizer) = nothing
+MOI.copy_to(dest::TestOptimizer,src::MOI.ModelLike;kwargs...) = MOIU.default_copy_to(dest,src;kwargs...)
+MOIU.supports_default_copy_to(model::TestOptimizer, copy_names::Bool) = true
+
+function optigraph_optimize!(graph::OptiGraph,optimizer::TestOptimizer)
+    println("Running Test Optimizer")
+    for node in all_nodes(graph)
+        vars = all_variables(node)
+        vals = ones(length(vars))
+        Plasmo.set_node_primals(node,vars,vals)
+        Plasmo.set_node_status(node,MOI.OPTIMAL)
+    end
+    optimizer.status = MOI.OPTIMAL
+    return nothing
+end
+
+function test_optigraph_optimizer()
+    graph = _create_optigraph()
+    test_optimizer = TestOptimizer
+    set_optimizer(graph,test_optimizer)
+    Plasmo.optimize!(graph)
+    for var in all_variables(graph)
+        @test value(var) == 1.0
+    end
 end
 
 function run_tests()

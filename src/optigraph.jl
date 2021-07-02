@@ -15,9 +15,9 @@ end
 #TODO: Set optigraph model attributes.  (e.g. set_optimizer_attribute(graph)) An optigraph can be solved just like any JuMP model in many cases.
 #IDEA: Update optigraph backend depending on state.  If we empty out a graph backend, we unhook the optinodes
 # @enum OptiGraphMode begin
-#     SYNCHRONIZED = 1   #optigraph backend is build up in parallel to optinodes
-#     NODES_ONLY = 2     #optigraph backend is not built.  Aggregates backend if optimize!(graph) is called
-#     GRAPH_ONLY = 3     #optinode backend points to graph backend
+#     SYNCHRONIZED = 1   #optigraph backend is built up in parallel to optinodes
+#     NODES_ONLY = 2     #optigraph backend is not built.  We aggregates the backend if optimize!(graph) is called with an MOI optimizer.  This can be done with parallel threads.
+#     GRAPH_ONLY = 3     #optinode backend points to graph backend.  Less memory use.  Probably has to be done sequentially
 # end
 """
     OptiGraph()
@@ -37,7 +37,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    # IDEA: An optigraph optimizer can be a MOI model.  For standard optimization solvers, we can either 1) aggregate a MOI backend on the fly using optinodes or 2) build up the MOI backend with nodes simultaneously
+    #IDEA: An optigraph optimizer can be a MOI model.  For standard optimization solvers, we can either 1) aggregate a MOI backend on the fly using optinodes or 2) build up the MOI backend with nodes simultaneously
     optimizer::Any #MOI.ModelLike
 
     #IDEA: graph_backend is used for hypergraph topology functions (e.g. neighbors,expand,etc...)
@@ -51,6 +51,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
 
     id::Symbol
 
+    #TODO future release
     #mode::OptiGraphMode
 
     #Constructor
@@ -94,6 +95,9 @@ function OptiGraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
     return graph
 end
 
+#Broadcast over graph without using `Ref`
+Base.broadcastable(graph::OptiGraph) = Ref(graph)
+
 function _is_valid_optigraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
     edge_nodes = union(getnodes.(edges)...)
     return issubset(edge_nodes,nodes)
@@ -101,9 +105,7 @@ end
 
 optigraph_reference(graph::OptiGraph) = OptiGraph(all_nodes(graph),all_edges(graph))
 
-
 @deprecate ModelGraph OptiGraph
-
 ########################################################
 # OptiGraph Interface
 ########################################################
@@ -515,12 +517,7 @@ function JuMP.set_objective_coefficient(graph::OptiGraph,variable::JuMP.Variable
 end
 
 function JuMP.objective_value(graph::OptiGraph)
-    #if has_nl_objective(graph)
     return MOI.get(backend(graph),MOI.ObjectiveValue())
-    # else
-    #     objective = JuMP.objective_function(graph)
-    #     return value(objective)
-    # end
 end
 
 function getnodes(expr::JuMP.GenericAffExpr)

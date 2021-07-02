@@ -45,7 +45,7 @@ end
 
 Get the variable value of `vref` on the optinode `node`.
 """
-JuMP.value(node::OptiNode,vref::VariableRef) = JuMP.backend(node).result_location[node.id]
+JuMP.value(node::OptiNode,vref::VariableRef) = MOI.get(JuMP.backend(node).result_location[node.id],MOI.VariablePrimal(),index(vref))
 jump_model(node::OptiNode) = node.model
 @deprecate getmodel jump_model
 #JuMP.Variable(node,index)

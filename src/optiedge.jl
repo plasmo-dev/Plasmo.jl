@@ -1,3 +1,6 @@
+##############################################################################
+# LinkConstraint
+##############################################################################
 """
     LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
 
@@ -24,9 +27,9 @@ function set_attached_node(con::LinkConstraint,node::OptiNode)
 end
 
 attached_node(con::LinkConstraint) = con.attached_node
+
 ##############################################################################
 # OptiEdges
-# OptiEdges describe connections between model nodes
 ##############################################################################
 """
     OptiEdge
@@ -83,9 +86,11 @@ function MOI.delete!(cref::LinkConstraintRef)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
 
+getnodes(edge::OptiEdge) = edge.nodes
 getnodes(con::JuMP.ScalarConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge)
+
 num_nodes(con::LinkConstraint) = length(getnodes(con))
 getname(cref::LinkConstraintRef) = cref.optiedge.linkconstraint_names[cref.idx]
 
@@ -99,10 +104,10 @@ function JuMP.dual(linkref::LinkConstraintRef)
 end
 
 num_link_constraints(edge::OptiEdge) = length(edge.linkconstraints)
-@deprecate num_linkconstraints num_link_constraints
+
 link_constraints(edge::OptiEdge) = values(edge.linkconstraints)
 @deprecate getlinkconstraints link_constraints
-getnodes(edge::OptiEdge) = edge.nodes
+
 
 function Base.string(edge::OptiEdge)
     "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"

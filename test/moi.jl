@@ -58,7 +58,7 @@ function test_set_solution()
 
     @test Plasmo.has_node_solution(node_backend,node_backend.node_id) == false
 
-    Plasmo.set_node_primals!(node_backend,vars,values,node.id)
+    Plasmo.set_backend_primals!(node_backend,vars,values,node.id)
     @test MOI.get(node_backend,MOI.VariablePrimal(),vars) == [1.0,1.0]
 
     cons = Vector{MOI.ConstraintIndex}(undef,0)
@@ -70,7 +70,7 @@ function test_set_solution()
         append!(cons,cidx)
         append!(cidx_duals,ones(length(cidx)))
     end
-    Plasmo.set_node_duals!(node_backend,cons,cidx_duals,node.id)
+    Plasmo.set_backend_duals!(node_backend,cons,cidx_duals,node.id)
     @test MOI.get(node_backend,MOI.ConstraintDual(),cons) == [1.0]
 end
 

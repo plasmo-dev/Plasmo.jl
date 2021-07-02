@@ -45,7 +45,7 @@ function graph_structure(graph::OptiGraph)
     end
 end
 
-#Recurisely calculate depth
+#recurisely calculate depth
 function graph_depth(graph::OptiGraph)
     depth = 0
     if has_subgraphs(graph)
@@ -55,7 +55,7 @@ function graph_depth(graph::OptiGraph)
     return depth
 end
 
-#Helper: Recursively check whether any edges link subgraphs
+#recursively check whether any edges link subgraphs
 function _links_subgraphs(graph::OptiGraph)
     return_val = false
     if num_subgraphs(graph) > 1
@@ -73,7 +73,7 @@ function _links_subgraphs(graph::OptiGraph)
     return return_val
 end
 
-#Helper: recursively check subgraph depth
+#recursively check subgraph depth
 function _subgraph_depth(subgraphs::Vector{OptiGraph})
     depth = 0
     if any((g) -> has_subgraphs(g),subgraphs)
@@ -85,8 +85,11 @@ function _subgraph_depth(subgraphs::Vector{OptiGraph})
     return depth
 end
 
-
+#TODO:
 #Other model traits we can communicate to solvers:
 #NLLinkConstraints
 #Integer variables in subgraphs
 #Incident hyper-edge (a hyper-edge that connects first stage to multiple 2nd stage nodes)
+
+#TODO:
+#Aggregate to Tree, Graph, etc...

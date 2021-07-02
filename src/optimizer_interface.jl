@@ -1,6 +1,5 @@
-
-#Abstract type for custom optigraph optimizers.  Allows the same attributes as a MOI.ModelLike.
-abstract type OptiGraphOptimizer <: MOI.ModelLike end
+#MOI attribute for optimizers to signal how to solve an optigraph
+struct OptiGraphOptimizeHook <: MOI.AbstractModelAttribute end
 
 #Get backends
 JuMP.backend(graph::OptiGraph) = graph.optimizer
@@ -164,8 +163,6 @@ function _set_node_results!(graph::OptiGraph)
 
     nodes = all_nodes(graph)
     srces = JuMP.backend.(nodes)
-    #idxmaps = _get_idx_map.(Ref(id),nodes)
-
     for src in srces
         src.last_solution_id = graph.id
         src.result_location[id] = src.optimizers[id]
@@ -195,9 +192,6 @@ function _set_node_results!(graph::OptiGraph)
             end
         end
     end
-
-
-
     return nothing
 end
 
@@ -212,9 +206,7 @@ JuMP.optimize!(graph::OptiGraph,optimizer;kwargs...) = error("The optimizer keyw
 Set an MOI optimizer for the optigraph `graph`.
 """
 function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor, bridge_constraints::Bool = true)
-    caching_mode = MOIU.AUTOMATIC
-    universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
-    backend = MOIU.CachingOptimizer(universal_fallback,caching_mode)
+    backend = JuMP.backend(graph)
     if bridge_constraints
         optimizer = MOI.instantiate(optimizer_constructor, with_bridge_type=Float64, with_names=false)
         for bridge_type in graph.bridge_types
@@ -224,27 +216,52 @@ function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor, bridge_cons
         optimizer = MOI.instantiate(optimizer_constructor)
     end
     MOIU.reset_optimizer(backend,optimizer)
-    graph.optimizer = backend
     return nothing
 end
 
-JuMP.set_optimizer(graph::OptiGraph,optimizer::OptiGraphOptimizer) = graph.optimizer = optimizer
+#Set an optigraph optimizer
+#TODO: drop this into a caching optimizer so we can pass attributes into it as needed
+# JuMP.set_optimizer(graph::OptiGraph, optimizer::OptiGraphOptimizer) = graph.optimizer=optimizer
 
+function JuMP.optimize!(graph::OptiGraph;kwargs...)
+    graph_optimizer = JuMP.backend(graph)
+    #NOTE: I think this will always be a MOIU.CachingOptimizer
+    if isa(graph_optimizer,MOIU.CachingOptimizer)
+        if MOIU.state(graph_optimizer) == MOIU.NO_OPTIMIZER
+            error("Please set an optimizer on optigraph before calling `optimize!` using `set_optimizer(graph,optimizer)`")
+        end
+    end
+
+    #check for optigraph optimize hook
+    try
+        #We have to attach the optimizer to query attributes
+        if !(MOIU.state(graph_optimizer) == MOIU.ATTACHED_OPTIMIZER)
+            MOIU.attach_optimizer(backend(graph))
+        end
+        optimize_func = MOI.get(graph_optimizer,MOIU.AttributeFromOptimizer(OptiGraphOptimizeHook()))
+        #TODO: Better checking for the model
+        optimize_func(graph,graph_optimizer.optimizer.model)
+    catch err
+        if !(typeof(err) in [KeyError,ArgumentError])
+            rethrow(err)
+        else  #otherwise, aggregate and solve with the MOI interface
+            _moi_optimize!(graph)
+        end
+    end
+    return nothing
+end
 
 #optimize with MOI interfaced optimizer
 function _moi_optimize!(graph::OptiGraph)
-    #Build a standard MOI interface
-     if MOI.get(JuMP.backend(graph),MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-         _aggregate_backends!(graph)
-     end
-     #else, changes SHOULD have been captured
-
-    #Set objective function
-    has_nl_obj = has_nl_objective(graph)
+    #Build the MOI backend if it hasn't already been created
+    if MOI.get(JuMP.backend(graph), MOI.TerminationStatus())==MOI.OPTIMIZE_NOT_CALLED
+     _aggregate_backends!(graph) #else, changes SHOULD have been captured
+    end
 
     #set the optigraph objective if it is:
     #1) not nonlinear and
     #2) there are node objectives
+    has_nl_obj = has_nl_objective(graph)
     if !(has_nl_obj)
         _set_graph_objective(graph)
     end
@@ -270,30 +287,7 @@ function _moi_optimize!(graph::OptiGraph)
             rethrow(err)
         end
     end
-
     _set_node_results!(graph)     #populate optimizer solutions onto each node backend
-end
-
-#optimize with optigraph optimizer (i.e. a meta-algorithm)
-function _optigraph_optimize!(graph)
-    Plasmo.optimize!(graph.optimizer)
-end
-
-#optimize with given backend.  Could be an MOI optimizer, or a high-level graph optimizer
-function JuMP.optimize!(graph::OptiGraph;kwargs...)
-    graph_optimizer = JuMP.backend(graph)
-    if isa(graph_optimizer,MOIU.CachingOptimizer)
-        if MOIU.state(graph_optimizer) == MOIU.NO_OPTIMIZER
-            error("Please set an optimizer on optigraph before calling `optimize!` using `set_optimizer(graph,optimizer)`")
-        end
-    end
-    #MOI.empty!(graph_optimizer)
-    if !isa(graph_optimizer,Plasmo.OptiGraphOptimizer)
-        _moi_optimize!(graph)
-    else
-        _optigraph_optimize!(graph)
-    end
-    return nothing
 end
 
 function _create_nlp_block_data(graph::OptiGraph)
@@ -318,11 +312,42 @@ function _create_nlp_block_data(graph::OptiGraph)
     return MOI.NLPBlockData(bounds,OptiGraphNLPEvaluator(graph),has_nl_obj)
 end
 
+#######################################################
+#OptiGraph Optimizer Attributes
+#######################################################
+function JuMP.set_optimizer_attribute(graph::OptiGraph, name::String, value)
+    return set_optimizer_attribute(graph, MOI.RawParameter(name), value)
+end
+
+function JuMP.set_optimizer_attribute(
+    graph::OptiGraph,
+    attr::MOI.AbstractOptimizerAttribute,
+    value
+    )
+    return MOI.set(graph, attr, value)
+end
+
+function MOI.get(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute)
+    return MOI.get(backend(graph), attr)
+end
+
+function MOI.set(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute, value)
+    return MOI.set(backend(graph), attr, value)
+end
+
+function MOI.set(graph::OptiGraph, attr::MOI.AbstractModelAttribute, value)
+    return MOI.set(backend(graph), attr, value)
+end
+
+#######################################################
+#Optinode optimizer interface
+#######################################################
 #OptiNode optimizer.  Hits MOI.optimize!(backend(node))
 function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
     JuMP.set_optimizer(jump_model(node),optimizer_constructor)
     JuMP.backend(node).last_solution_id = node.id
     JuMP.backend(node).result_location[node.id] = JuMP.backend(node).optimizer
+    return nothing
 end
 
 function JuMP.optimize!(node::OptiNode;kwargs...)
@@ -330,6 +355,25 @@ function JuMP.optimize!(node::OptiNode;kwargs...)
     return nothing
 end
 
-# _get_idx_map(id::Symbol,backend::NodeBackend) = backend.result_location[id].node_to_optimizer_map
-# _get_idx_map(id::Symbol,backend::NodeBackend) = backend.optimizers[id].node_to_optimizer_map
-# _get_idx_map(id::Symbol,node::OptiNode) = _get_idx_map(id,JuMP.backend(node))
+function set_node_primals(node::OptiNode,vars::Vector{JuMP.VariableRef},values::Vector{Float64})
+    node_backend = JuMP.backend(node)
+    moi_indices = index.(vars)
+    set_backend_primals!(node_backend,moi_indices,values,node.id)
+    return nothing
+end
+
+function set_node_duals(node::OptiNode,cons::Vector{JuMP.ConstraintRef},values::Vector{Float64})
+    node_backend = JuMP.backend(node)
+    moi_indices = index.(cons)
+    set_backend_duals!(node_backend,moi_indices,values,node.id)
+    return nothing
+end
+
+function set_node_status(node::OptiNode,status::MOI.TerminationStatusCode)
+    node_backend = JuMP.backend(node)
+    set_backend_status!(node_backend,status,node.id)
+end
+
+# caching_mode = MOIU.AUTOMATIC
+# universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
+# backend = MOIU.CachingOptimizer(universal_fallback,caching_mode)

@@ -114,8 +114,8 @@ function Partition(graph::OptiGraph,subgraphs::Vector{OptiGraph})
     partition.optiedges = [node_incident_edges;cross_edges]
     for i = 1:length(subgraphs)
         subpartition = Partition()
-        subpartition.optinodes = all_nodes(subgraphs[i])#subnodes[i]
-        subpartition.optiedges = setdiff(all_edges(subgraphs[i]),node_incident_edges) #cut out the root incident edges
+        subpartition.optinodes = all_nodes(subgraphs[i])
+        subpartition.optiedges = setdiff(all_edges(subgraphs[i]),node_incident_edges) #remove root incident edges
         push!(partition.subpartitions,subpartition)
     end
     return partition
@@ -283,7 +283,7 @@ end
 
 
 #swap vertex and edge separators in the partition.  Return a new partition.
-#TODO
+#IDEA TODO:
 function swap_separators!(graph::OptiGraph,partition::Partition)
 end
 

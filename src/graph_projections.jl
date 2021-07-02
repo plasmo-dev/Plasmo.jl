@@ -64,7 +64,6 @@ that maps vertices and edges to the optinodes and optiedges.
 """
 function LightGraphs.clique_graph(optigraph::OptiGraph)
     graph = CliqueGraph()
-    # graph_map = Dict()
     graph_map = ProjectionMap(optigraph,graph)
 
     #optinodes => vertex
