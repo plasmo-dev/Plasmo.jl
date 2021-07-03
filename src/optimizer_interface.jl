@@ -316,18 +316,31 @@ end
 #OptiGraph Optimizer Attributes
 #######################################################
 function JuMP.set_optimizer_attribute(graph::OptiGraph, name::String, value)
-    return set_optimizer_attribute(graph, MOI.RawParameter(name), value)
+    return JuMP.set_optimizer_attribute(graph, MOI.RawParameter(name), value)
 end
 
 function JuMP.set_optimizer_attribute(
     graph::OptiGraph,
     attr::MOI.AbstractOptimizerAttribute,
-    value
-    )
+    value)
     return MOI.set(graph, attr, value)
 end
 
+function JuMP.get_optimizer_attribute(graph::OptiGraph, name::String)
+    return JuMP.get_optimizer_attribute(graph, MOI.RawParameter(name))
+end
+
+function JuMP.get_optimizer_attribute(
+    graph::OptiGraph,
+    attr::MOI.AbstractOptimizerAttribute)
+    return MOI.get(graph, attr)
+end
+
 function MOI.get(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute)
+    return MOI.get(backend(graph), attr)
+end
+
+function MOI.get(graph::OptiGraph, attr::MOI.AbstractModelAttribute)
     return MOI.get(backend(graph), attr)
 end
 
@@ -338,7 +351,6 @@ end
 function MOI.set(graph::OptiGraph, attr::MOI.AbstractModelAttribute, value)
     return MOI.set(backend(graph), attr, value)
 end
-
 #######################################################
 #Optinode optimizer interface
 #######################################################
