@@ -164,10 +164,10 @@ end
 
 function test_set_optimizer_attributes()
     graph = _create_optigraph()
-    JuMP.set_optimizer_attribute(graph,"mu_strategy","adaptive")
+    JuMP.set_optimizer_attribute(graph,"max_cpu_time",1e2)
     set_optimizer(graph,Ipopt.Optimizer)
-    optimize!(graph)
-    @test MOI.get(graph,MOI.RawParameter("mu_strategy")) == "adaptive"
+    Plasmo.optimize!(graph)
+    @test MOI.get(graph,MOI.RawParameter("max_cpu_time")) == 100.0
 end
 
 # Test optigraph optimizer.  This is a way to set custom optimize calls on an optimizer

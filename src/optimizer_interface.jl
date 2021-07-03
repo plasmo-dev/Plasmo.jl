@@ -255,7 +255,7 @@ end
 function _moi_optimize!(graph::OptiGraph)
     #Build the MOI backend if it hasn't already been created
     if MOI.get(JuMP.backend(graph), MOI.TerminationStatus())==MOI.OPTIMIZE_NOT_CALLED
-     _aggregate_backends!(graph) #else, changes SHOULD have been captured
+        _aggregate_backends!(graph) #else, changes SHOULD have been captured
     end
 
     #set the optigraph objective if it is:
