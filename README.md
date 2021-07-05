@@ -1,30 +1,27 @@
 ![Logo](./docs/plasmo3.svg)
 
-[![Build Status](https://travis-ci.org/zavalab/Plasmo.jl.svg?branch=master)](https://travis-ci.org/zavalab/Plasmo.jl)
-[![codecov](https://codecov.io/gh/zavalab/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/zavalab/Plasmo.jl)
-[![coveralls](https://coveralls.io/repos/github/zavalab/Plasmo.jl/badge.svg?branch=master)](https://coveralls.io/github/zavalab/Plasmo.jl?branch=master)
+[![CI](https://github.com/jalving/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/jalving/Plasmo.jl/actions)
+[![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/jalving/Plasmo.jl)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://zavalab.github.io/Plasmo.jl/dev/)
 
 # Plasmo.jl
-Plasmo.jl (Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework.  It builds upon
-JuMP and adopts a modular style to model optimization problems in a hierarchical fashion.
-The defining notion of the package is that it uses graph-based concepts to both construct and partition optimization problems which
-provides a natural interface to implement distributed optimization algorithms.
+Plasmo.jl (which stands for Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework.  It adopts a modular style to
+create optimization problems and facilitates the management of distributed and hierarchical structures.  Plasmo.jl has been developed with the key notion that it aligns with the
+behavior of JuMP as much as possible.  Consequently, almost every function that works on a JuMP `Model` object will also work on a Plasmo.jl `OptiGraph` object.   
 
 ## Overview
-The core object in Plasmo.jl is the `OptiGraph` wherein a user can add `OptiNodes` which represent individual optimization problems. `OptiNodes` can be linked to each-other
-using linking constraints, which induces the underlying graph structure.  An `OptiGraph` can also be embedded in another `OptiGraph` to induce hierarchical structures.
-These hierarchical structures provide a natural framework to harness distributed optimization solvers such as [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
+The core object in Plasmo.jl is the `OptiGraph` wherein a user can add `OptiNodes` which represent individual optimization problems. The optinodes in an optigraph can be linked together
+using `LinkConstraint`s which induces an underlying hypergraph structure. Furthermore, optigraphs be embedded within other optigraphs to induce nested hierarchical structures.
+The graph structures obtained using Plasmo.jl can be used for model and data management, specialized graph partitioning, and for communicating structured problems to distributed optimization solvers (e.g. such as with [PipsNLP.jl](https://github.com/zavalab/PipsNLP.jl)).
 
 ## Documentation
-Documentation is available through [GitHub Pages](https://jalving.github.io/Plasmo.jl/dev).
-Additional examples can be found in the [examples](https://github.com/jalving/Plasmo.jl/tree/master/examples/) folder.
+The latest documentation is available through [GitHub Pages](https://zavalab.github.io/Plasmo.jl/dev/).
+Additional examples can be found in the [examples](https://github.com/zavalab/Plasmo.jl/tree/master/examples/) folder.
 
 ## Installation
 
 ```julia
-using Pkg
-Pkg.add("Plasmo")
+pkg> add Plasmo
 ```
 
 ## Simple Example
@@ -33,31 +30,32 @@ Pkg.add("Plasmo")
 using Plasmo
 using Ipopt
 
+#create an optigraph
 graph = OptiGraph()
 
-#Add nodes to a ModelGraph
+#add nodes to an optigraph
 @optinode(graph,n1)
 @optinode(graph,n2)
 
-#Add variables, constraints, and objective functions to nodes
+#add variables, constraints, and objective functions to nodes
 @variable(n1,0 <= x <= 2)
 @variable(n1,0 <= y <= 3)
 @constraint(n1,x+y <= 4)
 @objective(n1,Min,x)
 
 @variable(n2,x)
-@NLnodeconstraint(n2,exp(x) >= 2)
+@NLconstraint(n2,exp(x) >= 2)
 
-#Add a linkconstraint to couple modelnodes
+#add a linkconstraint to couple nodes
 @linkconstraint(graph,n1[:x] == n2[:x])
 
-#Optimize with Ipopt
-ipopt = Ipopt.Optimizer
-optimize!(graph,ipopt)
+#optimize with Ipopt
+set_optimizer(graph,Ipopt.Optimizer)
+optimize!(graph)
 
 #Print solution values
-println("n1[:x]= ",value(n1,n1[:x]))
-println("n2[:x]= ",value(n2,n2[:x]))
+println("n1[:x] = ",value(n1[:x]))
+println("n2[:x] = ",value(n2[:x]))
 ```
 
 ## Acknowledgments

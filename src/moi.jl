@@ -4,12 +4,11 @@
 #3.) Just use the node optimizer backend
 
 abstract type AbstractNodeBackend <: MOI.AbstractOptimizer end
-
-#Set solution directly on an optinode
 """
     NodeSolution
 
-        A struct hold primal, dual, and termination status values.  Used for setting custom solutions on optinodes without using an optimizer.
+        A struct holding primal values, dual values, and termination status values.  Used for setting custom solutions on optinodes without requiring an optimizer backend.
+        For example, the `NodeSolution` backend supports MOI.get(backend::NodeSolution,MOI.VariablePrimal()) and MOI.set(backend::NodeSolution,MOI.VariablePrimal())
 """
 mutable struct NodeSolution <: MOI.ModelLike
     primals::OrderedDict{MOI.VariableIndex,Float64}
@@ -17,19 +16,25 @@ mutable struct NodeSolution <: MOI.ModelLike
     status::MOI.TerminationStatusCode
 end
 
-NodeSolution(primals::OrderedDict{MOI.VariableIndex,Float64}) = NodeSolution(primals,
+NodeSolution(primals::OrderedDict{MOI.VariableIndex,Float64}) = NodeSolution(
+primals,
 OrderedDict{MOI.ConstraintIndex,Float64}(),
 MOI.OPTIMIZE_NOT_CALLED)
 
-NodeSolution(duals::OrderedDict{MOI.ConstraintIndex,Float64}) = NodeSolution(OrderedDict{MOI.VariableIndex,Float64}(),
+NodeSolution(duals::OrderedDict{MOI.ConstraintIndex,Float64}) = NodeSolution(
+OrderedDict{MOI.VariableIndex,Float64}(),
 duals,
 MOI.OPTIMIZE_NOT_CALLED)
 
-#Point to optimizer
+NodeSolution(status::MOI.TerminationStatusCode) = NodeSolution(
+OrderedDict{MOI.VariableIndex,Float64}(),
+OrderedDict{MOI.ConstraintIndex,Float64}(),
+status)
+
 """
     NodePointer
 
-        A struct containing a reference to an MOI optimizer object.  'Points' from node variables and constraints to the solution on the optimizer.
+        A struct containing a reference to an MOI optimizer object.  The `NodePointer` "points" from local optinode variables and constraints to their location within an optimizer.
 """
 mutable struct NodePointer <: MOI.ModelLike
     optimizer::MOI.ModelLike
@@ -44,31 +49,79 @@ NodePointer(optimizer::MOI.ModelLike,idx_map::MOIU.IndexMap) = NodePointer(optim
     is helpful when the same node is part of multiple `OptiGraph` objects.
 """
 mutable struct NodeBackend <: AbstractNodeBackend
-    optimizer::MOI.ModelLike                        #the actual MOI model(e.g. a MOIU.CachingOptimizer)
-    id::Symbol                                      #unique id
-    last_solution_id::Symbol                        #the last solution for this node backend
-    result_location::Dict{Symbol,MOI.ModelLike}     #can be the optimizer, a NodeSolution, or a pointer to another optimizer object (e.g. a graph solution)
+    optimizer::MOI.ModelLike                        #the base MOI model (e.g. a MOIU.CachingOptimizer)
+    node_id::Symbol                                 #unique node id
+    graph_ids::Vector{Symbol}                       #optigraph ids this node is a part of
+    last_solution_id::Symbol                        #the last solution for this node
+    optimizers::Dict{Symbol,MOI.ModelLike}          #All of the "optimizers" this node points to. can be the node itself, a custom NodeSolution, or a pointer to an optigraph optimizer
+    result_location::Dict{Symbol,MOI.ModelLike}     #location to look up results (e.g. MOI.VariablePrimal())
 end
 
-function NodeBackend(model_cache::MOIU.CachingOptimizer,id::Symbol)
-    return NodeBackend(
-    model_cache,
+function NodeBackend(model::MOIU.CachingOptimizer,id::Symbol)
+    node_backend = NodeBackend(
+    model,
     id,
+    Vector{Symbol}(),
     id,
+    Dict{Symbol,MOI.ModelLike}(),
     Dict{Symbol,MOI.ModelLike}())
+    node_backend.optimizers[node_backend.node_id] = node_backend.optimizer #TODO: decide whether this is necessary
+    return node_backend
 end
 
-#Forward methods
-#NodeBackend
-MOI.add_variable(node_backend::NodeBackend) = MOI.add_variable(node_backend.optimizer)
-MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet) = MOI.add_constraint(node_backend.optimizer,func,set)
+#Custom MOI methods for optinodes
+function MOI.add_variable(node_backend::NodeBackend)
+    node_index = MOI.add_variable(node_backend.optimizer)
+    for id in node_backend.graph_ids
+        node_pointer = node_backend.optimizers[id]
+        graph_index = MOI.add_variable(node_pointer.optimizer)
+        node_pointer.node_to_optimizer_map[node_index] = graph_index
+    end
+    return node_index
+end
+
+#Add constraint to node MOI model and each graph optimizer it points to
+#TODO: check graph index.  Something is going on here...
+function MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet)
+    node_index = MOI.add_constraint(node_backend.optimizer,func,set)
+    for id in node_backend.graph_ids
+        node_pointer = node_backend.optimizers[id]
+        graph_func = _swap_indices(func,node_pointer.node_to_optimizer_map)
+        graph_index = MOI.add_constraint(node_pointer.optimizer,graph_func,set)
+        node_pointer.node_to_optimizer_map[node_index] = graph_index
+    end
+    return node_index
+end
+
+#MOI.delete(node_backend::NodeBackend, idx::MOI.Index) = MOI.delete(node_backend.optimizer,idx)
+#TODO: we should also delete from the node_to_optimizer_map
+function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
+    MOI.delete(node_backend.optimizer,node_index)
+    for id in node_backend.graph_ids
+        node_pointer = node_backend.optimizers[id]
+        graph_index = node_pointer.node_to_optimizer_map[node_index]
+        MOI.delete(node_pointer.optimizer,graph_index)
+        delete!(node_pointer.node_to_optimizer_map,node_index)
+    end
+end
+
+#NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
+function MOI.set(node_backend::Plasmo.NodeBackend,attr::MOI.AnyAttribute,args...)
+    MOI.set(node_backend.optimizer,attr,args...)
+    index_args = [arg for arg in args if isa(arg,MOI.Index)]
+    other_args = [arg for arg in args if !isa(arg,MOI.Index)]
+    for id in node_backend.graph_ids
+        node_pointer = node_backend.optimizers[id]
+        graph_indices = getindex.(Ref(node_pointer.node_to_optimizer_map),index_args)
+        MOI.set(node_pointer.optimizer,attr,graph_indices...,other_args...)
+    end
+end
+
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute) = MOI.get(node_backend.optimizer,attr)
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute,idx) = MOI.get(node_backend.optimizer,attr,idx)
 MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(node_backend.optimizer,attr,idxs)
-#NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
-MOI.set(node_backend::NodeBackend,attr::MOI.AnyAttribute,args...) = MOI.set(node_backend.optimizer,attr,args...)
 MOI.is_valid(node_backend::NodeBackend,idx::MOI.Index) = MOI.is_valid(node_backend.optimizer,idx)
-MOI.delete(node_backend::NodeBackend, idx::MOI.Index) = MOI.delete(node_backend.optimizer,idx)
+
 MOI.supports_constraint(node_backend::NodeBackend,func::Type{T}
     where T<:MathOptInterface.AbstractFunction, set::Type{S}
     where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(node_backend.optimizer,func,set)
@@ -87,7 +140,7 @@ function has_node_solution(backend::NodeBackend,id::Symbol)
 end
 
 #These functions can be used to set custom solutions on a node.  Useful for meta-algorithms
-function set_node_primals!(backend::NodeBackend,vars::Vector{MOI.VariableIndex},values::Vector{Float64},id::Symbol)
+function set_backend_primals!(backend::NodeBackend,vars::Vector{MOI.VariableIndex},values::Vector{Float64},id::Symbol)
     if length(vars) > 0
         #create node solution if necessary
         primals = OrderedDict(zip(vars,values))
@@ -98,11 +151,12 @@ function set_node_primals!(backend::NodeBackend,vars::Vector{MOI.VariableIndex},
             node_solution.primals = primals
         end
         backend.result_location[id] = node_solution
+        backend.last_solution_id = id
     end
     return nothing
 end
 
-function set_node_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintIndex},values::Vector{Float64},id::Symbol)
+function set_backend_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintIndex},values::Vector{Float64},id::Symbol)
     if length(cons) > 0
         #create node solution if necessary
         duals = OrderedDict(zip(cons,values))
@@ -112,7 +166,20 @@ function set_node_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintIndex},
             node_solution = backend.result_location[id]
             node_solution.duals = duals
         end
+        backend.last_solution_id = id
     end
+    return nothing
+end
+
+function set_backend_status!(backend::NodeBackend,status::MOI.TerminationStatusCode,id::Symbol)
+    if !has_node_solution(backend,id)
+        node_solution = NodeSolution(status)
+    else
+        node_solution = backend.result_location[id]
+        node_solution.status = status
+    end
+    backend.result_location[id] = node_solution
+    backend.last_solution_id = id
     return nothing
 end
 
@@ -121,7 +188,6 @@ end
 """
 function MOI.optimize!(backend::NodeBackend)
     MOI.optimize!(backend.optimizer)
-    backend.result_location[backend.id] = backend.optimizer
     backend.last_solution_id = backend.id
     return nothing
 end
@@ -147,9 +213,9 @@ function MOI.get(node_pointer::NodePointer,attr::MOI.ConstraintDual, idx::MOI.Co
     return value_other
 end
 MOI.get(node_pointer::NodePointer, attr::MOI.TerminationStatus) = MOI.get(node_pointer.optimizer,attr)
+MOI.set(node_pointer::NodePointer,attr::MOI.AnyAttribute,args...) = MOI.set(node_pointer.optimizer,attr,args...)
 
 #Grab results from the underlying "optimizer"
-#Get single variable index
 function MOI.get(node_backend::NodeBackend, attr::MOI.VariablePrimal, idx::MOI.VariableIndex)
     return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr,idx)
 end
@@ -202,36 +268,8 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names:
     return idxmap    #return an idxmap for each source model
 end
 
-##########################################################
-#TODO: just set objective function from optigraph
-##########################################################
-function _swap_indices!(obj::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
-    terms = obj.terms
-    for i = 1:length(terms)
-        coeff = terms[i].coefficient
-        var_idx = terms[i].variable_index
-        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
-    end
-end
-
-function _swap_indices!(obj::MOI.ScalarQuadraticFunction,idxmap::MOIU.IndexMap)
-    quad_terms = obj.quadratic_terms
-    for i = 1:length(quad_terms)
-        coeff = quad_terms[i].coefficient
-        var_idx1 = quad_terms[i].variable_index_1
-        var_idx2 = quad_terms[i].variable_index_2
-        quad_terms[i] = MOI.ScalarQuadraticTerm{Float64}(coeff,idxmap[var_idx1],idxmap[var_idx2])
-    end
-    aff_terms = obj.affine_terms
-    for i = 1:length(aff_terms)
-        coeff = aff_terms[i].coefficient
-        var_idx = aff_terms[i].variable_index
-        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
-    end
-end
-
 #####################################################
-#The edge backend is very simple
+#The edge backend
 #####################################################
 #A custom-set edge dual solution
 mutable struct EdgeSolution <: MOI.ModelLike
@@ -239,7 +277,7 @@ mutable struct EdgeSolution <: MOI.ModelLike
     status::MOI.TerminationStatusCode
 end
 
-#An EdgePointer 'points' to a solution
+#An EdgePointer 'points' to an optimizer
 mutable struct EdgePointer <: MOI.ModelLike
     optimizer::MOI.ModelLike
     edge_to_optimizer_map::OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}
@@ -247,10 +285,11 @@ end
 EdgePointer(optimizer::MOI.ModelLike) = EdgePointer(optimizer,OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}())
 
 mutable struct EdgeBackend <: MOI.AbstractOptimizer
+    optimizers::Dict{Symbol,MOI.ModelLike}
     last_solution_id::Union{Nothing,Symbol}                        #the last solution for this node backend
     result_location::Dict{Symbol,MOI.ModelLike}
 end
-EdgeBackend() = EdgeBackend(nothing,Dict{Symbol,MOI.ModelLike}())
+EdgeBackend() = EdgeBackend(Dict{Symbol,MOI.ModelLike}(),nothing,Dict{Symbol,MOI.ModelLike}())
 
 #get EdgeBackend
 function MOI.get(edge_backend::EdgeBackend,  attr::MOI.ConstraintDual, ref::AbstractLinkConstraintRef)
@@ -269,3 +308,37 @@ function MOI.get(edge_pointer::EdgePointer,attr::MOI.ConstraintDual, ref::Abstra
     return optimizer_value
 end
 MOI.get(edge_pointer::EdgePointer, attr::MOI.TerminationStatus) = MOI.get(edge_pointer.optimizer,attr)
+
+
+#Helpful utilities
+function _swap_indices(variable::MOI.SingleVariable,idxmap::MOIU.IndexMap)
+    return idxmap[variable.variable]
+end
+
+function _swap_indices(func::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
+    new_func = copy(func)
+    terms = new_func.terms
+    for i = 1:length(terms)
+        coeff = terms[i].coefficient
+        var_idx = terms[i].variable_index
+        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
+    end
+    return new_func
+end
+
+#TODO: Quadratic swap
+# function _swap_indices(obj::MOI.ScalarQuadraticFunction,idxmap::MOIU.IndexMap)
+#     quad_terms = obj.quadratic_terms
+#     for i = 1:length(quad_terms)
+#         coeff = quad_terms[i].coefficient
+#         var_idx1 = quad_terms[i].variable_index_1
+#         var_idx2 = quad_terms[i].variable_index_2
+#         quad_terms[i] = MOI.ScalarQuadraticTerm{Float64}(coeff,idxmap[var_idx1],idxmap[var_idx2])
+#     end
+#     aff_terms = obj.affine_terms
+#     for i = 1:length(aff_terms)
+#         coeff = aff_terms[i].coefficient
+#         var_idx = aff_terms[i].variable_index
+#         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
+#     end
+# end

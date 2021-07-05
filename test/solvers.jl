@@ -1,4 +1,4 @@
-module TestDownStreamSolvers
+module TestSolvers
 
 using Plasmo
 using MadNLP
@@ -76,4 +76,4 @@ end
 
 end
 
-TestDownStreamSolvers.run_tests()
+TestSolvers.run_tests()

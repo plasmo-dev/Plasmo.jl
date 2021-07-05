@@ -252,6 +252,7 @@ function identify_edges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNo
     V = Int.(ones(length(J)))
     G = sparse(I,J,V)  #Node partition matrix
     A = sparse(hypergraph)
+    #A = incidence_matrix(hypergraph)
     C = G*A  #Edge partitions
 
     #FIND THE SHARED EDGES, Get indices of shared edges
@@ -328,37 +329,7 @@ function identify_nodes(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEd
     return partition_nodes,shared_nodes
 end
 
-"""
-    identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode})
-
-Identify the edge cut separators given a vector of hypernode partitions. Returns induced elements (nodes and edges) and cut edges.
-
-    identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}})
-
-Identify the node separators given a vector of hyperedge partitions. Returns induced elements (nodes and edges) and cut nodes.
-
-"""
-function identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
-     induced_edges, cross_edges = identify_edges(hypergraph,partitions)
-     @assert length(induced_edges) == length(partitions)
-     induced_elements = [[] for _ = 1:length(partitions)]
-     for i = 1:length(partitions)
-         append!(induced_elements[i],induced_edges[i])
-         append!(induced_elements[i],partitions[i])
-     end
-     return induced_elements,cross_edges
-end
-
-function identify_separators(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}})
-    incuded_nodes, cross_nodes = identify_nodes(hypergraph,partitions)
-    @assert length(induced_nodes) == length(partitions)
-    induced_elements = [[] for _ = 1:length(partitions)]
-    for i = 1:length(partitions)
-        append!(induced_elements[i],induced_nodes[i])
-        append!(induced_elements[i],partitions[i])
-    end
-    return induced_elements,cross_nodes
-end
+induced_elements(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}}) = partitions
 
 """
     neighborhood(g::HyperGraph,nodes::Vector{OptiNode},distance::Int64)

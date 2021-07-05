@@ -5,14 +5,13 @@ using Base.Meta
 
 Add a new optinode to `optigraph`. The expression `expr` can either be
 
-* of the form `varname` creating a single optinode with the variable name `varname`
-* of the form `varname[...]` or `[...]` creating a container of optinodes using JuMP Containers
+* of the form `nodename` creating a single optinode with the variable name `varname`
+* of the form `nodename[...]` or `[...]` creating a container of optinodes using JuMP Containers
 
 """
 macro optinode(graph,args...)
      _error(str...) = JuMP._macro_error(:node, args, str...)
 
-    #@assert isa(esc(graph),ModelGraph)
     @assert length(args) <= 1
     extra = collect(args)
 
@@ -33,22 +32,20 @@ macro optinode(graph,args...)
     else
         isa(nodeexpr, Expr) || _error("Expected $node to be a node name")
 
-        # We now build the code to generate the modelnodes
+        # We now build the code to generate the optinodes
         idxnodes, indices = _build_ref_sets(nodeexpr, node)
         container_code = JuMP.Containers.generate_container(OptiNode,idxnodes,indices,:Auto)
         macro_code = quote
             $name = $(container_code[1])
             if isa($name,JuMP.Containers.DenseAxisArray)
                 for index in 1:length($name.data)
-                    $name.data[index] = add_node!($graph)
+                    $name.data[index] = add_node!($graph;label = $(namekey)*"$index")
                 end
             else
                 for index in 1:length($name)
-                    $name[index] = add_node!($graph)
+                    $name[index] = add_node!($graph;label = $(namekey)*"[$index]")
                 end
             end
-
-
             $graph.obj_dict[Symbol($namekey)] = $name
         end
     end
