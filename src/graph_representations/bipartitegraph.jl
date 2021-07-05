@@ -53,7 +53,7 @@ function LightGraphs.adjacency_matrix(bgraph::BipartiteGraph)
     return A
 end
 
-function identify_separators(bgraph::BipartiteGraph,partitions::Vector;cut_selector = LightGraphs.degree)
+function _identify_separators(bgraph::BipartiteGraph,partitions::Vector;cut_selector = LightGraphs.degree)
     nparts = length(partitions)
 
     #Create partition matrix
@@ -109,13 +109,6 @@ function identify_separators(bgraph::BipartiteGraph,partitions::Vector;cut_selec
     return partition_elements,cross_elements
 end
 
-#TODO: try forwarding methods this way.  Causes ambiguous method calls....
-# macro forward_bipartite_method(func)
-#     return quote
-#         function $(func)(bgraph::BipartiteGraph,args...)
-#             output = $func(bgraph.graph,args...)
-#             return output
-#         end
-#     end
-# end
-# @forward_bipartite_method(LightGraphs.all_neighbors)
+function induced_elements(bgraph::BipartiteGraph,partitions::Vector;cut_selector = LightGraphs.degree)
+    return _identify_separators(bgraph,partitions;cut_selector = cut_selector)[1]
+end

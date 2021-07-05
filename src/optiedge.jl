@@ -1,3 +1,6 @@
+##############################################################################
+# LinkConstraint
+##############################################################################
 """
     LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
 
@@ -22,9 +25,11 @@ function set_attached_node(con::LinkConstraint,node::OptiNode)
     @assert node in getnodes(con)
     con.attached_node = node
 end
+
+attached_node(con::LinkConstraint) = con.attached_node
+
 ##############################################################################
 # OptiEdges
-# OptiEdges describe connections between model nodes
 ##############################################################################
 """
     OptiEdge
@@ -34,23 +39,13 @@ references to its underlying linking constraints.
 """
 mutable struct OptiEdge <: AbstractOptiEdge
     nodes::OrderedSet{OptiNode}
-    #dual_values::DefaultDict{Symbol,Dict{Int64,Float64}}
-
     #Link constraint references
     linkrefs::Vector{AbstractLinkConstraintRef}
-
     #Link constraints
     linkconstraints::OrderedDict{Int64,LinkConstraint}
     linkconstraint_names::Dict{Int64,String}
-
     backend::EdgeBackend
-
-    #idx_maps::DefaultDict{Symbol,OrderedDict{AbstractLinkConstraintRef,MOI.ConstraintIndex}}
-    #Last result id from an optimize!(graph)
-    #last_solution_id::Union{Nothing,Symbol}
-
-    #TODO Someday
-    #Capture nonlinear linking constraints
+    #TODO Capture nonlinear linking constraints
     #nlp_data::Union{Nothing,JuMP._NLPData}
 end
 
@@ -91,9 +86,11 @@ function MOI.delete!(cref::LinkConstraintRef)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
 
+getnodes(edge::OptiEdge) = edge.nodes
 getnodes(con::JuMP.ScalarConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge)
+
 num_nodes(con::LinkConstraint) = length(getnodes(con))
 getname(cref::LinkConstraintRef) = cref.optiedge.linkconstraint_names[cref.idx]
 
@@ -106,9 +103,11 @@ function JuMP.dual(linkref::LinkConstraintRef)
     return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
 end
 
-num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
-getlinkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
-getnodes(edge::OptiEdge) = edge.nodes
+num_link_constraints(edge::OptiEdge) = length(edge.linkconstraints)
+
+link_constraints(edge::OptiEdge) = values(edge.linkconstraints)
+@deprecate getlinkconstraints link_constraints
+
 
 function Base.string(edge::OptiEdge)
     "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"

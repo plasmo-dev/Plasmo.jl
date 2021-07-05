@@ -344,7 +344,8 @@ end
 
 ######################################
 function MOI.eval_hessian_lagrangian(d::OptiGraphNLPEvaluator,hess::AbstractArray,x::AbstractArray,sigma::Float64,mu::AbstractArray)
-    # @blas_safe_threads for k=1:length(modelnodes)
+    # lk = Threads.ReentrantLock()
+    # Threads.lock(lk)
     for k=1:length(d.nlps)
         isempty(d.nnzs_hess_inds[k]) && continue
         if d.has_nlobj
@@ -353,6 +354,7 @@ function MOI.eval_hessian_lagrangian(d::OptiGraphNLPEvaluator,hess::AbstractArra
             _eval_hessian_lagrangian(d.nlps[k],view(hess,d.nnzs_hess_inds[k]),view(x,d.ninds[k]),sigma,view(mu,d.minds[k]))
         end
     end
+    #Threads.unlock(lk)
 end
 
 _eval_hessian_lagrangian(d::JuMP.NLPEvaluator,hess,x,sigma,mu) = MOI.eval_hessian_lagrangian(d,hess,x,sigma,mu)

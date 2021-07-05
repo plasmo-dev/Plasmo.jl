@@ -6,44 +6,53 @@ by mapping optigraph elements to hypergraph elements.
 """
 mutable struct HyperGraphBackend
     hypergraph::HyperGraph
-    hyper_map::Dict
+    hyper_map#::ProjectionMap
     update_backend::Bool  #flag that graph backend needs to be re-created when querying graph attributes
 end
 ##############################################################################
 # OptiGraph
 ##############################################################################
+#TODO: Set optigraph model attributes.  (e.g. set_optimizer_attribute(graph)) An optigraph can be solved just like any JuMP model in many cases.
+#IDEA: Update optigraph backend depending on state.  If we empty out a graph backend, we unhook the optinodes
+# @enum OptiGraphMode begin
+#     SYNCHRONIZED = 1   #optigraph backend is built up in parallel to optinodes
+#     NODES_ONLY = 2     #optigraph backend is not built.  We aggregates the backend if optimize!(graph) is called with an MOI optimizer.  This can be done with parallel threads.
+#     GRAPH_ONLY = 3     #optinode backend points to graph backend.  Less memory use.  Probably has to be done sequentially
+# end
 """
     OptiGraph()
 
 Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports most JuMP.Model functions.
 """
-mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel  (OptiGraph ultimately extends a JuMP model to use its syntax)
+mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     #Topology
-    optinodes::Vector{OptiNode}                  #Local model nodes
-    optiedges::Vector{OptiEdge}                  #Local link edges.  These can also connect nodes across subgraphs
-    node_idx_map::Dict{OptiNode,Int64}           #Local map of model nodes to indices
-    edge_idx_map::Dict{OptiEdge,Int64}           #Local map of link edges indices
-    subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the model graph
+    optinodes::Vector{OptiNode}                  #Local optinodes
+    optiedges::Vector{OptiEdge}                  #Local optiedges
+    node_idx_map::Dict{OptiNode,Int64}           #Local map of optinodes to indices
+    edge_idx_map::Dict{OptiEdge,Int64}           #Local map of optiedges indices
+    subgraphs::Vector{AbstractOptiGraph}         #Subgraphs contained in the optigraph
     optiedge_map::OrderedDict{Set,OptiEdge}      #Sets of optinodes that map to an optiedge
 
     #Objective
     objective_sense::MOI.OptimizationSense
     objective_function::JuMP.AbstractJuMPScalar
 
-    # IDEA: moi_backend interfaces with solvers.  For standard optimization solvers, we aggregate a MOI backend on the fly using optinodes
+    #IDEA: An optigraph optimizer can be a MOI model.  For standard optimization solvers, we can either 1) aggregate a MOI backend on the fly using optinodes or 2) build up the MOI backend with nodes simultaneously
     optimizer::Any #MOI.ModelLike
 
-    #IDEA: graph_backend used for graph functions (e.g. neighbors)
+    #IDEA: graph_backend is used for hypergraph topology functions (e.g. neighbors,expand,etc...)
     graph_backend::Union{Nothing,HyperGraphBackend}
 
     bridge_types::Set{Any}
 
     obj_dict::Dict{Symbol,Any}
 
-    #Extension Information
-    ext::Dict{Symbol,Any}
+    ext::Dict{Symbol,Any} #Extension Information
 
     id::Symbol
+
+    #TODO future release
+    #mode::OptiGraphMode
 
     #Constructor
     function OptiGraph()
@@ -86,14 +95,17 @@ function OptiGraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
     return graph
 end
 
+#Broadcast over graph without using `Ref`
+Base.broadcastable(graph::OptiGraph) = Ref(graph)
+
 function _is_valid_optigraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
     edge_nodes = union(getnodes.(edges)...)
     return issubset(edge_nodes,nodes)
 end
 
+optigraph_reference(graph::OptiGraph) = OptiGraph(all_nodes(graph),all_edges(graph))
 
 @deprecate ModelGraph OptiGraph
-
 ########################################################
 # OptiGraph Interface
 ########################################################
@@ -103,7 +115,6 @@ function _flag_graph_backend!(graph::OptiGraph)
         graph.graph_backend.update_backend = true
     end
 end
-
 #################
 #Subgraphs
 #################
@@ -125,6 +136,7 @@ Retrieve the local subgraphs of `optigraph`.
 """
 getsubgraphs(optigraph::OptiGraph) = OptiGraph[subgraph for subgraph in optigraph.subgraphs]
 num_subgraphs(optigraph::OptiGraph) = length(optigraph.subgraphs)
+getsubgraph(optigraph::OptiGraph,idx::Int64) = optigraph.subgraphs[idx]
 
 """
     all_subgraphs(optigraph::OptiGraph)::Vector{OptiGraph}
@@ -157,11 +169,9 @@ Add a new optinode to `graph` and set its model to the `JuMP.Model` `m`.
 
 Add the existing `optinode` (Created with `OptiNode()`) to `graph`.
 """
-function add_node!(graph::OptiGraph)
+function add_node!(graph::OptiGraph;label::String = "n$(length(graph.optinodes) + 1)")
     optinode = OptiNode()
-    i = length(graph.optinodes) + 1
-    optinode.label = "n$i"
-    #graph.node_idx_map[optinode] = length(graph.optinodes)
+    optinode.label = label
     add_node!(graph,optinode)
     return optinode
 end
@@ -346,7 +356,11 @@ function JuMP.all_variables(graph::OptiGraph)
     vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
     return vars
 end
-JuMP.value(graph::OptiGraph,var::JuMP.VariableRef) = JuMP.backend(var.model).primals[graph.id]
+function JuMP.value(graph::OptiGraph,var::JuMP.VariableRef)
+    node_pointer = JuMP.backend(var.model).result_location[graph.id]
+    var_idx = node_pointer.node_to_optimizer_map[index(var)]
+    return MOI.get(graph.optimizer,MOI.VariablePrimal(),var_idx)
+end
 """
     getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
@@ -355,12 +369,12 @@ Retrieve the local linking constraints in `graph`. Returns a vector of the linki
 function getlinkconstraints(graph::OptiGraph)
     links = LinkConstraintRef[]
     for edge in graph.optiedges
-        # append!(links,collect(values(ledge.linkconstraints)))
         append!(links,edge.linkrefs)
     end
     return links
 end
-num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
+num_link_constraints(graph::OptiGraph) = sum(num_link_constraints.(graph.optiedges))
+@deprecate num_linkconstraints num_link_constraints
 """
     all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
@@ -420,10 +434,25 @@ JuMP.set_objective_sense(graph::OptiGraph,sense::MOI.OptimizationSense) = graph.
 
 Retrieve the current graph objective function.
 """
-JuMP.objective_function(graph::OptiGraph) = graph.objective_function
+function JuMP.objective_function(graph::OptiGraph)
+    if has_objective(graph)
+        return graph.objective_function
+    elseif has_node_objective(graph) #check for node objective
+        obj = 0
+        for node in all_nodes(graph)
+            scl = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
+            obj += scl*objective_function(node)
+        end
+        return obj
+    else #it's just 0
+        return graph.objective_function
+    end
+end
+
 function JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
     x_affine = convert(JuMP.AffExpr,x)
     JuMP.set_objective_function(graph,x_affine)
+    #_moi_update_objective() #update the optigraph backend if we're doing incremental solves
 end
 
 function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericAffExpr)
@@ -453,6 +482,7 @@ function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericQuadExpr
         JuMP.set_objective_function(node,objective_function(node) + coef*term)
     end
     graph.objective_function = expr
+
 end
 
 function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
@@ -460,13 +490,34 @@ function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func
     JuMP.set_objective_function(graph,func)
 end
 
-function JuMP.objective_value(graph::OptiGraph)
+JuMP.objective_function_type(graph::OptiGraph) = typeof(objective_function(graph))
+
+#NOTE: Plasmo stores the objective expression on the optigraph
+function JuMP.set_objective_coefficient(graph::OptiGraph,variable::JuMP.VariableRef,coefficient::Real)
     if has_nl_objective(graph)
-        return MOI.get(backend(graph),MOI.ObjectiveValue())
-    else
-        objective = JuMP.objective_function(graph)
-        return value(objective)
+        error("A nonlinear objective is already set in the model")
     end
+    coeff = convert(Float64, coefficient)::Float64
+    current_obj = objective_function(graph)
+    obj_fct_type = objective_function_type(graph)
+    if obj_fct_type == VariableRef
+        if index(current_obj) == index(variable)
+            set_objective_function(graph, coeff * variable)
+        else
+            set_objective_function(graph,add_to_expression!(coeff * variable, current_obj))
+        end
+    #TODO: add new variables
+    elseif obj_fct_type == AffExpr
+        current_obj.terms[variable] = coefficient
+    elseif obj_fct_type == QuadExpr
+        current_obj.aff.terms[variable] = coefficient
+    else
+        error("Objective function type not supported: $(obj_fct_type)")
+    end
+end
+
+function JuMP.objective_value(graph::OptiGraph)
+    return MOI.get(backend(graph),MOI.ObjectiveValue())
 end
 
 function getnodes(expr::JuMP.GenericAffExpr)
@@ -565,7 +616,6 @@ function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,co
     end
 end
 
-
 JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
 function JuMP.add_bridge(graph::OptiGraph,BridgeType::Type{<:MOI.Bridges.AbstractBridge})
     push!(graph.bridge_types, BridgeType)
@@ -576,18 +626,33 @@ end
 function JuMP.dual(graph::OptiGraph,linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
     id = graph.id
-    link_idx = linkref.idx
-    return optiedge.dual_values[id][link_idx]
+    return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
 end
+
+#Set start value for a graph backend
+function JuMP.set_start_value(graph::OptiGraph,variable::JuMP.VariableRef,value::Number)
+    if MOIU.state(graph.optimizer) == MOIU.NO_OPTIMIZER
+        error("Cannot set start value for optigraph with no optimizer")
+    end
+    if MOI.get(JuMP.backend(graph),MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+        error("Start values can only be set for an optigraph optimizer after the initial `optimize!` has been called.  Use `set_start_value(var::JuMP.VariableRef,value::Number)` to set a start value before `optimize!`")
+    end
+    node_pointer = JuMP.backend(getnode(variable)).optimizers[graph.id]
+    var_idx = node_pointer.node_to_optimizer_map[index(variable)]
+    MOI.set(node_pointer,MOI.VariablePrimalStart(),var_idx,value)
+end
+
+JuMP.termination_status(graph::OptiGraph) = MOI.get(graph.optimizer,MOI.TerminationStatus())
+
 ####################################
 #Print Functions
 ####################################
 function string(graph::OptiGraph)
     """
     OptiGraph:
-    local nodes: $(num_nodes(graph)), total nodes: $(length(all_nodes(graph)))
-    local link constraints: $(num_linkconstraints(graph)), total link constraints $(length(all_linkconstraints(graph)))
-    local subgraphs: $(length(getsubgraphs(graph))), total subgraphs $(length(all_subgraphs(graph)))
+    nodes: $(num_nodes(graph)), nodes (including subgraphs): $(length(all_nodes(graph)))
+    link constraints: $(num_linkconstraints(graph)), link constraints (including subgraphs): $(length(all_linkconstraints(graph)))
+    subgraphs: $(length(getsubgraphs(graph))), subgraphs (including nested subgraphs): $(length(all_subgraphs(graph)))
     """
 end
 print(io::IO, graph::OptiGraph) = print(io, string(graph))

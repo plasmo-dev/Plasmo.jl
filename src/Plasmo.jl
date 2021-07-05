@@ -34,7 +34,7 @@ OptiGraphNLPEvaluator,
 
 add_node!, getnode, getnodes, all_nodes, find_node, all_node,  num_nodes, num_all_nodes,
 
-add_edge!, getedge, getoptiedge, getedges,  getoptiedges, all_edges, find_edge, all_edge, num_optiedges, num_all_optiedges,
+getedge, getoptiedge, getedges,  getoptiedges, all_edges, find_edge, all_edge, num_optiedges, num_all_optiedges,
 
 add_subgraph!, getsubgraph, getsubgraphs, all_subgraphs, num_subgraphs, has_subgraphs,
 
@@ -48,7 +48,7 @@ LinkConstraint, LinkConstraintRef,
 Partition, apply_partition!,
 
 # OptiGraph Modeling
-getlinkconstraints, all_linkconstraints, num_all_variables, num_linkconstraints, num_all_constraints, num_all_linkconstraints,
+getlinkconstraints, all_linkconstraints, num_all_variables, num_link_constraints, num_all_constraints, num_all_linkconstraints,
 
 has_objective, has_NLobjective,
 
@@ -61,28 +61,25 @@ is_nodevariable, is_linked_variable,
 # Aggregation
 aggregate,
 
-# extras, plotting, etc...
-plot, spy,
-
 #export to file
 export_graph,
 
 ######################################
 # HYPERGRAPH INTERFACE
 ######################################
-HyperGraph, HyperEdge, HyperNode,
-
-hyper_graph,  gethyperedge, gethyperedges,
+# HyperGraph, HyperEdge, HyperNode,
 
 # Hypergraph functions
 in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to, get_connected_from,
 
 in_neighbors, out_neighbors, neighbors, has_edge, in_edges, out_edges, adjacency_matrix, incidence_matrix,
 
-# Hypergraph Projections
-BipartiteGraph,
+graph_structure,
 
-bipartite_graph, clique_graph,
+# Hypergraph Projections
+bipartite_graph, clique_graph, hyper_graph, edge_graph, edge_hyper_graph,
+
+gethyperedge, gethyperedges,
 
 #macros
 @optinode, @linkconstraint,
@@ -102,6 +99,8 @@ abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
 include("graph_representations/hypergraph.jl")
 
 include("graph_representations/bipartitegraph.jl")
+
+include("graph_representations/cliquegraph.jl")
 
 include("moi.jl")
 
@@ -129,9 +128,10 @@ include("nlp_evaluator.jl")
 
 include("partition.jl")
 
+include("structure.jl")
+
 function __init__()
-    # @require Plots = "91a5bcdd-55d7-5caf-9e0b-520d859cae80" include("extras/plots.jl")
-    @require KaHyPar = "2a6221f6-aa48-11e9-3542-2d9e0ef01880" include("extras/kahypar.jl")
+    @require KaHyPar = "2a6221f6-aa48-11e9-3542-2d9e0ef01880" include("partition_interface/kahypar.jl")
 end
 
 end
