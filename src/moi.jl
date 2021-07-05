@@ -106,7 +106,6 @@ function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
 end
 
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
-#BUG: This might be causing problems with fixing variables.  I think the node backend is getting a constraint index somewhere that the graph backend might not have.
 function MOI.set(node_backend::Plasmo.NodeBackend,attr::MOI.AnyAttribute,args...)
     MOI.set(node_backend.optimizer,attr,args...)
     index_args = [arg for arg in args if isa(arg,MOI.Index)]
