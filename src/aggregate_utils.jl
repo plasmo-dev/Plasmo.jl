@@ -134,6 +134,10 @@ end
 function _copy_node(node::OptiNode)
     new_node = OptiNode()
     reference_map = AggregateMap()
-    node_ref_map = _add_to_combined_model!(new_node,node,reference_map)
+    temp_graph = OptiGraph()
+    add_node!(temp_graph,node)
+    new_node,reference_map = aggregate(temp_graph)
+    #_add_to_combined_model!(new_node,node,reference_map)
+    #_add_to_aggregate_node!(new_node,node,reference_map,graph_obj)
     return new_node,reference_map
 end
