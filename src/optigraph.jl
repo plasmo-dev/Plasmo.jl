@@ -237,6 +237,13 @@ function Base.getindex(graph::OptiGraph,node::OptiNode)
     return graph.node_idx_map[node]
 end
 
+"""
+    Base.getindex(graph::OptiGraph,index::Int64)
+
+Retrieve the node at `index` in `graph`.
+"""
+Base.getindex(graph::OptiGraph,index::Int64) = getnode(graph,index)
+
 ###################################################
 #OptiEdges
 ###################################################
