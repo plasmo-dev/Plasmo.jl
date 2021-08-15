@@ -94,6 +94,10 @@ function test_set_model()
     @linkconstraint(graph,n1[:x] == n2[:x])
 
     @test num_variables(graph) == 3
+
+    set_optimizer(graph,Ipopt.Optimizer)
+    optimize!(graph)
+    @test termination_status(graph) == MOI.LOCALLY_SOLVED
 end
 
 function test_subgraph()

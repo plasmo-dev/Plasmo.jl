@@ -137,7 +137,7 @@ Retrieve the local subgraphs of `optigraph`.
 getsubgraphs(optigraph::OptiGraph) = OptiGraph[subgraph for subgraph in optigraph.subgraphs]
 num_subgraphs(optigraph::OptiGraph) = length(optigraph.subgraphs)
 getsubgraph(optigraph::OptiGraph,idx::Int64) = optigraph.subgraphs[idx]
-
+subgraphs(optigraph::OptiGraph) = getsubgraphs(optigraph)
 """
     all_subgraphs(optigraph::OptiGraph)::Vector{OptiGraph}
 
@@ -195,7 +195,7 @@ end
 Retrieve the optinodes in `graph`.
 """
 getnodes(graph::OptiGraph) = graph.optinodes
-
+optinodes(graph::OptiGraph) = getnodes(graph)
 """
     getnode(graph::OptiGraph) = graph.optinodes
 
@@ -215,7 +215,7 @@ function all_nodes(graph::OptiGraph)
     end
     return nodes
 end
-
+all_optinodes(graph::OptiGraph) = all_nodes(graph)
 """
     all_node(graph::OptiGraph,index::Int64)
 
@@ -272,6 +272,7 @@ add_edge!(graph::OptiGraph,optinodes::Vector{OptiNode}) = add_optiedge!(graph,op
 Retrieve the local optiedges in `graph`.
 """
 getedges(graph::OptiGraph) = graph.optiedges
+optiedges(graph::OptiGraph) = getedges(graph)
 
 """
     getedge(graph::OptiGraph,index::Int64)
@@ -305,6 +306,7 @@ function all_edges(graph::OptiGraph)
     end
     return edges
 end
+all_optiedges(graph::OptiGraph) = all_edges(graph)
 
 function all_edge(graph::OptiGraph,index::Int64)
     edges = all_nodes(graph)
@@ -380,6 +382,7 @@ function getlinkconstraints(graph::OptiGraph)
     end
     return links
 end
+linkconstraints(graph::OptiGraph) = getlinkconstraints(graph)
 num_link_constraints(graph::OptiGraph) = sum(num_link_constraints.(graph.optiedges))
 @deprecate num_linkconstraints num_link_constraints
 """
