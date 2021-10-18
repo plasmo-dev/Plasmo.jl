@@ -81,7 +81,6 @@ function MOI.add_variable(node_backend::NodeBackend)
 end
 
 #Add constraint to node MOI model and each graph optimizer it points to
-#TODO: check graph index.  Something is going on here...
 function MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction,set::MOI.AbstractSet)
     node_index = MOI.add_constraint(node_backend.optimizer,func,set)
     for id in node_backend.graph_ids
@@ -93,8 +92,6 @@ function MOI.add_constraint(node_backend::NodeBackend,func::MOI.AbstractFunction
     return node_index
 end
 
-#MOI.delete(node_backend::NodeBackend, idx::MOI.Index) = MOI.delete(node_backend.optimizer,idx)
-#TODO: we should also delete from the node_to_optimizer_map
 function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
     MOI.delete(node_backend.optimizer,node_index)
     for id in node_backend.graph_ids
@@ -237,35 +234,38 @@ function MOI.get(node_backend::NodeBackend, attr::MOI.TerminationStatus)
     return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr)
 end
 
-#AGGREGATE BACKENDS
-#IDEA: Copy multiple moi backends without emptying the destination model.
-function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names::Bool;filter_constraints::Union{Nothing, Function}=nothing)
+function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
 
     vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
-    idxmap = MOI.Utilities.index_map_for_variable_indices(vis_src)
+    # idxmap = MOI.Utilities.index_map_for_variable_indices(vis_src)
+    index_map = MOIU.IndexMap()
 
-    constraint_types = MOI.get(src, MOI.ListOfConstraints())
-    single_variable_types = [S for (F, S) in constraint_types if F == MOI.SingleVariable]
-    vector_of_variables_types = [S for (F, S) in constraint_types if F == MOI.VectorOfVariables]
-    vector_of_variables_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables, S}()) for S in vector_of_variables_types]
-    single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
-
+    has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
+    constraints_not_added = if has_nlp
+        Any[
+            MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
+            (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
+            _is_variable_function(F)
+        ]
+    else
+        Any[
+            MOIU._try_constrain_variables_on_creation(dest, src, index_map, S)
+            for S in MOIU.sorted_variable_sets_by_cost(dest, src)
+        ]
+    end
     #Copy free variables into graph optimizer
-    MOI.Utilities.copy_free_variables(dest, idxmap, vis_src, MOI.add_variables)
-
+    MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
+    # Copy variable attributes
+    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
     #Copy variable attributes (e.g. name, and VariablePrimalStart())
-    MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap, vis_src)
+    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
 
     # Normally, this copies ObjectiveSense and ObjectiveFunction, but we don't want to do that here
-    #MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
+    #MOI.Utilities.pass_attributes(dest, src,idxmap)
 
-    #Copy constraints into graph optimizer
-    MOI.Utilities.pass_constraints(dest, src, copy_names, idxmap,
-                     single_variable_types, single_variable_not_added,
-                     vector_of_variables_types, vector_of_variables_not_added,
-                     filter_constraints=filter_constraints)
+    MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
 
-    return idxmap    #return an idxmap for each source model
+    return index_map    #return an idxmap for each source model
 end
 
 #####################################################
@@ -309,10 +309,13 @@ function MOI.get(edge_pointer::EdgePointer,attr::MOI.ConstraintDual, ref::Abstra
 end
 MOI.get(edge_pointer::EdgePointer, attr::MOI.TerminationStatus) = MOI.get(edge_pointer.optimizer,attr)
 
-
 #Helpful utilities
-function _swap_indices(variable::MOI.SingleVariable,idxmap::MOIU.IndexMap)
-    return idxmap[variable.variable]
+#SingleVariable is no longer a MOI type
+# function _swap_indices(variable::MOI.SingleVariable,idxmap::MOIU.IndexMap)
+#     return idxmap[variable.variable]
+# end
+function _swap_indices(variable::MOI.VariableIndex,idxmap::MOIU.IndexMap)
+    return idxmap[variable]
 end
 
 function _swap_indices(func::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
@@ -341,4 +344,35 @@ end
 #         var_idx = aff_terms[i].variable_index
 #         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
 #     end
+# end
+
+#AGGREGATE BACKENDS
+#IDEA: Copy multiple moi backends without emptying the destination model.
+# function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names::Bool;filter_constraints::Union{Nothing, Function}=nothing)
+#
+#     vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
+#     idxmap = MOI.Utilities.index_map_for_variable_indices(vis_src)
+#
+#     constraint_types = MOI.get(src, MOI.ListOfConstraintTypesPresent())
+#     single_variable_types = [S for (F, S) in constraint_types if F == MOI.SingleVariable]
+#     vector_of_variables_types = [S for (F, S) in constraint_types if F == MOI.VectorOfVariables]
+#     vector_of_variables_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables, S}()) for S in vector_of_variables_types]
+#     single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
+#
+#     #Copy free variables into graph optimizer
+#     MOI.Utilities.copy_free_variables(dest, idxmap, vis_src, MOI.add_variables)
+#
+#     #Copy variable attributes (e.g. name, and VariablePrimalStart())
+#     MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap, vis_src)
+#
+#     # Normally, this copies ObjectiveSense and ObjectiveFunction, but we don't want to do that here
+#     #MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
+#
+#     #Copy constraints into graph optimizer
+#     MOI.Utilities.pass_constraints(dest, src, copy_names, idxmap,
+#                      single_variable_types, single_variable_not_added,
+#                      vector_of_variables_types, vector_of_variables_not_added,
+#                      filter_constraints=filter_constraints)
+#
+#     return idxmap    #return an idxmap for each source model
 # end

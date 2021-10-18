@@ -146,8 +146,8 @@ function Base.setindex!(node::OptiNode,value::Any,symbol::Symbol)
 end
 
 JuMP.object_dictionary(m::OptiNode) = m.model.obj_dict
-JuMP.variable_type(::OptiNode) = JuMP.VariableRef
-JuMP.constraint_type(::OptiNode) = JuMP.ConstraintRef
+# JuMP.variable_type(::OptiNode) = JuMP.VariableRef
+# JuMP.constraint_type(::OptiNode) = JuMP.ConstraintRef
 
 function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
     jump_vref = JuMP.add_variable(node.model,v,name) #add the variable to the optinode
@@ -229,6 +229,7 @@ JuMP.primal_status(node::OptiNode) = JuMP.primal_status(jump_model(node))
 JuMP.dual_status(node::OptiNode) = JuMP.dual_status(jump_model(node))
 JuMP.solver_name(node::OptiNode) = JuMP.solver_name(jump_model(node))
 JuMP.mode(node::OptiNode) = JuMP.mode(jump_model(node))
+JuMP._moi_mode(node_backend::NodeBackend) = node_backend.optimizer.mode
 
 JuMP.list_of_constraint_types(node::OptiNode) = JuMP.list_of_constraint_types(jump_model(node))
 JuMP.all_constraints(node::OptiNode,F::DataType,S::DataType) = JuMP.all_constraints(jump_model(node),F,S)

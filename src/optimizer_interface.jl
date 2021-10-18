@@ -5,7 +5,7 @@ struct OptiGraphOptimizeHook <: MOI.AbstractModelAttribute end
 JuMP.backend(graph::OptiGraph) = graph.optimizer
 JuMP.backend(node::OptiNode) = JuMP.backend(jump_model(node))
 JuMP.backend(edge::OptiEdge) = edge.backend
-JuMP.moi_mode(node_optimizer::NodeBackend) = JuMP.moi_mode(node_optimizer.optimizer)
+# JuMP.moi_mode(node_optimizer::NodeBackend) = JuMP.moi_mode(node_optimizer.optimizer)
 
 #Extend OptiNode and OptiGraph with MOI interface
 MOI.get(node::OptiNode, args...) = MOI.get(jump_model(node), args...)
@@ -20,7 +20,7 @@ function _aggregate_backends!(graph::OptiGraph)
     #Set node backends
     for node in all_nodes(graph)
         src = JuMP.backend(node)
-        idx_map = append_to_backend!(dest, src, false; filter_constraints=nothing)
+        idx_map = append_to_backend!(dest, src)
         node_pointer = NodePointer(dest,idx_map)
         src.optimizers[id] = node_pointer
         if !(id in src.graph_ids)
@@ -208,7 +208,7 @@ Set an MOI optimizer for the optigraph `graph`.
 function JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor, bridge_constraints::Bool = true)
     backend = JuMP.backend(graph)
     if bridge_constraints
-        optimizer = MOI.instantiate(optimizer_constructor, with_bridge_type=Float64, with_names=false)
+        optimizer = MOI.instantiate(optimizer_constructor, with_bridge_type=Float64)
         for bridge_type in graph.bridge_types
             JuMP._moi_add_bridge(optimizer, bridge_type)
         end

@@ -12,13 +12,6 @@ end
 ##############################################################################
 # OptiGraph
 ##############################################################################
-#TODO: Set optigraph model attributes.  (e.g. set_optimizer_attribute(graph)) An optigraph can be solved just like any JuMP model in many cases.
-#IDEA: Update optigraph backend depending on state.  If we empty out a graph backend, we unhook the optinodes
-# @enum OptiGraphMode begin
-#     SYNCHRONIZED = 1   #optigraph backend is built up in parallel to optinodes
-#     NODES_ONLY = 2     #optigraph backend is not built.  We aggregates the backend if optimize!(graph) is called with an MOI optimizer.  This can be done with parallel threads.
-#     GRAPH_ONLY = 3     #optinode backend points to graph backend.  Less memory use.  Probably has to be done sequentially
-# end
 """
     OptiGraph()
 
@@ -50,9 +43,6 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     ext::Dict{Symbol,Any} #Extension Information
 
     id::Symbol
-
-    #TODO future release
-    #mode::OptiGraphMode
 
     #Constructor
     function OptiGraph()
@@ -616,7 +606,7 @@ function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,co
     end
 end
 
-JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
+# JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
 function JuMP.add_bridge(graph::OptiGraph,BridgeType::Type{<:MOI.Bridges.AbstractBridge})
     push!(graph.bridge_types, BridgeType)
     #_moi_add_bridge(JuMP.backend(model), BridgeType)

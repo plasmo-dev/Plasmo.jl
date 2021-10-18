@@ -64,7 +64,7 @@ function test_set_solution()
     cons = Vector{MOI.ConstraintIndex}(undef,0)
     # cons = MOI.ConstraintIndex{F,S}[]
     cidx_duals = Float64[]
-    con_list = MOI.get(node_backend,MOI.ListOfConstraints())
+    con_list = MOI.get(node_backend,MOI.ListOfConstraintTypesPresent())
     for (F,S) in con_list
         cidx = MOI.get(node_backend,MOI.ListOfConstraintIndices{F,S}())
         append!(cons,cidx)
