@@ -48,13 +48,13 @@ function _to_expression(func::JuMP.GenericAffExpr)
 end
 
 function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::AggregateMap)
-    if d.m.nlp_data.nlobj == nothing
-        new_obj = _to_expression(JuMP.objective_function(d.m))
+    if d.model.nlp_data.nlobj == nothing
+        new_obj = _to_expression(JuMP.objective_function(d.model))
     else
         new_obj = MOI.objective_expr(d)
     end
-        _splice_nonlinear_variables!(new_obj,getnode(d.m),reference_map)
-        JuMP.objective_sense(d.m) == MOI.MAX_SENSE ? sense = -1 : sense = 1
+        _splice_nonlinear_variables!(new_obj,getnode(d.model),reference_map)
+        JuMP.objective_sense(d.model) == MOI.MAX_SENSE ? sense = -1 : sense = 1
         new_obj = Expr(:call,:*,:($sense),new_obj)
     return new_obj
 end

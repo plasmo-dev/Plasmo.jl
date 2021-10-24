@@ -43,7 +43,7 @@ mutable struct OptiEdge <: AbstractOptiEdge
     linkrefs::Vector{AbstractLinkConstraintRef}
     #Link constraints
     linkconstraints::OrderedDict{Int64,LinkConstraint}
-    linkconstraint_names::Dict{Int64,String}
+    linkconstraint_names::OrderedDict{Int64,String}
     backend::EdgeBackend
     #TODO Capture nonlinear linking constraints
     #nlp_data::Union{Nothing,JuMP._NLPData}

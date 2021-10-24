@@ -29,8 +29,7 @@ function test_node_backend_1()
     @test MOI.supports_constraint(node_backend,MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64})
 
     @test MOIU.state(node_backend) == MOIU.NO_OPTIMIZER
-    optimizer = Ipopt.Optimizer
-    set_optimizer(node,optimizer)
+    set_optimizer(node,Ipopt.Optimizer)
     @test MOIU.state(node_backend) == MOIU.EMPTY_OPTIMIZER
 
     MOIU.attach_optimizer(node_backend)
@@ -39,7 +38,7 @@ function test_node_backend_1()
     MOIU.drop_optimizer(node_backend)
     @test MOIU.state(node_backend) == MOIU.NO_OPTIMIZER
 
-    set_optimizer(node,optimizer)
+    set_optimizer(node,Ipopt.Optimizer)
     MOIU.attach_optimizer(node_backend)
     MOIU.reset_optimizer(node_backend,Ipopt.Optimizer())
     @test MOIU.state(node_backend) == MOIU.EMPTY_OPTIMIZER
@@ -64,7 +63,7 @@ function test_set_solution()
     cons = Vector{MOI.ConstraintIndex}(undef,0)
     # cons = MOI.ConstraintIndex{F,S}[]
     cidx_duals = Float64[]
-    con_list = MOI.get(node_backend,MOI.ListOfConstraints())
+    con_list = MOI.get(node_backend,MOI.ListOfConstraintTypesPresent())
     for (F,S) in con_list
         cidx = MOI.get(node_backend,MOI.ListOfConstraintIndices{F,S}())
         append!(cons,cidx)
