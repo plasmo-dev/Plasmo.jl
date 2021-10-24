@@ -118,6 +118,8 @@ function set_model(node::OptiNode,m::JuMP.AbstractModel;preserve_links = false)
     !(is_set_to_node(m) && jump_model(node) == m) || error("Model $m is already asigned to another node")
     node.model = m
     m.ext[:optinode] = node
+    node_backend = NodeBackend(JuMP.backend(m),node.id)
+    m.moi_backend = node_backend
 end
 @deprecate setmodel set_model
 
@@ -144,6 +146,7 @@ end
 function Base.setindex!(node::OptiNode,value::Any,symbol::Symbol)
     setattribute(node,symbol,value)
 end
+setlabel(node::OptiNode,label::Symbol) = node.label = label
 
 JuMP.object_dictionary(m::OptiNode) = m.model.obj_dict
 # JuMP.variable_type(::OptiNode) = JuMP.VariableRef

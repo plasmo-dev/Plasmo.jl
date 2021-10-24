@@ -38,8 +38,10 @@ getedge, getoptiedge, getedges,  getoptiedges, all_edges, find_edge, all_edge, n
 
 add_subgraph!, getsubgraph, getsubgraphs, all_subgraphs, num_subgraphs, has_subgraphs,
 
+optinodes, optiedges, subgraphs, all_optinodes, all_optiedges,
+
 #Graph Functions
-incident_edges, neighborhood, induced_edges, expand,
+incident_edges, neighborhood, induced_edges, expand, induced_graph,
 
 #LinkConstraint
 LinkConstraint, LinkConstraintRef,
