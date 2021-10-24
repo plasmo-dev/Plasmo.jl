@@ -95,7 +95,7 @@ function test_set_model()
 
     @test num_variables(graph) == 3
 
-    set_optimizer(graph,Ipopt.Optimizer)
+    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(graph)
     @test termination_status(graph) == MOI.LOCALLY_SOLVED
 end
