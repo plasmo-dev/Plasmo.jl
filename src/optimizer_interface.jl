@@ -288,6 +288,10 @@ function _moi_optimize!(graph::OptiGraph)
         end
     end
     _set_node_results!(graph)     #populate optimizer solutions onto each node backend
+    for node in all_nodes(graph)
+        jump_model(node).is_model_dirty = false
+    end
+    return nothing
 end
 
 function _create_nlp_block_data(graph::OptiGraph)
@@ -316,7 +320,7 @@ end
 #OptiGraph Optimizer Attributes
 #######################################################
 function JuMP.set_optimizer_attribute(graph::OptiGraph, name::String, value)
-    return JuMP.set_optimizer_attribute(graph, MOI.RawParameter(name), value)
+    return JuMP.set_optimizer_attribute(graph, MOI.RawOptimizerAttribute(name), value)
 end
 
 function JuMP.set_optimizer_attribute(
@@ -327,7 +331,7 @@ function JuMP.set_optimizer_attribute(
 end
 
 function JuMP.get_optimizer_attribute(graph::OptiGraph, name::String)
-    return JuMP.get_optimizer_attribute(graph, MOI.RawParameter(name))
+    return JuMP.get_optimizer_attribute(graph, MOI.RawOptimizerAttribute(name))
 end
 
 function JuMP.get_optimizer_attribute(

@@ -136,7 +136,7 @@ end
 function test_multiple_solves()
     graph = _create_optigraph()
     n1 = getnode(graph,1)
-    set_optimizer(graph,Ipopt.Optimizer)
+    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(graph)
     @test isapprox(value(n1[:x]),0,atol = 1e-6)
 
@@ -149,7 +149,7 @@ function test_fix_variable()
     graph = _create_optigraph()
     n1 = getnode(graph,1)
     fix(n1[:x],1,force = true)
-    set_optimizer(graph,Ipopt.Optimizer)
+    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(graph)
     @test value(n1[:x]) == 1
 
@@ -164,7 +164,7 @@ end
 
 function test_set_optimizer_attributes()
     graph = _create_optigraph()
-    set_optimizer(graph,Ipopt.Optimizer)
+    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     JuMP.set_optimizer_attribute(graph,"max_cpu_time",1e2)
     @test JuMP.get_optimizer_attribute(graph,"max_cpu_time") == 100.0
 end

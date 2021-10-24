@@ -122,7 +122,15 @@ MOI.is_valid(node_backend::NodeBackend,idx::MOI.Index) = MOI.is_valid(node_backe
 MOI.supports_constraint(node_backend::NodeBackend,func::Type{T}
     where T<:MathOptInterface.AbstractFunction, set::Type{S}
     where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(node_backend.optimizer,func,set)
-MOI.supports(node_backend::NodeBackend, attr::Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}) = MOI.supports(node_backend.optimizer,attr)
+MOI.supports(node_backend::NodeBackend,
+            attr::Union{MOI.AbstractModelAttribute,
+            MOI.AbstractOptimizerAttribute}) =
+            MOI.supports(node_backend.optimizer,attr)
+MOI.supports(node_backend::NodeBackend,
+            attr::MOI.AbstractVariableAttribute,
+            idx = MOI.VariableIndex) =
+            MOI.supports(node_backend.optimizer,attr,idx)
+
 MOIU.attach_optimizer(node_backend::NodeBackend) = MOIU.attach_optimizer(node_backend.optimizer)
 MOIU.drop_optimizer(node_backend::NodeBackend) = MOIU.drop_optimizer(node_backend.optimizer)
 MOIU.reset_optimizer(node_backend::NodeBackend,args...) = MOIU.reset_optimizer(node_backend.optimizer,args...)

@@ -29,7 +29,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
         "node",
         Dict{Int64,AbstractLinkConstraint}(),
         nothing,
-        DefaultDict{Symbol,OrderedDict}(OrderedDict()),
+        DefaultDict{Symbol,OrderedDict{Int64,Float64}}(OrderedDict()),
         Dict{Symbol,Any}(),
         id)
         node.model.ext[:optinode] = node

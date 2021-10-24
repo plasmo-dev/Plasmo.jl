@@ -143,7 +143,7 @@ function _get_nnz_hess_quad(d_node::JuMP.NLPEvaluator)
     if d_node.has_nlobj
         return _get_nnz_hess(d_node)
     else
-        return _get_nnz_hess(d_node) + _get_nnz_hess(objective_function(d_node.m))
+        return _get_nnz_hess(d_node) + _get_nnz_hess(objective_function(d_node.model))
     end
 end
 
@@ -206,7 +206,7 @@ function MOI.eval_objective_gradient(d::OptiGraphNLPEvaluator,grad,x)
                 if d.nlps[k].has_nlobj
                     MOI.eval_objective_gradient(d.nlps[k],view(grad,ninds[k]),view(x,ninds[k]))
                 else
-                    _fill_gradient!(objective_function(d.nlps[k].m),view(grad,ninds[k]),view(x,ninds[k]))
+                    _fill_gradient!(objective_function(d.nlps[k].model),view(grad,ninds[k]),view(x,ninds[k]))
                 end
             end
         else
@@ -283,7 +283,7 @@ end
 #Hessian Lagrangian structure with quadratic objective terms included
 function _hessian_lagrangian_structure_quad(d::JuMP.NLPEvaluator,I,J)
     if !(d.has_nlobj)
-        obj = objective_function(d.m)
+        obj = objective_function(d.model)
         offset = append_to_hessian_sparsity!(I,J,obj,1) + 1
     else
         offset = 1
@@ -360,7 +360,7 @@ end
 _eval_hessian_lagrangian(d::JuMP.NLPEvaluator,hess,x,sigma,mu) = MOI.eval_hessian_lagrangian(d,hess,x,sigma,mu)
 
 function _eval_hessian_lagrangian_quad(d::JuMP.NLPEvaluator,hess,x,sigma,mu)
-    offset = fill_hessian_lagrangian!(hess, 0, sigma, JuMP.objective_function(d.m))
+    offset = fill_hessian_lagrangian!(hess, 0, sigma, JuMP.objective_function(d.model))
     nlp_values = view(hess, 1 + offset : length(hess))
     MOI.eval_hessian_lagrangian(d, nlp_values, x, sigma, mu)
 end

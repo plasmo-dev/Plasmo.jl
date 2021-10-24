@@ -29,8 +29,7 @@ function test_node_backend_1()
     @test MOI.supports_constraint(node_backend,MOI.ScalarAffineFunction{Float64},MOI.EqualTo{Float64})
 
     @test MOIU.state(node_backend) == MOIU.NO_OPTIMIZER
-    optimizer = Ipopt.Optimizer
-    set_optimizer(node,optimizer)
+    set_optimizer(node,Ipopt.Optimizer)
     @test MOIU.state(node_backend) == MOIU.EMPTY_OPTIMIZER
 
     MOIU.attach_optimizer(node_backend)
@@ -39,7 +38,7 @@ function test_node_backend_1()
     MOIU.drop_optimizer(node_backend)
     @test MOIU.state(node_backend) == MOIU.NO_OPTIMIZER
 
-    set_optimizer(node,optimizer)
+    set_optimizer(node,Ipopt.Optimizer)
     MOIU.attach_optimizer(node_backend)
     MOIU.reset_optimizer(node_backend,Ipopt.Optimizer())
     @test MOIU.state(node_backend) == MOIU.EMPTY_OPTIMIZER
