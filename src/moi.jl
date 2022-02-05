@@ -43,6 +43,7 @@ mutable struct NodePointer <: MOI.ModelLike
 end
 NodePointer(optimizer::MOI.ModelLike,idx_map::MOIU.IndexMap) = NodePointer(optimizer,idx_map,OrderedDict())
 
+
 """
     Wrapper for a MOI.ModelLike Backend.  The `NodeBackend` makes it possible to use JuMP functions like `value` and `dual` on optinode variables without defining new variable and constraint types.  This is done by
     swapping out the `Model` backend with `NodeBackend`.  The idea is that Plasmo can just use native JuMP variable and constraint types.  A `NodeBackend` also supports multiple solutions per node.  This
@@ -55,6 +56,11 @@ mutable struct NodeBackend <: AbstractNodeBackend
     last_solution_id::Symbol                        #the last solution for this node
     optimizers::Dict{Symbol,MOI.ModelLike}          #All of the "optimizers" this node points to. can be the node itself, a custom NodeSolution, or a pointer to an optigraph optimizer
     result_location::Dict{Symbol,MOI.ModelLike}     #location to look up results (e.g. MOI.VariablePrimal())
+    model_cache::Union{Nothing,MOI.ModelLike}
+end
+
+struct NodeCache <: MOI.ModelLike
+    nb::NodeBackend
 end
 
 function NodeBackend(model::MOIU.CachingOptimizer,id::Symbol)
@@ -64,9 +70,20 @@ function NodeBackend(model::MOIU.CachingOptimizer,id::Symbol)
     Vector{Symbol}(),
     id,
     Dict{Symbol,MOI.ModelLike}(),
-    Dict{Symbol,MOI.ModelLike}())
+    Dict{Symbol,MOI.ModelLike}(),
+    nothing)
+    node_backend.model_cache = NodeCache(node_backend) #circular reference
     node_backend.optimizers[node_backend.node_id] = node_backend.optimizer #TODO: decide whether this is necessary
+    # node_backend.model_cache = model.model_cache
     return node_backend
+end
+
+# model.moi_backend = MOI.Utilities.CachingOptimizer(backend(model).model_cache, optimizer)
+function MOIU.CachingOptimizer(nodecache::NodeCache,optimizer::MOI.AbstractOptimizer)
+    nb = nodecache.nb
+    caching_optimizer = MOIU.CachingOptimizer(nb.optimizer.model_cache,optimizer)
+    nb.optimizer = caching_optimizer
+    return nb
 end
 
 #Custom MOI methods for optinodes
