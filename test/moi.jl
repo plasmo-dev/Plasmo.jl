@@ -40,7 +40,7 @@ function test_node_backend_1()
 
     set_optimizer(node,Ipopt.Optimizer)
     MOIU.attach_optimizer(node_backend)
-    MOIU.reset_optimizer(node_backend,Ipopt.Optimizer())
+    MOIU.reset_optimizer(node_backend)#,Ipopt.Optimizer())
     @test MOIU.state(node_backend) == MOIU.EMPTY_OPTIMIZER
 
 end
