@@ -210,7 +210,7 @@ end
 """
 function MOI.optimize!(backend::NodeBackend)
     MOI.optimize!(backend.optimizer)
-    backend.last_solution_id = backend.id
+    backend.last_solution_id = backend.node_id
     return nothing
 end
 
