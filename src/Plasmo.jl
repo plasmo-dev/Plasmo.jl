@@ -104,7 +104,7 @@ include("graph_representations/bipartitegraph.jl")
 
 include("graph_representations/cliquegraph.jl")
 
-include("moi.jl")
+include("moi_backend_node.jl")
 
 include("optinode.jl")
 
@@ -117,6 +117,8 @@ include("macros.jl")
 include("aggregate.jl")
 
 include("aggregate_utils.jl")
+
+include("moi_backend_graph.jl")
 
 include("optimizer_interface.jl")
 

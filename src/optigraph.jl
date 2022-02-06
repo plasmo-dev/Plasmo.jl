@@ -31,7 +31,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     objective_function::JuMP.AbstractJuMPScalar
 
     #IDEA: An optigraph optimizer can be a MOI model.  For standard optimization solvers, we can either 1) aggregate a MOI backend on the fly using optinodes or 2) build up the MOI backend with nodes simultaneously
-    optimizer::Any #MOI.ModelLike
+    moi_backend::Union{Nothing,MOI.ModelLike}
+    #optimizer::GraphOptimizer
 
     #IDEA: graph_backend is used for hypergraph topology functions (e.g. neighbors,expand,etc...)
     graph_backend::Union{Nothing,HyperGraphBackend}
@@ -46,10 +47,9 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
 
     #Constructor
     function OptiGraph()
-        caching_mode = MOIU.AUTOMATIC
-        universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
-        optimizer = MOIU.CachingOptimizer(universal_fallback,caching_mode)
-
+        # caching_mode = MOIU.AUTOMATIC
+        # universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
+        # optimizer = MOIU.CachingOptimizer(universal_fallback,caching_mode)
         optigraph = new(Vector{OptiNode}(),
                     Vector{OptiEdge}(),
                     Dict{OptiNode,Int64}(),
@@ -58,7 +58,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
                     OrderedDict{OrderedSet,OptiEdge}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
-                    optimizer,
+                    #optimizer,
+                    nothing,
                     nothing,
                     Set{Any}(),
                     Dict{Symbol,Any}(),
