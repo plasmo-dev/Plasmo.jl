@@ -110,6 +110,8 @@ include("optinode.jl")
 
 include("optiedge.jl")
 
+include("moi_backend_graph.jl")
+
 include("optigraph.jl")
 
 include("macros.jl")
@@ -117,8 +119,6 @@ include("macros.jl")
 include("aggregate.jl")
 
 include("aggregate_utils.jl")
-
-include("moi_backend_graph.jl")
 
 include("optimizer_interface.jl")
 

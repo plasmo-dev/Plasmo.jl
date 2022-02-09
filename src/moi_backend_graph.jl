@@ -1,4 +1,4 @@
-ConstraintRefUnion = Union{JuMP.ConstraintRef,LinkConstraintRef}
+const ConstraintRefUnion = Union{JuMP.ConstraintRef,LinkConstraintRef}
 
 mutable struct NodeToGraphMap
     var_map::OrderedDict{JuMP.VariableRef,MOI.VariableIndex} #node variable to optimizer
@@ -20,47 +20,67 @@ GraphToNodeMap() = GraphToNodeMap(
                                 )
 
 #acts like a caching optimizer, except it uses references to underlying nodes in the graph
-#NOTE: the mode doesn't do anything for a GraphBackend yet. Eventually we will
+#NOTE: OptiGraph's don't support modes yet. Eventually we will
 #try to support Direct, Manual, and Automatic modes on an optigraph.
 mutable struct GraphBackend{OptimizerType} <: MOI.AbstractOptimizer
     optimizer::Union{Nothing,OptimizerType}
-    model_cache::OptiGraph
+    optigraph::Union{Nothing,AbstractOptiGraph}
+    model_cache::MOI.ModelLike
     state::MOIU.CachingOptimizerState
-    mode::MOIU.CachingOptimizerMode
+    #mode::MOIU.CachingOptimizerMode
     model_to_optimizer_map::NodeToGraphMap
     optimizer_to_model_map::GraphToNodeMap
 end
 
-function GraphBackend(graph::OptiGraph)
-    model_cache = graph
+"""
+    GraphBackend()
+
+Initialize an empty optigraph backend. Contains a model_cache that can be used to set
+`MOI.AbstractModelAttribute`s and `MOI.AbstractOptimizerAttribute`s.
+"""
+function GraphBackend(optigraph::AbstractOptiGraph)
     state = MOIU.NO_OPTIMIZER
-    mode = MOIU.AUTOMATIC
+    #mode = MOIU.AUTOMATIC
+    model_cache = MOIU.UniversalFallback(MOIU.Model{Float64}())
     return GraphBackend{MOI.AbstractOptimizer}(
                             nothing,
+                            optigraph,
                             model_cache,
                             state,
-                            mode,
+                            #mode,
                             NodeToGraphMap(),
                             GraphToNodeMap())
 end
 
-function GraphBackend(graph::OptiGraph,optimizer::MOI.AbstractOptimizer)
-    @assert MOI.is_empty(optimizer)
-    model_cache = graph
-    state = MOIU.EMPTY_OPTIMIZER
-    mode = MOIU.AUTOMATIC
-    return GraphBackend{typeof(optimizer)}(
-                            optimizer,
-                            model_cache,
-                            state,
-                            mode,
-                            NodeToGraphMap(),
-                            GraphToNodeMap())
+#In MOI this uses lots of `map_indices` magic, but I think this can be more simple
+function MOI.get(graph_backend::GraphBackend, attr::MOI.AbstractModelAttribute)
+    #if the attribute is set by the optimizer, query it directly from optimizer
+    if MOI.is_set_by_optimize(attr)
+        if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
+            error(
+                "Cannot query $(attr) from graph backend because no " *
+                "optimizer is attached.",
+            )
+        end
+        return MOI.get(graph_backend.optimizer, attr)
+    #otherwise, grab it from the model cache
+    else
+        return MOI.get(graph_backend.model_cache, attr)
+    end
 end
 
-MOI.get(graph_backend::GraphBackend,attr::MOI.AnyAttribute) = MOI.get(graph_backend.optimizer,attr)
-MOI.set(graph_backend::GraphBackend,attr::MOI.AnyAttribute,args...) = MOI.set(graph_backend.optimizer,attr,args...)
+function MOI.set(graph_backend::GraphBackend, attr::MOI.AbstractModelAttribute, value)
+    #if an optimizer is attached, set the underlying attribute
+    if MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
+        MOI.set(graph_backend.optimizer, attr, value)
+    end
+    MOI.set(graph_backend.model_cache, attr, value)
+    return
+end
+
+#MOI.set(graph_backend::GraphBackend,attr::MOI.AnyAttribute,args...) = MOI.set(graph_backend.optimizer,attr,args...)
 MOIU.state(graph_backend::GraphBackend) = graph_backend.state
+#MOIU.mode(graph_backend::GraphBackend) = graph_backend.mode
 
 """
     append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
@@ -93,7 +113,7 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
     MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
 
     # Normally, this copies ObjectiveSense and ObjectiveFunction, but we don't want to do that here
-    #MOI.Utilities.pass_attributes(dest, src,idxmap)
+    #MOI.Utilities.pass_attributes(dest, src, idxmap)
 
     MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
 
@@ -129,19 +149,23 @@ end
 Populate the underlying optigraph optimizer. Works in a similar way to the
 `MOIU.CachingOptimizer`, except it populates using the node and edge models.
 """
-function MOIU.attach_optimizer(model::GraphBackend)
-    @assert model.state == MOIU.EMPTY_OPTIMIZER
+function MOIU.attach_optimizer(graph_backend::GraphBackend)
+    @assert MOIU.state(graph_backend)==MOIU.EMPTY_OPTIMIZER
 
-    dest_optimizer = model.optimizer #the underlying optimizer
-    optigraph = model.model_cache
+    dest_optimizer = graph_backend.optimizer #the underlying optimizer
+    optigraph = graph_backend.optigraph
+
+    #copy model and optimizer attributes
+    if !MOI.is_empty(graph_backend.model_cache)
+        MOI.copy_to(dest_optimizer,graph_backend.model_cache)
+    end
+
     id = optigraph.id
-
     indexmap = NodeToGraphMap()  #node to optimizer
     rindexmap = GraphToNodeMap() #optimizer to nodes
 
-
+    # copy node backends
     for node in all_nodes(optigraph)
-        # set node backends
         src = JuMP.backend(node)
         idx_map = append_to_backend!(dest_optimizer, src) #node to graph map
         node_pointer = NodePointer(dest_optimizer,idx_map)
@@ -150,7 +174,7 @@ function MOIU.attach_optimizer(model::GraphBackend)
             push!(src.graph_ids,id)
         end
 
-        #update index map
+        # update index maps
         for (v_src,v_dst) in idx_map.var_map
             var_src = JuMP.VariableRef(node.model,v_src)
             indexmap.var_map[var_src] = v_dst
@@ -171,7 +195,7 @@ function MOIU.attach_optimizer(model::GraphBackend)
         edge.backend.optimizers[id] = edge_pointer
     end
 
-    # add link constraints to backend
+    # copy link-constraints to backend
     for linkref in all_linkconstraints(optigraph)
         constraint_index = Plasmo._add_link_constraint!(id,dest_optimizer,JuMP.constraint_object(linkref))
         linkref.optiedge.backend.result_location[id].edge_to_optimizer_map[linkref] = constraint_index
@@ -180,19 +204,44 @@ function MOIU.attach_optimizer(model::GraphBackend)
         rindexmap.con_map[constraint_index] = linkref
     end
 
-    model.model_to_optimizer_map = indexmap
-    model.optimizer_to_model_map = rindexmap
-    model.state = MOIU.ATTACHED_OPTIMIZER
+    graph_backend.model_to_optimizer_map = indexmap
+    graph_backend.optimizer_to_model_map = rindexmap
+    graph_backend.state = MOIU.ATTACHED_OPTIMIZER
+
+    #TODO: possibly put the objective function stuff here
 
     return
 end
 
 function MOI.optimize!(graph_backend::GraphBackend)
-    if graph_backend.mode == MOIU.AUTOMATIC && graph_backend.state == MOIU.EMPTY_OPTIMIZER
+    # if graph_backend.mode == MOIU.AUTOMATIC && graph_backend.state == MOIU.EMPTY_OPTIMIZER
+    if MOIU.state(graph_backend) == MOIU.EMPTY_OPTIMIZER
         MOIU.attach_optimizer(graph_backend)
     else
-        @assert graph_backend.state == MOIU.ATTACHED_OPTIMIZER
+        @assert MOIU.state(graph_backend)== MOIU.ATTACHED_OPTIMIZER
     end
     MOI.optimize!(graph_backend.optimizer)
     return
 end
+
+#
+# function GraphBackend(graph::OptiGraph,optimizer::MOI.AbstractOptimizer)
+#     @assert MOI.is_empty(optimizer)
+#     optigraph = graph
+#     state = MOIU.EMPTY_OPTIMIZER
+#     #mode = MOIU.AUTOMATIC
+#     #NOTE: model_cache only stores model and optimizer attributes
+#     if !MOI.is_empty(graph_backend.model_cache)
+#         model_cache = graph.moi_backend.model_cache
+#         MOIU.copy_to(optimizer,model_cache)
+#     else
+#
+#     return GraphBackend{typeof(optimizer)}(
+#                             optimizer,
+#                             optigraph,
+#                             state,
+#                             #mode,
+#                             model_cache,
+#                             NodeToGraphMap(),
+#                             GraphToNodeMap())
+# end

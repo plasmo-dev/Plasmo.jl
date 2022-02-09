@@ -32,7 +32,6 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
 
     #IDEA: An optigraph optimizer can be a MOI model.  For standard optimization solvers, we can either 1) aggregate a MOI backend on the fly using optinodes or 2) build up the MOI backend with nodes simultaneously
     moi_backend::Union{Nothing,MOI.ModelLike}
-    #optimizer::GraphOptimizer
 
     #IDEA: graph_backend is used for hypergraph topology functions (e.g. neighbors,expand,etc...)
     graph_backend::Union{Nothing,HyperGraphBackend}
@@ -47,9 +46,6 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
 
     #Constructor
     function OptiGraph()
-        # caching_mode = MOIU.AUTOMATIC
-        # universal_fallback = MOIU.UniversalFallback(MOIU.Model{Float64}())
-        # optimizer = MOIU.CachingOptimizer(universal_fallback,caching_mode)
         optigraph = new(Vector{OptiNode}(),
                     Vector{OptiEdge}(),
                     Dict{OptiNode,Int64}(),
@@ -58,7 +54,6 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
                     OrderedDict{OrderedSet,OptiEdge}(),
                     MOI.FEASIBILITY_SENSE,
                     zero(JuMP.GenericAffExpr{Float64, JuMP.AbstractVariableRef}),
-                    #optimizer,
                     nothing,
                     nothing,
                     Set{Any}(),
@@ -66,6 +61,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
                     Dict{Symbol,Any}(),
                     gensym()
                     )
+        graph_backend = GraphBackend(optigraph)
+        optigraph.moi_backend = graph_backend
         return optigraph
     end
 end
@@ -572,7 +569,7 @@ function add_link_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint,name::S
 end
 
 #Add linkconstraint directly to optiedge
-function add_link_constraint(optiedge::OptiEdge,con::JuMP.ScalarConstraint,name::String = "";attached_node = nothing)
+function add_link_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String=""; attached_node=nothing)
     typeof(con.set) in [MOI.Interval{Float64},MOI.LessThan{Float64},MOI.GreaterThan{Float64},MOI.EqualTo{Float64}] || error("Unsupported link constraint set of type $(con.set)")
 
     link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
@@ -617,8 +614,7 @@ function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,co
     end
 end
 
-# JuMP.constraint_type(::OptiGraph) = LinkConstraintRef
-function JuMP.add_bridge(graph::OptiGraph,BridgeType::Type{<:MOI.Bridges.AbstractBridge})
+function JuMP.add_bridge(graph::OptiGraph, BridgeType::Type{<:MOI.Bridges.AbstractBridge})
     push!(graph.bridge_types, BridgeType)
     #_moi_add_bridge(JuMP.backend(model), BridgeType)
     return
@@ -643,7 +639,7 @@ function JuMP.set_start_value(graph::OptiGraph,variable::JuMP.VariableRef,value:
     MOI.set(node_pointer,MOI.VariablePrimalStart(),var_idx,value)
 end
 
-JuMP.termination_status(graph::OptiGraph) = MOI.get(graph.optimizer,MOI.TerminationStatus())
+JuMP.termination_status(graph::OptiGraph) = MOI.get(graph.moi_backend,MOI.TerminationStatus())
 
 ####################################
 #Print Functions

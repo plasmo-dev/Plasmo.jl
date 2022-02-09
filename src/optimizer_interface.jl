@@ -207,7 +207,7 @@ function JuMP.set_optimizer(graph::OptiGraph,
     end
 
     if add_bridges
-    optimizer = MOI.instantiate(optimizer_constructor, with_bridge_type = Float64)
+        optimizer = MOI.instantiate(optimizer_constructor, with_bridge_type = Float64)
         for bridge_type in graph.bridge_types
             _moi_add_bridge(optimizer, bridge_type)
         end
@@ -215,7 +215,8 @@ function JuMP.set_optimizer(graph::OptiGraph,
         optimizer = MOI.instantiate(optimizer_constructor)
     end
 
-    graph.moi_backend = GraphBackend(graph, optimizer)
+    graph.moi_backend.optimizer = optimizer
+    graph.moi_backend.state = MOIU.EMPTY_OPTIMIZER
     return nothing
 end
 
@@ -361,56 +362,3 @@ function set_node_status(node::OptiNode,status::MOI.TerminationStatusCode)
     node_backend = JuMP.backend(node)
     set_backend_status!(node_backend,status,node.id)
 end
-
-#NOTE: I think this will always be a MOIU.CachingOptimizer
-# if isa(graph_optimizer,MOIU.CachingOptimizer)
-#     if MOIU.state(graph_optimizer) == MOIU.NO_OPTIMIZER
-#         error("Please set an optimizer on the optigraph before calling `optimize!` by using `set_optimizer(graph,optimizer)`")
-#     end
-# end
-# _aggregate_and_optimize!(graph)
-
-# #optimize with MOI interfaced optimizer
-# function _aggregate_and_optimize!(graph::OptiGraph)
-#     #Build the MOI backend if it hasn't already been created
-#     # if MOI.get(JuMP.backend(graph), MOI.TerminationStatus())==MOI.OPTIMIZE_NOT_CALLED
-#     #     _aggregate_backends!(graph)
-#     # #else
-#     #     #changes SHOULD have been captured (e.g. add_variable, add_constraint, etc...)
-#     # end
-#
-#     #set the optigraph objective if it is:
-#     #1) not nonlinear and
-#     #2) there are node objectives
-#     # has_nl_obj = has_nl_objective(graph)
-#     # if !(has_nl_obj)
-#     #     _set_graph_objective(graph)
-#     # end
-#     #
-#     # #NLP data
-#     # if has_nlp_data(graph)
-#     #     MOI.set(graph.optimizer, MOI.NLPBlock(), _create_nlp_block_data(graph))
-#     # end
-#     #
-#     # if has_nl_obj #set default sense to minimize if there is a nonlinear objective function
-#     #     MOI.set(graph.optimizer,MOI.ObjectiveSense(),MOI.MIN_SENSE)
-#     # else
-#     #     _set_backend_objective(graph) #sets linear or quadratic objective
-#     # end
-#     #
-#     # try
-#     #     MOI.optimize!(graph.optimizer)
-#     # catch err
-#     #     if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
-#     #         error("The solver does not support nonlinear problems " *
-#     #               "(i.e., @NLobjective and @NLconstraint).")
-#     #     else
-#     #         rethrow(err)
-#     #     end
-#     # end
-#     # _set_node_results!(graph)     #populate optimizer solutions onto each node backend
-#     # for node in all_nodes(graph)
-#     #     jump_model(node).is_model_dirty = false
-#     # end
-#     return nothing
-# end
