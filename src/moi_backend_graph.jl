@@ -69,9 +69,29 @@ function MOI.get(graph_backend::GraphBackend, attr::MOI.AbstractModelAttribute)
     end
 end
 
+function MOI.get(graph_backend::GraphBackend, attr::MOI.AbstractOptimizerAttribute)
+    #NOTE: See MOI.CachingOptimizer for dealing with copyable attributes in the future
+    if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
+        error(
+            "Cannot query $(attr) from optimizer because no " *
+            "optimizer is attached.",
+        )
+    end
+    return  MOI.get(graph_backend.optimizer, attr)
+end
+
 function MOI.set(graph_backend::GraphBackend, attr::MOI.AbstractModelAttribute, value)
     #if an optimizer is attached, set the underlying attribute
     if MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
+        MOI.set(graph_backend.optimizer, attr, value)
+    end
+    MOI.set(graph_backend.model_cache, attr, value)
+    return
+end
+
+function MOI.set(graph_backend::GraphBackend, attr::MOI.AbstractOptimizerAttribute, value)
+    #if an optimizer is attached, set the underlying attribute
+    if graph_backend.optimizer != nothing
         MOI.set(graph_backend.optimizer, attr, value)
     end
     MOI.set(graph_backend.model_cache, attr, value)
