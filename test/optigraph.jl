@@ -173,43 +173,6 @@ function test_set_optimizer_attributes()
     @test JuMP.get_optimizer_attribute(graph,"max_cpu_time") == 100.0
 end
 
-# Test optigraph optimizer.  This is a way to set custom optimize calls on an optimizer
-# to make it work with an optigraph.
-# mutable struct TestOptimizer <: MOI.AbstractOptimizer
-#     status::MOI.TerminationStatusCode
-# end
-# TestOptimizer() = TestOptimizer(MOI.OPTIMIZE_NOT_CALLED)
-# MOI.get(optimizer::TestOptimizer,::MOI.TerminationStatus) = optimizer.status
-# MOI.get(optimizer::TestOptimizer,::Plasmo.OptiGraphOptimizeHook) = optigraph_optimize!
-#
-# MOI.is_empty(::TestOptimizer) = true
-# MOI.empty!(::TestOptimizer) = nothing
-# MOI.copy_to(dest::TestOptimizer,src::MOI.ModelLike;kwargs...) = MOIU.default_copy_to(dest,src;kwargs...)
-# MOIU.supports_default_copy_to(model::TestOptimizer, copy_names::Bool) = true
-
-# function optigraph_optimize!(graph::OptiGraph,optimizer::TestOptimizer)
-#     println("Running Test Optimizer")
-#     for node in all_nodes(graph)
-#         vars = all_variables(node)
-#         vals = ones(length(vars))
-#         Plasmo.set_node_primals(node,vars,vals)
-#         Plasmo.set_node_status(node,MOI.OPTIMAL)
-#     end
-#     optimizer.status = MOI.OPTIMAL
-#     return nothing
-# end
-
-# function test_optigraph_optimizer()
-#     graph = _create_optigraph()
-#     test_optimizer = TestOptimizer
-#     set_optimizer(graph,test_optimizer)
-#     Plasmo.optimize!(graph)
-#     for var in all_variables(graph)
-#         @test value(var) == 1.0
-#     end
-#     @test termination_status(graph) == MOI.OPTIMAL
-# end
-
 function run_tests()
     for name in names(@__MODULE__; all = true)
         if !startswith("$(name)", "test_")

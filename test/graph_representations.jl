@@ -1,4 +1,4 @@
-module TestHyperGraph
+module TestGraphRepresentations
 
 using Plasmo
 using LightGraphs
@@ -31,7 +31,6 @@ function test_hypergraph()
     #4 vertices are connected by 3 hyperedges
     A = incidence_matrix(hyper)
     @test size(A) == (4,3)
-
 end
 
 function test_clique_graph()
@@ -54,7 +53,6 @@ function test_bipartite_graph()
     add_vertex!(graph,bipartite = 1)
     add_vertex!(graph,bipartite = 1)
     @test nv(graph) == 3
-
 
     add_vertex!(graph,bipartite = 2)
     add_vertex!(graph,bipartite = 2)
@@ -80,4 +78,4 @@ end
 
 end
 
-TestHyperGraph.run_tests()
+TestGraphRepresentations.run_tests()

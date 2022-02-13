@@ -20,7 +20,7 @@ GraphToNodeMap() = GraphToNodeMap(
                                 )
 
 #acts like a caching optimizer, except it uses references to underlying nodes in the graph
-#NOTE: OptiGraph's don't support modes yet. Eventually we will
+#NOTE: OptiGraph does not support modes yet. Eventually we will
 #try to support Direct, Manual, and Automatic modes on an optigraph.
 mutable struct GraphBackend{OptimizerType} <: MOI.AbstractOptimizer
     optimizer::Union{Nothing,OptimizerType}
@@ -243,25 +243,3 @@ function MOI.optimize!(graph_backend::GraphBackend)
     MOI.optimize!(graph_backend.optimizer)
     return
 end
-
-#
-# function GraphBackend(graph::OptiGraph,optimizer::MOI.AbstractOptimizer)
-#     @assert MOI.is_empty(optimizer)
-#     optigraph = graph
-#     state = MOIU.EMPTY_OPTIMIZER
-#     #mode = MOIU.AUTOMATIC
-#     #NOTE: model_cache only stores model and optimizer attributes
-#     if !MOI.is_empty(graph_backend.model_cache)
-#         model_cache = graph.moi_backend.model_cache
-#         MOIU.copy_to(optimizer,model_cache)
-#     else
-#
-#     return GraphBackend{typeof(optimizer)}(
-#                             optimizer,
-#                             optigraph,
-#                             state,
-#                             #mode,
-#                             model_cache,
-#                             NodeToGraphMap(),
-#                             GraphToNodeMap())
-# end

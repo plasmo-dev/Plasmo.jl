@@ -42,29 +42,21 @@ function _create_optigraph()
     return optigraph
 end
 
-
 function test_partition_manual()
     graph = OptiGraph()
-
     @optinode(graph,nodes[1:100])
     for node in nodes
         @variable(node,x >= 0)
     end
-
     for j = 1:99
         @linkconstraint(graph,nodes[j][:x] == nodes[j+1][:x])
     end
-
     A = reshape(nodes,20,5)
     node_vectors = [A[c,:] for c in 1:size(A,1)]
-
     partition = Partition(graph,node_vectors)
-
     @test length(partition.subpartitions) == 20
     @test num_nodes(graph) == 100
-
     apply_partition!(graph,partition)
-
     @test num_nodes(graph) == 0
     @test num_all_nodes(graph) == 100
 end
@@ -95,10 +87,11 @@ function test_bipartite_1()
     bg,b_map = Plasmo.bipartite_graph(optigraph)
     partition_vector = KaHyPar.partition(bg,2;configuration = kahypar_configuration)
     partition_bipartite = Partition(partition_vector,b_map)
-    #partition_bipartite = Partition(bg,partition_vector,b_map;cut_selector = :vertex)
-    #partition_bipartite = Partition(bg,partition_vector,b_map;cut_selector = :edge)
     apply_partition!(optigraph,partition_bipartite)
     @test graph_structure(optigraph) in [Plasmo.RECURSIVE_TREE,Plasmo.RECURSIVE_GRAPH,Plasmo.RECURSIVE_LINKED_TREE]
+
+    #partition_bipartite = Partition(bg,partition_vector,b_map;cut_selector = :vertex)
+    #partition_bipartite = Partition(bg,partition_vector,b_map;cut_selector = :edge)
 end
 
 #Clique Graph
@@ -119,10 +112,6 @@ function test_edge_clique_graph()
     partition = Partition(partition_vector,ref_map)
     apply_partition!(optigraph,partition)
     @test graph_structure(optigraph) == Plasmo.RECURSIVE_TREE
-end
-
-function test_partition_to_subgraphs()
-
 end
 
 
