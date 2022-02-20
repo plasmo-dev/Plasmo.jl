@@ -276,10 +276,10 @@ Retrieve the optiedge in `graph` that connects the optinodes in the OrderedSet o
 Retrieve the optiedge in `graph` that connects `nodes`.
 """
 getedge(graph::OptiGraph,index::Int64) = graph.optiedges[index]
-getedge(graph::OptiGraph,nodes::OrderedSet{OptiNode}) = graph.optiedge_map[nodes]
+getedge(graph::OptiGraph,nodes::Set{OptiNode}) = graph.optiedge_map[nodes]
 function getedge(graph::OptiGraph,nodes::OptiNode...)
     s = Set(collect(nodes))
-    return getoptiedge(graph,s)
+    return getedge(graph,s)
 end
 
 """

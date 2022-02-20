@@ -70,7 +70,7 @@ function test_optigraph2()
     @test Plasmo.has_node_objective(graph) == true
 end
 
-function test_set_model()
+function test_set_model_with_graph()
     graph = OptiGraph()
 
     n1 = @optinode(graph)

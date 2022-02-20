@@ -89,7 +89,7 @@ end
 #Other model traits we can communicate to solvers:
 #NLLinkConstraints
 #Integer variables in subgraphs
-#Incident hyper-edge (a hyper-edge that connects first stage to multiple 2nd stage nodes)
+#Incident hyper-edge (a hyper-edge that connects a first stage node to multiple 2nd stage nodes). The solver would need to deal with this.
 
 #TODO:
 #Aggregate to Tree, Graph, etc...

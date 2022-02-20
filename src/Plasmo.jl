@@ -46,6 +46,8 @@ optinodes, optiedges, subgraphs, all_optinodes, all_optiedges,
 
 incident_edges, neighborhood, induced_edges, expand, induced_graph, apply_partition!,
 
+linking_edges, hierarchical_edges,
+
 getlinkconstraints, all_linkconstraints, num_all_variables, num_linked_variables,
 
 num_all_constraints, num_link_constraints, num_all_linkconstraints,
@@ -66,7 +68,8 @@ aggregate, aggregate!,
 ######################################
 # HYPERGRAPH INTERFACE
 ######################################
-# HyperGraph, HyperEdge, HyperNode,
+#
+set_graph_backend, graph_backend_data, graph_backend,
 
 # Hypergraph functions
 in_degree, out_degree, get_supporting_nodes, get_supporting_edges,
