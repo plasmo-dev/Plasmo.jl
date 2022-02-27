@@ -265,19 +265,27 @@ function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
     # idxmap = MOI.Utilities.index_map_for_variable_indices(vis_src)
     index_map = MOIU.IndexMap()
 
-    has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
-    constraints_not_added = if has_nlp
-        Any[
+    # per the comment in MOI:
+    # "The `NLPBlock` assumes that the order of variables does not change (#849)
+    # Therefore, all VariableIndex and VectorOfVariable constraints are added
+    # seprately, and no variables constrained-on-creation are added.""
+    # Consequently, Plasmo avoids using the constrained-on-creation approach because
+    # of the way it constructs the NLPBlock for the optimizer.
+    
+    # has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
+    # constraints_not_added = if has_nlp
+    constraints_not_added = Any[
             MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
             (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
-            _is_variable_function(F)
+            MOIU._is_variable_function(F)
         ]
-    else
-        Any[
-            MOIU._try_constrain_variables_on_creation(dest, src, index_map, S)
-            for S in MOIU.sorted_variable_sets_by_cost(dest, src)
-        ]
-    end
+    # else
+    #     Any[
+    #         MOIU._try_constrain_variables_on_creation(dest, src, index_map, S)
+    #         for S in MOIU.sorted_variable_sets_by_cost(dest, src)
+    #     ]
+    # end
+
     #Copy free variables into graph optimizer
     MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
     # Copy variable attributes
