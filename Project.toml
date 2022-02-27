@@ -2,7 +2,7 @@ name = "Plasmo"
 uuid = "d3f7391f-f14a-50cc-bbe4-76a32d1bad3c"
 authors = ["Jordan Jalving <jhjalving@gmail.com>"]
 repo = "https://github.com/zavalab/Plasmo.jl.git"
-version = "0.4.2"
+version = "0.4.4"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
