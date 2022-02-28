@@ -3,6 +3,29 @@ module TestAggregatation
 using Plasmo
 using Test
 
+function _create_test_optigraph()
+    graph = OptiGraph()
+    @optinode(graph,nodes[1:100])
+    for node in nodes
+        @variable(node,0 <= x <= 2)
+        @variable(node,0 <= y <= 3)
+        @NLconstraint(node,x^3+y <= 4)
+    end
+    @linkconstraint(graph,links[i=1:99],nodes[i][:x] == nodes[i+1][:x])
+    @objective(graph,Min,sum(node[:y] for node in nodes))
+    return graph
+end
+
+
+function _create_test_optigraph_w_subgraphs()
+    graph = _create_test_optigraph()
+    node_vectors = [graph.optinodes[1:20],graph.optinodes[21:40],
+    graph.optinodes[41:60],graph.optinodes[61:80],graph.optinodes[81:100]]
+    partition = Partition(graph,node_vectors)
+    apply_partition!(graph,partition)
+    return graph
+end
+
 function test_affine_aggregate()
     graph = OptiGraph()
 
@@ -51,6 +74,17 @@ function test_nonlinear_aggregate()
     #test start values
     all_vars = all_variables(new_node)
     @test all(start_value.(all_vars) .== [2,1,2,2])
+end
+
+function test_aggregate_to_subgraphs()
+    graph = _create_test_optigraph_w_subgraphs()
+    new_graph,ref = aggregate(graph,0)
+    @test num_all_nodes(new_graph) == 5
+    @test num_all_linkconstraints(new_graph) == 4
+
+    aggregate!(graph,0)
+    @test num_all_nodes(graph) == 5
+    @test num_all_linkconstraints(graph) == 4
 end
 
 function run_tests()

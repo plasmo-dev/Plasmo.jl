@@ -662,7 +662,8 @@ attributes but not optimizer attributes. Always return the argument.
 Note: removes extensions data.
 """
 function Base.empty!(graph::OptiGraph)::OptiGraph
-    MOI.empty!(graph.moi_backend)
+    #MOI.empty!(graph.moi_backend)
+    graph.moi_backend = GraphBackend(graph)
     empty!(graph.obj_dict)
     empty!(graph.ext)
 

@@ -79,7 +79,7 @@ function test_hypergraph_functions()
     induced_es = induced_edges(graph,[n1,n2,n3])
     @test induced_es == [e1,e2]
 
-    neigh = neighborhood(graph,[n2,n3],1)
+    neigh = Plasmo.neighborhood(graph,[n2,n3],1)
     @test Set(neigh) == Set([n1,n2,n3,n4])
 end
 

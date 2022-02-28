@@ -244,7 +244,7 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
 
         #Add copy linkconstraints
         for optiedge in ledges
-            for linkconstraint in getlinkconstraints(optiedge)
+            for linkconstraint in link_constraints(optiedge)
                 new_con = _copy_constraint(linkconstraint,reference_map)
                 JuMP.add_constraint(new_graph,new_con)
             end
