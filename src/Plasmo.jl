@@ -134,7 +134,7 @@ include("nlp_evaluator.jl")
 
 include("partition.jl")
 
-include("structure.jl")
+# include("structure.jl")
 
 function __init__()
     @require KaHyPar = "2a6221f6-aa48-11e9-3542-2d9e0ef01880" include("partition_interface/kahypar.jl")
