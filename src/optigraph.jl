@@ -241,10 +241,10 @@ function add_optiedge!(graph::OptiGraph,optinodes::Vector{OptiNode})
     if haskey(graph.optiedge_map,key)
         optiedge = graph.optiedge_map[key]
     else
-        optiedge = OptiEdge(optinodes)
-        push!(graph.optiedges,optiedge)
         n_links = length(graph.optiedges)
         idx = n_links + 1
+        optiedge = OptiEdge(optinodes)
+        push!(graph.optiedges,optiedge)
         graph.optiedge_map[optiedge.nodes] = optiedge
         graph.edge_idx_map[optiedge] = idx
         _flag_graph_backend!(graph)

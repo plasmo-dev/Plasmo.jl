@@ -217,10 +217,10 @@ function test_multiple_solves()
     @test isapprox(value(n1[:x]),1,atol = 1e-6)
     @test start_value(n1[:x]) == 10
 
-    set_start_value(graph,n1[:x],20)
-    optimize!(graph)
-    @test isapprox(value(n1[:x]),1,atol = 1e-6)
-    @test start_value(graph,n1[:x]) == 20
+    # set_start_value(graph,n1[:x],20)
+    # optimize!(graph)
+    # @test isapprox(value(n1[:x]),1,atol = 1e-6)
+    # @test start_value(graph,n1[:x]) == 20
 end
 
 function test_fix_variable()
