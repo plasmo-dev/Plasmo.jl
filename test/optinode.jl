@@ -57,7 +57,7 @@ function test_optinode1()
     @NLobjective(node,Min,x^3)
     @test has_nl_objective(node) == true
 
-    set_optimizer(node,Ipopt.Optimizer)
+    set_optimizer(node,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(node)
 
     @test isapprox(objective_value(node),8)
@@ -67,7 +67,6 @@ function test_optinode1()
 end
 
 function test_optinode2()
-
     graph = OptiGraph()
     n1 = add_node!(graph)
     n2 = add_node!(graph)
@@ -78,8 +77,25 @@ function test_optinode2()
     @linkconstraint(graph,n1[:x] == n2[:x])
     @test num_linked_variables(n1) == 1
     @test num_linked_variables(n2) == 1
-
 end
+
+function test_optinode2()
+    graph = OptiGraph()
+    n1 = add_node!(graph)
+
+    @variable(n1,x>=0)
+    @NLparameter(n1,p == 1)
+    @test n1.nlp_data.nlparamvalues[1] == 1
+    @test n1.nlp_data == n1.model.nlp_data
+
+    graph = OptiGraph()
+    n1 = add_node!(graph)
+    @variable(n1,x>=0)
+    @NLexpression(n1,exp,x^3 + 5)
+    @test length(n1.nlp_data.nlexpr) == 1
+    @test n1.nlp_data == n1.model.nlp_data
+end
+
 
 function run_tests()
     for name in names(@__MODULE__; all = true)

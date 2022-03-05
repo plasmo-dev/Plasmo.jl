@@ -34,9 +34,9 @@ ModelNode, LinkEdge, getnumnodes, getnumedges, getmodel,
 OptiGraphNLPEvaluator,
 
 #optigraphs
-add_node!, getnode, getnodes, all_nodes, find_node, num_nodes, num_all_nodes,
+add_node!, getnode, getnodes, all_node, all_nodes, find_node, num_nodes, num_all_nodes,
 
-getedge, getoptiedge, getedges,  getoptiedges, all_edges,
+getedge, getoptiedge, getedges,  getoptiedges, all_edge, all_edges,
 
 find_edge, num_optiedges, num_all_optiedges,
 
@@ -48,11 +48,13 @@ incident_edges, neighborhood, induced_edges, expand, induced_graph, apply_partit
 
 linking_edges, hierarchical_edges,
 
-getlinkconstraints, all_linkconstraints, num_all_variables, num_linked_variables,
+getlinkconstraints, linkconstraints, all_linkconstraints, num_all_variables, num_linked_variables,
 
-num_all_constraints, num_link_constraints, num_all_linkconstraints,
+num_all_constraints, num_link_constraints, num_all_linkconstraints, num_all_subgraphs,
 
-has_objective, has_nl_objective,
+has_objective, has_nl_objective, has_node_objective,
+
+optigraph_reference,
 
 #node interface
 jump_model, set_model, has_model, is_set_to_node, set_label,
@@ -134,7 +136,7 @@ include("nlp_evaluator.jl")
 
 include("partition.jl")
 
-# include("structure.jl")
+include("structure.jl")
 
 function __init__()
     @require KaHyPar = "2a6221f6-aa48-11e9-3542-2d9e0ef01880" include("partition_interface/kahypar.jl")

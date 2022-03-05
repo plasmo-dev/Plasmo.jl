@@ -90,6 +90,7 @@ function test_bipartite_1()
     apply_partition!(optigraph,partition_bipartite)
     @test graph_structure(optigraph) in [Plasmo.RECURSIVE_TREE,Plasmo.RECURSIVE_GRAPH,Plasmo.RECURSIVE_LINKED_TREE]
 
+    #TODO
     #partition_bipartite = Partition(bg,partition_vector,b_map;cut_selector = :vertex)
     #partition_bipartite = Partition(bg,partition_vector,b_map;cut_selector = :edge)
 end

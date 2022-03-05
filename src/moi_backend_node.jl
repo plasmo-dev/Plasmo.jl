@@ -45,9 +45,11 @@ NodePointer(optimizer::MOI.ModelLike,idx_map::MOIU.IndexMap) = NodePointer(optim
 
 
 """
-    Wrapper for a MOI.ModelLike Backend.  The `NodeBackend` makes it possible to use JuMP functions like `value` and `dual` on optinode variables without defining new variable and constraint types.  This is done by
-    swapping out the `Model` backend with `NodeBackend`.  The idea is that Plasmo can just use native JuMP variable and constraint types.  A `NodeBackend` also supports multiple solutions per node.  This
-    is helpful when the same node is part of multiple `OptiGraph` objects.
+    NodeBackend
+
+        Wrapper for a MOI.ModelLike Backend.  The `NodeBackend` makes it possible to use JuMP functions like `value` and `dual` on optinode variables without defining new variable and constraint types.  This is done by
+        swapping out the `Model` backend with `NodeBackend`.  The idea is that Plasmo can just use native JuMP variable and constraint types.  A `NodeBackend` also supports multiple solutions per node.  This
+        is helpful when the same node is part of multiple `OptiGraph` objects.
 """
 mutable struct NodeBackend <: AbstractNodeBackend
     optimizer::MOI.ModelLike                        #the base MOI model (e.g. a MOIU.CachingOptimizer)
@@ -74,7 +76,6 @@ function NodeBackend(model::MOIU.CachingOptimizer,id::Symbol)
     nothing)
     node_backend.model_cache = NodeCache(node_backend) #circular reference
     node_backend.optimizers[node_backend.node_id] = node_backend.optimizer #TODO: decide whether this is necessary
-    # node_backend.model_cache = model.model_cache
     return node_backend
 end
 
@@ -120,14 +121,18 @@ function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
 end
 
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
-function MOI.set(node_backend::Plasmo.NodeBackend,attr::MOI.AnyAttribute,args...)
+function MOI.set(node_backend::Plasmo.NodeBackend, attr::MOI.AnyAttribute, args...)
     MOI.set(node_backend.optimizer,attr,args...)
     index_args = [arg for arg in args if isa(arg,MOI.Index)]
     other_args = [arg for arg in args if !isa(arg,MOI.Index)]
     for id in node_backend.graph_ids
         node_pointer = node_backend.optimizers[id]
         graph_indices = getindex.(Ref(node_pointer.node_to_optimizer_map),index_args)
-        MOI.set(node_pointer.optimizer,attr,graph_indices...,other_args...)
+        try
+            MOI.set(node_pointer.optimizer,attr,graph_indices...,other_args...)
+        catch #TODO: check the actual error here. make sure we can ignore it.
+            continue
+        end
     end
 end
 
@@ -188,6 +193,7 @@ function set_backend_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintInde
             node_solution = backend.result_location[id]
             node_solution.duals = duals
         end
+        backend.result_location[id] = node_solution
         backend.last_solution_id = id
     end
     return nothing
@@ -301,7 +307,7 @@ end
 MOI.get(edge_pointer::EdgePointer, attr::MOI.TerminationStatus) = MOI.get(edge_pointer.optimizer,attr)
 
 #Helpful utilities
-#SingleVariable is no longer a MOI type
+# NOTE: SingleVariable is no longer a MOI type
 # function _swap_indices(variable::MOI.SingleVariable,idxmap::MOIU.IndexMap)
 #     return idxmap[variable.variable]
 # end
@@ -314,7 +320,7 @@ function _swap_indices(func::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
     terms = new_func.terms
     for i = 1:length(terms)
         coeff = terms[i].coefficient
-        var_idx = terms[i].variable_index
+        var_idx = terms[i].variable
         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
     end
     return new_func
