@@ -125,14 +125,12 @@ function JuMP.nl_constraint_string(node::OptiNode, mode, c::JuMP._NonlinearConst
     return out_str
 end
 
-#TODO
-const NonlinearLinkConstraintRef = ConstraintRef{OptiNode, NonlinearConstraintIndex}# where T <: OptiObject
-
-function Base.show(io::IO, c::NonlinearLinkConstraintRef)
+const NonlinearOptiNodeConstraintRef = ConstraintRef{OptiNode, NonlinearConstraintIndex}# where T <: OptiObject
+function Base.show(io::IO, c::NonlinearOptiNodeConstraintRef)
     print(io, JuMP.nl_constraint_string(c.model, REPLMode, c.model.nlp_data.nlconstr[c.index.value]))
 end
 
-function Base.show(io::IO, ::MIME"text/latex", c::NonlinearLinkConstraintRef)
+function Base.show(io::IO, ::MIME"text/latex", c::NonlinearOptiNodeConstraintRef)
     constraint = c.model.nlp_data.nlconstr[c.index.value]
     print(io, JuMP._wrap_in_math_mode(JuMP.nl_constraint_string(c.model, IJuliaMode, constraint)))
 end

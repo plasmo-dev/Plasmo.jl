@@ -13,6 +13,10 @@ function test_graph_backend()
     MOI.set(gb,MOI.ObjectiveSense(),MOI.MIN_SENSE)
     @test MOI.get(gb,MOI.ObjectiveSense()) == MOI.MIN_SENSE
 
+    set_optimizer(graph, Ipopt.Optimizer)
+    MOIU.attach_optimizer(graph)
+    @test typeof(backend(graph).optimizer.model) == Ipopt.Optimizer
+
 end
 
 

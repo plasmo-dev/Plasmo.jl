@@ -16,13 +16,22 @@ function _create_test_optigraph()
     return graph
 end
 
-
 function _create_test_optigraph_w_subgraphs()
     graph = _create_test_optigraph()
     node_vectors = [graph.optinodes[1:20],graph.optinodes[21:40],
     graph.optinodes[41:60],graph.optinodes[61:80],graph.optinodes[81:100]]
     partition = Partition(graph,node_vectors)
     apply_partition!(graph,partition)
+    return graph
+end
+
+function _create_test_optigraph_w_recursive_subgraphs()
+    graph = _create_test_optigraph_w_subgraphs()
+    for sg in subgraphs(graph)
+        node_vectors = [sg.optinodes[1:10],sg.optinodes[11:20]]
+        partition = Partition(sg,node_vectors)
+        apply_partition!(sg,partition)
+    end
     return graph
 end
 
@@ -86,6 +95,11 @@ function test_aggregate_to_subgraphs()
     aggregate!(graph,0)
     @test num_all_nodes(graph) == 5
     @test num_all_linkconstraints(graph) == 4
+
+    #TODO: more checks
+    graph = _create_test_optigraph_w_recursive_subgraphs()
+    new_graph,ref = aggregate(graph,1)
+    @test num_all_subgraphs(new_graph) == 5
 end
 
 function test_objective_copy()

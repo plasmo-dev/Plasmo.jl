@@ -231,6 +231,7 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     end
 
     #Now add nodes and edges to the higher level graphs
+    #TODO: I think there is a bug in here when max_depth > 0
     for graph in reverse(final_parents)  #reverse to start from the bottom
         name_idx = 1
 
@@ -249,7 +250,7 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
 
         #Add copy linkconstraints
         for optiedge in ledges
-            for linkconstraint in link_constraints(optiedge)
+            for linkconstraint in linkconstraints(optiedge)
                 new_con = _copy_constraint(linkconstraint,reference_map)
                 JuMP.add_constraint(new_graph,new_con)
             end

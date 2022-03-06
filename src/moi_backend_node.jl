@@ -136,18 +136,22 @@ function MOI.set(node_backend::Plasmo.NodeBackend, attr::MOI.AnyAttribute, args.
     end
 end
 
-MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute) = MOI.get(node_backend.optimizer,attr)
-MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute,idx) = MOI.get(node_backend.optimizer,attr,idx)
-MOI.get(node_backend::NodeBackend,attr::MOI.AnyAttribute,idxs::Array{T,1} where T) = MOI.get(node_backend.optimizer,attr,idxs)
-MOI.is_valid(node_backend::NodeBackend,idx::MOI.Index) = MOI.is_valid(node_backend.optimizer,idx)
+MOI.get(node_backend::NodeBackend, attr::MOI.AnyAttribute) = MOI.get(node_backend.optimizer, attr)
+MOI.get(node_backend::NodeBackend, attr::MOI.AnyAttribute, idx) = MOI.get(node_backend.optimizer, attr, idx)
+MOI.get(node_backend::NodeBackend, attr::MOI.AnyAttribute, idxs::Array{T,1} where T) = MOI.get(node_backend.optimizer, attr, idxs)
+MOI.is_valid(node_backend::NodeBackend, idx::MOI.Index) = MOI.is_valid(node_backend.optimizer,idx)
+
+MOI.get(node_backend::NodeBackend, attr::MOI.TerminationStatus) = MOI.get(node_backend.result_location[node_backend.last_solution_id], attr)
 
 MOI.supports_constraint(node_backend::NodeBackend,func::Type{T}
     where T<:MathOptInterface.AbstractFunction, set::Type{S}
     where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(node_backend.optimizer,func,set)
+
 MOI.supports(node_backend::NodeBackend,
             attr::Union{MOI.AbstractModelAttribute,
             MOI.AbstractOptimizerAttribute}) =
             MOI.supports(node_backend.optimizer,attr)
+
 MOI.supports(node_backend::NodeBackend,
             attr::MOI.AbstractVariableAttribute,
             idx = MOI.VariableIndex) =
@@ -183,7 +187,9 @@ function set_backend_primals!(backend::NodeBackend,vars::Vector{MOI.VariableInde
     return nothing
 end
 
-function set_backend_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintIndex},values::Vector{Float64},id::Symbol)
+#TODO: figure out how to dispatch on generic type
+# function set_backend_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintIndex},values::Vector{Float64},id::Symbol)
+function set_backend_duals!(backend::NodeBackend,cons,values::Vector{Float64},id::Symbol)
     if length(cons) > 0
         #create node solution if necessary
         duals = OrderedDict(zip(cons,values))
@@ -307,10 +313,6 @@ end
 MOI.get(edge_pointer::EdgePointer, attr::MOI.TerminationStatus) = MOI.get(edge_pointer.optimizer,attr)
 
 #Helpful utilities
-# NOTE: SingleVariable is no longer a MOI type
-# function _swap_indices(variable::MOI.SingleVariable,idxmap::MOIU.IndexMap)
-#     return idxmap[variable.variable]
-# end
 function _swap_indices(variable::MOI.VariableIndex,idxmap::MOIU.IndexMap)
     return idxmap[variable]
 end

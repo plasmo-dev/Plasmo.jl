@@ -57,7 +57,7 @@ has_objective, has_nl_objective, has_node_objective,
 optigraph_reference,
 
 #node interface
-jump_model, set_model, has_model, is_set_to_node, set_label,
+jump_model, set_model, has_model, is_set_to_node, set_label, attached_node,
 
 set_attached_node, is_node_variable, is_linked_variable,
 
@@ -66,6 +66,9 @@ aggregate, aggregate!,
 
 #export to file
 #export_graph,
+
+# Model Interface
+set_node_primals, set_node_duals, set_node_status,
 
 ######################################
 # HYPERGRAPH INTERFACE
