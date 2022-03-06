@@ -79,7 +79,7 @@ function test_optinode2()
     @test num_linked_variables(n2) == 1
 end
 
-function test_optinode2()
+function test_optinode3()
     graph = OptiGraph()
     n1 = add_node!(graph)
 
@@ -87,13 +87,16 @@ function test_optinode2()
     @NLparameter(n1,p == 1)
     @test n1.nlp_data.nlparamvalues[1] == 1
     @test n1.nlp_data == n1.model.nlp_data
+    @NLconstraint(n1,x^3 + p == 2)
 
     graph = OptiGraph()
     n1 = add_node!(graph)
     @variable(n1,x>=0)
+    @variable(n1,y>=0)
     @NLexpression(n1,exp,x^3 + 5)
     @test length(n1.nlp_data.nlexpr) == 1
     @test n1.nlp_data == n1.model.nlp_data
+    @NLconstraint(n1,exp +y <= 5)
 end
 
 

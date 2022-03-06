@@ -26,7 +26,7 @@ function _create_test_optigraph_w_subgraphs()
     return graph
 end
 
-function test_affine_aggregate()
+function test_affine_quadratic_aggregate()
     graph = OptiGraph()
 
     n1 = @optinode(graph)
@@ -40,6 +40,7 @@ function test_affine_aggregate()
     @variable(n2,x)
     @variable(n2,z >= 0)
     @constraint(n2,z + x >= 4)
+    @constraint(n2,z^2 + x^2 <= 12)
 
     @linkconstraint(graph,n1[:x] == n2[:x])
     @linkconstraint(graph,n1[:z] == n2[:z])
@@ -85,6 +86,55 @@ function test_aggregate_to_subgraphs()
     aggregate!(graph,0)
     @test num_all_nodes(graph) == 5
     @test num_all_linkconstraints(graph) == 4
+end
+
+function test_objective_copy()
+    graph = OptiGraph()
+    n1 = @optinode(graph)
+    n2 = @optinode(graph)
+    @variable(n1,0 <= x <= 2)
+    @variable(n2,0 <= x <= 3)
+    @objective(n1,Min,n1[:x])
+    @objective(n2,Min,n2[:x])
+    agg_node,ref = aggregate(graph)
+    @test objective_function(agg_node) == ref[n1[:x]] + ref[n2[:x]]
+
+    graph = OptiGraph()
+
+    #Nonlinear
+    n1 = @optinode(graph)
+    @variable(n1,0 <= x <= 2)
+    @variable(n1,0 <= y <= 2)
+    @NLobjective(n1,Max,x^3 + y^2)
+
+    #VariableRef
+    n2 = @optinode(graph)
+    @variable(n2,x >= 0)
+    @objective(n2,Min,x)
+
+    #Affine
+    n3 = @optinode(graph)
+    @variable(n3,x >= 0)
+    @objective(n3,Min,2*x)
+
+    #Quadratic
+    n4 = @optinode(graph)
+    @variable(n4,x >= 0)
+    @objective(n4,Min,x^2)
+
+    agg_node,ref = aggregate(graph)
+    @test has_nl_objective(agg_node) == true
+end
+
+function test_copy_node()
+    graph = OptiGraph()
+    @optinode(graph,n1)
+    @variable(n1,x[1:2] <= 2)
+    set_start_value(x[1],2)
+    set_start_value(x[2],1)
+    @NLobjective(n1,Max,x[1]^2 + x[2]^2)
+
+    copied_node,ref = Plasmo._copy_node(n1)
 end
 
 function run_tests()
