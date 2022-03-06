@@ -122,8 +122,8 @@ function test_set_model_with_graph()
     @test value(graph,n1[:x]) == 0
     @test isapprox(objective_value(graph), 0; atol = 1e-8)
     cref = linkconstraints(graph)[1]
-    @test dual(cref) == 0
-    @test dual(graph,cref) == 0
+    @test isapprox(dual(cref),0)
+    @test isapprox(dual(graph,cref),0)
 
     m3 = JuMP.Model()
     JuMP.@variable(m3,x)

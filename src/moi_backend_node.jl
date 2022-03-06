@@ -128,9 +128,9 @@ function MOI.set(node_backend::Plasmo.NodeBackend, attr::MOI.AnyAttribute, args.
     for id in node_backend.graph_ids
         node_pointer = node_backend.optimizers[id]
         graph_indices = getindex.(Ref(node_pointer.node_to_optimizer_map),index_args)
-        try
+        try #some optimizers don't support names, start values, etc...
             MOI.set(node_pointer.optimizer,attr,graph_indices...,other_args...)
-        catch #TODO: check the actual error here. make sure we can ignore it.
+        catch #TODO: check the actual error here. make sure we can ignore it. #MOI.NotAllowedError?
             continue
         end
     end
