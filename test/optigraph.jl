@@ -122,8 +122,8 @@ function test_set_model_with_graph()
     @test value(graph,n1[:x]) == 0
     @test isapprox(objective_value(graph), 0; atol = 1e-8)
     cref = linkconstraints(graph)[1]
-    @test isapprox(dual(cref),0)
-    @test isapprox(dual(graph,cref),0)
+    @test isapprox(dual(cref),0; atol = 1e-8)
+    @test isapprox(dual(graph,cref),0; atol = 1e-8)
 
     m3 = JuMP.Model()
     JuMP.@variable(m3,x)
@@ -212,6 +212,8 @@ function test_multiple_solves()
     optimize!(graph)
     @test isapprox(value(n1[:x]),1,atol = 1e-6)
 
+    #I don't think this is actually working.
+    #I think the node pointer needs to pass the attributes
     set_start_value(n1[:x],10)
     optimize!(graph)
     @test isapprox(value(n1[:x]),1,atol = 1e-6)
