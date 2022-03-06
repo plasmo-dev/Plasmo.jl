@@ -10,7 +10,6 @@ end
 
 """
     graph_structure(graph::OptiGraph)
-
 Return a value corresponding to the hierarchical structure of an optigraph.  Values correspond to:
 GRAPH = 1
 TREE = 2

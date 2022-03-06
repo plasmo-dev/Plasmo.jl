@@ -16,6 +16,20 @@ function JuMP._init_NLP(graph::OptiGraph)
     error("An OptiGraph does not yet support the @NLconstraint macro.")
 end
 
+#support NLparameter
+function JuMP._new_parameter(node::OptiNode,value::Number)
+    p = JuMP._new_parameter(node.model,value)
+    node.nlp_data = node.model.nlp_data
+    return p
+end
+
+#support NLexpression
+function JuMP.NonlinearExpression(node::OptiNode, index::JuMP._NonlinearExprData)
+    expr =  JuMP.NonlinearExpression(node.model,index)
+    node.nlp_data = node.model.nlp_data
+    return expr
+end
+
 #These are function extensions that allow @NLconstraint and @NLexpression macros to work for optinodes
 function JuMP._parse_NL_expr_runtime(graph::OptiGraph, x, tape, parent, values)
     error("An OptiGraph does not yet support the @NLconstraint macro.")

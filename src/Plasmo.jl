@@ -25,58 +25,62 @@ export
 ################################
 AbstractOptiGraph, OptiGraph, ModelGraph,
 
-OptiNode, OptiEdge,
+OptiNode, OptiEdge, LinkConstraint, LinkConstraintRef, Partition,
 
 #deprecated exports
-ModelNode, LinkEdge, getnumnodes, getnumedges,
+ModelNode, LinkEdge, getnumnodes, getnumedges, getmodel,
 
+#nlp evaluator
 OptiGraphNLPEvaluator,
 
-add_node!, getnode, getnodes, all_nodes, find_node, all_node,  num_nodes, num_all_nodes,
+#optigraphs
+add_node!, getnode, getnodes, all_node, all_nodes, find_node, num_nodes, num_all_nodes,
 
-getedge, getoptiedge, getedges,  getoptiedges, all_edges, find_edge, all_edge, num_optiedges, num_all_optiedges,
+getedge, getoptiedge, getedges,  getoptiedges, all_edge, all_edges,
+
+find_edge, num_optiedges, num_all_optiedges,
 
 add_subgraph!, getsubgraph, getsubgraphs, all_subgraphs, num_subgraphs, has_subgraphs,
 
 optinodes, optiedges, subgraphs, all_optinodes, all_optiedges,
 
-#Graph Functions
-incident_edges, neighborhood, induced_edges, expand, induced_graph,
+incident_edges, neighborhood, induced_edges, expand, induced_graph, apply_partition!,
 
-#LinkConstraint
-LinkConstraint, LinkConstraintRef,
+linking_edges, hierarchical_edges,
 
-#Partition
-Partition, apply_partition!,
+getlinkconstraints, linkconstraints, all_linkconstraints, num_all_variables, num_linked_variables,
 
-# OptiGraph Modeling
-getlinkconstraints, all_linkconstraints, num_all_variables, num_link_constraints, num_all_constraints, num_all_linkconstraints,
+num_all_constraints, num_link_constraints, num_all_linkconstraints, num_all_subgraphs,
 
-has_objective, has_NLobjective,
+has_objective, has_nl_objective, has_node_objective,
 
-getmodel, set_model, has_model, getattribute,
+optigraph_reference,
 
-setattribute, set_attached_node,
+#node interface
+jump_model, set_model, has_model, is_set_to_node, set_label,
 
-is_nodevariable, is_linked_variable,
+set_attached_node, is_node_variable, is_linked_variable,
 
 # Aggregation
-aggregate,
+aggregate, aggregate!,
 
 #export to file
-export_graph,
+#export_graph,
 
 ######################################
 # HYPERGRAPH INTERFACE
 ######################################
-# HyperGraph, HyperEdge, HyperNode,
+#
+set_graph_backend, graph_backend_data, graph_backend,
 
 # Hypergraph functions
-in_degree, out_degree, get_supporting_nodes, get_supporting_edges, get_connected_to, get_connected_from,
+in_degree, out_degree, get_supporting_nodes, get_supporting_edges,
 
-in_neighbors, out_neighbors, neighbors, has_edge, in_edges, out_edges, adjacency_matrix, incidence_matrix,
+get_connected_to, get_connected_from,
 
-graph_structure,
+in_neighbors, out_neighbors, neighbors, has_edge, in_edges, out_edges,
+
+adjacency_matrix, incidence_matrix, graph_structure,
 
 # Hypergraph Projections
 bipartite_graph, clique_graph, hyper_graph, edge_graph, edge_hyper_graph,
@@ -104,11 +108,13 @@ include("graph_representations/bipartitegraph.jl")
 
 include("graph_representations/cliquegraph.jl")
 
-include("moi.jl")
+include("moi_backend_node.jl")
 
 include("optinode.jl")
 
 include("optiedge.jl")
+
+include("moi_backend_graph.jl")
 
 include("optigraph.jl")
 

@@ -37,7 +37,7 @@ Base.getindex(hypergraph::HyperGraph,node::HyperNode) = node
 getnodes(hypergraph::HyperGraph) = hypergraph.vertices
 
 #HyperEdge
-Base.reverse(e::HyperEdge) = "A hyperedge does not support reverse()"
+Base.reverse(e::HyperEdge) = error("A hyperedge does not support reverse()")
 ==(h1::HyperEdge,h2::HyperEdge) = collect(h1.vertices) ==  collect(h2.vertices)
 LightGraphs.add_edge!(graph::HyperGraph,vertices::HyperNode...) = add_hyperedge!(graph,vertices...)
 gethypernodes(edge::HyperEdge) = collect(edge.vertices)
@@ -77,7 +77,7 @@ end
 #LightGraphs Interface
 LightGraphs.edges(graph::HyperGraph) = graph.hyperedges
 LightGraphs.edgetype(graph::HyperGraph) = HyperEdge
-LightGraphs.has_edge(graph::HyperGraph,edge::HyperEdge) = edge in values(graph.hyperedges)
+LightGraphs.has_edge(graph::HyperGraph,edge::HyperEdge) = edge in values(graph.hyperedge_map)
 LightGraphs.has_edge(graph::HyperGraph,hypernodes::Set{HyperNode}) = haskey(graph.hyperedges,hypernodes)
 LightGraphs.has_vertex(graph::HyperGraph, v::Integer) = v in vertices(graph)
 LightGraphs.is_directed(graph::HyperGraph) = false
@@ -154,6 +154,8 @@ end
     induced_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
 
 Identify the induced hyperedges to a vector of `HyperNode`s.
+
+NOTE: This currently does not support hypergraphs with unconnected nodes
 """
 function induced_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
     external_nodes = setdiff(hypergraph.vertices,hypernodes) #nodes in hypergraph that aren't in hypernodes

@@ -45,9 +45,11 @@ NodePointer(optimizer::MOI.ModelLike,idx_map::MOIU.IndexMap) = NodePointer(optim
 
 
 """
-    Wrapper for a MOI.ModelLike Backend.  The `NodeBackend` makes it possible to use JuMP functions like `value` and `dual` on optinode variables without defining new variable and constraint types.  This is done by
-    swapping out the `Model` backend with `NodeBackend`.  The idea is that Plasmo can just use native JuMP variable and constraint types.  A `NodeBackend` also supports multiple solutions per node.  This
-    is helpful when the same node is part of multiple `OptiGraph` objects.
+    NodeBackend
+
+        Wrapper for a MOI.ModelLike Backend.  The `NodeBackend` makes it possible to use JuMP functions like `value` and `dual` on optinode variables without defining new variable and constraint types.  This is done by
+        swapping out the `Model` backend with `NodeBackend`.  The idea is that Plasmo can just use native JuMP variable and constraint types.  A `NodeBackend` also supports multiple solutions per node.  This
+        is helpful when the same node is part of multiple `OptiGraph` objects.
 """
 mutable struct NodeBackend <: AbstractNodeBackend
     optimizer::MOI.ModelLike                        #the base MOI model (e.g. a MOIU.CachingOptimizer)
@@ -74,7 +76,6 @@ function NodeBackend(model::MOIU.CachingOptimizer,id::Symbol)
     nothing)
     node_backend.model_cache = NodeCache(node_backend) #circular reference
     node_backend.optimizers[node_backend.node_id] = node_backend.optimizer #TODO: decide whether this is necessary
-    # node_backend.model_cache = model.model_cache
     return node_backend
 end
 
@@ -120,14 +121,18 @@ function MOI.delete(node_backend::NodeBackend, node_index::MOI.Index)
 end
 
 #NOTE: MOI.AnyAttribute = Union{MOI.AbstractConstraintAttribute, MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute, MOI.AbstractVariableAttribute}
-function MOI.set(node_backend::Plasmo.NodeBackend,attr::MOI.AnyAttribute,args...)
+function MOI.set(node_backend::Plasmo.NodeBackend, attr::MOI.AnyAttribute, args...)
     MOI.set(node_backend.optimizer,attr,args...)
     index_args = [arg for arg in args if isa(arg,MOI.Index)]
     other_args = [arg for arg in args if !isa(arg,MOI.Index)]
     for id in node_backend.graph_ids
         node_pointer = node_backend.optimizers[id]
         graph_indices = getindex.(Ref(node_pointer.node_to_optimizer_map),index_args)
-        MOI.set(node_pointer.optimizer,attr,graph_indices...,other_args...)
+        try #some optimizers don't support names, start values, etc...
+            MOI.set(node_pointer.optimizer,attr,graph_indices...,other_args...)
+        catch #TODO: check the actual error here. make sure we can ignore it. #MOI.NotAllowedError?
+            continue
+        end
     end
 end
 
@@ -188,6 +193,7 @@ function set_backend_duals!(backend::NodeBackend,cons::Vector{MOI.ConstraintInde
             node_solution = backend.result_location[id]
             node_solution.duals = duals
         end
+        backend.result_location[id] = node_solution
         backend.last_solution_id = id
     end
     return nothing
@@ -259,48 +265,6 @@ function MOI.get(node_backend::NodeBackend, attr::MOI.TerminationStatus)
     return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr)
 end
 
-function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
-
-    vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
-    # idxmap = MOI.Utilities.index_map_for_variable_indices(vis_src)
-    index_map = MOIU.IndexMap()
-
-    # per the comment in MOI:
-    # "The `NLPBlock` assumes that the order of variables does not change (#849)
-    # Therefore, all VariableIndex and VectorOfVariable constraints are added
-    # seprately, and no variables constrained-on-creation are added.""
-    # Consequently, Plasmo avoids using the constrained-on-creation approach because
-    # of the way it constructs the NLPBlock for the optimizer.
-    
-    # has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
-    # constraints_not_added = if has_nlp
-    constraints_not_added = Any[
-            MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
-            (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
-            MOIU._is_variable_function(F)
-        ]
-    # else
-    #     Any[
-    #         MOIU._try_constrain_variables_on_creation(dest, src, index_map, S)
-    #         for S in MOIU.sorted_variable_sets_by_cost(dest, src)
-    #     ]
-    # end
-
-    #Copy free variables into graph optimizer
-    MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
-    # Copy variable attributes
-    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
-    #Copy variable attributes (e.g. name, and VariablePrimalStart())
-    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
-
-    # Normally, this copies ObjectiveSense and ObjectiveFunction, but we don't want to do that here
-    #MOI.Utilities.pass_attributes(dest, src,idxmap)
-
-    MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
-
-    return index_map    #return an idxmap for each source model
-end
-
 #####################################################
 #The edge backend
 #####################################################
@@ -343,7 +307,7 @@ end
 MOI.get(edge_pointer::EdgePointer, attr::MOI.TerminationStatus) = MOI.get(edge_pointer.optimizer,attr)
 
 #Helpful utilities
-#SingleVariable is no longer a MOI type
+# NOTE: SingleVariable is no longer a MOI type
 # function _swap_indices(variable::MOI.SingleVariable,idxmap::MOIU.IndexMap)
 #     return idxmap[variable.variable]
 # end
@@ -356,7 +320,7 @@ function _swap_indices(func::MOI.ScalarAffineFunction,idxmap::MOIU.IndexMap)
     terms = new_func.terms
     for i = 1:length(terms)
         coeff = terms[i].coefficient
-        var_idx = terms[i].variable_index
+        var_idx = terms[i].variable
         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
     end
     return new_func
@@ -377,35 +341,4 @@ end
 #         var_idx = aff_terms[i].variable_index
 #         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff,idxmap[var_idx])
 #     end
-# end
-
-#AGGREGATE BACKENDS
-#IDEA: Copy multiple moi backends without emptying the destination model.
-# function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike, copy_names::Bool;filter_constraints::Union{Nothing, Function}=nothing)
-#
-#     vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
-#     idxmap = MOI.Utilities.index_map_for_variable_indices(vis_src)
-#
-#     constraint_types = MOI.get(src, MOI.ListOfConstraintTypesPresent())
-#     single_variable_types = [S for (F, S) in constraint_types if F == MOI.SingleVariable]
-#     vector_of_variables_types = [S for (F, S) in constraint_types if F == MOI.VectorOfVariables]
-#     vector_of_variables_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.VectorOfVariables, S}()) for S in vector_of_variables_types]
-#     single_variable_not_added = [MOI.get(src, MOI.ListOfConstraintIndices{MOI.SingleVariable, S}()) for S in single_variable_types]
-#
-#     #Copy free variables into graph optimizer
-#     MOI.Utilities.copy_free_variables(dest, idxmap, vis_src, MOI.add_variables)
-#
-#     #Copy variable attributes (e.g. name, and VariablePrimalStart())
-#     MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap, vis_src)
-#
-#     # Normally, this copies ObjectiveSense and ObjectiveFunction, but we don't want to do that here
-#     #MOI.Utilities.pass_attributes(dest, src, copy_names, idxmap)
-#
-#     #Copy constraints into graph optimizer
-#     MOI.Utilities.pass_constraints(dest, src, copy_names, idxmap,
-#                      single_variable_types, single_variable_not_added,
-#                      vector_of_variables_types, vector_of_variables_not_added,
-#                      filter_constraints=filter_constraints)
-#
-#     return idxmap    #return an idxmap for each source model
 # end

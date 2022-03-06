@@ -2,24 +2,45 @@
 #a graph function is called.  Currently, backend is not kept in sync with optigraph, so we hit _init_graph_backend which catches
 #updates using a flag when new nodes or edges are added.
 
-#Set graph backend
+"""
+    set_graph_backend(graph::OptiGraph)
+
+Set the optigraph backend. This creates a hyper graph object that maps to optigraph nodes and edges.
+"""
 function set_graph_backend(graph::OptiGraph)
     hypergraph,hypermap = hyper_graph(graph)
     graph.graph_backend = HyperGraphBackend(hypergraph,hypermap,false)
 end
-set_graph_backend(graph::OptiGraph,backend::HyperGraphBackend) = graph.graph_backend = backend
+#set_graph_backend(graph::OptiGraph,backend::HyperGraphBackend) = graph.graph_backend = backend
 
+"""
+    graph_backend(graph::OptiGraph)
+
+Retrieve the underlying hypergraph backend of an optigraph.
+"""
 graph_backend(graph::OptiGraph) = (graph.graph_backend)
 function graph_backend_data(graph::OptiGraph)
     return graph.graph_backend.hypergraph,graph.graph_backend.hyper_map
 end
+
+"""
+    _init_graph_backend(graph::OptiGraph)
+
+Initialize a hyper graph backend on the optigraph. This is used to query neighbors,
+edges, etc...
+
+Since Plasmo.jl does not update a graph backend in real-time, we re-create it on the
+fly whenever the topology is updated and user calls a graph function.
+"""
 function _init_graph_backend(graph::OptiGraph)
     if graph.graph_backend == nothing
         set_graph_backend(graph)
+        return true
     elseif graph.graph_backend.update_backend == true
         set_graph_backend(graph)
+        return true
     end
-    return nothing
+    return false
 end
 
 """
@@ -75,7 +96,8 @@ function induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     hypernodes = getindex.(Ref(hyper_map),nodes)
     inducededges = induced_edges(hypergraph,hypernodes)
-    return getindex.(Ref(hyper_map),inducededges)
+    opti_edges = convert(Vector{OptiEdge},getindex.(Ref(hyper_map),inducededges))
+    return opti_edges
 end
 
 """
@@ -161,17 +183,3 @@ Query the edges in `graph` that connect nodes within the graph or between subgra
 function linking_edges(graph::OptiGraph)
     return setdiff(getedges(graph),incident_edges(graph,getnodes(graph)))
 end
-
-#TODO: try forwarding methods this way
-# macro forward_graph_node_method(func)
-#     return quote
-#         function $(func)(graph::OptiGraph,node::OptiNode)
-#             Plasmo._init_graph_backend(graph)
-#             hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
-#             vertex = hyper_map[node]
-#             output = $func(hypergraph,vertex)
-#             return getindex.(Ref(hyper_map),output)
-#         end
-#     end
-# end
-#@forward_graph_node_method(LightGraphs.all_neighbors)

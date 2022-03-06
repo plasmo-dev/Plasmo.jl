@@ -58,8 +58,22 @@ function test_optigraph1()
 
     @test num_nodes(graph) == 15
     @test num_optiedges(graph) == 3
-    @test num_link_constraints(graph) == 3
+    @test num_linkconstraints(graph) == 3
     @test num_variables(graph) == 30
+    @test has_node_objective(graph) == true
+
+    obj = objective_function(graph)
+    @test length(getnodes(obj)) == 15
+
+    JuMP.set_objective_function(graph,n1[:x])
+    obj = objective_function(graph)
+    @test length(getnodes(obj)) == 1
+
+    JuMP.set_objective_function(graph,n1[:x]^2)
+    @test length(getnodes(obj)) == 1
+
+    JuMP.set_objective_coefficient(graph,n1[:x],2)
+    @test objective_function(graph).aff.terms[n1[:x]] == 2.0
 end
 
 function test_optigraph2()
@@ -70,7 +84,7 @@ function test_optigraph2()
     @test Plasmo.has_node_objective(graph) == true
 end
 
-function test_set_model()
+function test_set_model_with_graph()
     graph = OptiGraph()
 
     n1 = @optinode(graph)
@@ -90,6 +104,12 @@ function test_set_model()
     set_model(n1,m1)     #set m1 to node 1.  Updates reference on m1
     set_model(n2,m2)
 
+    @test optinodes(graph) == [n1,n2]
+    @test all_optinodes(graph) == [n1,n2]
+    @test all_node(graph,1) == n1
+    @test all_node(graph,2) == n2
+    @test Base.getindex(graph,n1) == 1
+
     #Link constraints take the same expressions as the JuMP @constraint macro
     @linkconstraint(graph,n1[:x] == n2[:x])
 
@@ -98,6 +118,23 @@ function test_set_model()
     set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(graph)
     @test termination_status(graph) == MOI.LOCALLY_SOLVED
+    @test value(n1[:x]) == 0
+    @test value(graph,n1[:x]) == 0
+    @test isapprox(objective_value(graph), 0; atol = 1e-8)
+    cref = linkconstraints(graph)[1]
+    @test isapprox(dual(cref),0; atol = 1e-8)
+    @test isapprox(dual(graph,cref),0; atol = 1e-8)
+
+    m3 = JuMP.Model()
+    JuMP.@variable(m3,x)
+    JuMP.@NLconstraint(m3,ref,exp(x) >= 2)
+    add_node!(graph,m3)
+    @test num_nodes(graph) == 3
+    @test num_variables(graph) == 4
+
+    # TODO: make this work. Need to rebuild after new node is added.
+    # optimize!(graph)
+    # @test termination_status(graph) == MOI.LOCALLY_SOLVED
 end
 
 function test_subgraph()
@@ -135,6 +172,33 @@ function test_subgraph()
     @test num_optiedges(graph) == 2
     @test num_all_optiedges(graph) == 4
     @test num_subgraphs(graph) == 2
+    @test length(subgraphs(graph)) == 2
+    @test num_all_subgraphs(graph) == 2
+    @test num_all_linkconstraints(graph) == 4
+    @test num_constraints(graph) == 0
+    @test num_all_constraints(graph) == 0
+
+
+    edgs = optiedges(graph)
+    @test Plasmo._is_valid_optigraph(ng1,edgs) == false
+
+    @test all_edge(graph,1) == edgs[1]
+    @test Base.getindex(graph,edgs[1]) == 1
+
+    con_types = JuMP.list_of_constraint_types(graph)
+    @test length(con_types) == 2
+    var_greater = JuMP.all_constraints(graph,JuMP.VariableRef,MOI.GreaterThan{Float64})
+    @test length(var_greater) == 10
+end
+
+function test_optigraph_reference()
+    graph = _create_optigraph()
+    optigraph_ref = optigraph_reference(graph)
+
+    @test num_all_nodes(optigraph_ref) == num_all_nodes(graph)
+    @test num_all_variables(optigraph_ref) == num_all_variables(graph)
+    @test num_constraints(optigraph_ref) == num_constraints(graph)
+    @test num_all_linkconstraints(optigraph_ref) == num_all_linkconstraints(graph)
 end
 
 function test_multiple_solves()
@@ -146,7 +210,19 @@ function test_multiple_solves()
 
     set_lower_bound(n1[:x],1)
     optimize!(graph)
-    isapprox(value(n1[:x]),1,atol = 1e-6)
+    @test isapprox(value(n1[:x]),1,atol = 1e-6)
+
+    #I don't think this is actually working.
+    #I think the node pointer needs to pass the attributes
+    set_start_value(n1[:x],10)
+    optimize!(graph)
+    @test isapprox(value(n1[:x]),1,atol = 1e-6)
+    @test start_value(n1[:x]) == 10
+
+    # set_start_value(graph,n1[:x],20)
+    # optimize!(graph)
+    # @test isapprox(value(n1[:x]),1,atol = 1e-6)
+    # @test start_value(graph,n1[:x]) == 20
 end
 
 function test_fix_variable()
@@ -172,43 +248,6 @@ function test_set_optimizer_attributes()
     JuMP.set_optimizer_attribute(graph,"max_cpu_time",1e2)
     @test JuMP.get_optimizer_attribute(graph,"max_cpu_time") == 100.0
 end
-
-# Test optigraph optimizer.  This is a way to set custom optimize calls on an optimizer
-# to make it work with an optigraph.
-# mutable struct TestOptimizer <: MOI.AbstractOptimizer
-#     status::MOI.TerminationStatusCode
-# end
-# TestOptimizer() = TestOptimizer(MOI.OPTIMIZE_NOT_CALLED)
-# MOI.get(optimizer::TestOptimizer,::MOI.TerminationStatus) = optimizer.status
-# MOI.get(optimizer::TestOptimizer,::Plasmo.OptiGraphOptimizeHook) = optigraph_optimize!
-#
-# MOI.is_empty(::TestOptimizer) = true
-# MOI.empty!(::TestOptimizer) = nothing
-# MOI.copy_to(dest::TestOptimizer,src::MOI.ModelLike;kwargs...) = MOIU.default_copy_to(dest,src;kwargs...)
-# MOIU.supports_default_copy_to(model::TestOptimizer, copy_names::Bool) = true
-
-# function optigraph_optimize!(graph::OptiGraph,optimizer::TestOptimizer)
-#     println("Running Test Optimizer")
-#     for node in all_nodes(graph)
-#         vars = all_variables(node)
-#         vals = ones(length(vars))
-#         Plasmo.set_node_primals(node,vars,vals)
-#         Plasmo.set_node_status(node,MOI.OPTIMAL)
-#     end
-#     optimizer.status = MOI.OPTIMAL
-#     return nothing
-# end
-
-# function test_optigraph_optimizer()
-#     graph = _create_optigraph()
-#     test_optimizer = TestOptimizer
-#     set_optimizer(graph,test_optimizer)
-#     Plasmo.optimize!(graph)
-#     for var in all_variables(graph)
-#         @test value(var) == 1.0
-#     end
-#     @test termination_status(graph) == MOI.OPTIMAL
-# end
 
 function run_tests()
     for name in names(@__MODULE__; all = true)

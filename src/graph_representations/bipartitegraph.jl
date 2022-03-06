@@ -30,7 +30,7 @@ function LightGraphs.add_edge!(bgraph::BipartiteGraph,from::Int64,to::Int64)
     return LightGraphs.add_edge!(bgraph.graph,from,to)
 end
 
-LightGraphs.edges(bgraph::BipartiteGraph) = LightGraph.edges(bgraph.graph)
+LightGraphs.edges(bgraph::BipartiteGraph) = LightGraphs.edges(bgraph.graph)
 LightGraphs.edgetype(bgraph::BipartiteGraph) = LightGraphs.SimpleGraphs.SimpleEdge{Int64}
 
 LightGraphs.has_edge(bgraph::BipartiteGraph,from::Int64,to::Int64) = LightGraphs.has_edge(bgraph.graph,from,to)
@@ -53,7 +53,7 @@ function LightGraphs.adjacency_matrix(bgraph::BipartiteGraph)
     return A
 end
 
-function _identify_separators(bgraph::BipartiteGraph,partitions::Vector;cut_selector = LightGraphs.degree)
+function _identify_separators(bgraph::BipartiteGraph, partitions::Vector; cut_selector=LightGraphs.degree)
     nparts = length(partitions)
 
     #Create partition matrix
@@ -88,7 +88,7 @@ function _identify_separators(bgraph::BipartiteGraph,partitions::Vector;cut_sele
             push!(cross_elements,src)
         elseif cut_selector == :edge
             push!(cross_elements,dst)
-        else #use slection function
+        else #use selection function
             if cut_selector(bgraph.graph,src) >= cut_selector(bgraph.graph,dst)
                 push!(cross_elements,src) #tie goes to vertex
             else
