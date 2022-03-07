@@ -217,14 +217,14 @@ function num_linked_variables(node::OptiNode)
 end
 
 """
-    num_link_constraints(node::OptiNode)
+    num_linkconstraints(node::OptiNode)
 
 Return the number of link-constraints that `node` belongs to
 """
-function num_link_constraints(node::OptiNode)
+function num_linkconstraints(node::OptiNode)
     return length(node.partial_linkconstraints)
 end
-
+@deprecate num_link_constraints num_linkconstraints
 """
     has_objective(node::OptiNode)
 
@@ -323,13 +323,10 @@ function nodevalue(expr::JuMP.GenericQuadExpr)
     ret_value += expr.aff.constant
     return ret_value
 end
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(con).constraint_dual_values[con]
-nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con]
+# nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(con).constraint_dual_values[con]
+# nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con]
 
 @deprecate nodevalue value
 @deprecate nodedual dual
-
 # JuMP.variable_type(::OptiNode) = JuMP.VariableRef
 # JuMP.constraint_type(::OptiNode) = JuMP.ConstraintRef
-# getattribute(node::OptiNode, symbol::Symbol) = jump_model(node).obj_dict[symbol]
-# setattribute(node::OptiNode, symbol::Symbol, attribute::Any) = jump_model(node).obj_dict[symbol] = attribute

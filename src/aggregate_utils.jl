@@ -1,26 +1,42 @@
 #Check for nonlinear objective
-function _has_nonlinear_obj(m::JuMP.Model)
-    if m.nlp_data != nothing
-        if m.nlp_data.nlobj != nothing
-            return true
-        end
-    end
-    return false
-end
+# function _has_nonlinear_obj(m::JuMP.Model)
+#     if m.nlp_data != nothing
+#         if m.nlp_data.nlobj != nothing
+#             return true
+#         end
+#     end
+#     return false
+# end
 
 #COPY OBJECTIVE FUNCTIONS
 function _copy_objective(node::OptiNode,ref_map::AggregateMap)
     return _copy_objective(JuMP.objective_function(node),ref_map)
 end
 
-function _copy_objective(func::Union{JuMP.GenericAffExpr,JuMP.GenericQuadExpr},ref_map::AggregateMap)
+function _copy_objective(func::Union{JuMP.GenericAffExpr,JuMP.GenericQuadExpr}, ref_map::AggregateMap)
     new_func = _copy_constraint_func(func,ref_map)
     return new_func
 end
 
-function _copy_objective(func::JuMP.VariableRef,ref_map::AggregateMap)
+function _copy_objective(func::JuMP.VariableRef, ref_map::AggregateMap)
     new_func = ref_map[func]
     return new_func
+end
+
+function _to_expression(func::JuMP.VariableRef)
+    expr = :(0)
+    expr = Expr(:call,:+,expr,:($(index(func))))
+    return expr
+end
+
+function _to_expression(func::JuMP.GenericAffExpr)
+    expr = :(0)
+    for (term,coeff) in func.terms
+        t_expr = Expr(:call,:*,:($coeff),:($(term.index)))
+        expr = Expr(:call,:+,expr,t_expr)
+    end
+    expr = Expr(:call,:+,expr,:($(func.constant)))
+    return expr
 end
 
 function _to_expression(func::JuMP.GenericQuadExpr)
@@ -36,18 +52,7 @@ function _to_expression(func::JuMP.GenericQuadExpr)
     return expr
 end
 
-
-function _to_expression(func::JuMP.GenericAffExpr)
-    expr = :(0)
-    for (term,coeff) in func.terms
-        t_expr = Expr(:call,:*,:($coeff),:($(term.index)))
-        expr = Expr(:call,:+,expr,t_expr)
-    end
-    expr = Expr(:call,:+,expr,:($(func.constant)))
-    return expr
-end
-
-function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::AggregateMap)
+function _copy_nl_objective(d::JuMP.NLPEvaluator, reference_map::AggregateMap)
     if d.model.nlp_data.nlobj == nothing
         new_obj = _to_expression(JuMP.objective_function(d.model))
     else
@@ -60,12 +65,12 @@ function _copy_nl_objective(d::JuMP.NLPEvaluator,reference_map::AggregateMap)
 end
 
 #splice variables into a constraint expression
-function _splice_nonlinear_variables!(expr::Expr,node::OptiNode,reference_map::AggregateMap)  #var_map needs to map the node_model index to the new model variable
+function _splice_nonlinear_variables!(expr::Expr, node::OptiNode, reference_map::AggregateMap)
     for i = 1:length(expr.args)
         if typeof(expr.args[i]) == Expr
-            if expr.args[i].head != :ref             #keep calling _splice_nonlinear_variables! on the expression until it's a :ref. i.e. :(x[index])
+            if expr.args[i].head != :ref #call _splice_nonlinear_variables! on the expression until it's a :ref. i.e. :(x[index])
                 _splice_nonlinear_variables!(expr.args[i],node,reference_map)
-            else  #it's a variable
+            else  #it is a variable
                 var_index = expr.args[i].args[2]     #this is the actual MOI index (e.g. x[1], x[2]) in the node model
                 new_var = :($(reference_map.varmap[JuMP.VariableRef(node.model,var_index)]))
                 expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
@@ -84,14 +89,14 @@ function _copy_constraint_func(func::JuMP.GenericAffExpr,ref_map::AggregateMap)
     return new_func
 end
 
-function _copy_constraint_func(func::JuMP.GenericAffExpr,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
-    terms = func.terms
-    new_terms = OrderedDict([(var_map[var_ref],coeff) for (var_ref,coeff) in terms])
-    new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-    new_func.terms = new_terms
-    new_func.constant = func.constant
-    return new_func
-end
+# function _copy_constraint_func(func::JuMP.GenericAffExpr,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+#     terms = func.terms
+#     new_terms = OrderedDict([(var_map[var_ref],coeff) for (var_ref,coeff) in terms])
+#     new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+#     new_func.terms = new_terms
+#     new_func.constant = func.constant
+#     return new_func
+# end
 
 function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::AggregateMap)
     new_aff = _copy_constraint_func(func.aff,ref_map)
@@ -125,11 +130,11 @@ function _copy_constraint(constraint::LinkConstraint,ref_map::AggregateMap)
     return new_con
 end
 
-function _copy_constraint(constraint::LinkConstraint,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
-    new_func = _copy_constraint_func(constraint.func,var_map)
-    new_con = JuMP.ScalarConstraint(new_func,constraint.set)
-    return new_con
-end
+# function _copy_constraint(constraint::LinkConstraint,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+#     new_func = _copy_constraint_func(constraint.func,var_map)
+#     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
+#     return new_con
+# end
 
 function _copy_node(node::OptiNode)
     new_node = OptiNode()
@@ -137,7 +142,5 @@ function _copy_node(node::OptiNode)
     temp_graph = OptiGraph()
     add_node!(temp_graph,node)
     new_node,reference_map = aggregate(temp_graph)
-    #_add_to_combined_model!(new_node,node,reference_map)
-    #_add_to_aggregate_node!(new_node,node,reference_map,graph_obj)
     return new_node,reference_map
 end

@@ -78,22 +78,20 @@ function JuMP.constraint_object(cref::LinkConstraintRef, F::Type, S::Type)
    return con
 end
 JuMP.set_name(cref::LinkConstraintRef, s::String) = JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
-JuMP.name(con::LinkConstraintRef) =  JuMP.owner_model(con).linkconstraint_names[con.idx]
+JuMP.name(con::LinkConstraintRef) = JuMP.owner_model(con).linkconstraint_names[con.idx]
+getname(cref::LinkConstraintRef) = JuMP.name(cref)
 
 function MOI.delete!(cref::LinkConstraintRef)
     delete!(cref.optiedge.linkconstraints, cref.idx)
     delete!(cref.optiedge.linkconstraint_names, cref.idx)
 end
-MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.idx,cref.optiedge.linkconstraints)
+MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.optiedge.linkconstraints, cref.idx)
 
 getnodes(edge::OptiEdge) = edge.nodes
 getnodes(con::JuMP.ScalarConstraint) = [getnode(var) for var in keys(con.func.terms)]
 getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]
-getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge)
-
+getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge.linkconstraints[cref.idx])
 num_nodes(con::LinkConstraint) = length(getnodes(con))
-getname(cref::LinkConstraintRef) = cref.optiedge.linkconstraint_names[cref.idx]
-
 JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstraints[linkref.idx]
 
 #TODO: Update this
@@ -105,9 +103,9 @@ end
 
 num_link_constraints(edge::OptiEdge) = length(edge.linkconstraints)
 
-link_constraints(edge::OptiEdge) = values(edge.linkconstraints)
-@deprecate getlinkconstraints link_constraints
-
+linkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
+@deprecate getlinkconstraints linkconstraints
+@deprecate link_constraints linkconstraints
 
 function Base.string(edge::OptiEdge)
     "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"

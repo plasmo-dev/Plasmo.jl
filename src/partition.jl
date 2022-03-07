@@ -183,7 +183,7 @@ function partition_list(graph::OptiGraph,membership_vector::Vector{Int64})
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     partitions = _partition_list(membership_vector)
-    return [getindex.(Ref(hyper_map),partitions[i] for i = 1:length(partitions))]
+    return [getindex.(Ref(hyper_map),partitions[i]) for i = 1:length(partitions)]
 end
 @deprecate getpartitionlist partition_list
 
@@ -284,8 +284,8 @@ end
 
 #swap vertex and edge separators in the partition.  Return a new partition.
 #IDEA TODO:
-function swap_separators!(graph::OptiGraph,partition::Partition)
-end
+# function swap_separators!(graph::OptiGraph,partition::Partition)
+# end
 
 
 ##################################################################
@@ -335,10 +335,6 @@ end
 ####################################
 #Print Functions
 ####################################
-function string(partition::Partition)
-    """
-        OptiGraph Partition w/ $(n_subpartitions(partition)) subpartitions
-    """
-end
+string(partition::Partition) = "OptiGraph Partition w/ $(n_subpartitions(partition)) subpartitions"
 print(io::IO, partition::Partition) = print(io, string(partition))
 show(io::IO,partition::Partition) = print(io,partition)

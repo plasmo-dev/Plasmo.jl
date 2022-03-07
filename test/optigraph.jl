@@ -13,7 +13,7 @@ function _create_optigraph()
     @optinode(graph,n3)
     @optinode(graph,n4)
 
-    @variable(n1,0 <= x <= 2)
+    @variable(n1,0 <= x <= 2, start = 1)
     @variable(n1,0 <= y <= 3)
     @NLconstraint(n1,x^3+y <= 4)
 
@@ -26,7 +26,7 @@ function _create_optigraph()
     @NLconstraint(n2,exp(x)+y <= 7)
 
     @variable(n3,x[1:5])
-    @variable(n4,x <= 1)
+    @variable(n4,x >= 1)
 
 
     @linkconstraint(graph,n4[:x] == n1[:x])
@@ -82,6 +82,12 @@ function test_optigraph2()
     @test Plasmo.has_objective(graph) == true
     @test Plasmo.has_nl_objective(graph) == false
     @test Plasmo.has_node_objective(graph) == true
+
+    #test quadratic objective
+    @objective(graph,Min,graph[1][:x]^2 + graph[2][:x]^2 + graph[4][:x])
+    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
+    optimize!(graph)
+    @test isapprox(objective_value(graph), 3.0; atol = 1e-6)
 end
 
 function test_set_model_with_graph()
@@ -204,19 +210,19 @@ end
 function test_multiple_solves()
     graph = _create_optigraph()
     n1 = getnode(graph,1)
-    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
-    @test isapprox(value(n1[:x]),0,atol = 1e-6)
+    @test isapprox(value(n1[:x]), 1, atol = 1e-6)
 
-    set_lower_bound(n1[:x],1)
+    set_lower_bound(n1[:x],2)
     optimize!(graph)
-    @test isapprox(value(n1[:x]),1,atol = 1e-6)
+    @test isapprox(value(n1[:x]),2,atol = 1e-6)
 
     #I don't think this is actually working.
     #I think the node pointer needs to pass the attributes
     set_start_value(n1[:x],10)
     optimize!(graph)
-    @test isapprox(value(n1[:x]),1,atol = 1e-6)
+    @test isapprox(value(n1[:x]),2,atol = 1e-6)
     @test start_value(n1[:x]) == 10
 
     # set_start_value(graph,n1[:x],20)
@@ -247,6 +253,12 @@ function test_set_optimizer_attributes()
     set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     JuMP.set_optimizer_attribute(graph,"max_cpu_time",1e2)
     @test JuMP.get_optimizer_attribute(graph,"max_cpu_time") == 100.0
+end
+
+function test_nlp_exceptions()
+    graph = _create_optigraph()
+    @test_throws Exception JuMP._init_NLP(graph)
+    @test_throws Exception @NLconstraint(graph,graph[1][:x]^3 >= 0)
 end
 
 function run_tests()

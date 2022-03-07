@@ -9,38 +9,6 @@ MOI.get(node::OptiNode, args...) = MOI.get(jump_model(node), args...)
 MOI.set(node::OptiNode, args...) = MOI.set(jump_model(node), args...)
 MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
 
-#Create an moi backend for an optigraph by aggregating MOI backends of underlying optinodes and optiedges
-#TODO: use new attach optimizer approach that copies directly into backend model, not an intermidiate
-# #caching optimizer layer
-# function _aggregate_backends!(graph::OptiGraph)
-#     dest = JuMP.backend(graph)#.optimizer
-#     id = graph.id
-#
-#     #Set node backends
-#     for node in all_nodes(graph)
-#         src = JuMP.backend(node)
-#         idx_map = append_to_backend!(dest, src)
-#         node_pointer = NodePointer(dest,idx_map)
-#         src.optimizers[id] = node_pointer
-#         if !(id in src.graph_ids)
-#             push!(src.graph_ids,id)
-#         end
-#     end
-#
-#     #Set edge backends
-#     for edge in all_edges(graph)
-#         edge_pointer = EdgePointer(dest)
-#         edge.backend.result_location[id] = edge_pointer
-#         edge.backend.optimizers[id] = edge_pointer
-#     end
-#     for linkref in all_linkconstraints(graph)
-#         constraint_index = _add_link_constraint!(id,dest,JuMP.constraint_object(linkref))
-#         linkref.optiedge.backend.result_location[id].edge_to_optimizer_map[linkref] = constraint_index
-#     end
-#
-#     return nothing
-# end
-
 #Set the optigraph objective to the sume of the nodes
 function _set_graph_objective(graph::OptiGraph)
     if !has_objective(graph) && has_node_objective(graph)
@@ -127,8 +95,8 @@ end
 function _swap_quad_term!(moi_obj::MOI.ScalarQuadraticFunction,idx::Int64,new_moi_idx1::MOI.VariableIndex,new_moi_idx2::MOI.VariableIndex)
     term = moi_obj.quadratic_terms[idx]
     coeff = term.coefficient
-    var_idx1 = term.variable_index_1
-    var_idx2 = term.variable_index_2
+    var_idx1 = term.variable_1
+    var_idx2 = term.variable_2
     moi_obj.quadratic_terms[idx] = MOI.ScalarQuadraticTerm{Float64}(coeff,new_moi_idx1,new_moi_idx2)
     return moi_obj
 end
@@ -154,7 +122,7 @@ function _set_node_results!(graph::OptiGraph)
 
     #Set NLP dual solution for node
     #Nonlinear duals #TODO: multiple node solutions with nlp duals
-    #TODO: Add list of model attributes to graph backend. Use the fallback optimizer?
+    #TODO: Add list of model attributes to graph backend. 
     #if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
     try
         nlp_duals = MOI.get(graph_backend,MOI.NLPBlockDual())
@@ -344,21 +312,24 @@ function JuMP.optimize!(node::OptiNode;kwargs...)
     return nothing
 end
 
-function set_node_primals(node::OptiNode,vars::Vector{JuMP.VariableRef},values::Vector{Float64})
+function set_node_primals(node::OptiNode, vars::Vector{JuMP.VariableRef}, values::Vector{Float64})
     node_backend = JuMP.backend(node)
     moi_indices = index.(vars)
     set_backend_primals!(node_backend,moi_indices,values,node.id)
+    node.model.is_model_dirty = false
     return nothing
 end
 
-function set_node_duals(node::OptiNode,cons::Vector{JuMP.ConstraintRef},values::Vector{Float64})
+function set_node_duals(node::OptiNode, cons, values::Vector{Float64})
     node_backend = JuMP.backend(node)
     moi_indices = index.(cons)
     set_backend_duals!(node_backend,moi_indices,values,node.id)
+    node.model.is_model_dirty = false
     return nothing
 end
 
-function set_node_status(node::OptiNode,status::MOI.TerminationStatusCode)
+function set_node_status(node::OptiNode, status::MOI.TerminationStatusCode)
     node_backend = JuMP.backend(node)
     set_backend_status!(node_backend,status,node.id)
+    node.model.is_model_dirty = false
 end

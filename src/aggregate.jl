@@ -83,7 +83,7 @@ function aggregate(optigraph::OptiGraph)
     end
 
     #COPY NODE MODELS INTO AGGREGATE NODE
-    for optinode in all_nodes(optigraph)               #for each node in the model graph
+    for optinode in all_nodes(optigraph)
         # Need to pass master reference so we use those variables instead of creating new ones
         # node_agg_map = _add_to_aggregate_node!(aggregate_node,optinode,reference_map)  #updates combined_model and reference_map
         _add_to_aggregate_node!(aggregate_node,optinode,reference_map,graph_obj)
@@ -105,12 +105,14 @@ function aggregate(optigraph::OptiGraph)
         reference_map.linkconstraintmap[JuMP.constraint_object(linkconstraint)] = cref
     end
 
+    aggregate_node.nlp_data = aggregate_node.model.nlp_data
+
     return aggregate_node,reference_map
 end
 @deprecate combine aggregate
 
 #add optinode model to aggregate optinode model
-function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,aggregate_map::AggregateMap,graph_obj::Any)
+function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, aggregate_map::AggregateMap, graph_obj::Any)
 
     # reference_map = AggregateMap(aggregate_node)
     reference_map = AggregateMap()
@@ -145,6 +147,7 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
         d = JuMP.NLPEvaluator(add_node)           #Get the NLP evaluator object.  Initialize the expression graph
         MOI.initialize(d,[:ExprGraph])
         nlp_initialized = true
+        add_node.nlp_data = add_node.model.nlp_data
         for i = 1:length(add_node.nlp_data.nlconstr)
             expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
             _splice_nonlinear_variables!(expr,add_node,reference_map)        #splice the variables from var_map into the expression
@@ -157,8 +160,10 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode,add_node::OptiNode,agg
     #ADD TO OBJECTIVE Expression
     if isa(graph_obj,Union{Expr,Int}) #NLP
         if !nlp_initialized
+            JuMP._init_NLP(add_node)
             d = JuMP.NLPEvaluator(add_node)
             MOI.initialize(d,[:ExprGraph])
+            add_node.nlp_data = add_node.model.nlp_data
         end
         new_obj = _copy_nl_objective(d,reference_map)
         graph_obj = Expr(:call,:+,graph_obj,new_obj)  #update graph objective
@@ -226,6 +231,7 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     end
 
     #Now add nodes and edges to the higher level graphs
+    #TODO: I think there is a bug in here when max_depth > 0
     for graph in reverse(final_parents)  #reverse to start from the bottom
         name_idx = 1
 
@@ -244,7 +250,7 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
 
         #Add copy linkconstraints
         for optiedge in ledges
-            for linkconstraint in link_constraints(optiedge)
+            for linkconstraint in linkconstraints(optiedge)
                 new_con = _copy_constraint(linkconstraint,reference_map)
                 JuMP.add_constraint(new_graph,new_con)
             end
