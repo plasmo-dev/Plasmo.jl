@@ -79,6 +79,9 @@ function test_partition_manual()
 
     Base.show(partition)
     @test Base.string(partition) == "OptiGraph Partition w/ 20 subpartitions"
+
+    @test Plasmo.graph_depth(graph) == 1
+
 end
 
 function test_node_vector_partition()
