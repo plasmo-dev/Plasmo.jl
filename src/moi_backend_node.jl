@@ -141,8 +141,6 @@ MOI.get(node_backend::NodeBackend, attr::MOI.AnyAttribute, idx) = MOI.get(node_b
 MOI.get(node_backend::NodeBackend, attr::MOI.AnyAttribute, idxs::Array{T,1} where T) = MOI.get(node_backend.optimizer, attr, idxs)
 MOI.is_valid(node_backend::NodeBackend, idx::MOI.Index) = MOI.is_valid(node_backend.optimizer,idx)
 
-MOI.get(node_backend::NodeBackend, attr::MOI.TerminationStatus) = MOI.get(node_backend.result_location[node_backend.last_solution_id], attr)
-
 MOI.supports_constraint(node_backend::NodeBackend,func::Type{T}
     where T<:MathOptInterface.AbstractFunction, set::Type{S}
     where S <: MathOptInterface.AbstractSet) = MOI.supports_constraint(node_backend.optimizer,func,set)
@@ -270,6 +268,9 @@ end
 function MOI.get(node_backend::NodeBackend, attr::MOI.TerminationStatus)
     return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr)
 end
+
+# MOI.get(node_backend::NodeBackend, attr::MOI.TerminationStatus) = MOI.get(node_backend.result_location[node_backend.last_solution_id], attr)
+
 
 #####################################################
 #The edge backend

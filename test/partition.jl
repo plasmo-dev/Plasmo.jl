@@ -42,6 +42,18 @@ function _create_optigraph()
     return optigraph
 end
 
+function _create_chain_optigraph()
+    graph = OptiGraph()
+    @optinode(graph,nodes[1:100])
+    for node in nodes
+        @variable(node,x >= 0)
+    end
+    for j = 1:99
+        @linkconstraint(graph,nodes[j][:x] == nodes[j+1][:x])
+    end
+    return graph
+end
+
 function test_partition_manual()
     graph = OptiGraph()
     @optinode(graph,nodes[1:100])
@@ -59,6 +71,23 @@ function test_partition_manual()
     apply_partition!(graph,partition)
     @test num_nodes(graph) == 0
     @test num_all_nodes(graph) == 100
+
+    @test Plasmo.n_subpartitions(partition) == 20
+    @test getnodes(partition) == OptiNode[]
+    @test getedges(partition) == getedges(graph)
+    @test length(Plasmo.all_subpartitions(partition)) == 20
+
+    Base.show(partition)
+    @test Base.string(partition) == "OptiGraph Partition w/ 20 subpartitions"
+end
+
+function test_node_vector_partition()
+    graph = _create_optigraph()
+    node_membership_vector = [0,0,1,1]
+    part1 = Partition(graph,node_membership_vector)
+
+    hgraph,hmap = hyper_graph(graph)
+    part2 = Partition(node_membership_vector, hmap)
 end
 
 #Hypergraph
@@ -115,6 +144,20 @@ function test_edge_clique_graph()
     @test graph_structure(optigraph) == Plasmo.RECURSIVE_TREE
 end
 
+#Specialized partition functions
+function test_partition_to()
+    graph = _create_chain_optigraph()
+    pfunc = KaHyPar.partition
+
+    Plasmo.partition_to_subgraphs!(graph,pfunc,8;configuration = kahypar_configuration)
+    @test Plasmo.graph_structure(graph) == Plasmo.RECURSIVE_GRAPH
+
+    Plasmo.partition_to_tree!(graph,pfunc,8;configuration = kahypar_configuration)
+    @test graph_structure(graph) == Plasmo.RECURSIVE_TREE
+
+    Plasmo.partition_to_linked_tree!(graph,pfunc,8;configuration = kahypar_configuration)
+    @test graph_structure(graph) == Plasmo.RECURSIVE_TREE
+end
 
 function run_tests()
     for name in names(@__MODULE__; all = true)
