@@ -94,8 +94,7 @@ julia>  for node in getnodes(graph1)
 
 !!! note
 
-     The [`OptiNode`](@ref) extends `JuMP.AbstractModel` and supports most of the same JuMP macros. However, extending nonlinear functionality in JuMP is not yet supported, and so
-     one must use [`@NLnodeconstraint`](@ref) as opposed `@NLconstraint` to create nonlinear constraints on an optinode.
+     The [`OptiNode`](@ref) extends a `JuMP.AbstractModel` and supports most (ideally all) of the same `JuMP` macros.
 
 Variables within an optinode can be accessed directly by indexing the associated symbol.  This enclosed variable space is useful for
 referencing variables on different optinodes when creating linking constraints or optigraph objective functions.

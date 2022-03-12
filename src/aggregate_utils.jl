@@ -89,15 +89,6 @@ function _copy_constraint_func(func::JuMP.GenericAffExpr,ref_map::AggregateMap)
     return new_func
 end
 
-# function _copy_constraint_func(func::JuMP.GenericAffExpr,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
-#     terms = func.terms
-#     new_terms = OrderedDict([(var_map[var_ref],coeff) for (var_ref,coeff) in terms])
-#     new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
-#     new_func.terms = new_terms
-#     new_func.constant = func.constant
-#     return new_func
-# end
-
 function _copy_constraint_func(func::JuMP.GenericQuadExpr,ref_map::AggregateMap)
     new_aff = _copy_constraint_func(func.aff,ref_map)
     new_terms = OrderedDict([(JuMP.UnorderedPair(ref_map[pair.a],ref_map[pair.b]),coeff) for (pair,coeff) in func.terms])
@@ -130,12 +121,6 @@ function _copy_constraint(constraint::LinkConstraint,ref_map::AggregateMap)
     return new_con
 end
 
-# function _copy_constraint(constraint::LinkConstraint,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
-#     new_func = _copy_constraint_func(constraint.func,var_map)
-#     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
-#     return new_con
-# end
-
 function _copy_node(node::OptiNode)
     new_node = OptiNode()
     reference_map = AggregateMap()
@@ -144,3 +129,18 @@ function _copy_node(node::OptiNode)
     new_node,reference_map = aggregate(temp_graph)
     return new_node,reference_map
 end
+
+# function _copy_constraint_func(func::JuMP.GenericAffExpr,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+#     terms = func.terms
+#     new_terms = OrderedDict([(var_map[var_ref],coeff) for (var_ref,coeff) in terms])
+#     new_func = JuMP.GenericAffExpr{Float64,JuMP.VariableRef}()
+#     new_func.terms = new_terms
+#     new_func.constant = func.constant
+#     return new_func
+# end
+
+# function _copy_constraint(constraint::LinkConstraint,var_map::Dict{JuMP.VariableRef,JuMP.VariableRef})
+#     new_func = _copy_constraint_func(constraint.func,var_map)
+#     new_con = JuMP.ScalarConstraint(new_func,constraint.set)
+#     return new_con
+# end

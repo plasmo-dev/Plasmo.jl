@@ -1,7 +1,7 @@
 """
     HyperGraphBackend
 
-Graph backend corresponding to a `LightGraphs` HyperGraph object.  A `HyperGraphBackend` is used to do graph analysis on an optigraph
+Graph backend corresponding to a Plasmo.jl `HyperGraph` object.  A `HyperGraphBackend` is used to do graph analysis on an optigraph
 by mapping optigraph elements to hypergraph elements.
 """
 mutable struct HyperGraphBackend
@@ -15,7 +15,7 @@ end
 """
     OptiGraph()
 
-Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports most JuMP.Model functions.
+Create an empty OptiGraph. An OptiGraph extends a JuMP.AbstractModel and supports most JuMP.Model functions.
 """
 mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     #Topology
@@ -322,9 +322,12 @@ function num_all_optiedges(graph::OptiGraph)
     return n_link_edges
 end
 
+
 num_nodes(graph::OptiGraph) = length(graph.optinodes)
 @deprecate getnumnodes num_nodes
 num_optiedges(graph::OptiGraph) = length(graph.optiedges)
+num_edges(graph::OptiGraph) = num_optiedges(graph)
+num_all_edges(graph::OptiGraph) = num_all_optiedges(graph)
 ########################################################
 # OptiGraph Model Interaction
 ########################################################
@@ -659,10 +662,11 @@ JuMP.termination_status(graph::OptiGraph) = MOI.get(graph.moi_backend, MOI.Termi
 ####################################
 function string(graph::OptiGraph)
     """
-    OptiGraph:
-    nodes: $(num_nodes(graph)), nodes (including subgraphs): $(length(all_nodes(graph)))
-    link constraints: $(num_linkconstraints(graph)), link constraints (including subgraphs): $(length(all_linkconstraints(graph)))
-    subgraphs: $(length(getsubgraphs(graph))), subgraphs (including nested subgraphs): $(length(all_subgraphs(graph)))
+    OptiGraph:       # of elements,(including subgraphs)
+    OptiNodes:       $(num_nodes(graph)),($(num_all_nodes(graph)))
+    OptiEdges:       $(num_edges(graph)),($(num_all_edges(graph)))
+    LinkConstraints: $(num_linkconstraints(graph)),($(num_all_linkconstraints(graph)))
+    sub-OptiGraphs:  $(num_subgraphs(graph)),($(num_all_subgraphs(graph)))
     """
 end
 print(io::IO, graph::OptiGraph) = print(io, string(graph))
