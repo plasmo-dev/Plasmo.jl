@@ -98,14 +98,12 @@ JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstr
 function JuMP.dual(linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
     id = optiedge.backend.last_solution_id
-    return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
+    return MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
 end
 
-num_link_constraints(edge::OptiEdge) = length(edge.linkconstraints)
-
+num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
 linkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
 @deprecate getlinkconstraints linkconstraints
-@deprecate link_constraints linkconstraints
 
 function Base.string(edge::OptiEdge)
     "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"
@@ -125,8 +123,8 @@ function JuMP.constraint_string(mode::Any,ref::LinkConstraintRef)
 end
 
 function Base.show(io::IO, ref::LinkConstraintRef)
-    print(io, JuMP.constraint_string(JuMP.REPLMode, ref))
+    print(io, JuMP.constraint_string(MIME("text/plain"), ref))
 end
 function Base.show(io::IO, ::MIME"text/latex", ref::LinkConstraintRef)
-    print(io, JuMP.constraint_string(JuMP.IJuliaMode, ref))
+    print(io, JuMP.constraint_string(MIME("text/latex"), ref))
 end

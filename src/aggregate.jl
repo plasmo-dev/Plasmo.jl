@@ -86,16 +86,16 @@ function aggregate(optigraph::OptiGraph)
     for optinode in all_nodes(optigraph)
         # Need to pass master reference so we use those variables instead of creating new ones
         # node_agg_map = _add_to_aggregate_node!(aggregate_node,optinode,reference_map)  #updates combined_model and reference_map
-        _add_to_aggregate_node!(aggregate_node,optinode,reference_map,graph_obj)
+        _add_to_aggregate_node!(aggregate_node, optinode, reference_map, graph_obj)
 
         #NOTE:This doesn't seem to work.  I have to pass the reference map to the function for some reason
         #merge!(reference_map,node_agg_map)
     end
 
     if has_nonlinear_objective
-        JuMP.set_NL_objective(aggregate_node,MOI.MIN_SENSE,graph_obj)
+        JuMP.set_nonlinear_objective(aggregate_node, MOI.MIN_SENSE, graph_obj)
     else
-        JuMP.set_objective(aggregate_node,MOI.MIN_SENSE,graph_obj)
+        JuMP.set_objective(aggregate_node, MOI.MIN_SENSE, graph_obj)
     end
 
     #ADD LINK CONSTRAINTS
@@ -151,7 +151,7 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
         for i = 1:length(add_node.nlp_data.nlconstr)
             expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
             _splice_nonlinear_variables!(expr,add_node,reference_map)        #splice the variables from var_map into the expression
-            new_nl_constraint = JuMP.add_NL_constraint(aggregate_node,expr)      #raw expression input for non-linear constraint
+            new_nl_constraint = JuMP.add_nonlinear_constraint(aggregate_node,expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(add_node,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
             reference_map[constraint_ref] = new_nl_constraint
         end
@@ -177,7 +177,7 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
     merge!(aggregate_map,reference_map)
 
     # COPY OBJECT DATA
-    #BUG: The object dictionary can really have anything
+    #BUG? The object dictionary can really have anything
     node_obj_dict = Dict()
     for (name, value) in JuMP.object_dictionary(add_node)
         node_obj_dict[name] = getindex.(Ref(reference_map),value)

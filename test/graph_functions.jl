@@ -102,7 +102,7 @@ function test_subgraph_functions()
 
     @test length(Plasmo.hierarchical_edges(graph)) == 1
     @test length(Plasmo.linking_edges(graph)) == 4
-    @test num_link_constraints(graph) == 5
+    @test num_linkconstraints(graph) == 5
 end
 
 function test_partition_functions()

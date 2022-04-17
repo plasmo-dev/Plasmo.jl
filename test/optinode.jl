@@ -43,11 +43,11 @@ function test_optinode1()
     @variable(node,y >= 0)
     @constraint(node,cref, x + y >= 3)
     @test num_constraints(node) == 1
-    @test num_nl_constraints(node) == 0
+    @test num_nonlinear_constraints(node) == 0
     @test getnode(cref) == node
 
     @NLconstraint(node,nl_cref, x^3 >= 8)
-    @test num_nl_constraints(node) == 1
+    @test num_nonlinear_constraints(node) == 1
 
     @test has_objective(node) == false
     @objective(node,Min,x)
@@ -71,9 +71,7 @@ function test_optinode1()
     @test JuMP.dual_status(node) == MOI.FEASIBLE_POINT
     @test JuMP.solver_name(node) == "Ipopt"
     @test JuMP.mode(node) == MOIU.AUTOMATIC
-
-    Base.show(node)
-    @test Base.string(node) == "OptiNode w/ 2 Variable(s)"
+    @test Base.string(node) == "OptiNode w/ 2 Variable(s) and 2 Constraint(s)"
 
     @test nodevalue(x) == value(x)
     @test nodevalue(x + y) == value(x + y)
@@ -105,7 +103,7 @@ function test_optinode3()
     @NLconstraint(n1,x^3 + p == 2)
 
     c = n1.nlp_data.nlconstr[1]
-    @test JuMP.nl_constraint_string(n1, IJuliaMode, c ) == "(n1_{:x} ^ {3.0} + p) - 2.0 = 0"
+    @test JuMP.nonlinear_constraint_string(n1, MIME("text/latex"), c ) == "(n1_{:x} ^ {3.0} + p) - 2.0 = 0"
 
     graph = OptiGraph()
     n1 = add_node!(graph)

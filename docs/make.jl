@@ -13,7 +13,8 @@ makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         "Partitioning and Graph Operations" => "documentation/partitioning.md",
         "Solvers" => "documentation/solvers.md",
         "Plotting" => "documentation/plotting.md",
-        "Tutorials" => "tutorials/tutorials.md"]
+        "Tutorials" => "tutorials/tutorials.md"
+        "API Documentation" =? "documentation/api_docs.md"]
         )
 
 deploydocs(

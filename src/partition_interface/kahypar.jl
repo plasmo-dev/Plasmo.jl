@@ -10,7 +10,11 @@ function KaHyPar.partition(graph::OptiGraph, n_parts::Int64; kwargs...)
 end
 
 #Partition a HyperGraph
-function KaHyPar.partition(graph::HyperGraph, n_parts::Int64;edge_weights = ones(length(graph.hyperedge_map)), node_sizes=ones(length(graph.vertices)), kwargs...)
+function KaHyPar.partition(graph::HyperGraph,
+                            n_parts::Int64;
+                            edge_weights = ones(length(graph.hyperedge_map)),
+                            node_sizes=ones(length(graph.vertices)),
+                            kwargs...)
     A = incidence_matrix(graph)
     node_sizes = Int64.(node_sizes)
     edge_weights = Int64.(edge_weights)
@@ -20,7 +24,11 @@ function KaHyPar.partition(graph::HyperGraph, n_parts::Int64;edge_weights = ones
 end
 
 #Partition a BipartiteGraph
-function KaHyPar.partition(graph::BipartiteGraph, n_parts::Int64; node_sizes = ones(LightGraphs.nv(graph)), edge_weights=ones(LightGraphs.ne(graph)), kwargs...)
+function KaHyPar.partition(graph::BipartiteGraph,
+                            n_parts::Int64;
+                            node_sizes = ones(LightGraphs.nv(graph)),
+                            edge_weights=ones(LightGraphs.ne(graph)),
+                            kwargs...)
     A = incidence_matrix(graph.graph)
 
     node_sizes = Int64.(node_sizes)
@@ -32,7 +40,10 @@ function KaHyPar.partition(graph::BipartiteGraph, n_parts::Int64; node_sizes = o
 end
 
 #Partition a standard Graph
-function KaHyPar.partition(graph::LightGraphs.AbstractGraph, n_parts::Int64; edge_weights=ones(ne(graph)), node_sizes=ones(nv(graph)), kwargs...)
+function KaHyPar.partition(graph::LightGraphs.AbstractGraph,
+                            n_parts::Int64; edge_weights=ones(ne(graph)),
+                            node_sizes=ones(nv(graph)),
+                            kwargs...)
     A = incidence_matrix(graph)
     node_sizes = Int64.(node_sizes)
     edge_weights = Int64.(edge_weights)

@@ -40,7 +40,7 @@ Initialize an empty optigraph backend. Contains a model_cache that can be used t
 """
 function GraphBackend(optigraph::AbstractOptiGraph)
     state = MOIU.NO_OPTIMIZER
-    #mode = MOIU.AUTOMATIC
+    #mode = MOIU.AUTOMATIC # modes not yet supported in Plasmo.jl
     model_cache = MOIU.UniversalFallback(MOIU.Model{Float64}())
     return GraphBackend{MOI.AbstractOptimizer}(
                             nothing,

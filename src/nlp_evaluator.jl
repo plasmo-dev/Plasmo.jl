@@ -78,7 +78,7 @@ function MOI.initialize(d::OptiGraphNLPEvaluator,requested_features::Vector{Symb
     ns_cumsum = cumsum(ns)
 
     #num constraints NOTE: Should this just be NL constraints? Depends on evaluator mode
-    ms= [num_nl_constraints(optinode) for optinode in optinodes]
+    ms= [num_nonlinear_constraints(optinode) for optinode in optinodes]
     m = sum(ms)
     ms_cumsum = cumsum(ms)
 

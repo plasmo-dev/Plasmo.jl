@@ -1,4 +1,4 @@
-# Tutorials
+# Tutorial
 Here we tutorials that cover more detailed aspects of Plasmo.jl and show how it can be used to create and solve complex optimization problems.
 
 ## Optimal Control of a Natural Gas Network
@@ -372,41 +372,8 @@ depicts the optimization problem partitioned into 13 distinct partitions.
 
 ![partition](../assets/13_pipeline_space_time_partition.svg)
 
-
 ### Solution with PIPS-NLP
-We finally solve the partitioned optigraph optimization problem using [PipsSolver](@ref). The below
+
+We finally solve the partitioned optigraph optimization problem using [PipsNLP](@ref). The below
 code snippet distributes the optigraph among 13 worker MPI processes and solves the problem in parallel using the `PIPS-NLP` optimization
 solver.
-
-```julia
-using Distributed            
-using MPIClusterManagers   
-
-# specify, number of mpi workers
-manager=MPIManager(np=13)      
-# start mpi workers and add them as julia workers too.
-addprocs(manager)             
-
-#Setup the worker environments
-@everywhere using Plasmo      
-@everywhere using PipsSolver  
-
-#get the julia ids of the mpi workers
-julia_workers = collect(values(manager.mpi2j))
-
-remote_references = PipsSolver.distribute(new_graph,julia_workers,remote_name = :pips_graph)
-
-#Solve with PIPS-NLP
-@mpi_do manager begin   
-    using MPI
-    PipsSolver.pipsnlp_solve(pips_graph)
-end
-```
-This code snippet presents a standard template for setting up distributed computing environments to use `PipsSolver.jl` which is worth discussing.
-We use Julia's `Distributed` module as well as the `MPIClusterManagers` package which allows us to map MPI ranks
-(used by `PIPS-NLP`) with Julia worker CPUs. We then create a `manager` object and specify that we want to use 13 workers.
-Next we setup the model and solver environments for the added workers and create a reference to the
-julia workers by querying the manager.  We use `PipsSolver` to distribute the optigraph among the workers using the solver interface's `distribute` function.
-Internally, this function allocates optinodes to each worker, and creates the optigraph named `pips_graph` on each worker environment.
-Finally, we use the  `@mpi_do` function from `MPIClusterManagers` to execute MPI on each worker and solve the optigraph.
-Each worker executes the `pipnlp_solve` function and communicates using MPI within the `PIPS-NLP` solver.

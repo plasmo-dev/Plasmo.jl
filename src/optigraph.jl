@@ -375,10 +375,7 @@ function getlinkconstraints(graph::OptiGraph)
     return links
 end
 linkconstraints(graph::OptiGraph) = getlinkconstraints(graph)
-
-num_linkconstraints(graph::OptiGraph) = sum(num_link_constraints.(graph.optiedges))
-num_link_constraints(graph::OptiGraph) = sum(num_link_constraints.(graph.optiedges))
-@deprecate num_linkconstraints num_link_constraints
+num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
 
 """
     all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
@@ -556,19 +553,19 @@ function JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, nam
     error("Cannot add constraint $con. An OptiGraph currently only supports Scalar LinkConstraints")
 end
 
-function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
+function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String=""; attached_node=getnode(collect(keys(con.func.terms))[1]))
     cref = add_link_constraint(graph,con,name,attached_node = attached_node)
     return cref
 end
 
 JuMP._valid_model(m::OptiEdge, name) = nothing
-function JuMP.add_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
+function JuMP.add_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String=""; attached_node=getnode(collect(keys(con.func.terms))[1]))
     cref = add_link_constraint(optiedge,con,name,attached_node = attached_node)
     return cref
 end
 
 #Create optiedge and add linkconstraint
-function add_link_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint,name::String = "";attached_node = nothing)
+function add_link_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint,name::String = ""; attached_node=nothing)
     optinodes = getnodes(con)
     optiedge = add_optiedge!(graph,optinodes)
     cref = JuMP.add_constraint(optiedge,con,name,attached_node = attached_node)
@@ -604,7 +601,7 @@ function add_link_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, nam
 end
 
 #Add partial link constraint to supporting optinodes
-function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
+function _add_to_partial_linkconstraint!(node::OptiNode, var::JuMP.VariableRef, coeff::Number, constant::Float64, set::MOI.AbstractScalarSet, index::Int64)
     @assert getnode(var) == node
     #multiple variables might be on the same node, so check here
     if haskey(node.partial_linkconstraints,index)
@@ -627,7 +624,7 @@ function JuMP.add_bridge(graph::OptiGraph, BridgeType::Type{<:MOI.Bridges.Abstra
     return
 end
 
-function JuMP.dual(graph::OptiGraph,linkref::LinkConstraintRef)
+function JuMP.dual(graph::OptiGraph, linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
     id = graph.id
     return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
@@ -646,8 +643,8 @@ function JuMP.set_start_value(graph::OptiGraph, variable::JuMP.VariableRef, valu
     MOI.set(node_pointer,MOI.VariablePrimalStart(),var_idx,value)
 end
 
-#TODO: query correct place for start values. Need to correctly support variable attributes
-#Need to make sure that setting attributes like name hits the model_cache instead
+# MAJOR TODO: query the correct place for start values. We need to correctly support variable attributes through the node pointers
+# Need to make sure that setting attributes like name hits the model_cache instead
 # function JuMP.start_value(graph::OptiGraph, var::JuMP.VariableRef)
 #     node_pointer = JuMP.backend(var.model).result_location[graph.id]
 #     var_idx = node_pointer.node_to_optimizer_map[index(var)]
@@ -661,14 +658,19 @@ JuMP.termination_status(graph::OptiGraph) = MOI.get(graph.moi_backend, MOI.Termi
 #Print Functions
 ####################################
 function string(graph::OptiGraph)
-    """
-    OptiGraph:       # of elements,(including subgraphs)
-    OptiNodes:       $(num_nodes(graph)),($(num_all_nodes(graph)))
-    OptiEdges:       $(num_edges(graph)),($(num_all_edges(graph)))
-    LinkConstraints: $(num_linkconstraints(graph)),($(num_all_linkconstraints(graph)))
-    sub-OptiGraphs:  $(num_subgraphs(graph)),($(num_all_subgraphs(graph)))
-    """
+    return @sprintf("""%16s %10s %20s
+-------------------------------------------------------------------
+%16s %5s %16s
+%16s %5s %16s
+%16s %5s %16s
+%16s %5s %16s""",
+"OptiGraph:", "# elements", "(including subgraphs)",
+"OptiNodes:", num_nodes(graph), "($(num_all_nodes(graph)))",
+"OptiEdges:", num_edges(graph), "($(num_all_edges(graph)))",
+"LinkConstraints:", num_linkconstraints(graph), "($(num_all_linkconstraints(graph)))",
+"sub-OptiGraphs:", num_subgraphs(graph), "($(num_all_subgraphs(graph)))")
 end
+
 print(io::IO, graph::OptiGraph) = print(io, string(graph))
 show(io::IO,graph::OptiGraph) = print(io,graph)
 

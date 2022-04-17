@@ -5,6 +5,7 @@ using LinearAlgebra
 using DataStructures
 using SparseArrays
 using LightGraphs
+using Printf
 
 using MathOptInterface
 const MOI = MathOptInterface
@@ -48,9 +49,9 @@ incident_edges, neighborhood, induced_edges, expand, induced_graph, apply_partit
 
 linking_edges, hierarchical_edges,
 
-getlinkconstraints, linkconstraints, all_linkconstraints, num_all_variables, num_linked_variables,
+linkconstraints, all_linkconstraints, num_all_variables, num_linked_variables,
 
-num_all_constraints, num_link_constraints, num_all_linkconstraints, num_all_subgraphs,
+num_all_constraints, num_linkconstraints, num_all_linkconstraints, num_all_subgraphs,
 
 has_objective, has_nl_objective, has_node_objective,
 
@@ -63,9 +64,6 @@ set_attached_node, is_node_variable, is_linked_variable,
 
 # Aggregation
 aggregate, aggregate!,
-
-#export to file
-#export_graph,
 
 # Model Interface
 set_node_primals, set_node_duals, set_node_status,

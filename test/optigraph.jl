@@ -124,8 +124,8 @@ function test_set_model_with_graph()
     set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(graph)
     @test termination_status(graph) == MOI.LOCALLY_SOLVED
-    @test value(n1[:x]) == 0
-    @test value(graph,n1[:x]) == 0
+    @test isapprox(value(n1[:x]), 0; atol = 1e-8)
+    @test isapprox(value(graph, n1[:x]), 0; atol = 1e-8)
     @test isapprox(objective_value(graph), 0; atol = 1e-8)
     cref = linkconstraints(graph)[1]
     @test isapprox(dual(cref),0; atol = 1e-8)

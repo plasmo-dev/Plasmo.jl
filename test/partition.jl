@@ -76,12 +76,8 @@ function test_partition_manual()
     @test getnodes(partition) == OptiNode[]
     @test getedges(partition) == getedges(graph)
     @test length(Plasmo.all_subpartitions(partition)) == 20
-
-    Base.show(partition)
     @test Base.string(partition) == "OptiGraph Partition w/ 20 subpartitions"
-
     @test Plasmo.graph_depth(graph) == 1
-
 end
 
 function test_node_vector_partition()
@@ -97,7 +93,7 @@ end
 function test_partition_hypergraph()
     optigraph = _create_optigraph()
     hg,hyper_map = Plasmo.hyper_graph(optigraph)
-    partition_vector = KaHyPar.partition(hg,2;configuration = kahypar_configuration)
+    partition_vector = KaHyPar.partition(hg, 2; configuration=kahypar_configuration)
     partition_hyper = Partition(partition_vector,hyper_map)
     apply_partition!(optigraph,partition_hyper)
     @test graph_structure(optigraph) ==  Plasmo.RECURSIVE_GRAPH
@@ -107,7 +103,7 @@ end
 function test_partition_edge_hypergraph()
     optigraph = _create_optigraph()
     edge_hg,ref_map = edge_hyper_graph(optigraph)
-    partition_vector = KaHyPar.partition(edge_hg,2;configuration = kahypar_configuration)
+    partition_vector = KaHyPar.partition(edge_hg, 2; configuration=kahypar_configuration)
     partition = Partition(partition_vector,ref_map)
     apply_partition!(optigraph,partition)
     @test graph_structure(optigraph) == Plasmo.RECURSIVE_TREE
@@ -117,7 +113,7 @@ end
 function test_bipartite_1()
     optigraph = _create_optigraph()
     bg,b_map = Plasmo.bipartite_graph(optigraph)
-    partition_vector = KaHyPar.partition(bg,2;configuration = kahypar_configuration)
+    partition_vector = KaHyPar.partition(bg, 2; configuration=kahypar_configuration)
     partition_bipartite = Partition(partition_vector,b_map)
     apply_partition!(optigraph,partition_bipartite)
     @test graph_structure(optigraph) in [Plasmo.RECURSIVE_TREE,Plasmo.RECURSIVE_GRAPH,Plasmo.RECURSIVE_LINKED_TREE]
