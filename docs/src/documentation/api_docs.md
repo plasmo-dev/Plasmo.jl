@@ -1,30 +1,50 @@
-# Methods
+# API Documentation
 
 ## OptiGraph Functions
 ```@docs
 OptiGraph
-@optinode
-OptiNode
 add_node!
 getnode
 getnodes
-find_node
-is_node_variable
-Base.getindex(::OptiGraph,::OptiNode)
-Base.getindex(::OptiGraph,::OptiEdge)
+optinodes
+all_node
 all_nodes
+all_optinodes
+add_subgraph!
+subgraphs
+all_subgraphs
+linkconstraints
+all_linkconstraints
+```
+
+## OptiNode Functions
+```@docs
 set_model
-@linkconstraint
-OptiEdge
 getedge
 getedges
+optiedges
+all_edge
 all_edges
+all_optiedges
+is_node_variable
+```
+
+## OptiEdge Functions
+```@docs
+OptiEdge
 LinkConstraint
-getlinkconstraints
-all_linkconstraints
-add_subgraph!
-getsubgraphs
-all_subgraphs
+```
+
+## Base
+```@docs
+Base.getindex(::OptiGraph,::OptiNode)
+Base.getindex(::OptiGraph,::OptiEdge)
+```
+
+## Macros
+```@docs
+@optinode
+@linkconstraint
 ```
 
 ## Extended JuMP Functions
@@ -35,12 +55,17 @@ JuMP.objective_function(::OptiGraph)
 JuMP.value(::OptiNode,::VariableRef)
 JuMP.num_variables(::OptiGraph)
 JuMP.num_constraints(::OptiGraph)
-JuMP.value
 ```
 
-## Plotting
-PlasmoPlots.jl extends methods from the [Plots.jl](https://github.com/JuliaPlots/Plots.jl) Julia package to create graph layout visuals.
+## Partitioning and Aggregation
+
 ```@docs
-    PlasmoPlots.layout_plot(::OptiGraph)
-    PlasmoPlots.matrix_plot(::OptiGraph)
+Partition
+apply_partition!
+aggregate
+aggregate!
+expand
+Plasmo.neighborhood
+HyperGraph
+gethypergraph
 ```

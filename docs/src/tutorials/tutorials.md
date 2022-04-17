@@ -1,4 +1,4 @@
-# Tutorial
+# Tutorials
 Here we tutorials that cover more detailed aspects of Plasmo.jl and show how it can be used to create and solve complex optimization problems.
 
 ## Optimal Control of a Natural Gas Network
@@ -372,8 +372,8 @@ depicts the optimization problem partitioned into 13 distinct partitions.
 
 ![partition](../assets/13_pipeline_space_time_partition.svg)
 
-### Solution with PIPS-NLP
 
+<!-- ### Solution with PIPS-NLP
 We finally solve the partitioned optigraph optimization problem using [PipsNLP](@ref). The below
 code snippet distributes the optigraph among 13 worker MPI processes and solves the problem in parallel using the `PIPS-NLP` optimization
-solver.
+solver. -->

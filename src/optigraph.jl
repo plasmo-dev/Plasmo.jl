@@ -178,14 +178,21 @@ function add_node!(graph::OptiGraph,optinode::OptiNode)
 end
 
 """
-    getnodes(graph::OptiGraph) = graph.optinodes
+    getnodes(graph::OptiGraph)
 
 Retrieve the optinodes in `graph`.
 """
 getnodes(graph::OptiGraph) = graph.optinodes
-optinodes(graph::OptiGraph) = getnodes(graph)
+
 """
-    getnode(graph::OptiGraph) = graph.optinodes
+    optinodes(graph::OptiGraph)
+
+Retrieve the optinodes in `graph`.
+"""
+optinodes(graph::OptiGraph) = getnodes(graph)
+
+"""
+    getnode(graph::OptiGraph)
 
 Retrieve the local optinode in `graph` at `index`. This does not look up nodes that could be in subgraphs.
 """
@@ -203,7 +210,14 @@ function all_nodes(graph::OptiGraph)
     end
     return nodes
 end
+
+"""
+    all_optinodes(graph::OptiGraph)
+
+Recursively collect nodes in a optigraph from each of its subgraphs
+"""
 all_optinodes(graph::OptiGraph) = all_nodes(graph)
+
 """
     all_node(graph::OptiGraph,index::Int64)
 
@@ -495,7 +509,7 @@ end
 JuMP.objective_function_type(graph::OptiGraph) = typeof(objective_function(graph))
 
 #NOTE: Plasmo stores the objective expression on the optigraph
-function JuMP.set_objective_coefficient(graph::OptiGraph,variable::JuMP.VariableRef,coefficient::Real)
+function JuMP.set_objective_coefficient(graph::OptiGraph, variable::JuMP.VariableRef, coefficient::Real)
     if has_nl_objective(graph)
         error("A nonlinear objective is already set in the model")
     end
