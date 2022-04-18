@@ -371,24 +371,29 @@ function JuMP.all_variables(graph::OptiGraph)
     return vars
 end
 
+"""
+    JuMP.value(graph::OptiGraph, vref::VariableRef)
+
+Get the variable value of `vref` on the optigraph `graph`. This value corresponds to
+the optinode variable value obtained by solving `graph` which contains said optinode.
+"""
 function JuMP.value(graph::OptiGraph, var::JuMP.VariableRef)
     node_pointer = JuMP.backend(var.model).result_location[graph.id]
     var_idx = node_pointer.node_to_optimizer_map[index(var)]
     return MOI.get(backend(graph).optimizer,MOI.VariablePrimal(),var_idx)
 end
 """
-    getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
+    linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
 Retrieve the local linking constraints in `graph`. Returns a vector of the linking constraints.
 """
-function getlinkconstraints(graph::OptiGraph)
+function linkconstraints(graph::OptiGraph)
     links = LinkConstraintRef[]
     for edge in graph.optiedges
         append!(links,edge.linkrefs)
     end
     return links
 end
-linkconstraints(graph::OptiGraph) = getlinkconstraints(graph)
 num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
 
 """
@@ -465,13 +470,26 @@ function JuMP.objective_function(graph::OptiGraph)
     end
 end
 
+"""
+    JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
+
+Set a single variable objective function on optigraph `graph`
+
+    JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr)
+
+Set an affine objective function on optigraph `graph`
+
+    JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExpr)
+
+Set a quadratic objective function on optigraph `graph`
+"""
 function JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
     x_affine = convert(JuMP.AffExpr,x)
     JuMP.set_objective_function(graph,x_affine)
     #_moi_update_objective() #update the optigraph backend if we're doing incremental solves
 end
 
-function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericAffExpr)
+function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr)
     #clear optinodes objective functions
     for node in all_nodes(graph)
         JuMP.set_objective_function(node,0)
@@ -484,7 +502,7 @@ function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericAffExpr)
     graph.objective_function = expr
 end
 
-function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericQuadExpr)
+function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExpr)
     for node in all_nodes(graph)
         JuMP.set_objective_function(node,0)
     end

@@ -1,4 +1,4 @@
-using Documenter, Plasmo, JuMP, LightGraphs, Plots, PlasmoPlots
+using Documenter, Plasmo, JuMP, LightGraphs, PlasmoPlots
 
 #Fix issue with GKS for plotting
 ENV["GKSwstype"] = "100"
@@ -9,10 +9,10 @@ makedocs(sitename="Plasmo.jl", modules=[Plasmo],
         authors = "Jordan Jalving",
         pages = [
         "Introduction" => "index.md",
-        "Modeling" => "documentation/modeling.md",
+        "Quickstart" => "documentation/quickstart.md",
+        "Modeling with OptiGraphs" => "documentation/modeling.md",
         "Partitioning and Graph Analysis" => "documentation/partitioning.md",
         "Solvers" => "documentation/solvers.md",
-        "Plotting" => "documentation/plotting.md",
         "Tutorials" => "tutorials/tutorials.md",
         "API Documentation" => "documentation/api_docs.md"]
         )

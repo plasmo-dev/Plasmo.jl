@@ -35,7 +35,7 @@ end
 julia> graph1 = OptiGraph()
       OptiGraph: # elements (including subgraphs)
 -------------------------------------------------------------------
-      OptiNodes:     3              (0)
+      OptiNodes:     0              (0)
       OptiEdges:     0              (0)
 LinkConstraints:     0              (0)
  sub-OptiGraphs:     0              (0)

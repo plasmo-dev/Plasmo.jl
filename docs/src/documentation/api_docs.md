@@ -52,7 +52,7 @@ Base.getindex(::OptiGraph,::OptiEdge)
 JuMP.all_variables(::OptiNode)
 JuMP.set_optimizer(::OptiGraph,::Any)
 JuMP.objective_function(::OptiGraph)
-JuMP.value(::OptiNode,::VariableRef)
+JuMP.value
 JuMP.num_variables(::OptiGraph)
 JuMP.num_constraints(::OptiGraph)
 ```
