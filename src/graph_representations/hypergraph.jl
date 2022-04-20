@@ -9,7 +9,7 @@ HyperEdge(t::Vector{HyperNode}) = HyperEdge(Set(t))
 HyperEdge(t::HyperNode...) = HyperEdge(Set(collect(t)))
 
 """
-    Hypergraph
+    HyperGraph()
 
 A simple hypergraph type.  Contains attributes for vertices and hyperedges.
 """
@@ -197,7 +197,7 @@ end
 
 Identify the incident hyperedges to a vector of `HyperNode`s.
 """
-function incident_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
+function incident_edges(hypergraph::HyperGraph, hypernodes::Vector{HyperNode})
     external_nodes = setdiff(hypergraph.vertices,hypernodes) #nodes in hypergraph that aren't in hypernodes
     #Create partition matrix
     I = []
@@ -237,7 +237,7 @@ end
 
 Identify both induced partition edges and cut edges given a partition of `HyperNode` vectors.
 """
-function identify_edges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
+function identify_edges(hypergraph::HyperGraph, partitions::Vector{Vector{HyperNode}})
     nparts = length(partitions)
 
     #Create partition matrix
@@ -287,7 +287,7 @@ end
 
 Identify both induced partition nodes and cut nodes given a partition of `HyperEdge` vectors.
 """
-function identify_nodes(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}})
+function identify_nodes(hypergraph::HyperGraph, partitions::Vector{Vector{HyperEdge}})
     nparts = length(partitions)
 
     #Create partition matrix
@@ -338,7 +338,7 @@ induced_elements(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}}) =
 
 Retrieve the neighborhood within `distance` of `nodes`.  Returns a vector of the original vertices and added vertices
 """
-function neighborhood(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
+function neighborhood(g::HyperGraph, nodes::Vector{HyperNode}, distance::Int64)
     V = collect(nodes)
     nbr = copy(V)
     newnbr = copy(V) #neighbors to check
@@ -359,6 +359,7 @@ function expand(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
     return new_nodes, new_edges
 end
 
+#TODO
 LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal not yet supported on hypergraphs"))
 LightGraphs.rem_vertex!(g::HyperGraph) = throw(error("Vertex removal not yet supported on hypergraphs"))
 

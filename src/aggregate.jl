@@ -188,7 +188,7 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
 end
 
 #aggregate subgraphs in optigraph to given depth
-function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
+function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
     println("Aggregating OptiGraph with a maximum subgraph depth of $max_depth")
 
     sg_dict = Dict()
@@ -259,8 +259,14 @@ function aggregate(graph::OptiGraph,max_depth::Int64)  #0 means no subgraphs
     return root_optigraph,reference_map
 end
 
-#Aggregate an optigraph without making a new one
-function aggregate!(graph::OptiGraph,max_depth::Int64)
+"""
+    aggregate!(graph::OptiGraph, max_depth::Int64)
+
+Aggregate `graph` by converting subgraphs into optinodes. The `max_depth` determines how many levels of
+subgraphs remain in the new aggregated optigraph. For example, a `max_depth` of `0` signifies there should be no subgraphs in
+the aggregated optigraph.
+"""
+function aggregate!(graph::OptiGraph, max_depth::Int64)
     new_graph,ref_map = aggregate(graph,max_depth)
     Base.empty!(graph)
 

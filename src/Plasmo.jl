@@ -41,9 +41,9 @@ getedge, getoptiedge, getedges,  getoptiedges, all_edge, all_edges,
 
 find_edge, num_optiedges, num_all_optiedges,
 
-add_subgraph!, getsubgraph, getsubgraphs, all_subgraphs, num_subgraphs, has_subgraphs,
+add_subgraph!, getsubgraph, getsubgraphs, all_subgraph, all_subgraphs, num_subgraphs, has_subgraphs,
 
-optinodes, optiedges, subgraphs, all_optinodes, all_optiedges,
+optinodes, optiedges, all_optinodes, all_optiedges,
 
 incident_edges, neighborhood, induced_edges, expand, induced_graph, apply_partition!,
 
