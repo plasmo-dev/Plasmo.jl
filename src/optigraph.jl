@@ -428,7 +428,7 @@ end
 """
     num_all_edges(graph::OptiGraph)
 
-Alias for num_all_optiedges. Return the total number of edges in `graph`
+Alias for num_all_optiedges. Return the total number of edges in `graph`.
 """
 num_all_edges(graph::OptiGraph) = num_all_optiedges(graph)
 
@@ -445,10 +445,40 @@ end
 ########################################################
 # OptiGraph Model Interaction
 ########################################################
+"""
+    has_objective(graph::OptiGraph)
+
+Check whether optigraph `graph` has an affine or quadratic objective function set.
+"""
 has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.AffExpr) && graph.objective_function != zero(JuMP.QuadExpr)
+
+"""
+    has_node_objective(graph::OptiGraph)
+
+Check whether any optinode in `graph` has an objective function.
+"""
 has_node_objective(graph::OptiGraph) = any(has_objective.(all_nodes(graph)))
-has_quad_objective(graph::OptiGraph) = any((node) -> isa(objective_function(node),JuMP.QuadExpr),all_nodes(graph))
+
+"""
+    has_node_quad_objective(graph::OptiGraph)
+
+Check whether any optinode in `graph` has a quadratic objective function.
+"""
+has_node_quad_objective(graph::OptiGraph) = any((node) -> isa(objective_function(node), JuMP.QuadExpr), all_nodes(graph))
+@deprecate has_quad_objective has_node_quad_objective
+
+"""
+    has_nlp_data(graph::OptiGraph)
+
+Check whether any optinode in `graph` has nlp data
+"""
 has_nlp_data(graph::OptiGraph) = any(node -> (node.nlp_data !== nothing),all_nodes(graph))
+
+"""
+    has_nl_objective(graph::OptiGraph)
+
+Check whether any optinode in `graph` has a nonlinear objective function.
+"""
 function has_nl_objective(graph::OptiGraph)
     for node in all_nodes(graph)
         if node.nlp_data != nothing
@@ -460,15 +490,41 @@ function has_nl_objective(graph::OptiGraph)
     return false
 end
 
-JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
-JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
-JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
-JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
-JuMP.all_constraints(graph::OptiGraph,F::DataType,S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph),Ref(F),Ref(S))...)
+"""
+    JuMP.object_dictionary(graph::OptiGraph)
 
+Retrieve the object dictionary of optigraph `graph`
+"""
+JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
+
+"""
+    JuMP.all_variables(graph::OptiGraph)
+
+Retrieve a list of all variables in optigraph `graph.`
+"""
 function JuMP.all_variables(graph::OptiGraph)
     vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
     return vars
+end
+
+"""
+    JuMP.num_variables(graph::OptiGraph)
+
+Retrieve the number of local node variables in `graph`. Does not include variables in subgraphs.
+"""
+function JuMP.num_variables(graph::OptiGraph)
+    n_node_variables = sum(JuMP.num_variables.(getnodes(graph)))
+    return n_node_variables
+end
+
+"""
+    JuMP.num_all_variables(graph::OptiGraph)
+
+Retrieve the number of total variables in `graph`. Includes variables in subgraphs.
+"""
+function num_all_variables(graph::OptiGraph)
+    n_node_variables = sum(JuMP.num_variables.(all_nodes(graph)))
+    return n_node_variables
 end
 
 """
@@ -482,6 +538,39 @@ function JuMP.value(graph::OptiGraph, var::JuMP.VariableRef)
     var_idx = node_pointer.node_to_optimizer_map[index(var)]
     return MOI.get(backend(graph).optimizer,MOI.VariablePrimal(),var_idx)
 end
+
+"""
+    JuMP.list_of_constraint_types(graph::OptiGraph)
+
+Retrieve a list of the constraint types in optigraph `graph`
+"""
+JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
+
+"""
+    JuMP.all_constraints(graph::OptiGraph, F::DataType, S::DataType)
+
+Retrieve a list of contraints with function type `F` and set `S` in optigraph `graph`
+"""
+JuMP.all_constraints(graph::OptiGraph, F::DataType, S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph), Ref(F), Ref(S))...)
+JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
+JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
+
+function num_all_constraints(graph::OptiGraph)
+    n_node_constraints = sum(JuMP.num_constraints.(all_nodes(graph)))
+    return n_node_constraints
+end
+
+"""
+    JuMP.num_constraints(graph::OptiGraph)
+
+Retrieve the number of local node constraints in `graph`. Does not include constraints in subgraphs.
+"""
+function JuMP.num_constraints(graph::OptiGraph)
+    n_node_constraints = sum(JuMP.num_constraints.(getnodes(graph)))
+    return n_node_constraints
+end
+
+
 """
     linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
 
@@ -494,7 +583,6 @@ function linkconstraints(graph::OptiGraph)
     end
     return links
 end
-num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
 
 """
     all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
@@ -510,46 +598,40 @@ function all_linkconstraints(graph::OptiGraph)
     return links
 end
 
-function num_all_linkconstraints(graph::OptiGraph)
-    return length(all_linkconstraints(graph))
-end
-
-function num_all_variables(graph::OptiGraph)
-    n_node_variables = sum(JuMP.num_variables.(all_nodes(graph)))
-    return n_node_variables
-end
-
-function num_all_constraints(graph::OptiGraph)
-    n_node_constraints = sum(JuMP.num_constraints.(all_nodes(graph)))
-    return n_node_constraints
-end
 
 """
-    JuMP.num_variables(graph::OptiGraph)
+    num_linkconstraints(graph::OptiGraph)::Int64
 
-Retrieve the number of local node variables in `graph`. Does not include variables in subgraphs.
+Retrieve the number of local linking constraints in `graph`. Does not include linkconstraints in subgraphs.
 """
-function JuMP.num_variables(graph::OptiGraph)
-    n_node_variables = sum(JuMP.num_variables.(getnodes(graph)))
-    return n_node_variables
-end
+num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
 
 """
-    JuMP.num_constraints(graph::OptiGraph)
+    num_all_linkconstraints(graph::OptiGraph)::Int64
 
-Retrieve the number of local node constraints in `graph`. Does not include constraints in subgraphs.
+Retrieve the total number linkconstraints in `graph`. Includes linkconstraints in subgraphs.
 """
-function JuMP.num_constraints(graph::OptiGraph)
-    n_node_constraints = sum(JuMP.num_constraints.(getnodes(graph)))
-    return n_node_constraints
-end
+num_all_linkconstraints(graph::OptiGraph) = length(all_linkconstraints(graph))
 
-#JuMP Model Extenstion
+
 ####################################
 # Objective
 ###################################
+
+"""
+    JuMP.objective_function(graph::OptiGraph)::MOI.OptimizationSense
+
+Retrieve the current graph objective sense.
+"""
 JuMP.objective_sense(graph::OptiGraph) = graph.objective_sense
-JuMP.set_objective_sense(graph::OptiGraph,sense::MOI.OptimizationSense) = graph.objective_sense = sense
+
+"""
+    JuMP.set_objective_sense(graph::OptiGraph, sense::MOI.OptimizationSense)
+
+Set the current graph objective sense to `sense`.
+"""
+JuMP.set_objective_sense(graph::OptiGraph, sense::MOI.OptimizationSense) = graph.objective_sense = sense
+
 """
     JuMP.objective_function(graph::OptiGraph)
 
@@ -619,11 +701,21 @@ function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExp
 
 end
 
+"""
+    JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
+
+Set the objective of `graph` to the optimization `sense` and `func`.
+"""
 function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     JuMP.set_objective_sense(graph,sense)
     JuMP.set_objective_function(graph,func)
 end
 
+"""
+    JuMP.objective_function_type(graph::OptiGraph)
+
+Retrieve the objective function type of optigraph `graph`.
+"""
 JuMP.objective_function_type(graph::OptiGraph) = typeof(objective_function(graph))
 
 #NOTE: Plasmo stores the objective expression on the optigraph
@@ -650,9 +742,15 @@ function JuMP.set_objective_coefficient(graph::OptiGraph, variable::JuMP.Variabl
     end
 end
 
+"""
+    JuMP.objective_value(graph::OptiGraph)
+
+Retrieve the current objective value on optigraph `graph`.
+"""
 function JuMP.objective_value(graph::OptiGraph)
     return MOI.get(backend(graph),MOI.ObjectiveValue())
 end
+
 
 function getnodes(expr::JuMP.GenericAffExpr)
     nodes = OptiNode[]
@@ -756,10 +854,15 @@ function JuMP.add_bridge(graph::OptiGraph, BridgeType::Type{<:MOI.Bridges.Abstra
     return
 end
 
+"""
+    JuMP.dual(graph::OptiGraph, linkref::LinkConstraintRef)
+
+Retrieve the dual value of `linkref` on optigraph `graph`.
+"""
 function JuMP.dual(graph::OptiGraph, linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
     id = graph.id
-    return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
+    return MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
 end
 
 #Set start value for a graph backend
@@ -783,7 +886,11 @@ end
 #     return MOI.get(backend(graph).optimizer,MOI.VariablePrimalStart(),var_idx)
 # end
 
+"""
+    JuMP.termination_status(graph::OptiGraph)
 
+Retrieve the current termination status of optigraph `graph`.
+"""
 JuMP.termination_status(graph::OptiGraph) = MOI.get(graph.moi_backend, MOI.TerminationStatus())
 
 ####################################

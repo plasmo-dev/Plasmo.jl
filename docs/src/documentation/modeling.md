@@ -195,7 +195,7 @@ These optigraphs can be embedded into a higher level optigraph with the followin
 julia> graph0 = OptiGraph()
       OptiGraph: # elements (including subgraphs)
 -------------------------------------------------------------------
-      OptiNodes:     3              (0)
+      OptiNodes:     0              (0)
       OptiEdges:     0              (0)
 LinkConstraints:     0              (0)
  sub-OptiGraphs:     0              (0)
@@ -335,11 +335,11 @@ julia> getnodes(graph1)
  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
 
- julia> optinodes(graph1)
- 3-element Vector{OptiNode}:
-  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
-  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
-  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
+julia> optinodes(graph1)
+3-element Vector{OptiNode}:
+ OptiNode w/ 2 Variable(s) and 1 Constraint(s)
+ OptiNode w/ 2 Variable(s) and 1 Constraint(s)
+ OptiNode w/ 2 Variable(s) and 1 Constraint(s)
 
 julia> getnodes(graph0)
 OptiNode[]
@@ -394,7 +394,7 @@ julia> all_linkconstraints(graph0)
 ```
 and query subgraphs using `subgraphs` and `all_subgraphs`:
 ```jldoctest modeling
-julia> subgraphs(graph0)
+julia> getsubgraphs(graph0)
 3-element Vector{OptiGraph}:
        OptiGraph: # elements (including subgraphs)
 -------------------------------------------------------------------

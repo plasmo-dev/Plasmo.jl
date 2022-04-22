@@ -22,12 +22,12 @@ julia> using PlasmoPlots
 The following command will create the `OptiGraph` referred to by `graph`. We also see the printed output which denotes the number of `OptiNodes`, `OptiEdges`, `LinkConstraints`, and subgraphs (other `OptiGraphs` contained within `graph`).
 ```jldoctest quickstart_example
 julia> graph = OptiGraph()
-OptiGraph:      # elements (including subgraphs)
+      OptiGraph: # elements (including subgraphs)
 -------------------------------------------------------------------
-OptiNodes:           0              (0)
-OptiEdges:           0              (0)
+      OptiNodes:     0              (0)
+      OptiEdges:     0              (0)
 LinkConstraints:     0              (0)
-sub-OptiGraphs:      0              (0)
+ sub-OptiGraphs:     0              (0)
 ```
 
 !!! note
@@ -105,7 +105,7 @@ julia> @objective(n3, Min, y);
 
 ```jldoctest quickstart_example_2
 julia> println(graph)
-OptiGraph: # elements (including subgraphs)
+      OptiGraph: # elements (including subgraphs)
 -------------------------------------------------------------------
       OptiNodes:     3              (3)
       OptiEdges:     0              (0)
@@ -123,11 +123,11 @@ DocTestSetup = nothing
 input as the `JuMP.@constraint` macro. The following code creates a link-constraint between variables on the three optinodes.
 
 ```jldoctest quickstart_example_2
-julia> @linkconstraint(graph, n1[:x] + n2[:x] + n3[:x] == 3);
+julia> @linkconstraint(graph, n1[:x] + n2[:x] + n3[:x] == 3)
 : n1[:x] + n2[:x] + n3[:x] = 3.0
 
 julia> println(graph)
-OptiGraph: # elements (including subgraphs)
+      OptiGraph: # elements (including subgraphs)
 -------------------------------------------------------------------
       OptiNodes:     3              (3)
       OptiEdges:     1              (1)

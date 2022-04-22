@@ -1,3 +1,9 @@
+"""
+    ProjectionMap
+
+A mapping between OptiGraph elements (nodes and edges) and elements in a graph projection. A graph projection can be for example a hypergraph, a bipartite graph
+or a standard graph.
+"""
 mutable struct ProjectionMap
     optigraph::OptiGraph
     projected_graph::LightGraphs.AbstractGraph
@@ -5,21 +11,21 @@ mutable struct ProjectionMap
     opti_map::Dict   #map optigraph elements to projected elements
 end
 
-ProjectionMap(optigraph::OptiGraph,lightgraph::LightGraphs.AbstractGraph) = ProjectionMap(optigraph,lightgraph,Dict(),Dict())
+ProjectionMap(optigraph::OptiGraph, lightgraph::LightGraphs.AbstractGraph) = ProjectionMap(optigraph, lightgraph, Dict(), Dict())
 
-function Base.getindex(graph_map::ProjectionMap,vertex::Int64)
+function Base.getindex(graph_map::ProjectionMap, vertex::Int64)
     return graph_map.vertex_map[vertex]
 end
 
-function Base.setindex!(graph_map::ProjectionMap,vertex::Int64,value::Any)
+function Base.setindex!(graph_map::ProjectionMap, vertex::Int64, value::Any)
     graph_map.vertex_map[vertex] = value
 end
 
-function Base.getindex(graph_map::ProjectionMap,element::Any)
+function Base.getindex(graph_map::ProjectionMap, element::Any)
     return graph_map.opti_map[element]
 end
 
-function Base.setindex!(graph_map::ProjectionMap,element::Any,value::Any)
+function Base.setindex!(graph_map::ProjectionMap, element::Any, value::Any)
     graph_map.opti_map[element] = value
 end
 

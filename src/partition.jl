@@ -258,7 +258,7 @@ end
 """
     apply_partition!(optigraph::OptiGraph,partition::Partition)
 
-Create subgraphs in `optigraph` using a 'partition'.
+Create subgraphs in `optigraph` using a `partition`.
 """
 function apply_partition!(graph::OptiGraph,partition::Partition)
     root = partition

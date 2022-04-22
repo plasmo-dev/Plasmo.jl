@@ -153,6 +153,7 @@ Hypergraph: (199 , 99)
     DocTestSetup = quote
     using Plasmo
     using KaHyPar
+    using Suppressor
 
     T = 100         
     d = sin.(1:T)   
@@ -177,7 +178,7 @@ Hypergraph: (199 , 99)
     @constraint(n1,n1[:x] == 0)
 
     hgraph,hyper_map = hyper_graph(graph)
-    partition_vector = KaHyPar.partition(hgraph, 8, configuration = :connectivity, imbalance = 0.01)
+    partition_vector = @suppress KaHyPar.partition(hgraph, 8, configuration = :connectivity, imbalance = 0.01)
     partition = Partition(partition_vector, hyper_map)
     apply_partition!(graph, partition)
 end
@@ -207,7 +208,7 @@ julia> println(length(partition_vector))
 199
 
 julia> println(partition)
-    OptiGraph Partition w/ 8 subpartitions
+OptiGraph Partition w/ 8 subpartitions
 
 julia> println(length(getsubgraphs(graph)))
 8
@@ -216,14 +217,14 @@ julia> num_linkconstraints(graph)
 7
 
 julia> num_all_linkconstraints(graph)
-199
+99
 ```
 
 ```@setup plot_chain_partition
     using Plasmo
     using KaHyPar
     using PlasmoPlots
-    using Plots
+    using Suppressor
 
     T = 100         
     d = sin.(1:T)   
@@ -248,7 +249,7 @@ julia> num_all_linkconstraints(graph)
     @constraint(n1,n1[:x] == 0)
 
     hgraph,hyper_map = gethypergraph(graph);
-    partition_vector = KaHyPar.partition(hgraph, 8, configuration=:connectivity, imbalance=0.01);
+    partition_vector = @suppress KaHyPar.partition(hgraph, 8, configuration=:connectivity, imbalance=0.01);
     partition = Partition(partition_vector, hyper_map);
     apply_partition!(graph,partition);
 ```
@@ -301,7 +302,7 @@ LinkConstraints:     7              (7)
     using Plasmo
     using KaHyPar
     using PlasmoPlots
-    using Plots
+    using Suppressor
 
     T = 100         
     d = sin.(1:T)   
@@ -326,7 +327,7 @@ LinkConstraints:     7              (7)
     @constraint(n1,n1[:x] == 0)
 
     hypergraph,hyper_map = gethypergraph(graph);
-    partition_vector = KaHyPar.partition(hypergraph, 8, configuration = :connectivity, imbalance = 0.01);
+    partition_vector = @suppress KaHyPar.partition(hypergraph, 8, configuration = :connectivity, imbalance = 0.01);
     partition = Partition(partition_vector, hyper_map);
     make_subgraphs!(graph, partition);
 

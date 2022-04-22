@@ -1,4 +1,4 @@
-using Documenter, Plasmo, JuMP, LightGraphs, PlasmoPlots
+using Documenter, Plasmo, JuMP, LightGraphs, PlasmoPlots, Suppressor
 
 DocMeta.setdocmeta!(Plasmo, :DocTestSetup, :(using Plasmo); recursive=true)
 DocMeta.setdocmeta!(PlasmoPlots, :DocTestSetup, :(using PlasmoPlots); recursive=true)

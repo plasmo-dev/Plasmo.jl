@@ -58,11 +58,11 @@ set_label(node::OptiNode,label::String) = node.label = label
 
 
 """
-    label(node::OptiNode)
+    getlabel(node::OptiNode)
 
 Get the label for optinode `node`.
 """
-label(node::OptiNode) = node.label
+getlabel(node::OptiNode) = node.label
 
 """
     JuMP.all_variables(node::OptiNode)::Vector{JuMP.VariableRef}
@@ -153,7 +153,7 @@ Base.getindex(node::OptiNode, symbol::Symbol) = jump_model(node)[symbol]
 
 Support retrieving node attributes via symbol lookup. (e.g. node[:x])
 """
-Base.setindex!(node::OptiNode,
+Base.setindex(node::OptiNode,
     value::Any,
     symbol::Symbol) = JuMP.object_dictionary(node)[symbol] = value
 
@@ -187,7 +187,7 @@ function JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_
 end
 
 """
-    JuMP.add_NL_constraint(node::OptiNode,expr::Expr)
+    JuMP.add_nonlinear_constraint(node::OptiNode,expr::Expr)
 
 Add a non-linear constraint to an optinode using a Julia expression.
 """
@@ -303,6 +303,11 @@ end
 #NOTE: we could probably loop through JuMP Model methods and define the OptiNode ones
 
 # objective function
+"""
+    JuMP.objective_function(node::OptiNode)
+
+Retrieve the objective function on optinode `node`
+"""
 JuMP.objective_function(node::OptiNode) = JuMP.objective_function(jump_model(node))
 JuMP.objective_value(node::OptiNode) = JuMP.objective_value(jump_model(node))
 JuMP.objective_sense(node::OptiNode) = JuMP.objective_sense(jump_model(node))
@@ -312,6 +317,11 @@ JuMP.set_objective(optinode::OptiNode,
                     func::JuMP.AbstractJuMPScalar) =
                     JuMP.set_objective(jump_model(optinode),sense,func)
 
+"""
+    JuMP.set_nonlinear_objective(optinode::OptiNode, sense::MOI.OptimizationSense, obj::Any)
+
+Set a nonlinear objective on optinode `node`
+"""
 JuMP.set_nonlinear_objective(optinode::OptiNode,
                         sense::MOI.OptimizationSense,
                         obj::Any) =
@@ -328,9 +338,19 @@ JuMP.set_objective_sense(optinode::OptiNode,sense::MOI.OptimizationSense) =
 
 
 # NLP evaluator
+"""
+    JuMP.NLPEvaluator(node::OptiNode)
+
+Retrieve the underlying JuMP NLP evaluator on optinode `node`
+"""
 JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(jump_model(node))
 
 # status functions
+"""
+    JuMP.termination_status(node::OptiNode)
+
+Return the termination status on optinode `node`
+"""
 JuMP.termination_status(node::OptiNode) = JuMP.termination_status(jump_model(node))
 JuMP.raw_status(node::OptiNode) = JuMP.raw_status(jump_model(node))
 JuMP.primal_status(node::OptiNode) = JuMP.primal_status(jump_model(node))
