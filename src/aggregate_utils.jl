@@ -58,7 +58,7 @@ function _copy_nl_objective(d::JuMP.NLPEvaluator, reference_map::AggregateMap)
     else
         new_obj = MOI.objective_expr(d)
     end
-        _splice_nonlinear_variables!(new_obj,getnode(d.model),reference_map)
+        _splice_nonlinear_variables!(new_obj, optinode(d.model), reference_map)
         JuMP.objective_sense(d.model) == MOI.MAX_SENSE ? sense = -1 : sense = 1
         new_obj = Expr(:call,:*,:($sense),new_obj)
     return new_obj

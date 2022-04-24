@@ -73,8 +73,8 @@ function test_partition_manual()
     @test num_all_nodes(graph) == 100
 
     @test Plasmo.n_subpartitions(partition) == 20
-    @test getnodes(partition) == OptiNode[]
-    @test getedges(partition) == getedges(graph)
+    @test optinodes(partition) == OptiNode[]
+    @test optiedges(partition) == optiedges(graph)
     @test length(Plasmo.all_subpartitions(partition)) == 20
     @test Base.string(partition) == "OptiGraph Partition w/ 20 subpartitions"
     @test Plasmo.graph_depth(graph) == 1

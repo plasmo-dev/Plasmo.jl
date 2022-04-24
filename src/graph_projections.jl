@@ -65,7 +65,7 @@ end
 """
     clique_graph(graph::OptiGraph)
 
-Retrieve a standard graph representation of the optigraph `graph`. Returns a [`LightGraphs.Graph`](@ref) object, as well as a dictionary
+Retrieve a standard graph representation of the optigraph `graph`. Returns a `LightGraphs.Graph` object, as well as a dictionary
 that maps vertices and edges to the optinodes and optiedges.
 """
 function LightGraphs.clique_graph(optigraph::OptiGraph)
@@ -101,7 +101,7 @@ end
     edge_graph(optigraph::OptiGraph)
 
 Retrieve the edge-graph representation of `optigraph`. This is sometimes called the line graph of a hypergraph.
-Returns a [`LightGraphs.Graph`](@ref) object, as well as a dictionary that maps vertices and edges to the optinodes and optiedges.
+Returns a `LightGraphs.Graph` object, as well as a dictionary that maps vertices and edges to the optinodes and optiedges.
 """
 function edge_graph(optigraph::OptiGraph)
     graph = CliqueGraph()
@@ -118,8 +118,8 @@ function edge_graph(optigraph::OptiGraph)
 
     #add coupling
     edge_array = all_edges(optigraph)
-    for i in 1:(num_all_optiedges(optigraph)-1)
-        for j in i+1:num_all_optiedges(optigraph)
+    for i in 1:(num_all_edges(optigraph)-1)
+        for j in i+1:num_all_edges(optigraph)
             e1 = edge_array[i]
             e2 = edge_array[j]
             if !isempty(intersect(e1.nodes,e2.nodes))

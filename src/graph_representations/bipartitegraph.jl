@@ -25,7 +25,7 @@ function LightGraphs.add_vertex!(bgraph::BipartiteGraph;bipartite = 1)
 end
 
 #Edges must connect nodes in different vertex sets
-function LightGraphs.add_edge!(bgraph::BipartiteGraph,from::Int64,to::Int64)
+function LightGraphs.add_edge!(bgraph::BipartiteGraph, from::Int64, to::Int64)
     length(intersect((from,to),bgraph.vertexset1)) == 1 || error("$from and $to must be in separate vertex sets")
     return LightGraphs.add_edge!(bgraph.graph,from,to)
 end

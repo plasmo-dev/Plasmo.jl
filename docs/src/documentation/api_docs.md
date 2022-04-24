@@ -7,28 +7,23 @@ OptiGraph
 @linkconstraint
 optigraph_reference
 add_subgraph!
-getsubgraph
-all_subgraph
-getsubgraphs
+subgraph
+subgraphs
 all_subgraphs
+subgraph_by_index
 num_subgraphs
 num_all_subgraphs
 has_subgraphs
 add_node!
-getnode
-getnodes
+optinode
 optinodes
-all_node
 all_nodes
-all_optinodes
+optinode_by_index
 Plasmo.add_optiedge!
-Plasmo.add_edge!
-getedge
-getedges
+optiedge
 optiedges
-all_edge
 all_edges
-all_optiedges
+optiedge_by_index
 linkconstraints
 all_linkconstraints
 num_linkconstraints
@@ -43,7 +38,7 @@ Base.getindex(::OptiGraph, ::OptiEdge)
 OptiNode
 jump_model
 set_model
-getlabel
+label
 set_label
 is_node_variable
 is_set_to_node
@@ -91,17 +86,17 @@ JuMP.termination_status
 ## Graph Processing and Partitioning
 
 ```@docs
+Plasmo.graph_backend
+Plasmo.HyperGraph
 hyper_graph
 clique_graph
 edge_graph
 edge_hyper_graph
 bipartite_graph
-Plasmo.graph_backend
 Partition
 apply_partition!
 aggregate
 aggregate!
-expand
 LightGraphs.all_neighbors
 LightGraphs.induced_subgraph
 Plasmo.incident_edges
@@ -109,9 +104,9 @@ Plasmo.induced_edges
 Plasmo.identify_edges
 Plasmo.identify_nodes
 Plasmo.neighborhood
+expand
 hierarchical_edges
 linking_edges
-
 ```
 
 ## Plotting

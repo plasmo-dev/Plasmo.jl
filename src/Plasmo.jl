@@ -24,77 +24,49 @@ export
 #################################
 # OptiGraph
 ################################
-AbstractOptiGraph, OptiGraph, ModelGraph,
+AbstractOptiGraph, OptiGraph,
 
-OptiNode, OptiEdge, LinkConstraint, LinkConstraintRef, Partition,
+OptiNode, OptiEdge, LinkConstraint, LinkConstraintRef, Partition, OptiGraphNLPEvaluator,
 
-#deprecated exports
-ModelNode, LinkEdge, getnumnodes, getnumedges, getmodel,
+add_node!, optinode, optinodes, all_nodes, optinode_by_index, num_nodes, num_all_nodes,
 
-#nlp evaluator
-OptiGraphNLPEvaluator,
+optiedge, optiedges, all_edges, optiedge_by_index, num_edges, num_all_edges,
 
-#optigraphs
-add_node!, getnode, getnodes, all_node, all_nodes, find_node, num_nodes, num_all_nodes,
+add_subgraph!, subgraph, subgraphs, all_subgraphs, subgraph_by_index, num_subgraphs, num_all_subgraphs,
 
-getedge, getoptiedge, getedges,  getoptiedges, all_edge, all_edges,
+has_subgraphs, optigraph_reference,
 
-find_edge, num_optiedges, num_all_optiedges,
+@optinode, @linkconstraint,
 
-add_subgraph!, getsubgraph, getsubgraphs, all_subgraph, all_subgraphs, num_subgraphs, has_subgraphs,
+# linkconstraints
+linkconstraints, all_linkconstraints, num_linkconstraints, num_all_linkconstraints,
 
-optinodes, optiedges, all_optinodes, all_optiedges,
+num_linked_variables,
 
-incident_edges, neighborhood, induced_edges, expand, induced_graph, apply_partition!,
-
-linking_edges, hierarchical_edges,
-
-linkconstraints, all_linkconstraints, num_all_variables, num_linked_variables,
-
-num_all_constraints, num_linkconstraints, num_all_linkconstraints, num_all_subgraphs,
-
-has_objective, has_nl_objective, has_node_objective,
-
-optigraph_reference,
-
-#node interface
-jump_model, set_model, has_model, is_set_to_node, getlabel, set_label, attached_node,
+# optinode
+jump_model, set_model, has_model, is_set_to_node, label, set_label, attached_node,
 
 set_attached_node, is_node_variable, is_linked_variable,
 
-# Aggregation
-aggregate, aggregate!,
+# graph processing
+incident_edges, neighborhood, induced_edges, expand, induced_graph, apply_partition!,
 
-# Model Interface
+linking_edges, hierarchical_edges, aggregate, aggregate!,
+
+# model functions
+num_all_variables, num_all_constraints,
+
+has_objective, has_nl_objective, has_node_objective,
+
 set_node_primals, set_node_duals, set_node_status,
 
-######################################
-# HYPERGRAPH INTERFACE
-######################################
-#
-set_graph_backend, graph_backend_data, graph_backend,
+# hypergraph functions
+in_degree, out_degree,
 
-# Hypergraph functions
-in_degree, out_degree, get_supporting_nodes, get_supporting_edges,
+neighbors, adjacency_matrix, incidence_matrix, graph_structure,
 
-get_connected_to, get_connected_from,
-
-in_neighbors, out_neighbors, neighbors, has_edge, in_edges, out_edges,
-
-adjacency_matrix, incidence_matrix, graph_structure,
-
-# Hypergraph Projections
-bipartite_graph, clique_graph, hyper_graph, edge_graph, edge_hyper_graph,
-
-gethyperedge, gethyperedges,
-
-#macros
-@optinode, @linkconstraint,
-
-#deprecated
-@node, @NLnodeconstraint, @NLnodeobjective,
-
-nodevalue, nodedual, linkdual, gethypergraph, combine, make_subgraphs!
+# graph projections
+bipartite_graph, clique_graph, hyper_graph, edge_graph, edge_hyper_graph
 
 
 #Abstract Types

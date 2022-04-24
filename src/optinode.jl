@@ -58,11 +58,11 @@ set_label(node::OptiNode,label::String) = node.label = label
 
 
 """
-    getlabel(node::OptiNode)
+    label(node::OptiNode)
 
 Get the label for optinode `node`.
 """
-getlabel(node::OptiNode) = node.label
+label(node::OptiNode) = node.label
 
 """
     JuMP.all_variables(node::OptiNode)::Vector{JuMP.VariableRef}
@@ -362,25 +362,25 @@ JuMP._moi_mode(node_backend::NodeBackend) = node_backend.optimizer.mode
 
 ##############################################
 # Get optinode from other objects
-# Note that `getnode` does a lot of type piracy here. Hopefully this is ok but
-# JuMP or other extensions defining `getnode` could cause problems
+# Note that `optinode` does a lot of type piracy here. Hopefully this is ok but
+# JuMP or other extensions defining `optinode` could cause problems
 ##############################################
 """
-    getnode(m::JuMP.Model)
+    optinode(m::JuMP.Model)
 
 Retrieve the optinode corresponding to JuMP model `m`
 """
-getnode(m::JuMP.Model) = m.ext[:optinode]
+optinode(m::JuMP.Model) = m.ext[:optinode]
 
 #Get the corresponding node for a JuMP variable reference
 """
-    getnode(var::JuMP.VariableRef)
+    optinode(var::JuMP.VariableRef)
 
 Retrieve the optinode corresponding to JuMP `VariableRef`
 """
-function getnode(var::JuMP.VariableRef)
-    if haskey(var.model.ext,:optinode)
-        return getnode(var.model)
+function optinode(var::JuMP.VariableRef)
+    if haskey(var.model.ext, :optinode)
+        return optinode(var.model)
     else
         error("variable $var does not belong to a optinode.  If you're trying to create a linkconstraint, make sure
         the owning model has been set to a node.")
@@ -388,19 +388,17 @@ function getnode(var::JuMP.VariableRef)
 end
 
 """
-    getnode(var::JuMP.VariableRef)
+    optinode(var::JuMP.VariableRef)::OptiNode
 
 Retrieve the optinode corresponding to JuMP `ConstraintRef`
 """
-function getnode(con::JuMP.ConstraintRef)
+function optinode(con::JuMP.ConstraintRef)
     if haskey(con.model.ext,:optinode)
-        return getnode(con.model)
+        return optinode(con.model)
     else
         error("constraint $con does not belong to a node")
     end
 end
-# getnode(m::AbstractModel) = is_set_to_node(m) ? m.ext[:optinode] : throw(error("Only node models have associated graph nodes"))
-# getnode(var::JuMP.AbstractVariableRef) = JuMP.owner_model(var).ext[:optinode]
 
 ###############################################
 # Printing
@@ -413,29 +411,22 @@ show(io::IO,node::OptiNode) = print(io,node)
 
 
 #DEPRECATED
-nodevalue(var::JuMP.VariableRef) = JuMP.value(var)
-function nodevalue(expr::JuMP.GenericAffExpr)
-    ret_value = 0.0
-    for (var,coeff) in expr.terms
-        ret_value += coeff*nodevalue(var)
-    end
-    ret_value += expr.constant
-    return ret_value
-end
-
-function nodevalue(expr::JuMP.GenericQuadExpr)
-    ret_value = 0.0
-    for (pair,coeff) in expr.terms
-        ret_value += coeff*nodevalue(pair.a)*nodevalue(pair.b)
-    end
-    ret_value += nodevalue(expr.aff)
-    ret_value += expr.aff.constant
-    return ret_value
-end
-# nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,MOI.ConstraintIndex}) = getnode(con).constraint_dual_values[con]
-# nodedual(con_ref::JuMP.ConstraintRef{JuMP.Model,JuMP.NonlinearConstraintIndex}) = getnode(con).nl_constraint_dual_values[con]
-
-@deprecate nodevalue value
-@deprecate nodedual dual
-# JuMP.variable_type(::OptiNode) = JuMP.VariableRef
-# JuMP.constraint_type(::OptiNode) = JuMP.ConstraintRef
+# nodevalue(var::JuMP.VariableRef) = JuMP.value(var)
+# function nodevalue(expr::JuMP.GenericAffExpr)
+#     ret_value = 0.0
+#     for (var,coeff) in expr.terms
+#         ret_value += coeff*nodevalue(var)
+#     end
+#     ret_value += expr.constant
+#     return ret_value
+# end
+#
+# function nodevalue(expr::JuMP.GenericQuadExpr)
+#     ret_value = 0.0
+#     for (pair,coeff) in expr.terms
+#         ret_value += coeff*nodevalue(pair.a)*nodevalue(pair.b)
+#     end
+#     ret_value += nodevalue(expr.aff)
+#     ret_value += expr.aff.constant
+#     return ret_value
+# end

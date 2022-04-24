@@ -14,7 +14,7 @@ makedocs(sitename="Plasmo.jl", modules=[Plasmo, PlasmoPlots],
         "Introduction" => "index.md",
         "Quickstart" => "documentation/quickstart.md",
         "Modeling with OptiGraphs" => "documentation/modeling.md",
-        "Partitioning and Graph Analysis" => "documentation/partitioning.md",
+        "Graph Partitioning and Processing" => "documentation/partitioning.md",
         "Solvers" => "documentation/solvers.md",
         "Tutorials" => [
             "Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md",

@@ -158,7 +158,7 @@ function _add_link_constraint!(id::Symbol,dest::MOI.ModelLike,link::LinkConstrai
         coeff = term[1]
         var = term[2]
 
-        src = JuMP.backend(getnode(var))
+        src = JuMP.backend(optinode(var))
         idx_map = src.optimizers[id].node_to_optimizer_map
 
         var_idx = JuMP.index(var)

@@ -32,7 +32,7 @@ LinkConstraints:     0              (0)
 
 !!! note
     An `OptiGraph` distinguishes between its direct elements (optinodes and optiedges contained directly within the graph) and its subgraph elements (optinodes and optiedges contained within its subgraphs). This distinction
-    is used to describe hierarchical graph structures in [Hierarchical Modeling](@ref).
+    is used to describe hierarchical graph structures in [Hierarchical Modeling using Subgraphs](@ref).
 
 ## Add OptiNodes
 An `OptiGraph` consists of `OptiNodes` which contain stand-alone optimization models. An `OptiNode` supports JuMP
@@ -117,7 +117,7 @@ LinkConstraints:     0              (0)
 DocTestSetup = nothing
 ```
 
-## Create LinkConstraints (and hence OptiEdges)
+## Create LinkConstraints
 `LinkConstraints` can be used to couple variables between optinodes. Creating a link-constraint automatically creates an
 `OptiEdge` in the optigraph which describes the connectivity between optinodes.  Link-constraints are created using the `@linkconstraint` macro which takes the exact same
 input as the `JuMP.@constraint` macro. The following code creates a link-constraint between variables on the three optinodes.

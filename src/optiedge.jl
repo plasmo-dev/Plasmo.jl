@@ -28,7 +28,7 @@ LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set,not
 Set the linkconstraint `con` to optinode `node`. Mostly useful for algorithms that need an "owning" node on a linkconstraint
 """
 function set_attached_node(con::LinkConstraint,node::OptiNode)
-    @assert node in getnodes(con)
+    @assert node in optinodes(con)
     con.attached_node = node
 end
 
@@ -104,11 +104,11 @@ function MOI.delete!(cref::LinkConstraintRef)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.optiedge.linkconstraints, cref.idx)
 
-getnodes(edge::OptiEdge) = edge.nodes
-getnodes(con::JuMP.ScalarConstraint) = [getnode(var) for var in keys(con.func.terms)]
-getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]
-getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge.linkconstraints[cref.idx])
-num_nodes(con::LinkConstraint) = length(getnodes(con))
+optinodes(edge::OptiEdge) = edge.nodes
+optinodes(con::JuMP.ScalarConstraint) = [optinode(var) for var in keys(con.func.terms)]
+optinodes(con::LinkConstraint) = [optinode(var) for var in keys(con.func.terms)]
+optinodes(cref::LinkConstraintRef) = optinodes(cref.optiedge.linkconstraints[cref.idx])
+num_nodes(con::LinkConstraint) = length(optinodes(con))
 JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstraints[linkref.idx]
 
 #TODO: Update this

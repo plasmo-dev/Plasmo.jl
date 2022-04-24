@@ -137,23 +137,30 @@ We can also plot the graph structure of `graph1` using both graph and matrix lay
     @linkconstraint(graph1, n1[:x] + nodes[2][:x] + nodes[3][:x] == 3)
 ```
 
-```@repl plot_example1
-using PlasmoPlots;
-using Plots;
+```julia
+using PlasmoPlots
 
-plt_graph = layout_plot(graph1,node_labels = true, markersize = 30,labelsize = 15, linewidth = 4,layout_options = Dict(:tol => 0.01,:iterations => 2),plt_options = Dict(:legend => false,:framestyle => :box,:grid => false,:size => (400,400),:axis => nothing));
+plt_graph = layout_plot(graph1,
+                        node_labels=true,
+                        markersize=30,
+                        labelsize=15,
+                        linewidth=4,
+                        layout_options=Dict(:tol=>0.01,
+                                            :iterations=>2),
+                        plt_options=Dict(:legend=>false,
+                                         :framestyle=>:box,
+                                         :grid=>false,
+                                         :size=>(400,400),
+                                         :axis => nothing))
 
-Plots.savefig(plt_graph,"graph1_layout.svg");
+plt_matrix = matrix_layout(graph1, node_labels=true, markersize=15);   
+```
 
-plt_matrix = matrix_layout(graph1,node_labels = true,markersize = 15);   
-
-Plots.savefig(plt_matrix,"matrix1_layout.svg");
+```@raw html
+<img src="../assets/graph1_layout.svg" alt="graph1" width="400"/>
 ```
 ```@raw html
-<img src="../graph1_layout.svg" alt="graph1" width="400"/>
-```
-```@raw html
-<img src="../matrix1_layout.svg" alt="matrix1" width="400"/>
+<img src="../assets/matrix1_layout.svg" alt="matrix1" width="400"/>
 ```
 
 ## Hierarchical Modeling using Subgraphs
@@ -301,35 +308,43 @@ We can lastly plot the hierarchical optigraph and see the nested subgraph struct
     @linkconstraint(graph0,nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] == 10)
 ```
 
-```@repl plot_example2
-using Plots
+```julia
+using PlasmoPlots
 
 for (i,node) in enumerate(all_nodes(graph0))
     set_label(node, "n$i")
 end
 
-plt_graph0 = Plots.plot(graph0,node_labels = true,markersize = 60,labelsize = 30,linewidth = 4,subgraph_colors = true,
-layout_options = Dict(:tol => 0.001,:C => 2, :K => 4, :iterations => 5));
+plt_graph0 = PlasmoPlots.layoutplot(graph0,
+                                    node_labels=true,
+                                    markersize=60,
+                                    labelsize=30,
+                                    linewidth=4,
+                                    subgraph_colors=true,
+                                    layout_options = Dict(:tol=>0.001,
+                                                     :C=>2,
+                                                     :K=>4,
+                                                     :iterations=>5))
 
-Plots.savefig(plt_graph0,"graph0_layout.svg");
+plt_matrix0 = PlasmoPlots.matrix(graph0,
+                                 node_labels = true,
+                                 subgraph_colors = true,
+                                 markersize = 16)
+```
 
-plt_matrix0 = Plots.spy(graph0,node_labels = true,subgraph_colors = true,markersize = 16);
-
-Plots.savefig(plt_matrix0,"matrix0_layout.svg");
+```@raw html
+<img src="../assets/graph0_layout.svg" alt="graph0" width="400"/>
 ```
 ```@raw html
-<img src="../graph0_layout.svg" alt="graph0" width="400"/>
-```
-```@raw html
-<img src="../matrix0_layout.svg" alt="matrix0" width="400"/>
+<img src="../assets/matrix0_layout.svg" alt="matrix0" width="400"/>
 ```
 
 ## Query OptiGraph Attributes
-There are many functions in Plasmo.jl used to query optigraph attributes (see the [API Documentation](@ref) for a full list). We can use `getnodes` or `optinodes` to retrieve an array of
-the local optinodes in an optigraph, whereas `all_nodes` (or `all_optinodes`) will recursively retrieve all of the optinodes in an optigraph, including the optinodes in its subgraphs.
+There are many functions in Plasmo.jl used to query optigraph attributes (see the [API Documentation](@ref) for a full list). We can use `optinodes` to retrieve an array of
+the local optinodes in an optigraph, whereas `all_nodes` will recursively retrieve all of the optinodes in an optigraph, including the optinodes in its subgraphs.
 
 ```jldoctest modeling
-julia> getnodes(graph1)
+julia> optinodes(graph1)
 3-element Vector{OptiNode}:
  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
@@ -341,7 +356,7 @@ julia> optinodes(graph1)
  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
 
-julia> getnodes(graph0)
+julia> optinodes(graph0)
 OptiNode[]
 
 julia> all_nodes(graph0)
@@ -357,14 +372,13 @@ julia> all_nodes(graph0)
  OptiNode w/ 2 Variable(s) and 1 Constraint(s)
 ```
 
-It is possible to query for optiedges, linking constraints, and subgraphs in the same way using `getedges` (`optiedges`) and
-`all_edges` (`all_optiedges`). We can query optiedges:
+It is possible to query for optiedges in the same way using `optiedges` and `all_edges`:
 ```jldoctest modeling
-julia> getedges(graph1)
+julia> optiedges(graph1)
 1-element Vector{OptiEdge}:
  OptiEdge w/ 1 Constraint(s)
 
-julia> getedges(graph0)
+julia> optiedges(graph0)
 1-element Vector{OptiEdge}:
  OptiEdge w/ 1 Constraint(s)
 
@@ -375,7 +389,7 @@ julia> all_edges(graph0)
  OptiEdge w/ 1 Constraint(s)
  OptiEdge w/ 1 Constraint(s)
 ```
-we can query link-constraints using `linkconstraints` and `all_linkconstraints`:
+We can query linkconstraints using `linkconstraints` and `all_linkconstraints`:
 ```jldoctest modeling
 julia> linkconstraints(graph1)
 1-element Vector{LinkConstraintRef}:
@@ -392,9 +406,9 @@ julia> all_linkconstraints(graph0)
  : nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] = 7.0
  : nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10.0
 ```
-and query subgraphs using `subgraphs` and `all_subgraphs`:
+We can query subgraphs using `subgraphs` and `all_subgraphs`:
 ```jldoctest modeling
-julia> getsubgraphs(graph0)
+julia> subgraphs(graph0)
 3-element Vector{OptiGraph}:
        OptiGraph: # elements (including subgraphs)
 -------------------------------------------------------------------

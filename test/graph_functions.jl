@@ -29,10 +29,10 @@ end
 function test_hypergraph_backend()
     graph = _create_test_optigraph()
 
-    set_graph_backend(graph)
-    @test isa(graph_backend(graph),Plasmo.HyperGraphBackend)
+    Plasmo.set_graph_backend(graph)
+    @test isa(Plasmo.graph_backend(graph),Plasmo.HyperGraphBackend)
 
-    hgraph,proj_map = graph_backend_data(graph)
+    hgraph,proj_map = Plasmo.graph_backend_data(graph)
     @test LightGraphs.nv(hgraph) == 100
 
     #this should not reset the graph backend
@@ -40,17 +40,17 @@ function test_hypergraph_backend()
 
     graph = _create_test_optigraph()
     #this will reset because it is empty
-    @test graph_backend(graph) == nothing
+    @test Plasmo.graph_backend(graph) == nothing
     @test Plasmo._init_graph_backend(graph) == true
-    @test isa(graph_backend(graph),Plasmo.HyperGraphBackend)
+    @test isa(Plasmo.graph_backend(graph),Plasmo.HyperGraphBackend)
 end
 
 function test_hypergraph_functions()
     graph = _create_test_optigraph()
 
-    n1 = getnode(graph,1)
-    n2 = getnode(graph,2)
-    n3 = getnode(graph,3)
+    n1 = optinode(graph,1)
+    n2 = optinode(graph,2)
+    n3 = optinode(graph,3)
 
     @test LightGraphs.all_neighbors(graph,n1) == [n2]
     @test LightGraphs.all_neighbors(graph,n2) == [n1,n3]
@@ -58,21 +58,21 @@ function test_hypergraph_functions()
     #3 nodes and 2 edges
     induced1 = LightGraphs.induced_subgraph(graph,[n1,n2,n3])
     @test num_all_nodes(induced1) == 3
-    @test num_all_optiedges(induced1) == 2
+    @test num_all_edges(induced1) == 2
 
     #2 nodes and no edges
     induced2 = LightGraphs.induced_subgraph(graph,[n1,n3])
     @test num_all_nodes(induced2) == 2
-    @test num_all_optiedges(induced2) == 0
+    @test num_all_edges(induced2) == 0
 
-    e1 = getedge(graph,1)
-    e2 = getedge(graph,2)
+    e1 = optiedge(graph,1)
+    e2 = optiedge(graph,2)
     incident_es1 = incident_edges(graph,n2)
     @test incident_es1 == [e1,e2]
 
     incident_es2 = incident_edges(graph,[n1,n2,n3])
-    n4 = getnode(graph,4)
-    e3 = getedge(graph,n3,n4)
+    n4 = optinode(graph,4)
+    e3 = optiedge(graph,n3,n4)
     @test length(incident_es2) == 1
     @test incident_es2[1] == e3
 
@@ -85,7 +85,7 @@ end
 
 function test_subgraph_functions()
     graph = _create_test_optigraph_w_subgraphs()
-    sub1 = getsubgraph(graph,1)
+    sub1 = subgraph(graph,1)
     @test num_all_nodes(sub1) == 20
 
     ex_sub1 = expand(graph,sub1,1)
@@ -98,7 +98,7 @@ function test_subgraph_functions()
 
     main_node = add_node!(graph)
     @variable(main_node,z>=0)
-    @linkconstraint(graph,main_node[:z] == getnode(sub1,1)[:x])
+    @linkconstraint(graph,main_node[:z] == optinode(sub1,1)[:x])
 
     @test length(Plasmo.hierarchical_edges(graph)) == 1
     @test length(Plasmo.linking_edges(graph)) == 4

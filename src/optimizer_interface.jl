@@ -38,7 +38,7 @@ function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericAffExpr{Float6
     for (i,terms) in enumerate(linear_terms(obj))
         term = terms[2]
         moi_term = index(term)
-        node = getnode(term)
+        node = optinode(term)
         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
         new_moi_idx = node_idx_map[moi_term]
         moi_obj = _swap_linear_term!(moi_obj,i,new_moi_idx)
@@ -54,8 +54,8 @@ function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericQuadExpr{Float
     for (i,terms) in enumerate(quad_terms(obj))
         term1 = terms[2]
         term2 = terms[3]
-        node = getnode(term1)
-        @assert getnode(term1) == getnode(term2)
+        node = optinode(term1)
+        @assert optinode(term1) == optinode(term2)
         moi_term1 = index(term1)
         moi_term2 = index(term2)
         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
@@ -67,7 +67,7 @@ function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericQuadExpr{Float
     for (i,terms) in enumerate(linear_terms(obj))
         term = terms[2]
         moi_term = index(term)
-        node = getnode(term)
+        node = optinode(term)
         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
         new_moi_idx = node_idx_map[moi_term]
         moi_obj = _swap_linear_term!(moi_obj,i,new_moi_idx)
@@ -122,7 +122,7 @@ function _set_node_results!(graph::OptiGraph)
 
     #Set NLP dual solution for node
     #Nonlinear duals #TODO: multiple node solutions with nlp duals
-    #TODO: Add list of model attributes to graph backend. 
+    #TODO: Add list of model attributes to graph backend.
     #if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
     try
         nlp_duals = MOI.get(graph_backend,MOI.NLPBlockDual())

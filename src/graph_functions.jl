@@ -9,7 +9,7 @@ Set the optigraph backend. This creates a hyper graph object that maps to optigr
 """
 function set_graph_backend(graph::OptiGraph)
     hypergraph,hypermap = hyper_graph(graph)
-    graph.graph_backend = HyperGraphBackend(hypergraph,hypermap,false)
+    graph.graph_backend = HyperGraphBackend(hypergraph, hypermap, false)
 end
 #set_graph_backend(graph::OptiGraph,backend::HyperGraphBackend) = graph.graph_backend = backend
 
@@ -44,11 +44,11 @@ function _init_graph_backend(graph::OptiGraph)
 end
 
 """
-    LightGraphs.all_neighbors(graph::OptiGraph,node::OptiNode)
+    LightGraphs.all_neighbors(graph::OptiGraph, node::OptiNode)
 
 Retrieve the optinode neighbors of `node` in the optigraph `graph`.  Uses an underlying hypergraph to query for neighbors.
 """
-function LightGraphs.all_neighbors(graph::OptiGraph,node::OptiNode)
+function LightGraphs.all_neighbors(graph::OptiGraph, node::OptiNode)
     _init_graph_backend(graph)
     lightgraph,graph_map = graph_backend_data(graph)
     vertex = graph_map[node]
@@ -57,11 +57,11 @@ function LightGraphs.all_neighbors(graph::OptiGraph,node::OptiNode)
 end
 
 """
-    LightGraphs.induced_subgraph(graph::OptiGraph,nodes::Vector{OptiNode})
+    LightGraphs.induced_subgraph(graph::OptiGraph, nodes::Vector{OptiNode})
 
 Create an induced subgraph of optigraph given a vector of optinodes.
 """
-function LightGraphs.induced_subgraph(graph::OptiGraph,nodes::Vector{OptiNode})
+function LightGraphs.induced_subgraph(graph::OptiGraph, nodes::Vector{OptiNode})
     _init_graph_backend(graph)
     edges = induced_edges(graph,nodes)
     subgraph = OptiGraph(nodes,edges)
@@ -69,29 +69,29 @@ function LightGraphs.induced_subgraph(graph::OptiGraph,nodes::Vector{OptiNode})
 end
 
 """
-    incident_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+    incident_edges(graph::OptiGraph, nodes::Vector{OptiNode})
 
 Retrieve incident edges to a set of optinodes.
 
-    incident_edges(graph::OptiGraph,node::OptiNode)
+    incident_edges(graph::OptiGraph, node::OptiNode)
 
 Retrieve incident edges to a single optinode.
 """
-function incident_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+function incident_edges(graph::OptiGraph, nodes::Vector{OptiNode})
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     hypernodes = convert(Vector{HyperNode},getindex.(Ref(hyper_map),nodes))
     incidentedges = incident_edges(hypergraph,hypernodes)
     return convert(Vector{OptiEdge},getindex.(Ref(hyper_map),incidentedges))
 end
-incident_edges(graph::OptiGraph,node::OptiNode) = incident_edges(graph,[node])
+incident_edges(graph::OptiGraph, node::OptiNode) = incident_edges(graph, [node])
 
 """
-    induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+    induced_edges(graph::OptiGraph, nodes::Vector{OptiNode})
 
 Retrieve induced edges to a set of optinodes.
 """
-function induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
+function induced_edges(graph::OptiGraph, nodes::Vector{OptiNode})
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     hypernodes = getindex.(Ref(hyper_map),nodes)
@@ -101,11 +101,11 @@ function induced_edges(graph::OptiGraph,nodes::Vector{OptiNode})
 end
 
 """
-    identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
+    identify_edges(graph::OptiGraph, node_vectors::Vector{Vector{OptiNode}})
 
 Identify induced edges and edge separators from a vector of optinode partitions.
 """
-function identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
+function identify_edges(graph::OptiGraph, node_vectors::Vector{Vector{OptiNode}})
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     hypernode_vectors = [getindex.(Ref(hyper_map),nodes) for nodes in node_vectors]
@@ -116,11 +116,11 @@ function identify_edges(graph::OptiGraph,node_vectors::Vector{Vector{OptiNode}})
 end
 
 """
-    identify_nodes(graph::OptiGraph,node_vectors::Vector{Vector{OptiEdge}})
+    identify_nodes(graph::OptiGraph, node_vectors::Vector{Vector{OptiEdge}})
 
 Identify induced nodes and node separators from a vector of optiedge partitions.
 """
-function identify_nodes(graph::OptiGraph,edge_vectors::Vector{Vector{OptiEdge}})
+function identify_nodes(graph::OptiGraph, edge_vectors::Vector{Vector{OptiEdge}})
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     hyperedge_vectors = [getindex.(Ref(hyper_map),edges) for edges in edge_vectors]
@@ -131,11 +131,11 @@ function identify_nodes(graph::OptiGraph,edge_vectors::Vector{Vector{OptiEdge}})
 end
 
 """
-    neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)::Vector{OptiNode})
+    neighborhood(graph::OptiGraph, nodes::Vector{OptiNode}, distance::Int64)::Vector{OptiNode})
 
 Return the optinodes within `distance` of the given `nodes` in the optigraph `graph`.
 """
-function neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)
+function neighborhood(graph::OptiGraph, nodes::Vector{OptiNode}, distance::Int64)
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
     vertices = getindex.(Ref(hyper_map),nodes)
@@ -144,12 +144,12 @@ function neighborhood(graph::OptiGraph,nodes::Vector{OptiNode},distance::Int64)
 end
 
 """
-    expand(graph::OptiGraph,subgraph::OptiGraph,distance::Int64)
+    expand(graph::OptiGraph, subgraph::OptiGraph, distance::Int64)
 
 Return a new expanded subgraph given the optigraph `graph` and an existing subgraph `subgraph`.
 The returned subgraph contains the expanded neighborhood within `distance` of the given `subgraph`.
 """
-function expand(graph::OptiGraph,subgraph::OptiGraph,distance::Int64)
+function expand(graph::OptiGraph, subgraph::OptiGraph, distance::Int64)
     _init_graph_backend(graph)
     hypergraph,hyper_map = Plasmo.graph_backend_data(graph)
 
@@ -172,7 +172,7 @@ end
 Query the edges in `graph` that connect its local nodes to nodes in its subgraphs.
 """
 function hierarchical_edges(graph::OptiGraph)
-    return incident_edges(graph,getnodes(graph))
+    return incident_edges(graph, optinodes(graph))
 end
 
 """
@@ -181,5 +181,5 @@ end
 Query the edges in `graph` that connect nodes within the graph or between subgraphs.
 """
 function linking_edges(graph::OptiGraph)
-    return setdiff(getedges(graph),incident_edges(graph,getnodes(graph)))
+    return setdiff(optiedges(graph), incident_edges(graph, optinodes(graph)))
 end

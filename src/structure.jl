@@ -49,7 +49,7 @@ function graph_depth(graph::OptiGraph)
     depth = 0
     if has_subgraphs(graph)
         depth += 1
-        depth += _subgraph_depth(getsubgraphs(graph))
+        depth += _subgraph_depth(subgraphs(graph))
     end
     return depth
 end
@@ -58,8 +58,8 @@ end
 function _links_subgraphs(graph::OptiGraph)
     return_val = false
     if num_subgraphs(graph) > 1
-        for subgraph in getsubgraphs(graph)
-            sub_incident_edges = incident_edges(graph,getnodes(subgraph))
+        for subgraph in subgraphs(graph)
+            sub_incident_edges = incident_edges(graph, optinodes(subgraph))
             hier_edges = hierarchical_edges(graph)
             if length(setdiff(sub_incident_edges,hier_edges)) > 0
                 return_val = true

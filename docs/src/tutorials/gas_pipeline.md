@@ -1,9 +1,9 @@
 
 # Optimal Control of a Natural Gas Network
 This tutorial shows how to model a natural-gas network optimal control problem by constructing a hierarchical optigraph.  
-We show the resulting structure of the optimization problem and demonstrate how to use Plasmo.jl to decompose the problem and use the [PipsSolver](@ref) to distribute and solve the problem
-in parallel. The details of this model and a description of its parameters can be found in [this manuscript](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687).
-The actual implementation of this tutorial can be found in [this git repository](https://github.com/zavalab/JuliaBox/tree/master/PlasmoExamples/case_studies/gasnetwork).
+We show the resulting structure of the optimization problem and demonstrate how to use Plasmo.jl to partition and decompose the problem. The details of this model and a description of its parameters can be found in
+[this manuscript](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687).
+The actual implementation of this tutorial can be found in [this git repository](https://github.com/zavalab/PlasmoExamples).
 
 ## Problem Description
 We consider the system of connected pipelines in series shown in the below figure. This linear network includes a gas supply at one end, a time-varying demand at the other end, and twelve compressor stations.
@@ -327,14 +327,15 @@ function create_gas_network(net_data)
 end
 ```
 
-Using the above function, we can obtain a complete optigraph representation of the optimal control problem. It is now possible to plot the graph layout using the functions
-in [Plotting](@ref), but we have opted to export the graph structure and use the `Gephi` visualization to produce the below figure.  Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and gray corresponds to piplines.  Notice that the optigraph has captured the space-time structure of the optimization problem.  We also observe a cylindrical shape to the problem which results from the line-pack constraint which couples the initial and final time optinodes for each pipeline.
+Using the above function, we can obtain a complete optigraph representation of the optimal control problem. It is now possible to plot the graph layout using [Plotting](@ref) functions or export the graph structure and use another graph visualization tool.
+`Gephi` was used to produce the below figure. Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and grey corresponds to pipelines.  Notice that the optigraph captures the space-time structure of the optimization problem.  
+We also observe a cylindrical shape to the problem which results from the line-pack constraint which couples the initial and final time optinodes for each pipeline.
 
 ![space_time](../assets/13_pipeline_space_time.svg)
 
 ## Partitioning
 Now that we have an optigraph representation of our optimal control problem, we can use [hypergraph partitioning](https://en.wikipedia.org/wiki/Hypergraph#Partitions)
-to decompose the space-time structure. To do so, we use [KaHyPar](https://github.com/kahypar/KaHyPar.jl) and the functions described in [Partitioning and Graph Operations](@ref).
+to decompose the space-time structure. To do so, we use [KaHyPar](https://github.com/kahypar/KaHyPar.jl) and the functions described in [Graph Partitioning and Processing](@ref).
 the below code creates a hypergraph representation of the optigraph, sets up node and edge weights, partitions the problem, and forms new subgraphs based on the partitions.  
 We also aggregate the subgraphs to produce solvable optinode subproblems which will communicate to our solver.
 
@@ -343,22 +344,26 @@ We also aggregate the subgraphs to produce solvable optinode subproblems which w
 using KaHyPar         
 
 #Get the hypergraph representation of the gas network
-hypergraph,ref_map = gethypergraph(gas_network)     
+hgraph,ref_map = hyper_graph(gas_network)     
 
 #Setup node and edge weights
-n_vertices = length(vertices(hypergraph))              
+n_vertices = length(vertices(hgraph))              
 node_weights = [num_variables(node) for node in all_nodes(gas_network)]
-edge_weights = [num_link_constraints(edge) for edge in all_edges(gas_network)]  
+edge_weights = [num_linkconstraints(edge) for edge in all_edges(gas_network)]  
 
 #Use KaHyPar to partition the hypergraph
-node_vector = KaHyPar.partition(hypergraph, 13, configuration=:edge_cut,
-imbalance=0.01, node_weights=node_weights, edge_weights=edge_weights)      
+node_vector = KaHyPar.partition(hypergraph,
+                                13,
+                                configuration=:edge_cut,
+                                imbalance=0.01,
+                                node_weights=node_weights,
+                                edge_weights=edge_weights)      
 
 #Create a Partition object
-partition = Partition(gas_network, node_vector, ref_map)           
+partition = Partition(node_vector, ref_map)           
 
 #Setup subgraphs based on the partition
-make_subgraphs!(gas_network, partition)             
+apply_partition!(gas_network, partition)             
 
 #Aggregate the subgraphs into OptiNodes which can be solved
 new_graph , aggregate_map  = aggregate(gas_network, 0)        

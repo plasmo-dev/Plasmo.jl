@@ -1,5 +1,5 @@
-# Partitioning and Graph Analysis
-The [Modeling](@ref) section describes how to construct optigraphs using a bottom-up approach with a focus on [Hierarchical Modeling](@ref) to create multi-level optigraphs.
+# Graph Partitioning and Processing
+The [Modeling with OptiGraphs](@ref) section describes how to construct optigraphs using a bottom-up approach with a focus on [Hierarchical Modeling using Subgraphs](@ref) to create multi-level optigraphs.
 Plasmo.jl also supports creating multi-level optigraphs using a top-down approach. This is done using the optigraph partition functions and interfaces to standard graph partitioning tools such
 as [Metis](https://github.com/JuliaSparse/Metis.jl) and [KaHyPar](https://github.com/kahypar/KaHyPar.jl).
 
@@ -118,29 +118,30 @@ We can also plot the resulting optigraph (see [Plotting](@ref)) which produces a
     @constraint(n1,n1[:x] == 0)
 ```
 
-```@repl plot_chain
+```julia
 using Plots
 using PlasmoPlots
-plt_chain = plt_graph4 = layout_plot(graph,layout_options = Dict(:tol => 0.1,:iterations => 500), linealpha = 0.2,markersize = 6)
-Plots.savefig(plt_chain,"chain_layout.svg");
+plt_chain_layout = layout_plot(graph,
+                               layout_options=Dict(:tol=>0.1,:iterations=>500),
+                               linealpha = 0.2,
+                               markersize = 6)
 
-plt_chain_matrix = matrix_plot(graph);
-Plots.savefig(plt_chain_matrix,"chain_layout_matrix.svg");
+plt_chain_matrix = matrix_plot(graph)
 ```
 
 ```@raw html
-<img src="../chain_layout.svg" alt="chain" width="400"/>
+<img src="../assets/chain_layout.svg" alt="chain_layout" width="400"/>
 ```
 
 ```@raw html
-<img src="../chain_layout_matrix.svg" alt="chain_matrix" width="400"/>
+<img src="../assets/chain_layout_matrix.svg" alt="chain_matrix" width="400"/>
 ```
 
 ## Partitioning OptiGraphs
 At its core, the [`OptiGraph`](@ref) is a [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) and can naturally interface to hypergraph partitioning tools.  
 For our example here we demonstrate how to use hypergraph partitioning (using [KaHyPar](https://github.com/kahypar/KaHyPar.jl)),
 but `Plasmo.jl` also supports standard graph partitioning algorithms using graph projections.
-The below snippet uses the [`hyper_graph`](@ref) function which returns a [`HyperGraph`](@ref) object and a `hyper_map` (a Julia dictionary) which maps hypernodes and hyperedges back to the original optigraph.
+The below snippet uses the [`hyper_graph`](@ref) function which returns a [`Plasmo.HyperGraph`](@ref) object and a `hyper_map` (a Julia dictionary) which maps hypernodes and hyperedges back to the original optigraph.
 
 ```jldoctest hypergraph
 julia> hgraph, hyper_map = hyper_graph(graph);
@@ -192,7 +193,10 @@ we see that our `graph` now contains 8 subgraphs with 7 link-constraints that co
 ```julia
 julia> using KaHyPar
 
-julia> partition_vector = KaHyPar.partition(hypergraph, 8, configuration=:connectivity, imbalance=0.01);
+julia> partition_vector = KaHyPar.partition(hypergraph,
+                                            8,
+                                            configuration=:connectivity,
+                                            imbalance=0.01);
 
 julia> partition = Partition(partition_vector, hyper_map);
 
@@ -210,7 +214,7 @@ julia> println(length(partition_vector))
 julia> println(partition)
 OptiGraph Partition w/ 8 subpartitions
 
-julia> println(length(getsubgraphs(graph)))
+julia> println(num_subgraphs(graph))
 8
 
 julia> num_linkconstraints(graph)
@@ -220,58 +224,28 @@ julia> num_all_linkconstraints(graph)
 99
 ```
 
-```@setup plot_chain_partition
-    using Plasmo
-    using KaHyPar
-    using PlasmoPlots
-    using Suppressor
-
-    T = 100         
-    d = sin.(1:T)   
-
-    graph = OptiGraph()
-    @optinode(graph,state[1:T])
-    @optinode(graph,control[1:T-1])
-
-    for node in state
-        @variable(node,x)
-        @constraint(node, x >= 0)
-        @objective(node,Min,x^2)
-    end
-    for node in control
-        @variable(node,u)
-        @constraint(node, u >= -1000)
-        @objective(node,Min,u^2)
-    end
-
-    @linkconstraint(graph,[i = 1:T-1],state[i+1][:x] == state[i][:x] + control[i][:u] + d[i])
-    n1 = state[1]
-    @constraint(n1,n1[:x] == 0)
-
-    hgraph,hyper_map = gethypergraph(graph);
-    partition_vector = @suppress KaHyPar.partition(hgraph, 8, configuration=:connectivity, imbalance=0.01);
-    partition = Partition(partition_vector, hyper_map);
-    apply_partition!(graph,partition);
-```
-
 If we plot the partitioned optigraph, it reveals eight distinct partitions and
 the coupling between them. The plots show that the partitions are well-balanced and the matrix visualization shows the problem is reordered into a banded structure that is typical of dynamic
 optimization problems.
 
-```@repl plot_chain_partition
-plt_chain_partition = layout_plot(graph, layout_options=Dict(:tol=>0.01, :iterations=>500), linealpha=0.2, markersize=6, subgraph_colors=true);
-Plots.savefig(plt_chain_partition,"chain_layout_partition.svg");
+```julia
+plt_chain_partition_layout = layout_plot(graph,
+                                         layout_options=Dict(:tol=>0.01,
+                                                        :iterations=>500),
+                                         linealpha=0.2,
+                                         markersize=6,
+                                         subgraph_colors=true)
 
-plt_chain_matrix_partition = matrix_layout(graph, subgraph_colors=true);
-Plots.savefig(plt_chain_matrix_partition,"chain_layout_matrix_partition.svg");
+plt_chain_partition_matrix = matrix_layout(graph, subgraph_colors=true)
+
 ```
 
 ```@raw html
-<img src="../chain_layout_partition.svg" alt="chain_partition" width="400"/>
+<img src="../assets/chain_layout_partition.svg" alt="chain_partition" width="400"/>
 ```
 
 ```@raw html
-<img src="../chain_layout_matrix_partition.svg" alt="chain_matrix_partition" width="400"/>
+<img src="../assets/chain_layout_matrix_partition.svg" alt="chain_matrix_partition" width="400"/>
 ```
 
 ## Aggregating OptiGraphs
@@ -298,57 +272,29 @@ LinkConstraints:     7              (7)
 
     A user can also use `aggregate!` to permanently aggregate an existing optigraph. This avoids maintaining a copy of the original optigraph.
 
-```@setup plot_chain_aggregate
-    using Plasmo
-    using KaHyPar
-    using PlasmoPlots
-    using Suppressor
-
-    T = 100         
-    d = sin.(1:T)   
-
-    graph = OptiGraph()
-    @optinode(graph,state[1:T])
-    @optinode(graph,control[1:T-1])
-
-    for node in state
-        @variable(node,x)
-        @constraint(node, x >= 0)
-        @objective(node,Min,x^2)
-    end
-    for node in control
-        @variable(node,u)
-        @constraint(node, u >= -1000)
-        @objective(node,Min,u^2)
-    end
-
-    @linkconstraint(graph,[i = 1:T-1],state[i+1][:x] == state[i][:x] + control[i][:u] + d[i])
-    n1 = state[1]
-    @constraint(n1,n1[:x] == 0)
-
-    hypergraph,hyper_map = gethypergraph(graph);
-    partition_vector = @suppress KaHyPar.partition(hypergraph, 8, configuration = :connectivity, imbalance = 0.01);
-    partition = Partition(partition_vector, hyper_map);
-    make_subgraphs!(graph, partition);
-
-    aggregate_graph,reference_map = aggregate(graph,0);
-```
 
 We can lastly plot the aggregated graph structure which simply shows 8 optinodes with 7 linking constraints.
-```@repl plot_chain_aggregate
-plt_chain_aggregate = layout_plot(aggregate_graph,layout_options = Dict(:tol => 0.01,:iterations => 10),node_labels = true,markersize = 30,labelsize = 20,node_colors = true);
-Plots.savefig(plt_chain_aggregate,"chain_layout_aggregate.svg");
 
-plt_chain_matrix_aggregate = matrix_plot(aggregate_graph,node_labels = true,node_colors = true);
-Plots.savefig(plt_chain_matrix_aggregate,"chain_layout_matrix_aggregate.svg");
+```julia
+plt_chain_aggregate = layout_plot(aggregate_graph,
+                                  layout_options=Dict(:tol=>0.01,:iterations=>10),
+                                  node_labels=true,
+                                  markersize=30,
+                                  labelsize=20,
+                                  node_colors=true)
+
+plt_chain_matrix_aggregate = matrix_plot(aggregate_graph,
+                                         node_labels=true,
+                                         node_colors=true);
+
 ```
 
 ```@raw html
-<img src="../chain_layout_aggregate.svg" alt="chain_aggregate" width="400"/>
+<img src="../assets/chain_layout_aggregate.svg" alt="chain_aggregate" width="400"/>
 ```
 
 ```@raw html
-<img src="../chain_layout_matrix_aggregate.svg" alt="chain_matrix_aggregate" width="400"/>
+<img src="../assets/chain_layout_matrix_aggregate.svg" alt="chain_matrix_aggregate" width="400"/>
 ```
 
 ## OptiGraph Projections

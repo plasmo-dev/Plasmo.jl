@@ -42,9 +42,9 @@ end
 function test_optiedge_1()
     graph = _create_optigraph()
     link_cons = linkconstraints(graph)
-    n1 = getnode(graph,1)
-    n4 = getnode(graph,4)
-    e1 = getedge(graph,1)
+    n1 = optinode(graph,1)
+    n4 = optinode(graph,4)
+    e1 = optiedge(graph,1)
 
     link_ref = link_cons[1]
     link_con = constraint_object(link_ref)
@@ -53,8 +53,8 @@ function test_optiedge_1()
     @test shape(link_con) == JuMP.ScalarShape()
     @test name(link_ref) == "ref"
 
-    @test getnodes(link_con) == [n4,n1]
-    @test getnodes(link_ref) == [n4,n1]
+    @test optinodes(link_con) == [n4,n1]
+    @test optinodes(link_ref) == [n4,n1]
     @test num_nodes(link_con) == 2
 
     @test Base.string(e1) == "OptiEdge w/ 1 Constraint(s)"

@@ -57,20 +57,20 @@ function test_optigraph1()
     @linkconstraint(graph,nodes2[2][:y] == nodes2[3][:y],attach = nodes2[2])
 
     @test num_nodes(graph) == 15
-    @test num_optiedges(graph) == 3
+    @test num_edges(graph) == 3
     @test num_linkconstraints(graph) == 3
     @test num_variables(graph) == 30
     @test has_node_objective(graph) == true
 
     obj = objective_function(graph)
-    @test length(getnodes(obj)) == 15
+    @test length(optinodes(obj)) == 15
 
     JuMP.set_objective_function(graph,n1[:x])
     obj = objective_function(graph)
-    @test length(getnodes(obj)) == 1
+    @test length(optinodes(obj)) == 1
 
     JuMP.set_objective_function(graph,n1[:x]^2)
-    @test length(getnodes(obj)) == 1
+    @test length(optinodes(obj)) == 1
 
     JuMP.set_objective_coefficient(graph,n1[:x],2)
     @test objective_function(graph).aff.terms[n1[:x]] == 2.0
@@ -111,9 +111,9 @@ function test_set_model_with_graph()
     set_model(n2,m2)
 
     @test optinodes(graph) == [n1,n2]
-    @test all_optinodes(graph) == [n1,n2]
-    @test all_node(graph,1) == n1
-    @test all_node(graph,2) == n2
+    @test all_nodes(graph) == [n1,n2]
+    @test optinode_by_index(graph,1) == n1
+    @test optinode_by_index(graph,2) == n2
     @test Base.getindex(graph,n1) == 1
 
     #Link constraints take the same expressions as the JuMP @constraint macro
@@ -157,12 +157,12 @@ function test_subgraph()
     @optinode(sg1,ng1[1:5])
     @optinode(sg2,ng2[1:5])
 
-    for node in getnodes(sg1)
+    for node in optinodes(sg1)
         @variable(node,0 <= x <= 2)
         @objective(node,Max,x)
     end
 
-    for node in getnodes(sg2)
+    for node in optinodes(sg2)
         @variable(node,x>=2)
         @objective(node,Min,x)
     end
@@ -175,8 +175,8 @@ function test_subgraph()
 
     @test num_nodes(graph) == 1
     @test num_all_nodes(graph) == 11
-    @test num_optiedges(graph) == 2
-    @test num_all_optiedges(graph) == 4
+    @test num_edges(graph) == 2
+    @test num_all_edges(graph) == 4
     @test num_subgraphs(graph) == 2
     @test length(subgraphs(graph)) == 2
     @test num_all_subgraphs(graph) == 2
@@ -188,7 +188,7 @@ function test_subgraph()
     edgs = optiedges(graph)
     @test Plasmo._is_valid_optigraph(ng1,edgs) == false
 
-    @test all_edge(graph,1) == edgs[1]
+    @test optiedge_by_index(graph,1) == edgs[1]
     @test Base.getindex(graph,edgs[1]) == 1
 
     con_types = JuMP.list_of_constraint_types(graph)
@@ -209,7 +209,7 @@ end
 
 function test_multiple_solves()
     graph = _create_optigraph()
-    n1 = getnode(graph,1)
+    n1 = optinode(graph,1)
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
     @test isapprox(value(n1[:x]), 1, atol = 1e-6)
@@ -233,9 +233,9 @@ end
 
 function test_fix_variable()
     graph = _create_optigraph()
-    n1 = getnode(graph,1)
+    n1 = optinode(graph,1)
     fix(n1[:x],1,force = true)
-    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer,"print_level"=>0))
     optimize!(graph)
     @test value(n1[:x]) == 1
 

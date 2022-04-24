@@ -76,7 +76,7 @@ function aggregate(optigraph::OptiGraph)
     has_nonlinear_objective = has_nl_objective(optigraph)
     if has_nonlinear_objective
         graph_obj = :(0)
-    elseif has_quad_objective(optigraph)
+    elseif has_node_quad_objective(optigraph)
         graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})
     else
         graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
@@ -196,7 +196,8 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
     reference_map = AggregateMap()  #old optigraph => new optigraph
     sg_dict[graph] = root_optigraph
 
-    #iterate through depth until we get to last level.  last level contains the leaf subgraphs that get converted to optinodes
+    # iterate through depth until we get to last level.
+    # last level contains the leaf subgraphs that get converted to optinodes
     depth = 0
     parents = [graph]
     final_parents = [graph]
@@ -204,7 +205,7 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
         subs_to_check = []
         for parent in parents
             new_parent = sg_dict[parent]
-            subs = getsubgraphs(parent)
+            subs = subgraphs(parent)
             for sub in subs
                 new_subgraph = OptiGraph()
                 add_subgraph!(new_parent,new_subgraph)
@@ -220,8 +221,9 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
     #ADD THE BOTTOM LEVEL NODES from the corresponding subgraphs
     for parent in parents
         name_idx = 1
-        for leaf_subgraph in getsubgraphs(parent)
-            combined_node,combine_ref_map = aggregate(leaf_subgraph) #creates a new optinode
+        for leaf_subgraph in subgraphs(parent)
+            #create a new optinode
+            combined_node, combine_ref_map = aggregate(leaf_subgraph)
             merge!(reference_map,combine_ref_map)
             new_parent = sg_dict[parent]
             add_node!(new_parent,combined_node)
@@ -235,12 +237,12 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
     for graph in reverse(final_parents)  #reverse to start from the bottom
         name_idx = 1
 
-        mnodes = getnodes(graph)
-        ledges = getedges(graph)
+        nodes = optinodes(graph)
+        edges = optiedges(graph)
         new_graph = sg_dict[graph]
 
         #Add copy optinodes
-        for node in mnodes
+        for node in nodes
             new_node,ref_map = _copy_node(node)
             merge!(reference_map,ref_map)
             add_node!(new_graph,new_node)
@@ -249,10 +251,10 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
         end
 
         #Add copy linkconstraints
-        for optiedge in ledges
-            for linkconstraint in linkconstraints(optiedge)
-                new_con = _copy_constraint(linkconstraint,reference_map)
-                JuMP.add_constraint(new_graph,new_con)
+        for edge in edges
+            for linkconstraint in linkconstraints(edge)
+                new_con = _copy_constraint(linkconstraint, reference_map)
+                JuMP.add_constraint(new_graph, new_con)
             end
         end
     end
