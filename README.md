@@ -1,5 +1,6 @@
 ![Logo](./docs/plasmo3.svg)
 
+
 [![CI](https://github.com/plasmo-dev/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/plasmo-dev/Plasmo.jl/actions)
 [![codecov](https://codecov.io/gh/plasmo-dev/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/plasmo-dev/Plasmo.jl)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/dev/)
