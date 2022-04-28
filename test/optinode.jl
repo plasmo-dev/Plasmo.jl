@@ -28,7 +28,7 @@ function test_optinode1()
     @test JuMP.all_variables(node) == JuMP.VariableRef[x]
     @test is_node_variable(x) == true
     @test is_node_variable(node,x) == true
-    @test getnode(x) == node
+    @test optinode(x) == node
 
     m = JuMP.Model()
     @variable(m,x >= 0)
@@ -37,17 +37,17 @@ function test_optinode1()
     @test is_set_to_node(m) == true
     @test num_variables(node) == 1
     @test isa(JuMP.backend(m),Plasmo.NodeBackend)
-    @test getnode(m) == node
-    @test getnode(x) == node
+    @test optinode(m) == node
+    @test optinode(x) == node
 
     @variable(node,y >= 0)
     @constraint(node,cref, x + y >= 3)
     @test num_constraints(node) == 1
-    @test num_nl_constraints(node) == 0
-    @test getnode(cref) == node
+    @test num_nonlinear_constraints(node) == 0
+    @test optinode(cref) == node
 
     @NLconstraint(node,nl_cref, x^3 >= 8)
-    @test num_nl_constraints(node) == 1
+    @test num_nonlinear_constraints(node) == 1
 
     @test has_objective(node) == false
     @objective(node,Min,x)
@@ -71,13 +71,11 @@ function test_optinode1()
     @test JuMP.dual_status(node) == MOI.FEASIBLE_POINT
     @test JuMP.solver_name(node) == "Ipopt"
     @test JuMP.mode(node) == MOIU.AUTOMATIC
+    @test Base.string(node) == "OptiNode w/ 2 Variable(s) and 2 Constraint(s)"
 
-    Base.show(node)
-    @test Base.string(node) == "OptiNode w/ 2 Variable(s)"
-
-    @test nodevalue(x) == value(x)
-    @test nodevalue(x + y) == value(x + y)
-    @test nodevalue(x + y^2) == value(x + y^2)
+    # @test nodevalue(x) == value(x)
+    # @test nodevalue(x + y) == value(x + y)
+    # @test nodevalue(x + y^2) == value(x + y^2)
 end
 
 function test_optinode2()
@@ -105,7 +103,7 @@ function test_optinode3()
     @NLconstraint(n1,x^3 + p == 2)
 
     c = n1.nlp_data.nlconstr[1]
-    @test JuMP.nl_constraint_string(n1, IJuliaMode, c ) == "(n1_{:x} ^ {3.0} + p) - 2.0 = 0"
+    @test JuMP.nonlinear_constraint_string(n1, MIME("text/latex"), c ) == "(n1_{:x} ^ {3.0} + p) - 2.0 = 0"
 
     graph = OptiGraph()
     n1 = add_node!(graph)

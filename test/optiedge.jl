@@ -42,9 +42,9 @@ end
 function test_optiedge_1()
     graph = _create_optigraph()
     link_cons = linkconstraints(graph)
-    n1 = getnode(graph,1)
-    n4 = getnode(graph,4)
-    e1 = getedge(graph,1)
+    n1 = optinode(graph,1)
+    n4 = optinode(graph,4)
+    e1 = optiedge(graph,1)
 
     link_ref = link_cons[1]
     link_con = constraint_object(link_ref)
@@ -53,24 +53,19 @@ function test_optiedge_1()
     @test shape(link_con) == JuMP.ScalarShape()
     @test name(link_ref) == "ref"
 
-    @test getnodes(link_con) == [n4,n1]
-    @test getnodes(link_ref) == [n4,n1]
+    @test optinodes(link_con) == [n4,n1]
+    @test optinodes(link_ref) == [n4,n1]
     @test num_nodes(link_con) == 2
 
-    Base.show(e1)
-    Base.show(link_ref)
-    Base.show(link_con)
-
     @test Base.string(e1) == "OptiEdge w/ 1 Constraint(s)"
-    @test JuMP.constraint_string(IJuliaMode,link_ref) == "ref: n4[:x] - n1[:x] = 0.0"
-    @test JuMP.constraint_string(IJuliaMode,link_con) == "n4_{:x} - n1_{:x} = 0.0"
+    @test JuMP.constraint_string(MIME("text/latex"),link_ref) == "ref: n4[:x] - n1[:x] = 0.0"
+    @test JuMP.constraint_string(MIME("text/latex"),link_con) == "n4_{:x} - n1_{:x} = 0.0"
     @test Base.string(link_con) == "LinkConstraint: n4[:x] - n1[:x], MathOptInterface.EqualTo{Float64}(0.0)"
 
     @test MOI.is_valid(link_ref) == true
     MOI.delete!(link_ref)
     @test MOI.is_valid(link_ref) == false
 end
-
 
 function run_tests()
     for name in names(@__MODULE__; all = true)

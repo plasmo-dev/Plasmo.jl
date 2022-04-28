@@ -1,7 +1,7 @@
 """
     HyperGraphBackend
 
-Graph backend corresponding to a `LightGraphs` HyperGraph object.  A `HyperGraphBackend` is used to do graph analysis on an optigraph
+Graph backend corresponding to a Plasmo.jl `HyperGraph` object.  A `HyperGraphBackend` is used to do graph analysis on an optigraph
 by mapping optigraph elements to hypergraph elements.
 """
 mutable struct HyperGraphBackend
@@ -15,7 +15,7 @@ end
 """
     OptiGraph()
 
-Create an empty OptiGraph. An OptiGraph extends JuMP.AbstractModel and supports most JuMP.Model functions.
+Create an empty OptiGraph. An OptiGraph extends a JuMP.AbstractModel and supports most JuMP.Model functions.
 """
 mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     #Topology
@@ -68,7 +68,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
 end
 
 #Create an OptiGraph given a set of optinodes and optiedges
-function OptiGraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
+function OptiGraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     #TODO
     #is_valid_optigraph(nodes,edges) || error("Cannot create optigraph from given nodes and edges.  At least one edge node is not in the provided vector of optinodes.")
     graph = OptiGraph()
@@ -86,13 +86,19 @@ end
 #Broadcast over graph without using `Ref`
 Base.broadcastable(graph::OptiGraph) = Ref(graph)
 
-function _is_valid_optigraph(nodes::Vector{OptiNode},edges::Vector{OptiEdge})
-    edge_nodes = union(getnodes.(edges)...)
+function _is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+    edge_nodes = union(optinodes.(edges)...)
     return issubset(edge_nodes,nodes)
 end
 
-optigraph_reference(graph::OptiGraph) = OptiGraph(all_nodes(graph),all_edges(graph))
+"""
+    optigraph_reference(graph::OptiGraph)::OptiGraph
 
+Create a new optigraph with the same optinodes and optiedges as `graph`. Useful for defining an optigraph over
+existing nodes and edges without recreating them. Note that any changes to the optinodes and optiedges
+in the returned optigraph will take place in the original `graph`.
+"""
+optigraph_reference(graph::OptiGraph) = OptiGraph(all_nodes(graph), all_edges(graph))
 @deprecate ModelGraph OptiGraph
 ########################################################
 # OptiGraph Interface
@@ -103,98 +109,150 @@ function _flag_graph_backend!(graph::OptiGraph)
         graph.graph_backend.update_backend = true
     end
 end
+
 #################
 #Subgraphs
 #################
 """
-    add_subgraph!(graph::OptiGraph,subgraph::OptiGraph)
+    add_subgraph!(graph::OptiGraph, subgraph::OptiGraph)::OptiGraph
 
 Add the sub-optigraph `subgraph` to the higher level optigraph `graph`. Returns the original `graph`
 """
-function add_subgraph!(graph::OptiGraph,subgraph::OptiGraph)
+function add_subgraph!(graph::OptiGraph, subgraph::OptiGraph)
     push!(graph.subgraphs,subgraph)
     _flag_graph_backend!(graph)
     return graph
 end
 
 """
-    getsubgraphs(optigraph::OptiGraph)::Vector{OptiGraph}
+    subgraphs(optigraph::OptiGraph)::Vector{OptiGraph}
 
 Retrieve the local subgraphs of `optigraph`.
 """
-getsubgraphs(optigraph::OptiGraph) = OptiGraph[subgraph for subgraph in optigraph.subgraphs]
-num_subgraphs(optigraph::OptiGraph) = length(optigraph.subgraphs)
-getsubgraph(optigraph::OptiGraph,idx::Int64) = optigraph.subgraphs[idx]
-subgraphs(optigraph::OptiGraph) = getsubgraphs(optigraph)
+subgraphs(optigraph::OptiGraph) = OptiGraph[subgraph for subgraph in optigraph.subgraphs]
+@deprecate getsubgraphs subgraphs
 """
-    all_subgraphs(optigraph::OptiGraph)::Vector{OptiGraph}
+    subgraph(graph::OptiGraph, idx::Int64)
 
-Retrieve all of the contained subgraphs of `optigraph`, including nested subgraphs. The order of the subgraphs in
+Retrieve the the subgraph in `graph` at index `idx`.
+"""
+subgraph(graph::OptiGraph, idx::Int64) = graph.subgraphs[idx]
+@deprecate getsubgraph subgraph
+"""
+    all_subgraphs(graph::OptiGraph)::Vector{OptiGraph}
+
+Retrieve all of the contained subgraphs of `graph`, including nested subgraphs. The order of the subgraphs in
 the returned vector starts with the local subgraphs in `optigraph` and then appends the nested subgraphs for each local subgraph.
 """
-function all_subgraphs(optigraph::OptiGraph)
-    subgraphs = optigraph.subgraphs
+function all_subgraphs(graph::OptiGraph)
+    subgraphs = graph.subgraphs
     for subgraph in subgraphs
         subgraphs = [subgraphs;all_subgraphs(subgraph)]
     end
     return subgraphs
 end
+
+"""
+    subgraph_by_index(graph::OptiGraph, index::Int64)::OptiGraph
+
+Recursively search optigraph `graph` for the subngraph at `index` by traversing subgraphs.
+Note that the subgraph is not unique to the index. Since the search is depth-first, the subgraph
+returned may be different if the overall `graph` structure changes.
+"""
+subgraph_by_index(graph::OptiGraph, index::Int64) = all_subgraphs(graph)[index]
+
+
+"""
+    num_subgraphs(graph::OptiGraph)::Int64
+
+Retrieve the number of local subgraphs in `graph`.
+"""
+num_subgraphs(optigraph::OptiGraph) = length(optigraph.subgraphs)
+
+"""
+    num_all_subgraphs(graph::OptiGraph)::Int64
+
+Retrieve the number of subgraphs in `graph` including nested subgraphs.
+"""
 num_all_subgraphs(optigraph::OptiGraph) = length(all_subgraphs(optigraph))
+
+"""
+    has_subgraphs(graph::OptiGraph)::Bool
+
+Check whether `graph` contains subgraphs.
+ """
 has_subgraphs(graph::OptiGraph) = !(isempty(graph.subgraphs))
+
 #################
 #OptiNodes
 #################
 """
-    add_node!(graph::OptiGraph)
+    add_node!(graph::OptiGraph)::OptiNode
 
 Create a new `OptiNode` and add it to `graph`. Returns the added optinode.
 
-    add_node!(graph::OptiGraph,m::JuMP.Model)
+    add_node!(graph::OptiGraph, m::JuMP.Model)::OptiNode
 
 Add a new optinode to `graph` and set its model to the `JuMP.Model` `m`.
 
-    add_node!(graph::OptiGraph,optinode::OptiNode)
+    add_node!(graph::OptiGraph, optinode::OptiNode)::OptiNode
 
-Add the existing `optinode` (Created with `OptiNode()`) to `graph`.
+Add the existing `optinode` (Created with `OptiNode()`) to the optigraph `graph`.
 """
-function add_node!(graph::OptiGraph;label::String = "n$(length(graph.optinodes) + 1)")
+function add_node!(graph::OptiGraph; label::String="n$(length(graph.optinodes) + 1)")
     optinode = OptiNode()
     optinode.label = label
     add_node!(graph,optinode)
     return optinode
 end
 
-function add_node!(graph::OptiGraph,m::JuMP.Model)
+function add_node!(graph::OptiGraph, m::JuMP.Model)
     optinode = add_node!(graph)
     set_model(optinode,m)
     return optinode
 end
 
-function add_node!(graph::OptiGraph,optinode::OptiNode)
-    push!(graph.optinodes,optinode)
+function add_node!(graph::OptiGraph, optinode::OptiNode)
+    push!(graph.optinodes, optinode)
     graph.node_idx_map[optinode] = length(graph.optinodes)
     _flag_graph_backend!(graph)
     return optinode
 end
 
 """
-    getnodes(graph::OptiGraph) = graph.optinodes
+    optinodes(graph::OptiGraph)::Vector{OptiNode}
 
-Retrieve the optinodes in `graph`.
+Retrieve the optinodes in `graph`. Note that this returns the local optinodes contained
+directly in `graph` and excludes nodes contained in subgraphs of `graph`.
 """
-getnodes(graph::OptiGraph) = graph.optinodes
-optinodes(graph::OptiGraph) = getnodes(graph)
-"""
-    getnode(graph::OptiGraph) = graph.optinodes
-
-Retrieve the local optinode in `graph` at `index`. This does not look up nodes that could be in subgraphs.
-"""
-getnode(graph::OptiGraph,index::Int64) = graph.optinodes[index]
+optinodes(graph::OptiGraph) = graph.optinodes
 
 """
-    all_nodes(graph::OptiGraph)
+    optinode(graph::OptiGraph, index::Int64)
 
-Recursively collect nodes in a optigraph from each of its subgraphs
+Retrieve the local optinode in `graph` at `index`. This does not retrieve nodes in subgraphs.
+"""
+optinode(graph::OptiGraph, index::Int64) = graph.optinodes[index]
+@deprecate getnode optinode
+@deprecate getnodes optinodes
+
+"""
+    optinode_by_index(graph::OptiGraph, index::Int64)::OptiNode
+
+Recursively search optigraph `graph` for the optinode at `index` by traversing subgraphs.
+Note that the optinode is not unique to the index. Since the search is depth-first, the optinode
+returned may be different if the subgraph structure changes.
+"""
+function optinode_by_index(graph::OptiGraph, index::Int64)
+    nodes = all_nodes(graph)
+    return nodes[index]
+end
+@deprecate(all_node, optinode_by_index)
+
+"""
+    all_nodes(graph::OptiGraph)::Vector{OptiNode}
+
+Recursively collect all optinodes in `graph` by traversing each of its subgraphs.
 """
 function all_nodes(graph::OptiGraph)
     nodes = graph.optinodes
@@ -203,135 +261,182 @@ function all_nodes(graph::OptiGraph)
     end
     return nodes
 end
-all_optinodes(graph::OptiGraph) = all_nodes(graph)
-"""
-    all_node(graph::OptiGraph,index::Int64)
-
-Find the optinode in `graph` at `index`. This traverses all of the nodes in the subgraphs of `graph`.
-"""
-function all_node(graph::OptiGraph,index::Int64)
-    nodes = all_nodes(graph)
-    return nodes[index]
-end
-@deprecate(find_node,all_node)
-
 
 """
-    Base.getindex(graph::OptiGraph,node::OptiNode)
+    num_nodes(graph::OptiGraph)::Int64
 
-Retrieve the index of the optinode `node` in `graph`.
+Return the number of local nodes in `graph`.
 """
-function Base.getindex(graph::OptiGraph,node::OptiNode)
-    return graph.node_idx_map[node]
-end
+num_nodes(graph::OptiGraph) = length(graph.optinodes)
 
 """
-    Base.getindex(graph::OptiGraph,index::Int64)
+    num_all_nodes(graph::OptiGraph)::Int64
 
-Retrieve the node at `index` in `graph`.
+Return the total number of nodes in `graph` including subgraphs.
 """
-Base.getindex(graph::OptiGraph,index::Int64) = getnode(graph,index)
-
-###################################################
-#OptiEdges
-###################################################
-function add_optiedge!(graph::OptiGraph,optinodes::Vector{OptiNode})
-    #Check for existing optiedge.  Return if edge already exists
-    key = Set(optinodes)
-    if haskey(graph.optiedge_map,key)
-        optiedge = graph.optiedge_map[key]
-    else
-        n_links = length(graph.optiedges)
-        idx = n_links + 1
-        optiedge = OptiEdge(optinodes)
-        push!(graph.optiedges,optiedge)
-        graph.optiedge_map[optiedge.nodes] = optiedge
-        graph.edge_idx_map[optiedge] = idx
-        _flag_graph_backend!(graph)
-    end
-    return optiedge
-end
-add_edge!(graph::OptiGraph,optinodes::Vector{OptiNode}) = add_optiedge!(graph,optinodes)
-@deprecate add_link_edge add_optiedge
-
-"""
-    getedges(graph::OptiGraph) = graph.optiedges
-
-Retrieve the local optiedges in `graph`.
-"""
-getedges(graph::OptiGraph) = graph.optiedges
-optiedges(graph::OptiGraph) = getedges(graph)
-
-"""
-    getedge(graph::OptiGraph,index::Int64)
-
-Retrieve the local optiedge in `graph` at `index`
-
-    getedge(graph::OptiGraph,nodes::OrderedSet{OptiNode})
-
-Retrieve the optiedge in `graph` that connects the optinodes in the OrderedSet of `nodes`.
-
-    getedge(graph::OptiGraph,nodes::OptiNode...)
-
-Retrieve the optiedge in `graph` that connects `nodes`.
-"""
-getedge(graph::OptiGraph,index::Int64) = graph.optiedges[index]
-getedge(graph::OptiGraph,nodes::Set{OptiNode}) = graph.optiedge_map[nodes]
-function getedge(graph::OptiGraph,nodes::OptiNode...)
-    s = Set(collect(nodes))
-    return getedge(graph,s)
-end
-
-"""
-    all_edges(graph::OptiGraph)
-
-Retrieve all optiedges in `graph`, includes edges in subgraphs of `graph`.
-"""
-function all_edges(graph::OptiGraph)
-    edges = getedges(graph)
-    for subgraph in graph.subgraphs
-        edges = [edges;all_edges(subgraph)]
-    end
-    return edges
-end
-all_optiedges(graph::OptiGraph) = all_edges(graph)
-
-function all_edge(graph::OptiGraph,index::Int64)
-    edges = all_edges(graph)
-    return edges[index]
-end
-
-"""
-    Base.getindex(graph::OptiGraph,optiedge::OptiEdge)
-
-Retrieve the index of the `optiedge` in `graph`.
-"""
-function Base.getindex(graph::OptiGraph,optiedge::OptiEdge)
-    return graph.edge_idx_map[optiedge]
-end
-
 function num_all_nodes(graph::OptiGraph)
     n_nodes = sum(num_nodes.(all_subgraphs(graph)))
     n_nodes += num_nodes(graph)
     return n_nodes
 end
 
-function num_all_optiedges(graph::OptiGraph)
-    n_link_edges = sum(num_optiedges.(all_subgraphs(graph)))
-    n_link_edges += num_optiedges(graph)
-    return n_link_edges
+"""
+    Base.getindex(graph::OptiGraph, node::OptiNode)
+
+Retrieve the index of the optinode `node` in `graph`.
+"""
+function Base.getindex(graph::OptiGraph, node::OptiNode)
+    return graph.node_idx_map[node]
 end
 
-num_nodes(graph::OptiGraph) = length(graph.optinodes)
-@deprecate getnumnodes num_nodes
-num_optiedges(graph::OptiGraph) = length(graph.optiedges)
+"""
+    Base.getindex(graph::OptiGraph, index::Int64)
+
+Retrieve the node at `index` in `graph`.
+"""
+Base.getindex(graph::OptiGraph, index::Int64) = optinode(graph, index)
+
+###################################################
+#OptiEdges
+###################################################
+"""
+    add_optiedge!(graph::OptiGraph, optinodes::Vector{OptiNode})::OptiEdge
+
+Add an optiedge to optigraph `graph` that connects `optinodes`. If edge already exists, return it.
+"""
+function add_optiedge!(graph::OptiGraph, nodes::Vector{OptiNode})
+    key = Set(nodes)
+    if haskey(graph.optiedge_map,key)
+        edge = graph.optiedge_map[key]
+    else
+        n_links = length(graph.optiedges)
+        idx = n_links + 1
+        edge = OptiEdge(nodes)
+        push!(graph.optiedges, edge)
+        graph.optiedge_map[edge.nodes] = edge
+        graph.edge_idx_map[edge] = idx
+        _flag_graph_backend!(graph)
+    end
+    return edge
+end
+
+"""
+    optiedges(graph::OptiGraph)::Vector{OptiEdge}
+
+Retrieve the local optiedges in `graph`.
+"""
+optiedges(graph::OptiGraph) = graph.optiedges
+@deprecate getedges optiedges
+
+"""
+    optiedge(graph::OptiGraph, index::Int64)
+
+Retrieve the local optiedge in `graph` at `index`
+
+    optiedge(graph::OptiGraph, nodes::OrderedSet{OptiNode})
+
+Retrieve the optiedge in `graph` that connects the optinodes in the OrderedSet of `nodes`.
+
+    optiedge(graph::OptiGraph, nodes::OptiNode...)
+
+Retrieve the optiedge in `graph` that connects `nodes`.
+"""
+optiedge(graph::OptiGraph, index::Int64) = graph.optiedges[index]
+optiedge(graph::OptiGraph, nodes::Set{OptiNode}) = graph.optiedge_map[nodes]
+function optiedge(graph::OptiGraph,nodes::OptiNode...)
+    s = Set(collect(nodes))
+    return optiedge(graph,s)
+end
+@deprecate getedge optiedge
+
+"""
+    all_edges(graph::OptiGraph)::Vector{OptiEdge}
+
+Recursively collect all optiedges in `graph` by traversing each of its subgraphs.
+"""
+function all_edges(graph::OptiGraph)
+    edges = graph.optiedges
+    for subgraph in graph.subgraphs
+        edges = [edges;all_edges(subgraph)]
+    end
+    return edges
+end
+
+"""
+    optiedge_by_index(graph::OptiGraph, index::Int64)::OptiEdge
+
+Recursively search optigraph `graph` for the edge at `index` by traversing subgraphs.
+Note that the edge is not unique to the index. Since the search is depth-first, the optiedge
+returned may be different if the subgraph structure changes.
+"""
+function optiedge_by_index(graph::OptiGraph, index::Int64)
+    edges = all_edges(graph)
+    return edges[index]
+end
+
+"""
+    num_edges(graph::OptiGraph)::Int64
+
+Return the number of local edges in `graph`
+"""
+num_edges(graph::OptiGraph) = length(graph.optiedges)
+@deprecate num_optiedges num_edges
+
+"""
+    num_all_edges(graph::OptiGraph)
+
+Return the total number of optiedges in `graph` including subgraphs.
+"""
+function num_all_edges(graph::OptiGraph)
+    n_link_edges = sum(num_edges.(all_subgraphs(graph)))
+    n_link_edges += num_edges(graph)
+    return n_link_edges
+end
+@deprecate num_all_optiedges num_all_edges
+"""
+    Base.getindex(graph::OptiGraph, optiedge::OptiEdge)::Int64
+
+Retrieve the index of the `optiedge` in `graph`.
+"""
+Base.getindex(graph::OptiGraph, optiedge::OptiEdge) = graph.edge_idx_map[optiedge]
+
 ########################################################
 # OptiGraph Model Interaction
 ########################################################
+"""
+    has_objective(graph::OptiGraph)::Bool
+
+Check whether optigraph `graph` has an affine or quadratic objective function set.
+"""
 has_objective(graph::OptiGraph) = graph.objective_function != zero(JuMP.AffExpr) && graph.objective_function != zero(JuMP.QuadExpr)
+
+"""
+    has_node_objective(graph::OptiGraph)::Bool
+
+Check whether any optinode in `graph` has an objective function.
+"""
 has_node_objective(graph::OptiGraph) = any(has_objective.(all_nodes(graph)))
-has_quad_objective(graph::OptiGraph) = any((node) -> isa(objective_function(node),JuMP.QuadExpr),all_nodes(graph))
+
+"""
+    has_node_quad_objective(graph::OptiGraph)::Bool
+
+Check whether any optinode in `graph` has a quadratic objective function.
+"""
+has_node_quad_objective(graph::OptiGraph) = any((node) -> isa(objective_function(node), JuMP.QuadExpr), all_nodes(graph))
+@deprecate has_quad_objective has_node_quad_objective
+
+"""
+    has_nlp_data(graph::OptiGraph)::Bool
+
+Check whether any optinode in `graph` has nlp data
+"""
 has_nlp_data(graph::OptiGraph) = any(node -> (node.nlp_data !== nothing),all_nodes(graph))
+
+"""
+    has_nl_objective(graph::OptiGraph)::Bool
+
+Check whether any optinode in `graph` has a nonlinear objective function.
+"""
 function has_nl_objective(graph::OptiGraph)
     for node in all_nodes(graph)
         if node.nlp_data != nothing
@@ -343,76 +448,74 @@ function has_nl_objective(graph::OptiGraph)
     return false
 end
 
-JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
-JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
-JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
-JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
-JuMP.all_constraints(graph::OptiGraph,F::DataType,S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph),Ref(F),Ref(S))...)
+"""
+    JuMP.object_dictionary(graph::OptiGraph)
 
+Retrieve the object dictionary of optigraph `graph`
+"""
+JuMP.object_dictionary(graph::OptiGraph) = graph.obj_dict
+
+"""
+    JuMP.all_variables(graph::OptiGraph)::Vector{JuMP.VariableRef}
+
+Retrieve a list of all variables in optigraph `graph.`
+"""
 function JuMP.all_variables(graph::OptiGraph)
     vars = vcat([JuMP.all_variables(node) for node in all_nodes(graph)]...)
     return vars
 end
 
-function JuMP.value(graph::OptiGraph, var::JuMP.VariableRef)
-    node_pointer = JuMP.backend(var.model).result_location[graph.id]
-    var_idx = node_pointer.node_to_optimizer_map[index(var)]
-    return MOI.get(backend(graph).optimizer,MOI.VariablePrimal(),var_idx)
-end
 """
-    getlinkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
+    JuMP.num_variables(graph::OptiGraph)::Int64
 
-Retrieve the local linking constraints in `graph`. Returns a vector of the linking constraints.
+Retrieve the number of local node variables in `graph`. Does not include variables in subgraphs.
 """
-function getlinkconstraints(graph::OptiGraph)
-    links = LinkConstraintRef[]
-    for edge in graph.optiedges
-        append!(links,edge.linkrefs)
-    end
-    return links
-end
-linkconstraints(graph::OptiGraph) = getlinkconstraints(graph)
-
-num_linkconstraints(graph::OptiGraph) = sum(num_link_constraints.(graph.optiedges))
-num_link_constraints(graph::OptiGraph) = sum(num_link_constraints.(graph.optiedges))
-@deprecate num_linkconstraints num_link_constraints
-
-"""
-    all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
-
-Retrieve all of the linking constraints in `graph`, including linking constraints in its subgraphs. Returns a vector of the linking constraints.
-"""
-function all_linkconstraints(graph::OptiGraph)
-    links = LinkConstraintRef[]
-    for subgraph in all_subgraphs(graph)
-        append!(links,getlinkconstraints(subgraph))
-    end
-    append!(links,getlinkconstraints(graph))
-    return links
+function JuMP.num_variables(graph::OptiGraph)
+    n_node_variables = sum(JuMP.num_variables.(optinodes(graph)))
+    return n_node_variables
 end
 
-function num_all_linkconstraints(graph::OptiGraph)
-    return length(all_linkconstraints(graph))
-end
+"""
+    JuMP.num_all_variables(graph::OptiGraph)
 
+Retrieve the number of total variables in `graph`. Includes variables in subgraphs.
+"""
 function num_all_variables(graph::OptiGraph)
     n_node_variables = sum(JuMP.num_variables.(all_nodes(graph)))
     return n_node_variables
 end
 
-function num_all_constraints(graph::OptiGraph)
-    n_node_constraints = sum(JuMP.num_constraints.(all_nodes(graph)))
-    return n_node_constraints
+"""
+    JuMP.value(graph::OptiGraph, vref::VariableRef)
+
+Get the variable value of `vref` on the optigraph `graph`. This value corresponds to
+the optinode variable value obtained by solving `graph` which contains said optinode.
+"""
+function JuMP.value(graph::OptiGraph, var::JuMP.VariableRef)
+    node_pointer = JuMP.backend(var.model).result_location[graph.id]
+    var_idx = node_pointer.node_to_optimizer_map[index(var)]
+    return MOI.get(backend(graph).optimizer,MOI.VariablePrimal(),var_idx)
 end
 
 """
-    JuMP.num_variables(graph::OptiGraph)
+    JuMP.list_of_constraint_types(graph::OptiGraph)
 
-Retrieve the number of local node variables in `graph`. Does not include variables in subgraphs.
+Retrieve a list of the constraint types in optigraph `graph`
 """
-function JuMP.num_variables(graph::OptiGraph)
-    n_node_variables = sum(JuMP.num_variables.(getnodes(graph)))
-    return n_node_variables
+JuMP.list_of_constraint_types(graph::OptiGraph) = unique(vcat(JuMP.list_of_constraint_types.(all_nodes(graph))...))
+
+"""
+    JuMP.all_constraints(graph::OptiGraph, F::DataType, S::DataType)
+
+Retrieve a list of contraints with function type `F` and set `S` in optigraph `graph`
+"""
+JuMP.all_constraints(graph::OptiGraph, F::DataType, S::DataType) = vcat(JuMP.all_constraints.(all_nodes(graph), Ref(F), Ref(S))...)
+JuMP.show_constraints_summary(::IOContext,m::OptiGraph) = ""
+JuMP.show_backend_summary(::IOContext,m::OptiGraph) = ""
+
+function num_all_constraints(graph::OptiGraph)
+    n_node_constraints = sum(JuMP.num_constraints.(all_nodes(graph)))
+    return n_node_constraints
 end
 
 """
@@ -421,16 +524,71 @@ end
 Retrieve the number of local node constraints in `graph`. Does not include constraints in subgraphs.
 """
 function JuMP.num_constraints(graph::OptiGraph)
-    n_node_constraints = sum(JuMP.num_constraints.(getnodes(graph)))
+    n_node_constraints = sum(JuMP.num_constraints.(optinodes(graph)))
     return n_node_constraints
 end
 
-#JuMP Model Extenstion
+
+"""
+    linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
+
+Retrieve the local linking constraints in `graph`. Returns a vector of the linking constraints.
+"""
+function linkconstraints(graph::OptiGraph)
+    links = LinkConstraintRef[]
+    for edge in graph.optiedges
+        append!(links,edge.linkrefs)
+    end
+    return links
+end
+
+"""
+    all_linkconstraints(graph::OptiGraph)::Vector{LinkConstraintRef}
+
+Recursively collect all linkconstraints in `graph` by traversing each of its subgraphs.
+"""
+function all_linkconstraints(graph::OptiGraph)
+    links = LinkConstraintRef[]
+    for subgraph in all_subgraphs(graph)
+        append!(links,linkconstraints(subgraph))
+    end
+    append!(links,linkconstraints(graph))
+    return links
+end
+
+
+"""
+    num_linkconstraints(graph::OptiGraph)::Int64
+
+Retrieve the number of local linking constraints in `graph`. Does not include linkconstraints in subgraphs.
+"""
+num_linkconstraints(graph::OptiGraph) = sum(num_linkconstraints.(graph.optiedges))
+
+"""
+    num_all_linkconstraints(graph::OptiGraph)::Int64
+
+Retrieve the total number linkconstraints in `graph`. Includes linkconstraints in subgraphs.
+"""
+num_all_linkconstraints(graph::OptiGraph) = length(all_linkconstraints(graph))
+
+
 ####################################
 # Objective
 ###################################
+"""
+    JuMP.objective_function(graph::OptiGraph)::MOI.OptimizationSense
+
+Retrieve the current graph objective sense.
+"""
 JuMP.objective_sense(graph::OptiGraph) = graph.objective_sense
-JuMP.set_objective_sense(graph::OptiGraph,sense::MOI.OptimizationSense) = graph.objective_sense = sense
+
+"""
+    JuMP.set_objective_sense(graph::OptiGraph, sense::MOI.OptimizationSense)
+
+Set the current graph objective sense to `sense`.
+"""
+JuMP.set_objective_sense(graph::OptiGraph, sense::MOI.OptimizationSense) = graph.objective_sense = sense
+
 """
     JuMP.objective_function(graph::OptiGraph)
 
@@ -451,51 +609,74 @@ function JuMP.objective_function(graph::OptiGraph)
     end
 end
 
+"""
+    JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
+
+Set a single variable objective function on optigraph `graph`
+
+    JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr)
+
+Set an affine objective function on optigraph `graph`
+
+    JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExpr)
+
+Set a quadratic objective function on optigraph `graph`
+"""
 function JuMP.set_objective_function(graph::OptiGraph, x::JuMP.VariableRef)
     x_affine = convert(JuMP.AffExpr,x)
     JuMP.set_objective_function(graph,x_affine)
     #_moi_update_objective() #update the optigraph backend if we're doing incremental solves
 end
 
-function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericAffExpr)
+function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr)
     #clear optinodes objective functions
     for node in all_nodes(graph)
         JuMP.set_objective_function(node,0)
     end
     #put objective terms onto nodes
     for (coef,term) in JuMP.linear_terms(expr)
-        node = getnode(term)
+        node = optinode(term)
         JuMP.set_objective_function(node,objective_function(node) + coef*term)
     end
     graph.objective_function = expr
 end
 
-function JuMP.set_objective_function(graph::OptiGraph,expr::JuMP.GenericQuadExpr)
+function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExpr)
     for node in all_nodes(graph)
         JuMP.set_objective_function(node,0)
     end
     for (coef,term1,term2) in JuMP.quad_terms(expr)
-        @assert getnode(term1) == getnode(term2)
-        node = getnode(term1)
+        @assert optinode(term1) == optinode(term2)
+        node = optinode(term1)
         JuMP.set_objective_function(node,objective_function(node) + coef*term1*term2)
     end
     for (coef,term) in JuMP.linear_terms(expr)
-        node = getnode(term)
+        node = optinode(term)
         JuMP.set_objective_function(node,objective_function(node) + coef*term)
     end
     graph.objective_function = expr
 
 end
 
+"""
+    JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
+
+Set the objective of `graph` to the optimization `sense` and `func`.
+"""
 function JuMP.set_objective(graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar)
     JuMP.set_objective_sense(graph,sense)
     JuMP.set_objective_function(graph,func)
 end
 
+"""
+    JuMP.objective_function_type(graph::OptiGraph)
+
+Retrieve the objective function type of optigraph `graph`.
+"""
 JuMP.objective_function_type(graph::OptiGraph) = typeof(objective_function(graph))
 
 #NOTE: Plasmo stores the objective expression on the optigraph
-function JuMP.set_objective_coefficient(graph::OptiGraph,variable::JuMP.VariableRef,coefficient::Real)
+function JuMP.set_objective_coefficient(graph::OptiGraph, variable::JuMP.VariableRef, coefficient::Real)
     if has_nl_objective(graph)
         error("A nonlinear objective is already set in the model")
     end
@@ -518,28 +699,34 @@ function JuMP.set_objective_coefficient(graph::OptiGraph,variable::JuMP.Variable
     end
 end
 
+"""
+    JuMP.objective_value(graph::OptiGraph)
+
+Retrieve the current objective value on optigraph `graph`.
+"""
 function JuMP.objective_value(graph::OptiGraph)
     return MOI.get(backend(graph),MOI.ObjectiveValue())
 end
 
-function getnodes(expr::JuMP.GenericAffExpr)
+
+function optinodes(expr::JuMP.GenericAffExpr)
     nodes = OptiNode[]
     for (coef,term) in JuMP.linear_terms(expr)
-        node = getnode(term)
+        node = optinode(term)
         push!(nodes,node)
     end
     return unique(nodes)
 end
 
-function getnodes(expr::JuMP.GenericQuadExpr)
+function optinodes(expr::JuMP.GenericQuadExpr)
     nodes = OptiNode[]
     for (coef,term1,term2) in JuMP.quad_terms(expr)
-        @assert getnode(term1) == getnode(term2)
-        node = getnode(term1)
+        @assert optinode(term1) == optinode(term2)
+        node = optinode(term1)
         push!(nodes,node)
     end
     for (coef,term) in JuMP.linear_terms(expr)
-        node = getnode(term)
+        node = optinode(term)
         push!(nodes,node)
     end
     return unique(nodes)
@@ -553,22 +740,22 @@ function JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, nam
     error("Cannot add constraint $con. An OptiGraph currently only supports Scalar LinkConstraints")
 end
 
-function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
-    cref = add_link_constraint(graph,con,name,attached_node = attached_node)
+function JuMP.add_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String=""; attached_node=optinode(collect(keys(con.func.terms))[1]))
+    cref = add_link_constraint(graph, con, name, attached_node=attached_node)
     return cref
 end
 
 JuMP._valid_model(m::OptiEdge, name) = nothing
-function JuMP.add_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String="";attached_node = getnode(collect(keys(con.func.terms))[1]))
+function JuMP.add_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, name::String=""; attached_node=optinode(collect(keys(con.func.terms))[1]))
     cref = add_link_constraint(optiedge,con,name,attached_node = attached_node)
     return cref
 end
 
 #Create optiedge and add linkconstraint
-function add_link_constraint(graph::OptiGraph,con::JuMP.ScalarConstraint,name::String = "";attached_node = nothing)
-    optinodes = getnodes(con)
-    optiedge = add_optiedge!(graph,optinodes)
-    cref = JuMP.add_constraint(optiedge,con,name,attached_node = attached_node)
+function add_link_constraint(graph::OptiGraph, con::JuMP.ScalarConstraint, name::String=""; attached_node=nothing)
+    nodes = optinodes(con)
+    optiedge = add_optiedge!(graph, nodes)
+    cref = JuMP.add_constraint(optiedge, con, name, attached_node=attached_node)
     return cref
 end
 
@@ -579,8 +766,8 @@ function add_link_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, nam
     link_con = LinkConstraint(con)    #Convert ScalarConstraint to a LinkConstraint
     link_con.attached_node = attached_node
 
-    optinodes = getnodes(link_con)
-    @assert issubset(optinodes,optiedge.nodes)
+    nodes = optinodes(link_con)
+    @assert issubset(nodes,optiedge.nodes)
 
     linkconstraint_index = length(optiedge.linkconstraints) + 1
     cref = LinkConstraintRef(linkconstraint_index,optiedge)
@@ -592,7 +779,7 @@ function add_link_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, nam
     #Add partial linkconstraint to nodes
     node_partial_indices = Dict(node => length(node.partial_linkconstraints) + 1 for node in optiedge.nodes)
     for (var,coeff) in link_con.func.terms
-      node = getnode(var)
+      node = optinode(var)
       index = node_partial_indices[node] #index of current linkconstraint for this node
       _add_to_partial_linkconstraint!(node,var,coeff,link_con.func.constant,link_con.set,index)
     end
@@ -601,8 +788,8 @@ function add_link_constraint(optiedge::OptiEdge, con::JuMP.ScalarConstraint, nam
 end
 
 #Add partial link constraint to supporting optinodes
-function _add_to_partial_linkconstraint!(node::OptiNode,var::JuMP.VariableRef,coeff::Number,constant::Float64,set::MOI.AbstractScalarSet,index::Int64)
-    @assert getnode(var) == node
+function _add_to_partial_linkconstraint!(node::OptiNode, var::JuMP.VariableRef, coeff::Number, constant::Float64, set::MOI.AbstractScalarSet, index::Int64)
+    @assert optinode(var) == node
     #multiple variables might be on the same node, so check here
     if haskey(node.partial_linkconstraints,index)
         linkcon = node.partial_linkconstraints[index]
@@ -624,10 +811,15 @@ function JuMP.add_bridge(graph::OptiGraph, BridgeType::Type{<:MOI.Bridges.Abstra
     return
 end
 
-function JuMP.dual(graph::OptiGraph,linkref::LinkConstraintRef)
+"""
+    JuMP.dual(graph::OptiGraph, linkref::LinkConstraintRef)
+
+Retrieve the dual value of `linkref` on optigraph `graph`.
+"""
+function JuMP.dual(graph::OptiGraph, linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
     id = graph.id
-    return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
+    return MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
 end
 
 #Set start value for a graph backend
@@ -638,33 +830,43 @@ function JuMP.set_start_value(graph::OptiGraph, variable::JuMP.VariableRef, valu
     if MOI.get(JuMP.backend(graph),MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
         error("Start values can only be set for an optigraph optimizer after the initial `optimize!` has been called.  Use `set_start_value(var::JuMP.VariableRef,value::Number)` to set a start value before `optimize!`")
     end
-    node_pointer = JuMP.backend(getnode(variable)).optimizers[graph.id]
+    node_pointer = JuMP.backend(optinode(variable)).optimizers[graph.id]
     var_idx = node_pointer.node_to_optimizer_map[index(variable)]
     MOI.set(node_pointer,MOI.VariablePrimalStart(),var_idx,value)
 end
 
-#TODO: query correct place for start values. Need to correctly support variable attributes
-#Need to make sure that setting attributes like name hits the model_cache instead
+# MAJOR TODO: query the correct place for start values. We need to correctly support variable attributes through the node pointers
+# Need to make sure that setting attributes like name hits the model_cache instead
 # function JuMP.start_value(graph::OptiGraph, var::JuMP.VariableRef)
 #     node_pointer = JuMP.backend(var.model).result_location[graph.id]
 #     var_idx = node_pointer.node_to_optimizer_map[index(var)]
 #     return MOI.get(backend(graph).optimizer,MOI.VariablePrimalStart(),var_idx)
 # end
 
+"""
+    JuMP.termination_status(graph::OptiGraph)
 
+Retrieve the current termination status of optigraph `graph`.
+"""
 JuMP.termination_status(graph::OptiGraph) = MOI.get(graph.moi_backend, MOI.TerminationStatus())
 
 ####################################
 #Print Functions
 ####################################
 function string(graph::OptiGraph)
-    """
-    OptiGraph:
-    nodes: $(num_nodes(graph)), nodes (including subgraphs): $(length(all_nodes(graph)))
-    link constraints: $(num_linkconstraints(graph)), link constraints (including subgraphs): $(length(all_linkconstraints(graph)))
-    subgraphs: $(length(getsubgraphs(graph))), subgraphs (including nested subgraphs): $(length(all_subgraphs(graph)))
-    """
+    return @sprintf("""%16s %10s %20s
+-------------------------------------------------------------------
+%16s %5s %16s
+%16s %5s %16s
+%16s %5s %16s
+%16s %5s %16s""",
+"OptiGraph:", "# elements", "(including subgraphs)",
+"OptiNodes:", num_nodes(graph), "($(num_all_nodes(graph)))",
+"OptiEdges:", num_edges(graph), "($(num_all_edges(graph)))",
+"LinkConstraints:", num_linkconstraints(graph), "($(num_all_linkconstraints(graph)))",
+"sub-OptiGraphs:", num_subgraphs(graph), "($(num_all_subgraphs(graph)))")
 end
+
 print(io::IO, graph::OptiGraph) = print(io, string(graph))
 show(io::IO,graph::OptiGraph) = print(io,graph)
 

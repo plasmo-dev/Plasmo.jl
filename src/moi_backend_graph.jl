@@ -40,7 +40,7 @@ Initialize an empty optigraph backend. Contains a model_cache that can be used t
 """
 function GraphBackend(optigraph::AbstractOptiGraph)
     state = MOIU.NO_OPTIMIZER
-    #mode = MOIU.AUTOMATIC
+    #mode = MOIU.AUTOMATIC # modes not yet supported in Plasmo.jl
     model_cache = MOIU.UniversalFallback(MOIU.Model{Float64}())
     return GraphBackend{MOI.AbstractOptimizer}(
                             nothing,
@@ -158,7 +158,7 @@ function _add_link_constraint!(id::Symbol,dest::MOI.ModelLike,link::LinkConstrai
         coeff = term[1]
         var = term[2]
 
-        src = JuMP.backend(getnode(var))
+        src = JuMP.backend(optinode(var))
         idx_map = src.optimizers[id].node_to_optimizer_map
 
         var_idx = JuMP.index(var)

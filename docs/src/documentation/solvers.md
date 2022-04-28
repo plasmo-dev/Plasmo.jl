@@ -1,120 +1,18 @@
 # Solvers
-Plasmo.jl supports JuMP/MOI enabled solvers, as well as the [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) parallel optimization solver.
+Plasmo.jl is intended to support [MathOptInterface.jl](https://github.com/jump-dev/MathOptInterface.jl) solvers in the same way as JuMP, in addition to custom decomposition-based solvers that can use the graph structure.
 
-## JuMP/MOI Solvers
-Plasmo.jl can use JuMP/MOI solvers by means of its [`aggregate`](@ref) function.    
-The example below solves an optigraph using `Ipopt`, where underneath, `optimize!` produces a single `OptiNode` (which encapsulates a `JuMP.Model`), solves the optinode, and populates the solution
-of the optigraph with the result.
+## MathOptInterface/JuMP Solvers
+Solvers with MathOptInterface.jl wrappers should be accessible to Plasmo.jl using standard JuMP commands (i.e. the `set_optimizer` and `optimize!` functions should work for an `OptiGraph`.) The list of available
+JuMP solvers is extensive and can be found on the [JuMP documentation page](https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers).
 
-```julia
-using Plasmo
-using Ipopt
+## Custom Plasmo.jl Solvers
+The breadth of current custom Plasmo.jl solvers is still somewhat limited, but the solvers listed below provide a glimpse of future solver development. Please stay tuned for custom Plasmo.jl solver releases and updates.
 
-graph = OptiGraph()
+### PipsNLP.jl
+The [PipsNLP](https://github.com/zavalab/PipsNLP.jl) interface can be used to solve structured nonlinear optimization problems with [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP) using MPI.  The [examples folder](https://github.com/zavalab/PipsNLP.jl/tree/master/examples) in PipsNLP.jl shows how to use the Julia `MPIManager` as part of [MPIClusterManagers](https://github.com/JuliaParallel/MPIClusterManagers.jl) to model and optimize optigraphs in a distributed fashion. Note however, that it requires building an old commit specified on the PipsNLP.jl README.   
 
-@optinode(graph,n1)
-@optinode(graph,n2)
+### SchwarzOpt.jl
+The [SchwarzOpt](https://github.com/zavalab/SchwarzOpt.jl) optimizer is currently an experimental solver. It demonstrates how to use graph overlap to solve optigraphs with Schwarz decomposition.
 
-@variable(n1,0 <= x <= 2)
-@variable(n1,0 <= y <= 3)
-@constraint(n1,x+y <= 4)
-@objective(n1,Min,x)
-
-@variable(n2,x)
-@NLnodeconstraint(n2,exp(x) >= 2)
-
-@linkconstraint(graph,n1[:x] == n2[:x])
-
-ipopt = Ipopt.Optimizer
-optimize!(graph,ipopt)
-```
-
-```@meta
-CurrentModule = Plasmo
-DocTestSetup = quote
-    using Plasmo
-    using Ipopt
-
-    graph = OptiGraph()
-
-    @optinode(graph,n1)
-    @optinode(graph,n2)
-
-    @variable(n1,0 <= x <= 2)
-    @variable(n1,0 <= y <= 3)
-    @constraint(n1,x+y <= 4)
-    @objective(n1,Min,x)
-
-    @variable(n2,x)
-    @NLnodeconstraint(n2,exp(x) >= 2)
-
-    @linkconstraint(graph,n1[:x] == n2[:x])
-
-    ipopt = Ipopt.Optimizer
-    optimize!(graph,ipopt)
-end
-```
-
-A result specific to an optinode can be accessed using the `nodevalue` function.  Here we see that the value of `x` on  optinodes `n1` and `n2`
-can be queried (and are consistent with the linking constraint).
-
-```jldoctest solver_example
-julia> println("n1[:x]= ",round(nodevalue(n1[:x]),digits = 5))
-n1[:x]= 0.69315
-
-julia> println("n2[:x]= ",round(nodevalue(n2[:x]),digits = 5))
-n2[:x]= 0.69315
-```
-
-## PipsSolver
-The [PipsSolver](https://github.com/zavalab/PipsSolver.jl) interface can be used to solve structured nonlinear optimization problems with [PIPS-NLP](https://github.com/Argonne-National-Laboratory/PIPS/tree/master/PIPS-NLP).
-To do so, we use the [MPClusterManagers](https://github.com/JuliaParallel/MPIClusterManagers.jl) package and Julia's `Distributed` module to distribute an optigraph among worker CPUs.  We then execute PIPS-NLP using
-MPI using `@mpi_do` (available from `MPIClusterManagers`) which runs MPI on each worker. The below example shows how this is done for a simple optigraph with two optinodes and two MPI ranks.
-
-```julia
-using MPIClusterManagers
-using Distributed
-
-# specify 2 MPI workers
-manager=MPIManager(np=2)
-
-# uses Distributed to add processors to a manager
-addprocs(manager)
-
-@everywhere using Plasmo
-@everywhere using PipsSolver
-
-julia_workers = collect(values(manager.mpi2j))
-
-graph = OptiGraph()
-
-@optinode(graph,n1)
-@optinode(graph,n2)
-
-@variable(n1,0 <= x <= 2)
-@variable(n1,0 <= y <= 3)
-@variable(n1, z >= 0)
-@constraint(n1,x+y+z >= 4)
-@objective(n1,Min,y)
-
-@variable(n2,x)
-@NLnodeconstraint(n2,ref,exp(x) >= 2)
-@variable(n2,z >= 0)
-@constraint(n2,z + x >= 4)
-@objective(n2,Min,x)
-
-@linkconstraint(graph,n1[:x] == n2[:x])
-
-#Distribute the graph to workers.  #create the variable pipsgraph on each worker
-remote_references = PipsSolver.distribute(graph,julia_workers,remote_name = :pipsgraph)
-
-#Execute MPI
-@mpi_do manager begin
-    using MPI
-    PipsSolver.pipsnlp_solve(pipsgraph)
-end
-```
-
-## SchwarzSolver
-
-Documentation Coming Soon
+### MadNLP
+[MadNLP](https://github.com/MadNLP/MadNLP.jl) is an NLP solver that can solve `OptiGraphs` directly using parallel function evaluations and specialized decomposition schemes.

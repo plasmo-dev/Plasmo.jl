@@ -84,7 +84,7 @@ function JuMP._tape_to_expr(m::OptiNode, k, nd::Vector{JuMP.NodeData}, adj, cons
                       parameter_values, subexpressions::Vector{Any},
                       user_operators::JuMP._Derivatives.UserOperatorRegistry,
                       generic_variable_names::Bool, splat_subexpressions::Bool,
-                      print_mode=REPLMode)
+                      print_mode=MIME("text/plain"))
         return JuMP._tape_to_expr(Model(),k, nd, adj, const_values,
                               parameter_values, subexpressions,
                               user_operators,
@@ -96,7 +96,7 @@ end
 #------------------------------------------------------------------------
 ## _NonlinearExprData
 #------------------------------------------------------------------------
-function JuMP.nl_expr_string(model::OptiNode, mode, c::JuMP._NonlinearExprData)
+function JuMP.nonlinear_expr_string(model::OptiNode, mode, c::JuMP._NonlinearExprData)
     return string(JuMP._tape_to_expr(model, 1, c.nd, JuMP.adjmat(c.nd), c.const_values,
                                 [], [], model.nlp_data.user_operators, false,
                                 false, mode))
@@ -106,9 +106,9 @@ end
 ## _NonlinearConstraint
 #------------------------------------------------------------------------
 
-function JuMP.nl_constraint_string(node::OptiNode, mode, c::JuMP._NonlinearConstraint)
+function JuMP.nonlinear_constraint_string(node::OptiNode, mode, c::JuMP._NonlinearConstraint)
     s = JuMP._sense(c)
-    nl = JuMP.nl_expr_string(node.model, mode, c.terms)
+    nl = JuMP.nonlinear_expr_string(node.model, mode, c.terms)
     if s == :range
         out_str = "$(_string_round(c.lb)) " * _math_symbol(mode, :leq) *
                   " $nl " * _math_symbol(mode, :leq) * " " * _string_round(c.ub)
@@ -127,10 +127,10 @@ end
 
 const NonlinearOptiNodeConstraintRef = ConstraintRef{OptiNode, NonlinearConstraintIndex}# where T <: OptiObject
 function Base.show(io::IO, c::NonlinearOptiNodeConstraintRef)
-    print(io, JuMP.nl_constraint_string(c.model, REPLMode, c.model.nlp_data.nlconstr[c.index.value]))
+    print(io, JuMP.nonlinear_constraint_string(c.model, MIME("text/plain"), c.model.nlp_data.nlconstr[c.index.value]))
 end
 
 function Base.show(io::IO, ::MIME"text/latex", c::NonlinearOptiNodeConstraintRef)
     constraint = c.model.nlp_data.nlconstr[c.index.value]
-    print(io, JuMP._wrap_in_math_mode(JuMP.nl_constraint_string(c.model, IJuliaMode, constraint)))
+    print(io, JuMP._wrap_in_math_mode(JuMP.nonlinear_constraint_string(c.model, MIME"text/latex", constraint)))
 end

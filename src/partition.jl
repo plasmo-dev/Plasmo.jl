@@ -214,8 +214,8 @@ end
 ##################################################################
 #Partition object functions
 ##################################################################
-getnodes(partition::Partition) = partition.optinodes
-getedges(partition::Partition) = partition.optiedges
+optinodes(partition::Partition) = partition.optinodes
+optiedges(partition::Partition) = partition.optiedges
 sub_partitions(partition::Partition) = partition.subpartitions
 
 function all_subpartitions(partition::Partition)
@@ -258,7 +258,7 @@ end
 """
     apply_partition!(optigraph::OptiGraph,partition::Partition)
 
-Create subgraphs in `optigraph` using a 'partition'.
+Create subgraphs in `optigraph` using a `partition`.
 """
 function apply_partition!(graph::OptiGraph,partition::Partition)
     root = partition

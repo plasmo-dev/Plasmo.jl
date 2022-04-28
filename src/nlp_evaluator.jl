@@ -1,9 +1,15 @@
 #NOTE Code inspired by JuMP's NLPEvaluator and MadNLP.jl implementation
-#OptiGraph NLP Evaluator.  Wraps Local JuMP NLP Evaluators.
+
 
 #IDEA: evaluator could work in multiple modes.
 #1: Same as JuMP, evaluates NLP part of model (currently supported).
 #2  Treats the entire model as an NLP, evaluates linear and quadratic terms too (not yet supported).
+"""
+    OptiGraphNLPEvaluator
+
+A custom OptiGraph NLP Evaluator. Wraps Local JuMP NLP Evaluators on optinodes and mimics JuMP functionality. Can be used to query
+objective values, constraint values, gradients, jacobian, and the hessian-of-the-lagrangian of an OptiGraph.
+"""
 mutable struct OptiGraphNLPEvaluator <: MOI.AbstractNLPEvaluator
     graph::OptiGraph
     optinodes::Vector{OptiNode}
@@ -78,7 +84,7 @@ function MOI.initialize(d::OptiGraphNLPEvaluator,requested_features::Vector{Symb
     ns_cumsum = cumsum(ns)
 
     #num constraints NOTE: Should this just be NL constraints? Depends on evaluator mode
-    ms= [num_nl_constraints(optinode) for optinode in optinodes]
+    ms= [num_nonlinear_constraints(optinode) for optinode in optinodes]
     m = sum(ms)
     ms_cumsum = cumsum(ms)
 

@@ -1,13 +1,11 @@
-# Tutorials
-Here we tutorials that cover more detailed aspects of Plasmo.jl and show how it can be used to create and solve complex optimization problems.
 
-## Optimal Control of a Natural Gas Network
+# Optimal Control of a Natural Gas Network
 This tutorial shows how to model a natural-gas network optimal control problem by constructing a hierarchical optigraph.  
-We show the resulting structure of the optimization problem and demonstrate how to use Plasmo.jl to decompose the problem and use the [PipsSolver](@ref) to distribute and solve the problem
-in parallel. The details of this model and a description of its parameters can be found in [this manuscript](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687).
-The actual implementation of this tutorial can be found in [this git repository](https://github.com/zavalab/JuliaBox/tree/master/PlasmoExamples/case_studies/gasnetwork).
+We show the resulting structure of the optimization problem and demonstrate how to use Plasmo.jl to partition and decompose the problem. The details of this model and a description of its parameters can be found in
+[this manuscript](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687).
+The actual implementation of this tutorial can be found in [this git repository](https://github.com/zavalab/PlasmoExamples).
 
-### Problem Description
+## Problem Description
 We consider the system of connected pipelines in series shown in the below figure. This linear network includes a gas supply at one end, a time-varying demand at the other end, and twelve compressor stations.
 The gas junctions connect thirteen pipelines which forms an optigraph with a linear topology.
 
@@ -31,7 +29,7 @@ The sets that describe the elements of the optimization problem are also present
 \end{aligned}
 ```
 
-#### Sets used for optimization problem
+## Sets used for optimization problem
 
 | Set | Description |      Elements |
 |--------|-------------|------------|
@@ -48,7 +46,7 @@ The sets that describe the elements of the optimization problem are also present
 
 The following sections describe each component of the network in further detail.
 
-### Junction OptiGraph
+## Junction OptiGraph
 The gas junctions in a gas network describe the connection points between pipelines and compressors.  The junction model is described by the below equations, where ``\theta_{j,t}`` is the pressure at junction
 ``j`` and time ``t``. ``\underline{\theta}_j`` is the lower pressure bound for the junction, ``\overline{\theta}_j`` is the upper pressure bound, ``f_{j,d,t}^{target}`` is the target demand flow for demand ``d`` on junction ``j``
 and ``\overline{f}_{j,s}`` is the available gas generation from supply ``s`` on junction ``j``.
@@ -100,7 +98,7 @@ function create_junction_model(data,nt)
 end
 ```
 
-### Compressor OptiGraph
+## Compressor OptiGraph
 
 Compressors constitute the primary control decisions in the optimal control problem and are described by the following simple
 formulation. We use an ideal isentropic compressor model where ``\eta_{\ell,t}``, ``p_{\ell,t}^{in}``, and ``p_{\ell,t}^{out}`` are the compression ratio, suction pressure, and discharge pressure at time ``t``,
@@ -134,8 +132,8 @@ function create_compressor_model(data,nt)
         @variable(node, 0 <= power <= 1000)
         @variable(node, flow >= 0)
         @variable(node, 1 <= eta <= 2.5)
-        @NLnodeconstraint(node, pdischarge == eta*psuction)
-        @NLnodeconstraint(node, power == c4*flow*((pdischarge/psuction)^om-1) )
+        @NLconstraint(node, pdischarge == eta*psuction)
+        @NLconstraint(node, power == c4*flow*((pdischarge/psuction)^om-1) )
         @objective(node, Min, cost*power*(dt/3600.0))
     end                                                         
 
@@ -148,7 +146,7 @@ function create_compressor_model(data,nt)
 end
 ```
 
-### Pipeline OptiGraph
+## Pipeline OptiGraph
 We now implement the pipeline equations to describe the dynamic transport throughout the gas network.
 For each pipeline model we assume isothermal flow through horizontal segments with constant pipe friction.  We ultimately produce the
 following discretized pipeline model.
@@ -207,38 +205,38 @@ function create_pipeline_model(data,nt,nx)
     for node in grid
         @variable(node, 1 <= px <= 100)
         @variable(node, 0 <= fx <= 100)
-        @variable(node,slack >= 0)
-        @NLnodeconstraint(node, slack*px - c3*fx*fx == 0)
+        @variable(node, slack >= 0)
+        @NLconstraint(node, slack*px - c3*fx*fx == 0)
     end
 
     #Setup dummy variable references
-    @expression(mg,fin[t=1:nt],grid[:,1][t][:fx])
-    @expression(mg,fout[t=1:nt],grid[:,end][t][:fx])
-    @expression(mg,pin[t=1:nt],grid[:,1][t][:px])
-    @expression(mg,pout[t=1:nt],grid[:,end][t][:px])
-    @expression(mg,linepack[t=1:nt],c2/A*sum(grid[t,x][:px]*dx for x in 1:nx-1))          
+    @expression(mg, fin[t=1:nt], grid[:,1][t][:fx])
+    @expression(mg, fout[t=1:nt], grid[:,end][t][:fx])
+    @expression(mg, pin[t=1:nt], grid[:,1][t][:px])
+    @expression(mg, pout[t=1:nt], grid[:,end][t][:px])
+    @expression(mg, linepack[t=1:nt], c2/A*sum(grid[t,x][:px]*dx for x in 1:nx-1))          
 
     #Finite differencing.  Backward difference in time from t, Forward difference in space from x.
     @linkconstraint(mg, press[t=2:nt,x=1:nx-1],                                            
     (grid[t,x][:px]-grid[t-1,x][:px])/dt +
     c1*(grid[t,x+1][:fx] - grid[t,x][:fx])/dx == 0)
 
-    @linkconstraint(mg, flow[t=2:nt,x=1:nx-1],(grid[t,x][:fx] -
+    @linkconstraint(mg, flow[t=2:nt,x=1:nx-1], (grid[t,x][:fx] -
     grid[t-1,x][:fx])/dt == -c2*(grid[t,x+1][:px] -
     grid[t,x][:px])/dx - grid[t,x][:slack])
 
     #Initial steady state
-    @linkconstraint(mg,ssflow[x=1:nx-1],grid[1,x+1][:fx] - grid[1,x][:fx] == 0)
-    @linkconstraint(mg,sspress[x = 1:nx-1], -c2*(grid[1,x+1][:px] -
+    @linkconstraint(mg, ssflow[x=1:nx-1], grid[1,x+1][:fx] - grid[1,x][:fx] == 0)
+    @linkconstraint(mg, sspress[x = 1:nx-1], -c2*(grid[1,x+1][:px] -
     grid[1,x][:px])/dx - grid[1,x][:slack] == 0)
 
     #Refill pipeline linepack
-    @linkconstraint(mg,linepack[end] >= linepack[1])                     
+    @linkconstraint(mg, linepack[end] >= linepack[1])                     
     return graph
 end
 ```
 
-### Network OptiGraph
+## Network OptiGraph
 The network connections define the topology that connect junctions and equipment links (i.e. pipelines and compressors).
 Specifically, the network equations express mass conservation around each junction and boundary conditions for pipelines and compressors.
 Mass conservation around each junction `j` is given by the following equation.
@@ -329,14 +327,15 @@ function create_gas_network(net_data)
 end
 ```
 
-Using the abovie function, we can obtain a complete optigraph representation of the optimal control problem.  It is now possible to plot the graph layout using the functions
-in [Plotting](@ref), but we have opted to export the graph structure and use the `Gephi` visualization to produce the below figure.  Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and grey corresponds to pipleines.  Notice that the optigraph has captured the space-time structure of the optimization problem.  We also observe a cylindrical shape to the problem which results from the line-pack constraint which couples the initial and final time optinodes for each pipeline.
+Using the above function, we can obtain a complete optigraph representation of the optimal control problem. It is now possible to plot the graph layout using [Plotting](@ref) functions or export the graph structure and use another graph visualization tool.
+`Gephi` was used to produce the below figure. Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and grey corresponds to pipelines.  Notice that the optigraph captures the space-time structure of the optimization problem.  
+We also observe a cylindrical shape to the problem which results from the line-pack constraint which couples the initial and final time optinodes for each pipeline.
 
 ![space_time](../assets/13_pipeline_space_time.svg)
 
-### Partitioning
+## Partitioning
 Now that we have an optigraph representation of our optimal control problem, we can use [hypergraph partitioning](https://en.wikipedia.org/wiki/Hypergraph#Partitions)
-to decompose the space-time structure. To do so, we use [KaHyPar](https://github.com/kahypar/KaHyPar.jl) and the functions described in [Partitioning and Graph Operations](@ref).
+to decompose the space-time structure. To do so, we use [KaHyPar](https://github.com/kahypar/KaHyPar.jl) and the functions described in [Graph Partitioning and Processing](@ref).
 the below code creates a hypergraph representation of the optigraph, sets up node and edge weights, partitions the problem, and forms new subgraphs based on the partitions.  
 We also aggregate the subgraphs to produce solvable optinode subproblems which will communicate to our solver.
 
@@ -345,25 +344,29 @@ We also aggregate the subgraphs to produce solvable optinode subproblems which w
 using KaHyPar         
 
 #Get the hypergraph representation of the gas network
-hypergraph,ref_map = gethypergraph(gas_network)     
+hgraph,ref_map = hyper_graph(gas_network)     
 
 #Setup node and edge weights
-n_vertices = length(vertices(hypergraph))              
+n_vertices = length(vertices(hgraph))              
 node_weights = [num_variables(node) for node in all_nodes(gas_network)]
-edge_weights = [num_link_constraints(edge) for edge in all_edges(gas_network)]  
+edge_weights = [num_linkconstraints(edge) for edge in all_edges(gas_network)]  
 
 #Use KaHyPar to partition the hypergraph
-node_vector = KaHyPar.partition(hypergraph,13,configuration = :edge_cut,
-imbalance = 0.01, node_weights = node_weights,edge_weights = edge_weights)      
+node_vector = KaHyPar.partition(hypergraph,
+                                13,
+                                configuration=:edge_cut,
+                                imbalance=0.01,
+                                node_weights=node_weights,
+                                edge_weights=edge_weights)      
 
 #Create a Partition object
-partition = Partition(gas_network,node_vector,ref_map)           
+partition = Partition(node_vector, ref_map)           
 
 #Setup subgraphs based on the partition
-make_subgraphs!(gas_network,partition)             
+apply_partition!(gas_network, partition)             
 
 #Aggregate the subgraphs into OptiNodes which can be solved
-new_graph , aggregate_map  = aggregate(gas_network,0)        
+new_graph , aggregate_map  = aggregate(gas_network, 0)        
 ```
 
 The partitioned optimal control problem is visualized in the below figure and
@@ -371,42 +374,3 @@ depicts the optimization problem partitioned into 13 distinct partitions.
 
 
 ![partition](../assets/13_pipeline_space_time_partition.svg)
-
-
-### Solution with PIPS-NLP
-We finally solve the partitioned optigraph optimization problem using [PipsSolver](@ref). The below
-code snippet distributes the optigraph among 13 worker MPI processes and solves the problem in parallel using the `PIPS-NLP` optimization
-solver.
-
-```julia
-using Distributed            
-using MPIClusterManagers   
-
-# specify, number of mpi workers
-manager=MPIManager(np=13)      
-# start mpi workers and add them as julia workers too.
-addprocs(manager)             
-
-#Setup the worker environments
-@everywhere using Plasmo      
-@everywhere using PipsSolver  
-
-#get the julia ids of the mpi workers
-julia_workers = collect(values(manager.mpi2j))
-
-remote_references = PipsSolver.distribute(new_graph,julia_workers,remote_name = :pips_graph)
-
-#Solve with PIPS-NLP
-@mpi_do manager begin   
-    using MPI
-    PipsSolver.pipsnlp_solve(pips_graph)
-end
-```
-This code snippet presents a standard template for setting up distributed computing environments to use `PipsSolver.jl` which is worth discussing.
-We use Julia's `Distributed` module as well as the `MPIClusterManagers` package which allows us to map MPI ranks
-(used by `PIPS-NLP`) with Julia worker CPUs. We then create a `manager` object and specify that we want to use 13 workers.
-Next we setup the model and solver environments for the added workers and create a reference to the
-julia workers by querying the manager.  We use `PipsSolver` to distribute the optigraph among the workers using the solver interface's `distribute` function.
-Internally, this function allocates optinodes to each worker, and creates the optigraph named `pips_graph` on each worker environment.
-Finally, we use the  `@mpi_do` function from `MPIClusterManagers` to execute MPI on each worker and solve the optigraph.
-Each worker executes the `pipnlp_solve` function and communicates using MPI within the `PIPS-NLP` solver.

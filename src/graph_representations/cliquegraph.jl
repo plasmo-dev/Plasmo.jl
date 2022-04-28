@@ -6,7 +6,6 @@ A simple Graph created from an OptiGraph.  Normally could just be a LightGraph, 
 mutable struct CliqueGraph <: LightGraphs.AbstractGraph{Int64}
     graph::LightGraphs.Graph
 end
-
 CliqueGraph() = CliqueGraph(LightGraphs.Graph())
 
 
@@ -15,8 +14,8 @@ function LightGraphs.add_vertex!(cgraph::CliqueGraph)
     return added
 end
 
-function LightGraphs.add_edge!(cgraph::CliqueGraph,from::Int64,to::Int64)
-    return LightGraphs.add_edge!(cgraph.graph,from,to)
+function LightGraphs.add_edge!(cgraph::CliqueGraph, from::Int64, to::Int64)
+    return LightGraphs.add_edge!(cgraph.graph, from, to)
 end
 
 LightGraphs.edges(cgraph::CliqueGraph) = LightGraphs.edges(cgraph.graph)

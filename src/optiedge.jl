@@ -21,11 +21,23 @@ mutable struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScal
 end
 LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set,nothing)
 
+
+"""
+    set_attached_node(con::LinkConstraint,node::OptiNode).
+
+Set the linkconstraint `con` to optinode `node`. Mostly useful for algorithms that need an "owning" node on a linkconstraint
+"""
 function set_attached_node(con::LinkConstraint,node::OptiNode)
-    @assert node in getnodes(con)
+    @assert node in optinodes(con)
     con.attached_node = node
 end
 
+
+"""
+    attached_node(con::LinkConstraint)
+
+Retrieve the attached node on linkconstraint `con`
+"""
 attached_node(con::LinkConstraint) = con.attached_node
 
 ##############################################################################
@@ -49,6 +61,11 @@ mutable struct OptiEdge <: AbstractOptiEdge
     #nlp_data::Union{Nothing,JuMP._NLPData}
 end
 
+"""
+    LinkConstraintRef
+
+A constraint reference to a linkconstraint. Stores linkconstraint id and the optiedge it belong to.
+"""
 struct LinkConstraintRef <: AbstractLinkConstraintRef
     idx::Int # index in optiedge
     optiedge::OptiEdge
@@ -87,25 +104,23 @@ function MOI.delete!(cref::LinkConstraintRef)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.optiedge.linkconstraints, cref.idx)
 
-getnodes(edge::OptiEdge) = edge.nodes
-getnodes(con::JuMP.ScalarConstraint) = [getnode(var) for var in keys(con.func.terms)]
-getnodes(con::LinkConstraint) = [getnode(var) for var in keys(con.func.terms)]
-getnodes(cref::LinkConstraintRef) = getnodes(cref.optiedge.linkconstraints[cref.idx])
-num_nodes(con::LinkConstraint) = length(getnodes(con))
+optinodes(edge::OptiEdge) = edge.nodes
+optinodes(con::JuMP.ScalarConstraint) = [optinode(var) for var in keys(con.func.terms)]
+optinodes(con::LinkConstraint) = [optinode(var) for var in keys(con.func.terms)]
+optinodes(cref::LinkConstraintRef) = optinodes(cref.optiedge.linkconstraints[cref.idx])
+num_nodes(con::LinkConstraint) = length(optinodes(con))
 JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstraints[linkref.idx]
 
 #TODO: Update this
 function JuMP.dual(linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
     id = optiedge.backend.last_solution_id
-    return MOI.get(optiedge.backend,MOI.ConstraintDual(),linkref)
+    return MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
 end
 
-num_link_constraints(edge::OptiEdge) = length(edge.linkconstraints)
-
+num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
 linkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
 @deprecate getlinkconstraints linkconstraints
-@deprecate link_constraints linkconstraints
 
 function Base.string(edge::OptiEdge)
     "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"
@@ -125,8 +140,8 @@ function JuMP.constraint_string(mode::Any,ref::LinkConstraintRef)
 end
 
 function Base.show(io::IO, ref::LinkConstraintRef)
-    print(io, JuMP.constraint_string(JuMP.REPLMode, ref))
+    print(io, JuMP.constraint_string(MIME("text/plain"), ref))
 end
 function Base.show(io::IO, ::MIME"text/latex", ref::LinkConstraintRef)
-    print(io, JuMP.constraint_string(JuMP.IJuliaMode, ref))
+    print(io, JuMP.constraint_string(MIME("text/latex"), ref))
 end

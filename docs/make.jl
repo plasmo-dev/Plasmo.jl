@@ -1,21 +1,27 @@
-using Documenter, Plasmo, JuMP, LightGraphs, Plots
+using Documenter, Plasmo, PlasmoPlots, Suppressor
+
+DocMeta.setdocmeta!(Plasmo, :DocTestSetup, :(using Plasmo); recursive=true)
+DocMeta.setdocmeta!(PlasmoPlots, :DocTestSetup, :(using PlasmoPlots); recursive=true)
 
 #Fix issue with GKS for plotting
 ENV["GKSwstype"] = "100"
 
-makedocs(sitename="Plasmo.jl", modules=[Plasmo],
-        doctest=true,format = Documenter.HTML(
+makedocs(sitename="Plasmo.jl", modules=[Plasmo, PlasmoPlots],
+        doctest=true, format=Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true"),
         authors = "Jordan Jalving",
         pages = [
         "Introduction" => "index.md",
-        "Modeling" => "documentation/modeling.md",
-        "Partitioning and Graph Operations" => "documentation/partitioning.md",
+        "Quickstart" => "documentation/quickstart.md",
+        "Modeling with OptiGraphs" => "documentation/modeling.md",
+        "Graph Partitioning and Processing" => "documentation/partitioning.md",
         "Solvers" => "documentation/solvers.md",
-        "Plotting" => "documentation/plotting.md",
-        "Tutorials" => "tutorials/tutorials.md"]
+        "Tutorials" => [
+            "Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md",
+            ],
+        "API Documentation" => "documentation/api_docs.md"]
         )
 
 deploydocs(
-    repo = "github.com/zavalab/Plasmo.jl.git"
+    repo = "github.com/plasmo-dev/Plasmo.jl.git"
     )

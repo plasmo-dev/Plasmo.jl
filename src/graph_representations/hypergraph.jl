@@ -9,7 +9,7 @@ HyperEdge(t::Vector{HyperNode}) = HyperEdge(Set(t))
 HyperEdge(t::HyperNode...) = HyperEdge(Set(collect(t)))
 
 """
-    Hypergraph
+    HyperGraph
 
 A simple hypergraph type.  Contains attributes for vertices and hyperedges.
 """
@@ -19,7 +19,7 @@ mutable struct HyperGraph <: AbstractHyperGraph
     hyperedges::OrderedDict{Set,Int64} #{Set,HyperEdge}           #look up hyperedge index using hypernodes.
     node_map::Dict{HyperNode,Vector{HyperEdge}}  #map hypernodes to hyperedges they are incident to
 end
-HyperGraph() = HyperGraph(HyperNode[],OrderedDict{Int64,HyperEdge}(),OrderedDict{Set,HyperEdge}(),Dict{HyperNode,Vector{HyperEdge}}())
+HyperGraph() = HyperGraph(HyperNode[], OrderedDict{Int64,HyperEdge}(), OrderedDict{Set,HyperEdge}(), Dict{HyperNode,Vector{HyperEdge}}())
 
 #HyperNode
 function LightGraphs.add_vertex!(hypergraph::HyperGraph)
@@ -42,10 +42,10 @@ Base.reverse(e::HyperEdge) = error("A hyperedge does not support reverse()")
 LightGraphs.add_edge!(graph::HyperGraph,vertices::HyperNode...) = add_hyperedge!(graph,vertices...)
 gethypernodes(edge::HyperEdge) = collect(edge.vertices)
 
-function add_hyperedge!(hypergraph::HyperGraph,hypernodes::HyperNode...)
+function add_hyperedge!(hypergraph::HyperGraph, hypernodes::HyperNode...)
     @assert length(hypernodes) > 1
     hypernodes = Set(collect(hypernodes))
-    if has_edge(hypergraph,hypernodes)
+    if has_edge(hypergraph, hypernodes)
         return gethyperedge(hypernodes)
         #return hypergraph.hyperedges[hypernodes]
     else
@@ -77,8 +77,8 @@ end
 #LightGraphs Interface
 LightGraphs.edges(graph::HyperGraph) = graph.hyperedges
 LightGraphs.edgetype(graph::HyperGraph) = HyperEdge
-LightGraphs.has_edge(graph::HyperGraph,edge::HyperEdge) = edge in values(graph.hyperedge_map)
-LightGraphs.has_edge(graph::HyperGraph,hypernodes::Set{HyperNode}) = haskey(graph.hyperedges,hypernodes)
+LightGraphs.has_edge(graph::HyperGraph, edge::HyperEdge) = edge in values(graph.hyperedge_map)
+LightGraphs.has_edge(graph::HyperGraph, hypernodes::Set{HyperNode}) = haskey(graph.hyperedges,hypernodes)
 LightGraphs.has_vertex(graph::HyperGraph, v::Integer) = v in vertices(graph)
 LightGraphs.is_directed(graph::HyperGraph) = false
 LightGraphs.is_directed(::Type{HyperGraph}) = false
@@ -197,7 +197,7 @@ end
 
 Identify the incident hyperedges to a vector of `HyperNode`s.
 """
-function incident_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
+function incident_edges(hypergraph::HyperGraph, hypernodes::Vector{HyperNode})
     external_nodes = setdiff(hypergraph.vertices,hypernodes) #nodes in hypergraph that aren't in hypernodes
     #Create partition matrix
     I = []
@@ -237,7 +237,7 @@ end
 
 Identify both induced partition edges and cut edges given a partition of `HyperNode` vectors.
 """
-function identify_edges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}})
+function identify_edges(hypergraph::HyperGraph, partitions::Vector{Vector{HyperNode}})
     nparts = length(partitions)
 
     #Create partition matrix
@@ -253,8 +253,8 @@ function identify_edges(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNo
 
     V = Int.(ones(length(J)))
     G = sparse(I,J,V)  #Node partition matrix
-    A = sparse(hypergraph)
-    #A = incidence_matrix(hypergraph)
+    #A = sparse(hypergraph)
+    A = incidence_matrix(hypergraph)
     C = G*A  #Edge partitions
 
     #FIND THE SHARED EDGES, Get indices of shared edges
@@ -287,7 +287,7 @@ end
 
 Identify both induced partition nodes and cut nodes given a partition of `HyperEdge` vectors.
 """
-function identify_nodes(hypergraph::HyperGraph,partitions::Vector{Vector{HyperEdge}})
+function identify_nodes(hypergraph::HyperGraph, partitions::Vector{Vector{HyperEdge}})
     nparts = length(partitions)
 
     #Create partition matrix
@@ -338,7 +338,7 @@ induced_elements(hypergraph::HyperGraph,partitions::Vector{Vector{HyperNode}}) =
 
 Retrieve the neighborhood within `distance` of `nodes`.  Returns a vector of the original vertices and added vertices
 """
-function neighborhood(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
+function neighborhood(g::HyperGraph, nodes::Vector{HyperNode}, distance::Int64)
     V = collect(nodes)
     nbr = copy(V)
     newnbr = copy(V) #neighbors to check
@@ -359,6 +359,7 @@ function expand(g::HyperGraph,nodes::Vector{HyperNode},distance::Int64)
     return new_nodes, new_edges
 end
 
+#TODO
 LightGraphs.rem_edge!(g::HyperGraph,e::HyperEdge) = throw(error("Edge removal not yet supported on hypergraphs"))
 LightGraphs.rem_vertex!(g::HyperGraph) = throw(error("Vertex removal not yet supported on hypergraphs"))
 
