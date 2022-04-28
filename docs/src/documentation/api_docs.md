@@ -97,8 +97,8 @@ Partition
 apply_partition!
 aggregate
 aggregate!
-LightGraphs.all_neighbors
-LightGraphs.induced_subgraph
+all_neighbors
+induced_subgraph
 Plasmo.incident_edges
 Plasmo.induced_edges
 Plasmo.identify_edges

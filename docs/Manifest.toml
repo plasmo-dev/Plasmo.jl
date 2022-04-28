@@ -658,16 +658,16 @@ deps = ["Artifacts", "Dates", "Downloads", "LibGit2", "Libdl", "Logging", "Markd
 uuid = "44cfe95a-1eb2-52ea-b672-e2afdf69b78f"
 
 [[Plasmo]]
-deps = ["DataStructures", "Distributed", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "Reexport", "Requires", "SparseArrays", "Test"]
-git-tree-sha1 = "673f2b86086993b87db73793c1df76675a57db24"
+deps = ["DataStructures", "Distributed", "JuMP", "LightGraphs", "LinearAlgebra", "MathOptInterface", "Printf", "Reexport", "Requires", "SparseArrays", "Test"]
+git-tree-sha1 = "e569226ce4f157a0c05910503a80316c079b2b6c"
+repo-rev = "update-documentation"
+repo-url = "/home/jordan/.julia/dev/Plasmo"
 uuid = "d3f7391f-f14a-50cc-bbe4-76a32d1bad3c"
-version = "0.4.4"
+version = "0.5.0"
 
 [[PlasmoPlots]]
-deps = ["Colors", "GR", "GeometryBasics", "LightGraphs", "NetworkLayout", "Plasmo", "Plots", "Statistics"]
-git-tree-sha1 = "7a5ff547625853b5fa58a482c8195e198a7a6a50"
-repo-rev = "master"
-repo-url = "/home/jordan/.julia/dev/PlasmoPlots"
+deps = ["Colors", "GeometryBasics", "LightGraphs", "NetworkLayout", "Plasmo", "Plots", "Statistics"]
+git-tree-sha1 = "07aff30e1e23a084b3ce6b8a167b2425a5c86660"
 uuid = "a21664a3-f668-4e98-8a13-7892286ec16a"
 version = "0.1.0"
 

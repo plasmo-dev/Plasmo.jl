@@ -61,7 +61,7 @@ has_objective, has_nl_objective, has_node_objective,
 set_node_primals, set_node_duals, set_node_status,
 
 # hypergraph functions
-in_degree, out_degree,
+in_degree, out_degree, all_neighbors, induced_subgraph,
 
 neighbors, adjacency_matrix, incidence_matrix, graph_structure,
 

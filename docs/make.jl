@@ -1,4 +1,4 @@
-using Documenter, Plasmo, JuMP, LightGraphs, PlasmoPlots, Suppressor
+using Documenter, Plasmo, PlasmoPlots, Suppressor
 
 DocMeta.setdocmeta!(Plasmo, :DocTestSetup, :(using Plasmo); recursive=true)
 DocMeta.setdocmeta!(PlasmoPlots, :DocTestSetup, :(using PlasmoPlots); recursive=true)
@@ -23,5 +23,5 @@ makedocs(sitename="Plasmo.jl", modules=[Plasmo, PlasmoPlots],
         )
 
 deploydocs(
-    repo = "github.com/zavalab/Plasmo.jl.git"
+    repo = "github.com/plasmo-dev/Plasmo.jl.git"
     )
