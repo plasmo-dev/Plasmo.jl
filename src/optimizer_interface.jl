@@ -153,11 +153,11 @@ end
 # Optimizer
 #################################
 """
-    JuMP.set_optimizer(graph::OptiGraph,optimizer_constructor::Any)
+    JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor::Any)
 
 Set an MOI optimizer onto the optigraph `graph`.  Works exactly the same as using JuMP to set an optimizer.
 
-## Examples
+## Example
 ```julia
 graph = OptiGraph()
 set_optimizer(graph, GLPK.Optimizer)
@@ -188,10 +188,21 @@ function JuMP.set_optimizer(graph::OptiGraph,
     return nothing
 end
 
-#Set an optigraph optimizer directly
-#JuMP.set_optimizer(graph::OptiGraph, optimizer::MOI.ModelLike) = graph.optimizer=optimizer
+#TODO: support optimize hooks
+#TODO: support reseting a new optimizer
+"""
+    JuMP.optimize!(graph::OptiGraph)
 
-function JuMP.optimize!(graph::OptiGraph; kwargs...)
+Optimize the optigraph `graph` with the current set optimizer
+
+## Example
+```julia
+graph = OptiGraph()
+set_optimizer(graph, GLPK.Optimizer)
+optimize!(graph)
+```
+"""
+function JuMP.optimize!(graph::OptiGraph)
     graph_backend = JuMP.backend(graph)
     if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
         error("Please set an optimizer on the optigraph before calling `optimize!` by using `set_optimizer(graph,optimizer)`")

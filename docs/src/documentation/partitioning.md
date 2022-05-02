@@ -4,7 +4,7 @@ Plasmo.jl also supports creating multi-level optigraphs using a top-down approac
 as [Metis](https://github.com/JuliaSparse/Metis.jl) and [KaHyPar](https://github.com/kahypar/KaHyPar.jl).
 
 ## Example Partitioning Problem: Dynamic Optimization
-To help demonstrate graph partitioning capabilities in `Plasmo.jl`, we instantiate a simple optimal control problem described by the following equations. In this problem, ``x`` is a vector of states and ``u`` is a vector of control
+To help demonstrate graph partitioning capabilities in Plasmo.jl, we instantiate a simple optimal control problem described by the following equations. In this problem, ``x`` is a vector of states and ``u`` is a vector of control
 actions which are both indexed over the set of time indices ``t \in \{1,...,T\}``. The objective function minimizes the state trajectory with minimal control effort, the second equation describes the
 state dynamics, and the third equation defines the initial condition. The last two equations define limits on the state and control actions.
 
@@ -46,8 +46,8 @@ end
 \end{aligned}
 ```
 
-This snippet shows how to construct the optimal control problem in `Plasmo.jl`. We create an optigraph, add optinodes which represent states and controls at each time period, we set
-objective functions for each optinode, and we use linking constraints to describe the dynamics.
+This snippet shows how to construct the optimal control problem in Plasmo.jl. We create an optigraph, add optinodes which represent states and controls at each time period, we set
+objective functions for each optinode, and we use link-constraints to describe the dynamics.
 
 ```julia
 using Plasmo
@@ -119,8 +119,8 @@ We can also plot the resulting optigraph (see [Plotting](@ref)) which produces a
 ```
 
 ```julia
-using Plots
 using PlasmoPlots
+
 plt_chain_layout = layout_plot(graph,
                                layout_options=Dict(:tol=>0.1,:iterations=>500),
                                linealpha = 0.2,
@@ -129,18 +129,13 @@ plt_chain_layout = layout_plot(graph,
 plt_chain_matrix = matrix_plot(graph)
 ```
 
-```@raw html
-<img src="../assets/chain_layout.svg" alt="chain_layout" width="400"/>
-```
+![partition_layout_1](../assets/chain_layout.svg) ![partition_matrix_1](../assets/chain_layout_matrix.svg)
 
-```@raw html
-<img src="../assets/chain_layout_matrix.svg" alt="chain_matrix" width="400"/>
-```
 
 ## Partitioning OptiGraphs
 At its core, the [`OptiGraph`](@ref) is a [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) and can naturally interface to hypergraph partitioning tools.  
 For our example here we demonstrate how to use hypergraph partitioning (using [KaHyPar](https://github.com/kahypar/KaHyPar.jl)),
-but `Plasmo.jl` also supports standard graph partitioning algorithms using graph projections.
+but Plasmo.jl also supports standard graph partitioning algorithms using graph projections.
 The below snippet uses the [`hyper_graph`](@ref) function which returns a [`Plasmo.HyperGraph`](@ref) object and a `hyper_map` (a Julia dictionary) which maps hypernodes and hyperedges back to the original optigraph.
 
 ```jldoctest hypergraph
@@ -186,8 +181,9 @@ end
 ```
 
 With our hypergraph we can now perform hypergraph partitioning in the next snippet which returns a `partition_vector`. Each index in the `partition_vector` corresponds to a
-hypernode in `hypergraph`, and each value denotes which partition the hypernode belongs to. So in our example, `partition_vector` contains 199 elements which can take on integer values between 0 and 7 (for 8 total partitions). Once we have a `partition_vector`, we can create a [`Partition`](@ref) object which describes partitions of optinodes and optiedges, as well as the shared optinodes and optiedges that cross partitions.
-We can lastly use the produced `partition` (a `Partition` object) to formulate subgraphs in our original optigraph (`graph`) using [`apply_partition!`](@ref). After doing so,
+hypernode in `hypergraph`, and each value denotes which partition the hypernode belongs to. So in our example, `partition_vector` contains 199 elements which take on integer values between 0 and 7 (for 8 total partitions).
+Once we have a `partition_vector`, we can create a [`Partition`](@ref) object which describes partitions of optinodes and optiedges, as well as the shared optinodes and optiedges that cross partitions.
+We can lastly use the produced `partition` object to formulate subgraphs in our original optigraph (`graph`) using [`apply_partition!`](@ref). After doing so,
 we see that our `graph` now contains 8 subgraphs with 7 link-constraints that correspond to the optiedges that cross partitions (i.e. connect subgraphs).
 
 ```julia
@@ -208,13 +204,13 @@ julia> apply_partition!(graph, partition);
     partitioning or community detection approach.
 
 ```jldoctest partitioning
-julia> println(length(partition_vector))
+julia> length(partition_vector)
 199
 
-julia> println(partition)
+julia> partition
 OptiGraph Partition w/ 8 subpartitions
 
-julia> println(num_subgraphs(graph))
+julia> num_subgraphs(graph)
 8
 
 julia> num_linkconstraints(graph)
@@ -240,13 +236,7 @@ plt_chain_partition_matrix = matrix_layout(graph, subgraph_colors=true)
 
 ```
 
-```@raw html
-<img src="../assets/chain_layout_partition.svg" alt="chain_partition" width="400"/>
-```
-
-```@raw html
-<img src="../assets/chain_layout_matrix_partition.svg" alt="chain_matrix_partition" width="400"/>
-```
+![partition_layout_2](../assets/chain_layout_partition.svg) ![partition_matrix_2](../assets/chain_layout_matrix_partition.svg)
 
 ## Aggregating OptiGraphs
 Subgraphs can be converted into stand-alone optinodes using the using the [`aggregate`](@ref) function. This can be helpful when the user models using subgraphs, but they want to represent solvable subproblems
@@ -289,14 +279,11 @@ plt_chain_matrix_aggregate = matrix_plot(aggregate_graph,
 
 ```
 
-```@raw html
-<img src="../assets/chain_layout_aggregate.svg" alt="chain_aggregate" width="400"/>
-```
+![partition_layout_3](../assets/chain_layout_aggregate.svg) ![partition_matrix_3](../assets/chain_layout_matrix_aggregate.svg)
 
-```@raw html
-<img src="../assets/chain_layout_matrix_aggregate.svg" alt="chain_matrix_aggregate" width="400"/>
-```
 
 ## OptiGraph Projections
 
-Coming Soon!
+!!! note
+
+    Documentation coming soon!
