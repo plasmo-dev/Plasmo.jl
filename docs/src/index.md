@@ -22,7 +22,7 @@ Pkg.add("Plasmo")
 ```
 or alternatively from the Julia package manager by performing the following:
 ```
-pkg> ] add Plasmo
+pkg> add Plasmo
 ```
 
 

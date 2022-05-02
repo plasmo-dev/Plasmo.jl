@@ -56,11 +56,11 @@ attached_node
 set_attached_node
 ```
 
-
 ## Extended Functions
 ```@docs
 JuMP.all_variables
 JuMP.set_optimizer
+JuMP.optimize!
 JuMP.objective_function
 JuMP.value
 JuMP.dual
@@ -84,7 +84,6 @@ JuMP.termination_status
 ```
 
 ## Graph Processing and Partitioning
-
 ```@docs
 Plasmo.graph_backend
 Plasmo.HyperGraph
