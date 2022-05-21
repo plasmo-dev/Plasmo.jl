@@ -4,6 +4,7 @@
 [![CI](https://github.com/plasmo-dev/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/plasmo-dev/Plasmo.jl/actions)
 [![codecov](https://codecov.io/gh/plasmo-dev/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/plasmo-dev/Plasmo.jl)
 [![](https://img.shields.io/badge/docs-latest-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/dev/)
+[![DOI](https://zenodo.org/badge/96967382.svg)](https://zenodo.org/badge/latestdoi/96967382)
 
 # Plasmo.jl
 Plasmo.jl (which stands for Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework.  It adopts a modular style to
