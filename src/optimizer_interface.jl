@@ -19,7 +19,7 @@ function _set_graph_objective(graph::OptiGraph)
                 JuMP.set_objective_function(node,-1*JuMP.objective_function(node))
             end
         end
-        JuMP.set_objective(graph,MOI.MIN_SENSE,sum(objective_function(nodes[i]) for i = 1:length(nodes)))
+        JuMP.set_objective(graph, MOI.MIN_SENSE, sum(objective_function(nodes[i]) for i = 1:length(nodes)))
     end
     return nothing
 end
@@ -28,11 +28,11 @@ end
 #Set the backend objective to the graph objective
 function _set_backend_objective(graph::OptiGraph)
     obj = objective_function(graph)
-    _set_backend_objective(graph,obj)
+    _set_backend_objective(graph, obj)
     return nothing
 end
 
-function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericAffExpr{Float64,VariableRef})
+function _set_backend_objective(graph::OptiGraph, obj::JuMP.GenericAffExpr{Float64,VariableRef})
     graph_backend = JuMP.backend(graph)
     moi_obj = moi_function(obj)
     for (i,terms) in enumerate(linear_terms(obj))
@@ -43,12 +43,12 @@ function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericAffExpr{Float6
         new_moi_idx = node_idx_map[moi_term]
         moi_obj = _swap_linear_term!(moi_obj,i,new_moi_idx)
     end
-    MOI.set(graph_backend,MOI.ObjectiveSense(),MOI.MIN_SENSE)
-    MOI.set(graph_backend,MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),moi_obj)
+    MOI.set(graph_backend.optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(graph_backend.optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), moi_obj)
     return nothing
 end
 
-function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericQuadExpr{Float64,VariableRef})
+function _set_backend_objective(graph::OptiGraph, obj::JuMP.GenericQuadExpr{Float64,VariableRef})
     graph_backend = JuMP.backend(graph)
     moi_obj = moi_function(obj)
     for (i,terms) in enumerate(quad_terms(obj))
@@ -73,8 +73,8 @@ function _set_backend_objective(graph::OptiGraph,obj::JuMP.GenericQuadExpr{Float
         moi_obj = _swap_linear_term!(moi_obj,i,new_moi_idx)
     end
 
-    MOI.set(graph_backend,MOI.ObjectiveSense(),MOI.MIN_SENSE)
-    MOI.set(graph_backend,MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),moi_obj)
+    MOI.set(graph_backend.optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    MOI.set(graph_backend.optimizer, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(), moi_obj)
     return nothing
 end
 
@@ -112,7 +112,6 @@ function _set_node_results!(graph::OptiGraph)
         src.result_location[id] = src.optimizers[id]
     end
 
-    #edges (links)
     #edges also point to graph backend model
     for linkref in all_linkconstraints(graph)
         edge = JuMP.owner_model(linkref)
@@ -125,7 +124,7 @@ function _set_node_results!(graph::OptiGraph)
     #TODO: Add list of model attributes to graph backend.
     #if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
     try
-        nlp_duals = MOI.get(graph_backend,MOI.NLPBlockDual())
+        nlp_duals = MOI.get(graph_backend, MOI.NLPBlockDual())
         for node in nodes
             if node.nlp_data != nothing
                 src = JuMP.backend(node)
@@ -165,8 +164,8 @@ set_optimizer(graph, GLPK.Optimizer)
 """
 function JuMP.set_optimizer(graph::OptiGraph,
     optimizer_constructor,
-    add_bridges::Bool = true,
-    bridge_constraints::Union{Nothing,Bool} = nothing)
+    add_bridges::Bool=true,
+    bridge_constraints::Union{Nothing,Bool}=nothing)
 
     if bridge_constraints !== nothing
         @warn(
@@ -207,23 +206,32 @@ function JuMP.optimize!(graph::OptiGraph)
     if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
         error("Please set an optimizer on the optigraph before calling `optimize!` by using `set_optimizer(graph,optimizer)`")
     end
+
     if graph_backend.state == MOIU.EMPTY_OPTIMIZER
         MOIU.attach_optimizer(graph_backend)
+        graph.is_dirty = false
+    elseif graph.is_dirty == true
+        MOI.empty!(graph_backend.optimizer)
+        graph_backend.state = MOIU.EMPTY_OPTIMIZER
+        MOIU.attach_optimizer(graph_backend)
+        graph.is_dirty = false
     end
 
     # Just like JuMP, NLP data is not kept in sync, so set it up here
     if has_nlp_data(graph)
+        # NOTE: this also adds the NLPBlock the graph backend model_cache, not sure we need it there
         MOI.set(graph_backend, MOI.NLPBlock(), _create_nlp_block_data(graph))
     end
 
     # set objective function
     has_nl_obj = has_nl_objective(graph)
     if !(has_nl_obj)
+        # TODO: handle graph objective using GraphBackend instead of setting here
         _set_graph_objective(graph)
         _set_backend_objective(graph) #sets linear or quadratic objective
     else
         #set default sense to minimize if there is a nonlinear objective function
-        MOI.set(graph_backend,MOI.ObjectiveSense(),MOI.MIN_SENSE)
+        MOI.set(graph_backend, MOI.ObjectiveSense(), MOI.MIN_SENSE)
     end
 
     try
@@ -236,6 +244,7 @@ function JuMP.optimize!(graph::OptiGraph)
             rethrow(err)
         end
     end
+
     #populate solutions onto each node backend
     _set_node_results!(graph)
     for node in all_nodes(graph)
@@ -263,7 +272,7 @@ function _create_nlp_block_data(graph::OptiGraph)
             end
         end
     end
-    return MOI.NLPBlockData(bounds,OptiGraphNLPEvaluator(graph),has_nl_obj)
+    return MOI.NLPBlockData(bounds, OptiGraphNLPEvaluator(graph), has_nl_obj)
 end
 
 #######################################################

@@ -233,19 +233,19 @@ MOI.get(node_solution::NodeSolution, attr::MOI.VariablePrimal, idx::Vector{MOI.V
 #Get node pointer solution
 function MOI.get(node_pointer::NodePointer, attr::MOI.VariablePrimal, idx::MOI.VariableIndex)
     optimizer = node_pointer.optimizer
-    other_index = node_pointer.node_to_optimizer_map[idx]
-    value_other = MOI.get(optimizer,attr,other_index)
+    other_index = node_pointer.node_to_optimizer_map[idx] # index on optimizer
+    value_other = MOI.get(optimizer, attr, other_index)
     return value_other
 end
 
-function MOI.get(node_pointer::NodePointer,attr::MOI.ConstraintDual, idx::MOI.ConstraintIndex)
+function MOI.get(node_pointer::NodePointer, attr::MOI.ConstraintDual, idx::MOI.ConstraintIndex)
     optimizer = node_pointer.optimizer
     other_index = node_pointer.node_to_optimizer_map[idx]
     value_other = MOI.get(optimizer,attr,other_index)
     return value_other
 end
-MOI.get(node_pointer::NodePointer, attr::MOI.TerminationStatus) = MOI.get(node_pointer.optimizer,attr)
-MOI.set(node_pointer::NodePointer,attr::MOI.AnyAttribute,args...) = MOI.set(node_pointer.optimizer,attr,args...)
+MOI.get(node_pointer::NodePointer, attr::MOI.TerminationStatus) = MOI.get(node_pointer.optimizer, attr)
+MOI.set(node_pointer::NodePointer, attr::MOI.AnyAttribute, args...) = MOI.set(node_pointer.optimizer, attr, args...)
 
 #Grab results from the underlying "optimizer"
 function MOI.get(node_backend::NodeBackend, attr::MOI.VariablePrimal, idx::MOI.VariableIndex)
@@ -253,20 +253,20 @@ function MOI.get(node_backend::NodeBackend, attr::MOI.VariablePrimal, idx::MOI.V
 end
 
 function MOI.get(node_backend::NodeBackend, attr::MOI.ConstraintDual, idx::MOI.ConstraintIndex)
-    return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr,idx)
+    return MOI.get(node_backend.result_location[node_backend.last_solution_id], attr, idx)
 end
 
 #Get vector of variables
 function MOI.get(node_backend::NodeBackend, attr::MOI.VariablePrimal, idx::Vector{MOI.VariableIndex})
-    return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr,idx)
+    return MOI.get(node_backend.result_location[node_backend.last_solution_id], attr, idx)
 end
 
 function MOI.get(node_backend::NodeBackend, attr::MOI.ConstraintDual, idx::Vector{MOI.ConstraintIndex})
-    return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr,idx)
+    return MOI.get(node_backend.result_location[node_backend.last_solution_id], attr, idx)
 end
 
 function MOI.get(node_backend::NodeBackend, attr::MOI.TerminationStatus)
-    return MOI.get(node_backend.result_location[node_backend.last_solution_id],attr)
+    return MOI.get(node_backend.result_location[node_backend.last_solution_id], attr)
 end
 
 # MOI.get(node_backend::NodeBackend, attr::MOI.TerminationStatus) = MOI.get(node_backend.result_location[node_backend.last_solution_id], attr)
