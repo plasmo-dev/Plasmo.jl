@@ -15,27 +15,26 @@ function _create_optigraph()
 
     @variable(n1,0 <= x <= 2, start = 1)
     @variable(n1,0 <= y <= 3)
-    @NLconstraint(n1,x^3+y <= 4)
+    @NLconstraint(n1, x^3+y <= 4)
 
     vals = collect(1:5)
     grid = 1:3
-    @variable(n2,x >= 1)
-    @variable(n2,0 <= y <= 5)
-    @variable(n2,z[1:5] >= 0)
-    @variable(n2,a[vals,grid] >=0 )
-    @NLconstraint(n2,exp(x)+y <= 7)
+    @variable(n2, x >= 1)
+    @variable(n2, 0 <= y <= 5)
+    @variable(n2, z[1:5] >= 0)
+    @variable(n2, a[vals,grid] >= 0)
+    @NLconstraint(n2, exp(x)+y <= 7)
 
     @variable(n3,x[1:5])
     @variable(n4,x >= 1)
 
+    @linkconstraint(graph, n4[:x] == n1[:x])
+    @linkconstraint(graph, [t = 1:5],n4[:x] == n2[:z][t])
+    @linkconstraint(graph, [i = 1:5],n3[:x][i] == n1[:x])
+    @linkconstraint(graph, [j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])
+    @linkconstraint(graph, [i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
-    @linkconstraint(graph,n4[:x] == n1[:x])
-    @linkconstraint(graph,[t = 1:5],n4[:x] == n2[:z][t])
-    @linkconstraint(graph,[i = 1:5],n3[:x][i] == n1[:x])
-    @linkconstraint(graph,[j = 1:5,i = 1:3],n2[:a][j,i] == n4[:x])
-    @linkconstraint(graph,[i = 1:3],n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
-
-    @objective(graph,Min,n1[:x] + n2[:x])
+    @objective(graph, Min, n1[:x] + n2[:x])
     return graph
 end
 
@@ -116,12 +115,10 @@ function test_set_model_with_graph()
     @test optinode_by_index(graph,2) == n2
     @test Base.getindex(graph,n1) == 1
 
-    #Link constraints take the same expressions as the JuMP @constraint macro
     @linkconstraint(graph,n1[:x] == n2[:x])
-
     @test num_variables(graph) == 3
 
-    set_optimizer(graph,optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(graph)
     @test termination_status(graph) == MOI.LOCALLY_SOLVED
     @test isapprox(value(n1[:x]), 0; atol = 1e-8)
@@ -132,15 +129,15 @@ function test_set_model_with_graph()
     @test isapprox(dual(graph,cref),0; atol = 1e-8)
 
     m3 = JuMP.Model()
-    JuMP.@variable(m3,x)
-    JuMP.@NLconstraint(m3,ref,exp(x) >= 2)
-    add_node!(graph,m3)
+    JuMP.@variable(m3, x)
+    JuMP.@NLconstraint(m3, ref, exp(x) >= 2)
+    add_node!(graph, m3)
     @test num_nodes(graph) == 3
     @test num_variables(graph) == 4
 
-    # TODO: make this work. Need to rebuild after new node is added.
-    # optimize!(graph)
-    # @test termination_status(graph) == MOI.LOCALLY_SOLVED
+    # NOTE: this rebuilds the backend since a new node is added.
+    optimize!(graph)
+    @test termination_status(graph) == MOI.LOCALLY_SOLVED
 end
 
 function test_subgraph()
@@ -209,26 +206,26 @@ end
 
 function test_multiple_solves()
     graph = _create_optigraph()
-    n1 = optinode(graph,1)
+    n1 = optinode(graph, 1)
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
     @test isapprox(value(n1[:x]), 1, atol = 1e-6)
 
-    set_lower_bound(n1[:x],2)
+    set_lower_bound(n1[:x], 1.5)
     optimize!(graph)
-    @test isapprox(value(n1[:x]),2,atol = 1e-6)
+    @test isapprox(value(n1[:x]), 1.5, atol = 1e-6)
 
-    #I don't think this is actually working.
-    #I think the node pointer needs to pass the attributes
     set_start_value(n1[:x],10)
     optimize!(graph)
-    @test isapprox(value(n1[:x]),2,atol = 1e-6)
+    @test isapprox(value(n1[:x]), 1.5, atol = 1e-6)
     @test start_value(n1[:x]) == 10
 
-    # set_start_value(graph,n1[:x],20)
-    # optimize!(graph)
-    # @test isapprox(value(n1[:x]),1,atol = 1e-6)
-    # @test start_value(graph,n1[:x]) == 20
+    # TODO: support variable attributes on optigraph
+    set_start_value(graph, n1[:x], 20)
+    optimize!(graph)
+    @test isapprox(value(n1[:x]), 1.5, atol = 1e-6)
+    @test start_value(graph, n1[:x]) == 20
+    @test graph.moi_backend.optimizer.model.variable_primal_start[1] == 20
 end
 
 function test_fix_variable()
@@ -258,7 +255,7 @@ end
 function test_nlp_exceptions()
     graph = _create_optigraph()
     @test_throws Exception JuMP._init_NLP(graph)
-    @test_throws Exception @NLconstraint(graph,graph[1][:x]^3 >= 0)
+    @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
 end
 
 function run_tests()

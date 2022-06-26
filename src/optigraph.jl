@@ -44,6 +44,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
 
     id::Symbol
 
+    is_dirty::Bool
+
     #Constructor
     function OptiGraph()
         optigraph = new(Vector{OptiNode}(),
@@ -59,7 +61,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
                     Set{Any}(),
                     Dict{Symbol,Any}(),
                     Dict{Symbol,Any}(),
-                    gensym()
+                    gensym(),
+                    true
                     )
         graph_backend = GraphBackend(optigraph)
         optigraph.moi_backend = graph_backend
@@ -108,6 +111,7 @@ function _flag_graph_backend!(graph::OptiGraph)
     if graph.graph_backend != nothing
         graph.graph_backend.update_backend = true
     end
+    graph.is_dirty = true
 end
 
 #################
@@ -822,26 +826,35 @@ function JuMP.dual(graph::OptiGraph, linkref::LinkConstraintRef)
     return MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
 end
 
-#Set start value for a graph backend
+# set start value for a graph backend
+# NOTE: currently requires assembling the graph backend first
 function JuMP.set_start_value(graph::OptiGraph, variable::JuMP.VariableRef, value::Number)
     if MOIU.state(backend(graph)) == MOIU.NO_OPTIMIZER
         error("Cannot set start value for optigraph with no optimizer")
     end
+    # TODO: decide whether we really need to call optimize! first, or just build the graph backend
     if MOI.get(JuMP.backend(graph),MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
         error("Start values can only be set for an optigraph optimizer after the initial `optimize!` has been called.  Use `set_start_value(var::JuMP.VariableRef,value::Number)` to set a start value before `optimize!`")
     end
     node_pointer = JuMP.backend(optinode(variable)).optimizers[graph.id]
     var_idx = node_pointer.node_to_optimizer_map[index(variable)]
-    MOI.set(node_pointer,MOI.VariablePrimalStart(),var_idx,value)
+
+    # NOTE: I think this should also update the graph backend variable attribute
+    # This would hit the fallback model if needed
+    MOI.set(graph.moi_backend.model_cache, MOI.VariablePrimalStart(), var_idx, value)
+    MOI.set(node_pointer, MOI.VariablePrimalStart(), var_idx, value)
 end
 
-# MAJOR TODO: query the correct place for start values. We need to correctly support variable attributes through the node pointers
+# MAJOR TODO: query the correct place for start values. We need to correctly support variable optimizer attributes through the node pointers
 # Need to make sure that setting attributes like name hits the model_cache instead
-# function JuMP.start_value(graph::OptiGraph, var::JuMP.VariableRef)
-#     node_pointer = JuMP.backend(var.model).result_location[graph.id]
-#     var_idx = node_pointer.node_to_optimizer_map[index(var)]
-#     return MOI.get(backend(graph).optimizer,MOI.VariablePrimalStart(),var_idx)
-# end
+# we can set the primal_start on Ipopt, but we need to fall back to the correct model_cache to retrieve it
+# node pointer should hit GraphBackend, not the GraphBackend optimizer
+function JuMP.start_value(graph::OptiGraph, variable::JuMP.VariableRef)
+    # decide whether we check the graph backend model_cache, or the node itself, or the node model cache?
+    node_pointer = JuMP.backend(variable.model).result_location[graph.id]
+    var_idx = node_pointer.node_to_optimizer_map[index(variable)]
+    return MOI.get(backend(graph), MOI.VariablePrimalStart(), var_idx)
+end
 
 """
     JuMP.termination_status(graph::OptiGraph)
