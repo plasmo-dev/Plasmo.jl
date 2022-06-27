@@ -12,7 +12,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
     partial_linkconstraints::Dict{Int64,AbstractLinkConstraint} #local node contribution to link constraint
 
     # nlp_data is a reference to `model.nlp_data`
-    nlp_data::Union{Nothing,JuMP._NLPData}
+    #nlp_data::Union{Nothing,JuMP._NLPData}
     nlp_duals::DefaultDict{Symbol,OrderedDict{Int64,Float64}}
 
     # extension data
@@ -29,7 +29,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
         node = new(model,
         "node",
         Dict{Int64,AbstractLinkConstraint}(),
-        nothing,
+        #nothing,
         DefaultDict{Symbol,OrderedDict{Int64,Float64}}(OrderedDict()),
         Dict{Symbol,Any}(),
         id)
@@ -187,15 +187,15 @@ function JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_
 end
 
 """
-    JuMP.add_nonlinear_constraint(node::OptiNode,expr::Expr)
+    JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
 
 Add a non-linear constraint to an optinode using a Julia expression.
 """
 function JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
-    con = JuMP.add_nonlinear_constraint(jump_model(node),expr)
+    con = JuMP.add_nonlinear_constraint(jump_model(node), expr)
     #re-sync NLP data
     #TODO: think about less hacky nlp_data after JuMP NLP update
-    node.nlp_data = node.model.nlp_data
+    #node.nlp_data = node.model.nlp_data
     return con
 end
 
@@ -277,6 +277,9 @@ function num_linkconstraints(node::OptiNode)
 end
 @deprecate num_link_constraints num_linkconstraints
 
+
+
+
 """
     has_objective(node::OptiNode)
 
@@ -286,14 +289,18 @@ has_objective(node::OptiNode) =
     objective_function(node) != zero(JuMP.AffExpr) &&
     objective_function(node) != zero(JuMP.QuadExpr)
 
+
+JuMP.nonlinear_model(node::OptiNode) = JuMP.nonlinear_model(jump_model(node))
+
 """
     has_nl_objective(node::OptiNode)
 
 Check whether optinode `node` has a nonlinear objective function
 """
 function has_nl_objective(node::OptiNode)
-    if node.nlp_data != nothing
-        if node.nlp_data.nlobj != nothing
+    nlp_model = JuMP.nonlinear_model(node)
+    if nlp_model != nothing
+        if nlp_model.objective != nothing
             return true
         end
     end
@@ -358,6 +365,7 @@ JuMP.dual_status(node::OptiNode) = JuMP.dual_status(jump_model(node))
 JuMP.solver_name(node::OptiNode) = JuMP.solver_name(jump_model(node))
 JuMP.mode(node::OptiNode) = JuMP.mode(jump_model(node))
 JuMP._moi_mode(node_backend::NodeBackend) = node_backend.optimizer.mode
+JuMP._init_NLP(node::OptiNode) = JuMP._init_NLP(jump_model(node))
 
 
 ##############################################
@@ -408,25 +416,3 @@ function string(node::OptiNode)
 end
 print(io::IO,node::OptiNode) = print(io, string(node))
 show(io::IO,node::OptiNode) = print(io,node)
-
-
-#DEPRECATED
-# nodevalue(var::JuMP.VariableRef) = JuMP.value(var)
-# function nodevalue(expr::JuMP.GenericAffExpr)
-#     ret_value = 0.0
-#     for (var,coeff) in expr.terms
-#         ret_value += coeff*nodevalue(var)
-#     end
-#     ret_value += expr.constant
-#     return ret_value
-# end
-#
-# function nodevalue(expr::JuMP.GenericQuadExpr)
-#     ret_value = 0.0
-#     for (pair,coeff) in expr.terms
-#         ret_value += coeff*nodevalue(pair.a)*nodevalue(pair.b)
-#     end
-#     ret_value += nodevalue(expr.aff)
-#     ret_value += expr.aff.constant
-#     return ret_value
-# end

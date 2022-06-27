@@ -105,9 +105,9 @@ function aggregate(optigraph::OptiGraph)
         reference_map.linkconstraintmap[JuMP.constraint_object(linkconstraint)] = cref
     end
 
-    aggregate_node.nlp_data = aggregate_node.model.nlp_data
+    #aggregate_node.nlp_data = aggregate_node.model.nlp_data
 
-    return aggregate_node,reference_map
+    return aggregate_node, reference_map
 end
 @deprecate combine aggregate
 
@@ -143,38 +143,45 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
 
     #COPY NONLINEAR CONSTRAINTS
     nlp_initialized = false
-    if add_node.nlp_data !== nothing
-        d = JuMP.NLPEvaluator(add_node)           #Get the NLP evaluator object.  Initialize the expression graph
-        MOI.initialize(d,[:ExprGraph])
+    nlp = JuMP.nonlinear_model(add_node)
+    #if add_node.nlp_data !== nothing
+    if nlp !== nothing
+        d = JuMP.NLPEvaluator(add_node)   #Get the NLP evaluator object.  Initialize the expression graph
+        MOI.initialize(d, [:ExprGraph])
         nlp_initialized = true
-        add_node.nlp_data = add_node.model.nlp_data
-        for i = 1:length(add_node.nlp_data.nlconstr)
-            expr = MOI.constraint_expr(d,i)                         #this returns a julia expression
-            _splice_nonlinear_variables!(expr,add_node,reference_map)        #splice the variables from var_map into the expression
-            new_nl_constraint = JuMP.add_nonlinear_constraint(aggregate_node,expr)      #raw expression input for non-linear constraint
-            constraint_ref = JuMP.ConstraintRef(add_node,JuMP.NonlinearConstraintIndex(i),new_nl_constraint.shape)
+        #add_node.nlp_data = add_node.model.nlp_data
+        for i = 1:length(nlp.constraints)
+        #for i = 1:length(add_node.nlp_data.nlconstr)
+            expr = MOI.constraint_expr(d, i)                                  #this returns a julia expression
+            _splice_nonlinear_variables!(expr,add_node, reference_map)        #splice the variables from var_map into the expression
+            new_nl_constraint = JuMP.add_nonlinear_constraint(aggregate_node, expr)      #raw expression input for non-linear constraint
+            constraint_ref = JuMP.ConstraintRef(
+                add_node,
+                JuMP.NonlinearConstraintIndex(i),
+                new_nl_constraint.shape
+                )
             reference_map[constraint_ref] = new_nl_constraint
         end
     end
 
     #ADD TO OBJECTIVE Expression
-    if isa(graph_obj,Union{Expr,Int}) #NLP
+    if isa(graph_obj, Union{Expr,Int}) #NLP
         if !nlp_initialized
             JuMP._init_NLP(add_node)
             d = JuMP.NLPEvaluator(add_node)
-            MOI.initialize(d,[:ExprGraph])
-            add_node.nlp_data = add_node.model.nlp_data
+            MOI.initialize(d, [:ExprGraph])
+            #add_node.nlp_data = add_node.model.nlp_data
         end
-        new_obj = _copy_nl_objective(d,reference_map)
-        graph_obj = Expr(:call,:+,graph_obj,new_obj)  #update graph objective
+        new_obj = _copy_nl_objective(d, reference_map)
+        graph_obj = Expr(:call, :+, graph_obj, new_obj)  #update graph objective
     else   #AFFINE OR QUADTRATIC OBJECTIVE
         new_objective = _copy_objective(add_node,reference_map)
         sense = JuMP.objective_sense(add_node)
         s = sense == MOI.MAX_SENSE ? -1.0 : 1.0
-        JuMP.add_to_expression!(graph_obj,s,new_objective)
+        JuMP.add_to_expression!(graph_obj, s, new_objective)
     end
 
-    merge!(aggregate_map,reference_map)
+    merge!(aggregate_map, reference_map)
 
     # COPY OBJECT DATA
     #BUG? The object dictionary can really have anything
@@ -182,7 +189,7 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
     for (name, value) in JuMP.object_dictionary(add_node)
         node_obj_dict[name] = getindex.(Ref(reference_map),value)
     end
-    push!(JuMP.object_dictionary(aggregate_node)[:nodes],node_obj_dict)
+    push!(JuMP.object_dictionary(aggregate_node)[:nodes], node_obj_dict)
 
     return reference_map, graph_obj
 end

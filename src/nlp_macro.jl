@@ -1,10 +1,10 @@
 #An Optinode nlp_data object just points to the underlying JuMP Model object
 function JuMP._init_NLP(node::OptiNode)
-    JuMP._init_NLP(node.model)
-    node.nlp_data = node.model.nlp_data
+    JuMP._init_NLP(jump_model(node))
+    #node.nlp_data = node.model.nlp_data
 end
 
-function JuMP.set_objective(node::OptiNode,sense::MOI.OptimizationSense,ex::JuMP._NonlinearExprData)
+function JuMP.set_objective(node::OptiNode, sense::MOI.OptimizationSense, ex::JuMP._NonlinearExprData)
     JuMP._init_NLP(node)
     JuMP.set_objective_sense(node, sense)
     node.nlp_data.nlobj = ex

@@ -126,7 +126,8 @@ function _set_node_results!(graph::OptiGraph)
     try
         nlp_duals = MOI.get(graph_backend, MOI.NLPBlockDual())
         for node in nodes
-            if node.nlp_data != nothing
+            if JuMP.nonlinear_model(node) != nothing
+            #if node.nlp_data != nothing
                 src = JuMP.backend(node)
                 nl_idx_map = src.result_location[id].nl_node_to_optimizer_map #JuMP.backend(node).nl_idx_maps[id]
                 nl_duals = node.nlp_duals[id]
@@ -258,20 +259,27 @@ function _create_nlp_block_data(graph::OptiGraph)
     id = graph.id
 
     bounds = MOI.NLPBoundsPair[]
-    has_nl_obj = false
+    #has_nl_obj = false
     for node in all_nodes(graph)
-        if node.model.nlp_data !== nothing
+        nlp = JuMP.nonlinear_model(node)
+        if nlp != nothing
             src = JuMP.backend(node)
             nl_idx_map = src.optimizers[id].nl_node_to_optimizer_map
-            for (i,constr) in enumerate(node.model.nlp_data.nlconstr)
-                push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
-                nl_idx_map[JuMP.NonlinearConstraintIndex(i)] = JuMP.NonlinearConstraintIndex(length(bounds))
+            #for (i,constr) in enumerate(node.model.nlp_data.nlconstr)
+            for (nl_con_idx, constr) in nlp.constraints
+                bounds_pair = MOI.Nonlinear._bound(constr.set)
+                push!(bounds, bounds_pair)
+                #push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
+                nl_idx_map[MOI.Nonlinear.ConstraintIndex(nl_con_idx)] = MOI.Nonlinear.ConstraintIndex(length(bounds))
+                #nl_idx_map[MOI.Nonlinear.ConstraintIndex(i)] = MOI.Nonlinear.ConstraintIndex(length(bounds))
             end
-            if !has_nl_obj && isa(node.model.nlp_data.nlobj, JuMP._NonlinearExprData)
-                has_nl_obj = true
-            end
+            # if !has_nl_obj && isa(node.model.nlp_data.nlobj, JuMP._NonlinearExprData)
+            #     has_nl_obj = true
+            # end
         end
     end
+
+    has_nl_obj = has_nl_objective(graph)
     return MOI.NLPBlockData(bounds, OptiGraphNLPEvaluator(graph), has_nl_obj)
 end
 

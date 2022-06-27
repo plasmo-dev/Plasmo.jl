@@ -14,7 +14,7 @@ mutable struct OptiGraphNLPEvaluator <: MOI.AbstractNLPEvaluator
     graph::OptiGraph
     optinodes::Vector{OptiNode}
 
-    nlps::Union{Nothing,Vector{JuMP.NLPEvaluator}} #nlp evaluators for optinodes
+    nlps::Union{Nothing,Vector{MOI.Nonlinear.Evaluator}} #nlp evaluators for optinodes
     has_nlobj
     n       #num variables (columns)
     m       #num constraints (rows)
@@ -53,30 +53,39 @@ mutable struct OptiGraphNLPEvaluator <: MOI.AbstractNLPEvaluator
 end
 
 #Initialize
-function MOI.initialize(d::OptiGraphNLPEvaluator,requested_features::Vector{Symbol})
+function MOI.initialize(d::OptiGraphNLPEvaluator, requested_features::Vector{Symbol})
     graph = d.graph
     optinodes = all_nodes(graph)
     linkedges = all_edges(graph)
 
     d.optinodes = optinodes
-    d.nlps = Vector{JuMP.NLPEvaluator}(undef,length(optinodes)) #Initialize each optinode with the requested features
+    # d.nlps = Vector{JuMP.NLPEvaluator}(undef, length(optinodes))      #Initialize each optinode with the requested features
+    d.nlps = Vector{MOI.Nonlinear.Evaluator}(undef, length(optinodes))  #Initialize each optinode with the requested features
     d.has_nlobj = false
 
+
+    # TODO: multiple threads
     #@blas_safe_threads for k=1:length(optinodes)
-    for k=1:length(optinodes)
-        if optinodes[k].nlp_data == nothing
+    K = length(optinodes)
+    for k=1:K
+        model = jump_model(optinodes[k])
+        nlp = JuMP.nonlinear_model(optinodes[k])
+        if nlp == nothing
+        #if optinodes[k].nlp_data == nothing
             # JuMP._init_NLP(optinodes[k].model)
-            JuMP._init_NLP(optinodes[k])
+            JuMP._init_NLP(model)
         end
-        d_node = JuMP.NLPEvaluator(optinodes[k].model)     #Initialize each optinode evaluator
-        MOI.initialize(d_node,requested_features)
+        # d_node = JuMP.NLPEvaluator(optinodes[k].model)     #Initialize each optinode evaluator
+        d_node = JuMP.NLPEvaluator(model)
+        MOI.initialize(d_node, requested_features)
         d.nlps[k] = d_node
-        if d_node.has_nlobj
+        #if d_node.has_nlobj
+        if nlp.objective != nothing
             d.has_nlobj = true
         end
     end
 
-    K = length(optinodes)
+
 
     #num variables in optigraph
     ns= [num_variables(optinode) for optinode in optinodes]
@@ -142,10 +151,10 @@ end
 
 _get_nnz_hess(obj::Union{JuMP.VariableRef,JuMP.GenericAffExpr}) = 0
 _get_nnz_hess(obj::JuMP.GenericQuadExpr) = length(obj.terms)
-_get_nnz_hess(d_node::JuMP.NLPEvaluator) = length(MOI.hessian_lagrangian_structure(d_node))
-_get_nnz_jac(d_node::JuMP.NLPEvaluator) = length(MOI.jacobian_structure(d_node))
+_get_nnz_hess(d_node::MOI.Nonlinear.Evaluator) = length(MOI.hessian_lagrangian_structure(d_node))
+_get_nnz_jac(d_node::MOI.Nonlinear.Evaluator) = length(MOI.jacobian_structure(d_node))
 
-function _get_nnz_hess_quad(d_node::JuMP.NLPEvaluator)
+function _get_nnz_hess_quad(d_node::MOI.Nonlinear.Evaluator)
     if d_node.has_nlobj
         return _get_nnz_hess(d_node)
     else
@@ -277,7 +286,7 @@ function MOI.hessian_lagrangian_structure(d::OptiGraphNLPEvaluator)
 end
 
 #Hessian Lagrangian structure without quadratic objective terms included
-function _hessian_lagrangian_structure(d::JuMP.NLPEvaluator,I,J)
+function _hessian_lagrangian_structure(d::MOI.Nonlinear.Evaluator,I,J)
     cnt = 0
     for (row,col) in MOI.hessian_lagrangian_structure(d)
         I[1+cnt]=row
@@ -287,7 +296,7 @@ function _hessian_lagrangian_structure(d::JuMP.NLPEvaluator,I,J)
 end
 
 #Hessian Lagrangian structure with quadratic objective terms included
-function _hessian_lagrangian_structure_quad(d::JuMP.NLPEvaluator,I,J)
+function _hessian_lagrangian_structure_quad(d::MOI.Nonlinear.Evaluator,I,J)
     if !(d.has_nlobj)
         obj = objective_function(d.model)
         offset = append_to_hessian_sparsity!(I,J,obj,1) + 1
@@ -332,7 +341,7 @@ function MOI.jacobian_structure(d::OptiGraphNLPEvaluator)
     return jacobian_sparsity
 end
 
-function _jacobian_structure(d::JuMP.NLPEvaluator,I,J)
+function _jacobian_structure(d::MOI.Nonlinear.Evaluator,I,J)
     cnt = 0
     for (nlp_row, nlp_col) in MOI.jacobian_structure(d)
         I[1+cnt] = nlp_row
@@ -363,9 +372,9 @@ function MOI.eval_hessian_lagrangian(d::OptiGraphNLPEvaluator,hess::AbstractArra
     #Threads.unlock(lk)
 end
 
-_eval_hessian_lagrangian(d::JuMP.NLPEvaluator,hess,x,sigma,mu) = MOI.eval_hessian_lagrangian(d,hess,x,sigma,mu)
+_eval_hessian_lagrangian(d::MOI.Nonlinear.Evaluator,hess,x,sigma,mu) = MOI.eval_hessian_lagrangian(d,hess,x,sigma,mu)
 
-function _eval_hessian_lagrangian_quad(d::JuMP.NLPEvaluator,hess,x,sigma,mu)
+function _eval_hessian_lagrangian_quad(d::MOI.Nonlinear.Evaluator,hess,x,sigma,mu)
     offset = fill_hessian_lagrangian!(hess, 0, sigma, JuMP.objective_function(d.model))
     nlp_values = view(hess, 1 + offset : length(hess))
     MOI.eval_hessian_lagrangian(d, nlp_values, x, sigma, mu)
