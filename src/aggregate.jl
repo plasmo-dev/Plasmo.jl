@@ -146,7 +146,8 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
     nlp = JuMP.nonlinear_model(add_node)
     #if add_node.nlp_data !== nothing
     if nlp !== nothing
-        d = JuMP.NLPEvaluator(add_node)   #Get the NLP evaluator object.  Initialize the expression graph
+        #d = JuMP.NLPEvaluator(add_node)   #Get the NLP evaluator object.  Initialize the expression graph
+        d = JuMP.NLPEvaluator(add_node; _differentiation_backend = MOI.Nonlinear.ExprGraphOnly())
         MOI.initialize(d, [:ExprGraph])
         nlp_initialized = true
         #add_node.nlp_data = add_node.model.nlp_data
@@ -168,7 +169,8 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
     if isa(graph_obj, Union{Expr,Int}) #NLP
         if !nlp_initialized
             JuMP._init_NLP(add_node)
-            d = JuMP.NLPEvaluator(add_node)
+            #d = JuMP.NLPEvaluator(add_node)
+            d = JuMP.NLPEvaluator(add_node; _differentiation_backend = MOI.Nonlinear.ExprGraphOnly())
             MOI.initialize(d, [:ExprGraph])
             #add_node.nlp_data = add_node.model.nlp_data
         end
