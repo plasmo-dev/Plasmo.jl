@@ -1,13 +1,3 @@
-#Check for nonlinear objective
-# function _has_nonlinear_obj(m::JuMP.Model)
-#     if m.nlp_data != nothing
-#         if m.nlp_data.nlobj != nothing
-#             return true
-#         end
-#     end
-#     return false
-# end
-
 #COPY OBJECTIVE FUNCTIONS
 function _copy_objective(node::OptiNode,ref_map::AggregateMap)
     return _copy_objective(JuMP.objective_function(node),ref_map)
@@ -23,6 +13,7 @@ function _copy_objective(func::JuMP.VariableRef, ref_map::AggregateMap)
     return new_func
 end
 
+# convert JuMP objects into Julia expressions
 function _to_expression(func::JuMP.VariableRef)
     expr = :(0)
     expr = Expr(:call,:+,expr,:($(index(func))))
@@ -53,16 +44,19 @@ function _to_expression(func::JuMP.GenericQuadExpr)
 end
 
 # function _copy_nl_objective(d::JuMP.NLPEvaluator, reference_map::AggregateMap)
-function _copy_nl_objective(d::MOI.Nonlinear.Evaluator, reference_map::AggregateMap)
-    nlp_model = d.model
-    if nlp_model.objective == nothing
+function _copy_nl_objective(node::OptiNode, evaluator::MOI.Nonlinear.Evaluator, reference_map::AggregateMap)
+    # TODO: d.model was originally a JuMP model
+    nlp = evaluator.model
+    if nlp.objective == nothing
         # convert affine or quadratic to julia expression
-        new_obj = _to_expression(JuMP.objective_function(d.model))
+        new_obj = _to_expression(JuMP.objective_function(node))
     else
-        new_obj = MOI.objective_expr(d)
+        # get the objective expression from the evaluator
+        new_obj = MOI.objective_expr(evaluator)
     end
-    _splice_nonlinear_variables!(new_obj, optinode(d.model), reference_map)
-    JuMP.objective_sense(d.model) == MOI.MAX_SENSE ? sense = -1 : sense = 1
+    # TODO: d.model is no longer a JuMP Model. it's the MOI.Nonlinear.Model
+    _splice_nonlinear_variables!(new_obj, node, reference_map)
+    JuMP.objective_sense(node) == MOI.MAX_SENSE ? sense = -1 : sense = 1
     new_obj = Expr(:call, :*, :($sense), new_obj)
     return new_obj
 end
@@ -71,11 +65,11 @@ end
 function _splice_nonlinear_variables!(expr::Expr, node::OptiNode, reference_map::AggregateMap)
     for i = 1:length(expr.args)
         if typeof(expr.args[i]) == Expr
-            if expr.args[i].head != :ref #call _splice_nonlinear_variables! on the expression until it's a :ref. i.e. :(x[index])
+            if expr.args[i].head != :ref #call `_splice_nonlinear_variables!`` on the expression until it is a :ref. (i.e. :(x[index]))
                 _splice_nonlinear_variables!(expr.args[i], node, reference_map)
             else  #it is a variable
                 var_index = expr.args[i].args[2]     #this is the actual MOI index (e.g. x[1], x[2]) in the node model
-                new_var = :($(reference_map.varmap[JuMP.VariableRef(node.model, var_index)]))
+                new_var = :($(reference_map.varmap[JuMP.VariableRef(jump_model(node), var_index)]))
                 expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
             end
         end
