@@ -417,32 +417,16 @@ end
 print(io::IO,node::OptiNode) = print(io, string(node))
 show(io::IO,node::OptiNode) = print(io,node)
 
+JuMP.nonlinear_constraint_string(
+    node::OptiNode,
+    mode::MIME,
+    c::MOI.Nonlinear.ConstraintIndex) = JuMP.nonlinear_constraint_string(jump_model(node), mode, c)
 
-# function JuMP.nonlinear_constraint_string(node::OptiNode, mode, c::JuMP._NonlinearConstraint)
-#     s = JuMP._sense(c)
-#     nl = JuMP.nonlinear_expr_string(node.model, mode, c.terms)
-#     if s == :range
-#         out_str = "$(_string_round(c.lb)) " * _math_symbol(mode, :leq) *
-#                   " $nl " * _math_symbol(mode, :leq) * " " * _string_round(c.ub)
-#     else
-#         if s == :<=
-#             rel = JuMP._math_symbol(mode, :leq)
-#         elseif s == :>=
-#             rel = JuMP._math_symbol(mode, :geq)
-#         else
-#             rel = JuMP._math_symbol(mode, :eq)
-#         end
-#         out_str = string(nl, " ", rel, " ", JuMP._string_round(JuMP._rhs(c)))
-#     end
-#     return out_str
-# end
-#
-# const NonlinearOptiNodeConstraintRef = ConstraintRef{OptiNode, NonlinearConstraintIndex}# where T <: OptiObject
-# function Base.show(io::IO, c::NonlinearOptiNodeConstraintRef)
-#     print(io, JuMP.nonlinear_constraint_string(c.model, MIME("text/plain"), c.model.nlp_data.nlconstr[c.index.value]))
-# end
-#
-# function Base.show(io::IO, ::MIME"text/latex", c::NonlinearOptiNodeConstraintRef)
-#     constraint = c.model.nlp_data.nlconstr[c.index.value]
-#     print(io, JuMP._wrap_in_math_mode(JuMP.nonlinear_constraint_string(c.model, MIME"text/latex", constraint)))
-# end
+const NonlinearOptiNodeConstraintRef = ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex}# where T <: OptiObject
+function Base.show(io::IO, c::ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex})
+    print(io, JuMP.nonlinear_constraint_string(c.model, MIME("text/plain"), JuMP.index(c)))
+end
+
+function Base.show(io::IO, ::MIME"text/latex", c::ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex})
+    print(io, JuMP._wrap_in_math_mode(JuMP.nonlinear_constraint_string(c.model, MIME"text/latex", JuMP.index(c))))
+end
