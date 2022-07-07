@@ -41,7 +41,7 @@ mutable struct NodePointer <: MOI.ModelLike
     node_to_optimizer_map::MOIU.IndexMap
     nl_node_to_optimizer_map::OrderedDict
 end
-NodePointer(optimizer::MOI.ModelLike,idx_map::MOIU.IndexMap) = NodePointer(optimizer,idx_map,OrderedDict())
+NodePointer(optimizer::MOI.ModelLike,idx_map::MOIU.IndexMap) = NodePointer(optimizer, idx_map, OrderedDict())
 
 
 """

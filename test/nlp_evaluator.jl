@@ -107,7 +107,9 @@ function test_evaluator_matches_jump_result()
     d1 = Plasmo.OptiGraphNLPEvaluator(graph)
     MOI.initialize(d1,[:Hess,:Jac,:Grad])
     obj1 = MOI.eval_objective(d1,x1)
+
     MOI.eval_objective_gradient(d1,g1,x1)
+
     hess_structure1 = MOI.hessian_lagrangian_structure(d1)
     jac_structure1 = MOI.jacobian_structure(d1)
     MOI.eval_constraint(d1,c1,x1)
@@ -126,7 +128,10 @@ function test_evaluator_matches_jump_result()
     d2 = JuMP.NLPEvaluator(model)
     MOI.initialize(d2,[:Hess,:Jac])
     obj2 = MOI.eval_objective(d2,x2)
+
     MOI.eval_objective_gradient(d2,g2,x2)
+    
+
     hess_structure2 = MOI.hessian_lagrangian_structure(d2)
     jac_structure2 = MOI.jacobian_structure(d2)
     MOI.eval_constraint(d2,c2,x2)

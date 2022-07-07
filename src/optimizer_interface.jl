@@ -270,7 +270,7 @@ function _create_nlp_block_data(graph::OptiGraph)
                 bounds_pair = MOI.Nonlinear._bound(constr.set)
                 push!(bounds, bounds_pair)
                 #push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
-                nl_idx_map[MOI.Nonlinear.ConstraintIndex(nl_con_idx)] = MOI.Nonlinear.ConstraintIndex(length(bounds))
+                nl_idx_map[nl_con_idx] = MOI.Nonlinear.ConstraintIndex(length(bounds))
                 #nl_idx_map[MOI.Nonlinear.ConstraintIndex(i)] = MOI.Nonlinear.ConstraintIndex(length(bounds))
             end
             # if !has_nl_obj && isa(node.model.nlp_data.nlobj, JuMP._NonlinearExprData)

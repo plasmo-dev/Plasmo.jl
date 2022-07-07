@@ -96,14 +96,14 @@ function test_set_model_with_graph()
     n2 = @optinode(graph)
 
     m1 = JuMP.Model()
-    JuMP.@variable(m1,0 <= x <= 2)
-    JuMP.@variable(m1,0 <= y <= 3)
-    JuMP.@constraint(m1,x+y <= 4)
-    JuMP.@objective(m1,Min,x)
+    JuMP.@variable(m1, 0 <= x <= 2)
+    JuMP.@variable(m1, 0 <= y <= 3)
+    JuMP.@constraint(m1, x+y <= 4)
+    JuMP.@objective(m1, Min, x)
 
     m2 = JuMP.Model()
-    JuMP.@variable(m2,x)
-    JuMP.@NLconstraint(m2,ref,exp(x) >= 2)
+    JuMP.@variable(m2, x)
+    JuMP.@NLconstraint(m2, ref, exp(x) >= 2)
 
     #Set models on nodes and edges
     set_model(n1,m1)     #set m1 to node 1.  Updates reference on m1
@@ -230,8 +230,8 @@ end
 
 function test_fix_variable()
     graph = _create_optigraph()
-    n1 = optinode(graph,1)
-    fix(n1[:x],1,force = true)
+    n1 = optinode(graph, 1)
+    fix(n1[:x], 1, force=true)
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer,"print_level"=>0))
     optimize!(graph)
     @test value(n1[:x]) == 1

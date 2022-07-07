@@ -18,7 +18,7 @@ end
 
 function _create_test_optigraph_w_subgraphs()
     graph = _create_test_optigraph()
-    node_vectors = [graph.optinodes[1:20], sgraph.optinodes[21:40],
+    node_vectors = [graph.optinodes[1:20], graph.optinodes[21:40],
     graph.optinodes[41:60], graph.optinodes[61:80], graph.optinodes[81:100]]
     partition = Partition(graph, node_vectors)
     apply_partition!(graph, partition)
