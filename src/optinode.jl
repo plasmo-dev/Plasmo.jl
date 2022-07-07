@@ -171,7 +171,7 @@ Add variable `v` to optinode `node`. This function supports use of the `@variabl
 Optionally add a `base_name` to the variable for printing.
 """
 function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, base_name::String="")
-    jump_vref = JuMP.add_variable(node.model,v,base_name)
+    jump_vref = JuMP.add_variable(node.model, v, base_name)
     JuMP.set_name(jump_vref, "$(node.label)[:$(JuMP.name(jump_vref))]")
     return jump_vref
 end
@@ -193,10 +193,15 @@ Add a non-linear constraint to an optinode using a Julia expression.
 """
 function JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
     con = JuMP.add_nonlinear_constraint(jump_model(node), expr)
-    #re-sync NLP data
-    #TODO: think about less hacky nlp_data after JuMP NLP update
-    #node.nlp_data = node.model.nlp_data
     return con
+end
+
+function JuMP.add_nonlinear_parameter(node::OptiNode, p::Real)
+    return JuMP.add_nonlinear_parameter(jump_model(node), p)
+end
+
+function JuMP.add_nonlinear_expression(node::OptiNode, expr::Any)
+    return JuMP.add_nonlinear_expression(jump_model(node), expr)
 end
 
 """

@@ -103,8 +103,6 @@ include("graph_projections.jl")
 
 include("graph_functions.jl")
 
-# include("nlp_macro2.jl")
-
 include("nlp_evaluator.jl")
 
 include("partition.jl")

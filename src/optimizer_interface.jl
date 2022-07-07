@@ -168,7 +168,7 @@ function JuMP.set_optimizer(graph::OptiGraph,
     add_bridges::Bool=true,
     bridge_constraints::Union{Nothing,Bool}=nothing)
 
-    if bridge_constraints !== nothing
+    if bridge_constraints != nothing
         @warn(
             "`bridge_constraints` argument is deprecated. Use `add_bridges` instead.")
         add_bridges = bridge_constraints
@@ -213,6 +213,7 @@ function JuMP.optimize!(graph::OptiGraph)
         graph.is_dirty = false
     elseif graph.is_dirty == true
         MOI.empty!(graph_backend.optimizer)
+        # MOI.empty!(graph_backend.model_cache)
         graph_backend.state = MOIU.EMPTY_OPTIMIZER
         MOIU.attach_optimizer(graph_backend)
         graph.is_dirty = false
@@ -220,7 +221,7 @@ function JuMP.optimize!(graph::OptiGraph)
 
     # Just like JuMP, NLP data is not kept in sync, so set it up here
     if has_nlp_data(graph)
-        # NOTE: this also adds the NLPBlock the graph backend model_cache, not sure we need it there
+        # NOTE: this also adds the NLPBlock to the graph backend model_cache, not sure we need it there
         MOI.set(graph_backend, MOI.NLPBlock(), _create_nlp_block_data(graph))
     end
 
@@ -328,8 +329,8 @@ end
 #Optinode optimizer interface
 #######################################################
 #OptiNode optimizer.  Hits MOI.optimize!(backend(node))
-function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
-    JuMP.set_optimizer(jump_model(node),optimizer_constructor)
+function JuMP.set_optimizer(node::OptiNode, optimizer_constructor)
+    JuMP.set_optimizer(jump_model(node), optimizer_constructor)
     JuMP.backend(node).last_solution_id = node.id
     JuMP.backend(node).result_location[node.id] = JuMP.backend(node).optimizer
     return nothing

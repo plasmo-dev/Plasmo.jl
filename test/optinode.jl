@@ -98,12 +98,11 @@ function test_optinode3()
 
     @variable(n1,x>=0)
     @NLparameter(n1,p == 1)
-    @test n1.nlp_data.nlparamvalues[1] == 1
-    @test n1.nlp_data == n1.model.nlp_data
-    @NLconstraint(n1,x^3 + p == 2)
+    @test nonlinear_model(n1).parameters[1] == 1
 
-    c = n1.nlp_data.nlconstr[1]
-    @test JuMP.nonlinear_constraint_string(n1, MIME("text/latex"), c ) == "(n1_{:x} ^ {3.0} + p) - 2.0 = 0"
+    @NLconstraint(n1,x^3 + p == 2)
+    c_idx = MOI.Nonlinear.ConstraintIndex(1)
+    @test JuMP.nonlinear_constraint_string(n1, MIME("text/latex"), c_idx ) == "(n1[:x] ^ {3.0} + p) - 2.0 = 0"
 
     graph = OptiGraph()
     n1 = add_node!(graph)
@@ -112,13 +111,11 @@ function test_optinode3()
     @expression(n1,ref1,x+y)
     @expression(n1,ref2,x^2+y^2)
     @NLexpression(n1,exp,x^3 + 5)
-    @test length(n1.nlp_data.nlexpr) == 1
-    @test n1.nlp_data == n1.model.nlp_data
+
+
     @NLconstraint(n1,exp + y <= 5)
 
     #NL exceptions
-    @test_throws Exception @NLconstraint(n1,ref1 >= 0)
-    @test_throws Exception @NLconstraint(n1,ref2 >= 0)
     @test_throws Exception @NLconstraint(n1,n1 >= 0)
 end
 
