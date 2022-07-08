@@ -255,31 +255,29 @@ function JuMP.optimize!(graph::OptiGraph)
     return nothing
 end
 
+_bound(s::MOI.LessThan) = MOI.NLPBoundsPair(-Inf, s.upper)
+_bound(s::MOI.GreaterThan) = MOI.NLPBoundsPair(s.lower, Inf)
+_bound(s::MOI.EqualTo) = MOI.NLPBoundsPair(s.value, s.value)
+_bound(s::MOI.Interval) = MOI.NLPBoundsPair(s.lower, s.upper)
+
 function _create_nlp_block_data(graph::OptiGraph)
     @assert has_nlp_data(graph)
     id = graph.id
-
     bounds = MOI.NLPBoundsPair[]
-    #has_nl_obj = false
     for node in all_nodes(graph)
         nlp = JuMP.nonlinear_model(node)
         if nlp != nothing
             src = JuMP.backend(node)
             nl_idx_map = src.optimizers[id].nl_node_to_optimizer_map
-            #for (i,constr) in enumerate(node.model.nlp_data.nlconstr)
             for (nl_con_idx, constr) in nlp.constraints
-                bounds_pair = MOI.Nonlinear._bound(constr.set)
+                bounds_pair = _bound(constr.set)
                 push!(bounds, bounds_pair)
-                #push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
+                # update optinode nl constraint map
+                # NOTE: the graph backend should have ConstraintIndex consistent with length of bounds
                 nl_idx_map[nl_con_idx] = MOI.Nonlinear.ConstraintIndex(length(bounds))
-                #nl_idx_map[MOI.Nonlinear.ConstraintIndex(i)] = MOI.Nonlinear.ConstraintIndex(length(bounds))
             end
-            # if !has_nl_obj && isa(node.model.nlp_data.nlobj, JuMP._NonlinearExprData)
-            #     has_nl_obj = true
-            # end
         end
     end
-
     has_nl_obj = has_nl_objective(graph)
     return MOI.NLPBlockData(bounds, OptiGraphNLPEvaluator(graph), has_nl_obj)
 end

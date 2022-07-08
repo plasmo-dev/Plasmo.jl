@@ -101,7 +101,7 @@ function MOI.set(graph_backend::GraphBackend, attr::MOI.AbstractOptimizerAttribu
     return
 end
 
-# TODO: support variable and constraint attributes
+# TODO: properly support variable and constraint attributes
 function MOI.get(graph_backend::GraphBackend, attr::MOI.VariablePrimalStart, idx::MOI.VariableIndex)
     return MOI.get(graph_backend.model_cache, attr, idx)
 end
