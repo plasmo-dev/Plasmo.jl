@@ -101,7 +101,7 @@ function MOI.set(graph_backend::GraphBackend, attr::MOI.AbstractOptimizerAttribu
     return
 end
 
-# TODO: support variable and constraint attributes
+# TODO: properly support variable and constraint attributes
 function MOI.get(graph_backend::GraphBackend, attr::MOI.VariablePrimalStart, idx::MOI.VariableIndex)
     return MOI.get(graph_backend.model_cache, attr, idx)
 end
@@ -190,6 +190,13 @@ function MOIU.attach_optimizer(graph_backend::GraphBackend)
     dest_optimizer = graph_backend.optimizer
     optigraph = graph_backend.optigraph
 
+    # copy model and optimizer attributes previously set
+    # NOTE: this copies objective function and sense
+    if !MOI.is_empty(graph_backend.model_cache)
+        MOI.copy_to(dest_optimizer, graph_backend.model_cache)
+    end
+
+
     id = optigraph.id
     indexmap = NodeToGraphMap()  #node to optimizer
     rindexmap = GraphToNodeMap() #optimizer to nodes
@@ -239,11 +246,7 @@ function MOIU.attach_optimizer(graph_backend::GraphBackend)
         rindexmap.con_map[constraint_index] = linkref
     end
 
-    # copy model and optimizer attributes previously set
-    # NOTE: this copies objective function and sense too
-    if !MOI.is_empty(graph_backend.model_cache)
-        MOI.copy_to(dest_optimizer, graph_backend.model_cache)
-    end
+
 
     graph_backend.model_to_optimizer_map = indexmap
     graph_backend.optimizer_to_model_map = rindexmap

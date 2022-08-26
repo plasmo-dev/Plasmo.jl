@@ -96,14 +96,14 @@ function test_set_model_with_graph()
     n2 = @optinode(graph)
 
     m1 = JuMP.Model()
-    JuMP.@variable(m1,0 <= x <= 2)
-    JuMP.@variable(m1,0 <= y <= 3)
-    JuMP.@constraint(m1,x+y <= 4)
-    JuMP.@objective(m1,Min,x)
+    JuMP.@variable(m1, 0 <= x <= 2)
+    JuMP.@variable(m1, 0 <= y <= 3)
+    JuMP.@constraint(m1, x+y <= 4)
+    JuMP.@objective(m1, Min, x)
 
     m2 = JuMP.Model()
-    JuMP.@variable(m2,x)
-    JuMP.@NLconstraint(m2,ref,exp(x) >= 2)
+    JuMP.@variable(m2, x)
+    JuMP.@NLconstraint(m2, ref, exp(x) >= 2)
 
     #Set models on nodes and edges
     set_model(n1,m1)     #set m1 to node 1.  Updates reference on m1
@@ -121,12 +121,13 @@ function test_set_model_with_graph()
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer,"print_level" => 0))
     optimize!(graph)
     @test termination_status(graph) == MOI.LOCALLY_SOLVED
-    @test isapprox(value(n1[:x]), 0; atol = 1e-8)
-    @test isapprox(value(graph, n1[:x]), 0; atol = 1e-8)
-    @test isapprox(objective_value(graph), 0; atol = 1e-8)
+    @test isapprox(value(n1[:x]), log(2); atol = 1e-8)
+    @test isapprox(value(graph, n1[:x]), log(2); atol = 1e-8)
+    @test isapprox(objective_value(graph), log(2); atol = 1e-8)
+
     cref = linkconstraints(graph)[1]
-    @test isapprox(dual(cref),0; atol = 1e-8)
-    @test isapprox(dual(graph,cref),0; atol = 1e-8)
+    @test isapprox(dual(cref), 1.0 ; atol = 1e-8)
+    @test isapprox(dual(graph,cref), 1.0; atol = 1e-8)
 
     m3 = JuMP.Model()
     JuMP.@variable(m3, x)
@@ -136,6 +137,7 @@ function test_set_model_with_graph()
     @test num_variables(graph) == 4
 
     # NOTE: this rebuilds the backend since a new node is added.
+    # TODO: fix bug. this is not working
     optimize!(graph)
     @test termination_status(graph) == MOI.LOCALLY_SOLVED
 end
@@ -230,8 +232,8 @@ end
 
 function test_fix_variable()
     graph = _create_optigraph()
-    n1 = optinode(graph,1)
-    fix(n1[:x],1,force = true)
+    n1 = optinode(graph, 1)
+    fix(n1[:x], 1, force=true)
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer,"print_level"=>0))
     optimize!(graph)
     @test value(n1[:x]) == 1

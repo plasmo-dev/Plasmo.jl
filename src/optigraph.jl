@@ -434,7 +434,7 @@ has_node_quad_objective(graph::OptiGraph) = any((node) -> isa(objective_function
 
 Check whether any optinode in `graph` has nlp data
 """
-has_nlp_data(graph::OptiGraph) = any(node -> (node.nlp_data !== nothing),all_nodes(graph))
+has_nlp_data(graph::OptiGraph) = any(node -> (JuMP.nonlinear_model(node) !== nothing), all_nodes(graph))
 
 """
     has_nl_objective(graph::OptiGraph)::Bool
@@ -443,10 +443,8 @@ Check whether any optinode in `graph` has a nonlinear objective function.
 """
 function has_nl_objective(graph::OptiGraph)
     for node in all_nodes(graph)
-        if node.nlp_data != nothing
-            if node.nlp_data.nlobj != nothing
-                return true
-            end
+        if has_nl_objective(node)
+            return true
         end
     end
     return false

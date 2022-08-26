@@ -99,15 +99,15 @@ end
 
 #NODE-EDGE PARTITION
 #Partition with subgraphs
-function Partition(graph::OptiGraph,subgraphs::Vector{OptiGraph})
-    _check_valid_partition(graph,subgraphs)
+function Partition(graph::OptiGraph, subgraphs::Vector{OptiGraph})
+    _check_valid_partition(graph, subgraphs)
 
     n_parts = length(subgraphs)
     subnodes = vcat(all_nodes.(subgraphs)...)
     subedges = vcat(all_edges.(subgraphs)...)
-    cross_nodes = filter(node -> !(node in subnodes),all_nodes(graph))
-    cross_edges = filter(edge -> !(edge in subedges),all_edges(graph))
-    node_incident_edges = incident_edges(graph,cross_nodes)
+    cross_nodes = filter(node -> !(node in subnodes), all_nodes(graph))
+    cross_edges = filter(edge -> !(edge in subedges), all_edges(graph))
+    node_incident_edges = incident_edges(graph, cross_nodes)
 
     partition = Partition()
     partition.optinodes = cross_nodes
@@ -115,7 +115,7 @@ function Partition(graph::OptiGraph,subgraphs::Vector{OptiGraph})
     for i = 1:length(subgraphs)
         subpartition = Partition()
         subpartition.optinodes = all_nodes(subgraphs[i])
-        subpartition.optiedges = setdiff(all_edges(subgraphs[i]),node_incident_edges) #remove root incident edges
+        subpartition.optiedges = setdiff(all_edges(subgraphs[i]), node_incident_edges) #remove root incident edges
         push!(partition.subpartitions,subpartition)
     end
     return partition
@@ -124,12 +124,12 @@ end
 ########################################################################################################
 #PARTITION USING DIFFERENT OPTIGRAPH REPRESENTATIONS (e.g. a hypergraph, cliquegraph, or bipartitegraph)
 ########################################################################################################
-function Partition(graph::LightGraphs.AbstractGraph,membership_vector::Vector{Int64},ref_map::ProjectionMap;kwargs...)
+function Partition(graph::LightGraphs.AbstractGraph, membership_vector::Vector{Int64}, ref_map::ProjectionMap; kwargs...)
     @assert graph == ref_map.projected_graph
     return Partition(membership_vector,ref_map;kwargs...)
 end
 
-function Partition(membership_vector::Vector{Int64},ref_map::ProjectionMap;kwargs...)
+function Partition(membership_vector::Vector{Int64}, ref_map::ProjectionMap; kwargs...)
     optigraph = ref_map.optigraph
     partition_vectors = Plasmo._partition_list(membership_vector)
     induced = Plasmo.induced_elements(ref_map.projected_graph,partition_vectors;kwargs...)

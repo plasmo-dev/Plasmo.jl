@@ -5,11 +5,11 @@ using Test
 
 function _create_test_optigraph()
     graph = OptiGraph()
-    @optinode(graph,nodes[1:100])
+    @optinode(graph, nodes[1:100])
     for node in nodes
-        @variable(node,0 <= x <= 2)
-        @variable(node,0 <= y <= 3)
-        @NLconstraint(node,x^3+y <= 4)
+        @variable(node, 0 <= x <= 2)
+        @variable(node, 0 <= y <= 3)
+        @NLconstraint(node, x^3+y <= 4)
     end
     @linkconstraint(graph,links[i=1:99],nodes[i][:x] == nodes[i+1][:x])
     @objective(graph,Min,sum(node[:y] for node in nodes))
@@ -18,10 +18,10 @@ end
 
 function _create_test_optigraph_w_subgraphs()
     graph = _create_test_optigraph()
-    node_vectors = [graph.optinodes[1:20],graph.optinodes[21:40],
-    graph.optinodes[41:60],graph.optinodes[61:80],graph.optinodes[81:100]]
-    partition = Partition(graph,node_vectors)
-    apply_partition!(graph,partition)
+    node_vectors = [graph.optinodes[1:20], graph.optinodes[21:40],
+    graph.optinodes[41:60], graph.optinodes[61:80], graph.optinodes[81:100]]
+    partition = Partition(graph, node_vectors)
+    apply_partition!(graph, partition)
     return graph
 end
 
@@ -64,11 +64,11 @@ end
 
 function test_nonlinear_aggregate()
     graph = OptiGraph()
-    @optinode(graph,n1)
-    @variable(n1,x[1:2] <= 2)
-    set_start_value(x[1],2)
-    set_start_value(x[2],1)
-    @NLobjective(n1,Max,x[1]^2 + x[2]^2)
+    @optinode(graph, n1)
+    @variable(n1, x[1:2] <= 2)
+    set_start_value(x[1], 2)
+    set_start_value(x[2], 1)
+    @NLobjective(n1, Max, x[1]^2 + x[2]^2)
 
     @optinode(graph,n2)
     @variable(n2,x[1:2] >= 0)
@@ -106,10 +106,10 @@ function test_objective_copy()
     graph = OptiGraph()
     n1 = @optinode(graph)
     n2 = @optinode(graph)
-    @variable(n1,0 <= x <= 2)
-    @variable(n2,0 <= x <= 3)
-    @objective(n1,Min,n1[:x])
-    @objective(n2,Min,n2[:x])
+    @variable(n1, 0 <= x <= 2)
+    @variable(n2, 0 <= x <= 3)
+    @objective(n1, Min, n1[:x])
+    @objective(n2, Min, n2[:x])
     agg_node,ref = aggregate(graph)
     @test objective_function(agg_node) == ref[n1[:x]] + ref[n2[:x]]
 

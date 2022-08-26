@@ -126,7 +126,8 @@ function _set_node_results!(graph::OptiGraph)
     try
         nlp_duals = MOI.get(graph_backend, MOI.NLPBlockDual())
         for node in nodes
-            if node.nlp_data != nothing
+            if JuMP.nonlinear_model(node) != nothing
+            #if node.nlp_data != nothing
                 src = JuMP.backend(node)
                 nl_idx_map = src.result_location[id].nl_node_to_optimizer_map #JuMP.backend(node).nl_idx_maps[id]
                 nl_duals = node.nlp_duals[id]
@@ -167,7 +168,7 @@ function JuMP.set_optimizer(graph::OptiGraph,
     add_bridges::Bool=true,
     bridge_constraints::Union{Nothing,Bool}=nothing)
 
-    if bridge_constraints !== nothing
+    if bridge_constraints != nothing
         @warn(
             "`bridge_constraints` argument is deprecated. Use `add_bridges` instead.")
         add_bridges = bridge_constraints
@@ -212,6 +213,7 @@ function JuMP.optimize!(graph::OptiGraph)
         graph.is_dirty = false
     elseif graph.is_dirty == true
         MOI.empty!(graph_backend.optimizer)
+        # MOI.empty!(graph_backend.model_cache)
         graph_backend.state = MOIU.EMPTY_OPTIMIZER
         MOIU.attach_optimizer(graph_backend)
         graph.is_dirty = false
@@ -219,7 +221,7 @@ function JuMP.optimize!(graph::OptiGraph)
 
     # Just like JuMP, NLP data is not kept in sync, so set it up here
     if has_nlp_data(graph)
-        # NOTE: this also adds the NLPBlock the graph backend model_cache, not sure we need it there
+        # NOTE: this also adds the NLPBlock to the graph backend model_cache, not sure we need it there
         MOI.set(graph_backend, MOI.NLPBlock(), _create_nlp_block_data(graph))
     end
 
@@ -253,25 +255,30 @@ function JuMP.optimize!(graph::OptiGraph)
     return nothing
 end
 
+_bound(s::MOI.LessThan) = MOI.NLPBoundsPair(-Inf, s.upper)
+_bound(s::MOI.GreaterThan) = MOI.NLPBoundsPair(s.lower, Inf)
+_bound(s::MOI.EqualTo) = MOI.NLPBoundsPair(s.value, s.value)
+_bound(s::MOI.Interval) = MOI.NLPBoundsPair(s.lower, s.upper)
+
 function _create_nlp_block_data(graph::OptiGraph)
     @assert has_nlp_data(graph)
     id = graph.id
-
     bounds = MOI.NLPBoundsPair[]
-    has_nl_obj = false
     for node in all_nodes(graph)
-        if node.model.nlp_data !== nothing
+        nlp = JuMP.nonlinear_model(node)
+        if nlp != nothing
             src = JuMP.backend(node)
             nl_idx_map = src.optimizers[id].nl_node_to_optimizer_map
-            for (i,constr) in enumerate(node.model.nlp_data.nlconstr)
-                push!(bounds, MOI.NLPBoundsPair(constr.lb, constr.ub))
-                nl_idx_map[JuMP.NonlinearConstraintIndex(i)] = JuMP.NonlinearConstraintIndex(length(bounds))
-            end
-            if !has_nl_obj && isa(node.model.nlp_data.nlobj, JuMP._NonlinearExprData)
-                has_nl_obj = true
+            for (nl_con_idx, constr) in nlp.constraints
+                bounds_pair = _bound(constr.set)
+                push!(bounds, bounds_pair)
+                # update optinode nl constraint map
+                # NOTE: the graph backend should have ConstraintIndex consistent with length of bounds
+                nl_idx_map[nl_con_idx] = MOI.Nonlinear.ConstraintIndex(length(bounds))
             end
         end
     end
+    has_nl_obj = has_nl_objective(graph)
     return MOI.NLPBlockData(bounds, OptiGraphNLPEvaluator(graph), has_nl_obj)
 end
 
@@ -320,8 +327,8 @@ end
 #Optinode optimizer interface
 #######################################################
 #OptiNode optimizer.  Hits MOI.optimize!(backend(node))
-function JuMP.set_optimizer(node::OptiNode,optimizer_constructor)
-    JuMP.set_optimizer(jump_model(node),optimizer_constructor)
+function JuMP.set_optimizer(node::OptiNode, optimizer_constructor)
+    JuMP.set_optimizer(jump_model(node), optimizer_constructor)
     JuMP.backend(node).last_solution_id = node.id
     JuMP.backend(node).result_location[node.id] = JuMP.backend(node).optimizer
     return nothing

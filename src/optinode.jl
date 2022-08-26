@@ -12,7 +12,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
     partial_linkconstraints::Dict{Int64,AbstractLinkConstraint} #local node contribution to link constraint
 
     # nlp_data is a reference to `model.nlp_data`
-    nlp_data::Union{Nothing,JuMP._NLPData}
+    #nlp_data::Union{Nothing,JuMP._NLPData}
     nlp_duals::DefaultDict{Symbol,OrderedDict{Int64,Float64}}
 
     # extension data
@@ -29,7 +29,7 @@ mutable struct OptiNode <: JuMP.AbstractModel
         node = new(model,
         "node",
         Dict{Int64,AbstractLinkConstraint}(),
-        nothing,
+        #nothing,
         DefaultDict{Symbol,OrderedDict{Int64,Float64}}(OrderedDict()),
         Dict{Symbol,Any}(),
         id)
@@ -171,7 +171,7 @@ Add variable `v` to optinode `node`. This function supports use of the `@variabl
 Optionally add a `base_name` to the variable for printing.
 """
 function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, base_name::String="")
-    jump_vref = JuMP.add_variable(node.model,v,base_name)
+    jump_vref = JuMP.add_variable(node.model, v, base_name)
     JuMP.set_name(jump_vref, "$(node.label)[:$(JuMP.name(jump_vref))]")
     return jump_vref
 end
@@ -187,16 +187,21 @@ function JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_
 end
 
 """
-    JuMP.add_nonlinear_constraint(node::OptiNode,expr::Expr)
+    JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
 
 Add a non-linear constraint to an optinode using a Julia expression.
 """
 function JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
-    con = JuMP.add_nonlinear_constraint(jump_model(node),expr)
-    #re-sync NLP data
-    #TODO: think about less hacky nlp_data after JuMP NLP update
-    node.nlp_data = node.model.nlp_data
+    con = JuMP.add_nonlinear_constraint(jump_model(node), expr)
     return con
+end
+
+function JuMP.add_nonlinear_parameter(node::OptiNode, p::Real)
+    return JuMP.add_nonlinear_parameter(jump_model(node), p)
+end
+
+function JuMP.add_nonlinear_expression(node::OptiNode, expr::Any)
+    return JuMP.add_nonlinear_expression(jump_model(node), expr)
 end
 
 """
@@ -277,6 +282,9 @@ function num_linkconstraints(node::OptiNode)
 end
 @deprecate num_link_constraints num_linkconstraints
 
+
+
+
 """
     has_objective(node::OptiNode)
 
@@ -286,14 +294,18 @@ has_objective(node::OptiNode) =
     objective_function(node) != zero(JuMP.AffExpr) &&
     objective_function(node) != zero(JuMP.QuadExpr)
 
+
+JuMP.nonlinear_model(node::OptiNode) = JuMP.nonlinear_model(jump_model(node))
+
 """
     has_nl_objective(node::OptiNode)
 
 Check whether optinode `node` has a nonlinear objective function
 """
 function has_nl_objective(node::OptiNode)
-    if node.nlp_data != nothing
-        if node.nlp_data.nlobj != nothing
+    nlp_model = JuMP.nonlinear_model(node)
+    if nlp_model != nothing
+        if nlp_model.objective != nothing
             return true
         end
     end
@@ -343,7 +355,7 @@ JuMP.set_objective_sense(optinode::OptiNode,sense::MOI.OptimizationSense) =
 
 Retrieve the underlying JuMP NLP evaluator on optinode `node`
 """
-JuMP.NLPEvaluator(node::OptiNode) = JuMP.NLPEvaluator(jump_model(node))
+JuMP.NLPEvaluator(node::OptiNode; kwargs...) = JuMP.NLPEvaluator(jump_model(node); kwargs...)
 
 # status functions
 """
@@ -358,6 +370,7 @@ JuMP.dual_status(node::OptiNode) = JuMP.dual_status(jump_model(node))
 JuMP.solver_name(node::OptiNode) = JuMP.solver_name(jump_model(node))
 JuMP.mode(node::OptiNode) = JuMP.mode(jump_model(node))
 JuMP._moi_mode(node_backend::NodeBackend) = node_backend.optimizer.mode
+JuMP._init_NLP(node::OptiNode) = JuMP._init_NLP(jump_model(node))
 
 
 ##############################################
@@ -409,24 +422,16 @@ end
 print(io::IO,node::OptiNode) = print(io, string(node))
 show(io::IO,node::OptiNode) = print(io,node)
 
+JuMP.nonlinear_constraint_string(
+    node::OptiNode,
+    mode::MIME,
+    c::MOI.Nonlinear.ConstraintIndex) = JuMP.nonlinear_constraint_string(jump_model(node), mode, c)
 
-#DEPRECATED
-# nodevalue(var::JuMP.VariableRef) = JuMP.value(var)
-# function nodevalue(expr::JuMP.GenericAffExpr)
-#     ret_value = 0.0
-#     for (var,coeff) in expr.terms
-#         ret_value += coeff*nodevalue(var)
-#     end
-#     ret_value += expr.constant
-#     return ret_value
-# end
-#
-# function nodevalue(expr::JuMP.GenericQuadExpr)
-#     ret_value = 0.0
-#     for (pair,coeff) in expr.terms
-#         ret_value += coeff*nodevalue(pair.a)*nodevalue(pair.b)
-#     end
-#     ret_value += nodevalue(expr.aff)
-#     ret_value += expr.aff.constant
-#     return ret_value
-# end
+const NonlinearOptiNodeConstraintRef = ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex}# where T <: OptiObject
+function Base.show(io::IO, c::ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex})
+    print(io, JuMP.nonlinear_constraint_string(c.model, MIME("text/plain"), JuMP.index(c)))
+end
+
+function Base.show(io::IO, ::MIME"text/latex", c::ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex})
+    print(io, JuMP._wrap_in_math_mode(JuMP.nonlinear_constraint_string(c.model, MIME"text/latex", JuMP.index(c))))
+end
