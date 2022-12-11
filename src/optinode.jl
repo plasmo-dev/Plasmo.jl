@@ -192,8 +192,9 @@ end
 Add a non-linear constraint to an optinode using a Julia expression.
 """
 function JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
-    con = JuMP.add_nonlinear_constraint(jump_model(node), expr)
-    return con
+    cref = JuMP.add_nonlinear_constraint(jump_model(node), expr)
+    node_cref = ConstraintRef(node, cref.index, JuMP.ScalarShape())
+    return node_cref
 end
 
 function JuMP.add_nonlinear_parameter(node::OptiNode, p::Real)
