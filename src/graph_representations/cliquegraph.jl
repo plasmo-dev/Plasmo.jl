@@ -8,7 +8,6 @@ mutable struct CliqueGraph <: LightGraphs.AbstractGraph{Int64}
 end
 CliqueGraph() = CliqueGraph(LightGraphs.Graph())
 
-
 function LightGraphs.add_vertex!(cgraph::CliqueGraph)
     added = LightGraphs.add_vertex!(cgraph.graph)
     return added
@@ -21,8 +20,12 @@ end
 LightGraphs.edges(cgraph::CliqueGraph) = LightGraphs.edges(cgraph.graph)
 LightGraphs.edgetype(cgraph::CliqueGraph) = LightGraphs.SimpleGraphs.SimpleEdge{Int64}
 
-LightGraphs.has_edge(cgraph::CliqueGraph,from::Int64,to::Int64) = LightGraphs.has_edge(cgraph.graph,from,to)
-LightGraphs.has_vertex(cgraph::CliqueGraph, v::Integer) = LightGraphs.has_vertex(cgraph.graph,v)
+function LightGraphs.has_edge(cgraph::CliqueGraph, from::Int64, to::Int64)
+    return LightGraphs.has_edge(cgraph.graph, from, to)
+end
+function LightGraphs.has_vertex(cgraph::CliqueGraph, v::Integer)
+    return LightGraphs.has_vertex(cgraph.graph, v)
+end
 
 LightGraphs.is_directed(cgraph::CliqueGraph) = false
 LightGraphs.is_directed(::Type{CliqueGraph}) = false
@@ -31,6 +34,10 @@ LightGraphs.ne(cgraph::CliqueGraph) = LightGraphs.ne(cgraph.graph)
 LightGraphs.nv(cgraph::CliqueGraph) = LightGraphs.nv(cgraph.graph)
 LightGraphs.vertices(cgraph::CliqueGraph) = LightGraphs.vertices(cgraph.graph)
 
-LightGraphs.all_neighbors(cgraph::CliqueGraph,idx::Integer) = LightGraphs.all_neighbors(cgraph.graph,idx)
-LightGraphs.incidence_matrix(cgraph::CliqueGraph) = LightGraphs.incidence_matrix(cgraph.graph)
-induced_elements(cgraph::CliqueGraph,partitions::Vector{Vector{Int64}}) = partitions
+function LightGraphs.all_neighbors(cgraph::CliqueGraph, idx::Integer)
+    return LightGraphs.all_neighbors(cgraph.graph, idx)
+end
+function LightGraphs.incidence_matrix(cgraph::CliqueGraph)
+    return LightGraphs.incidence_matrix(cgraph.graph)
+end
+induced_elements(cgraph::CliqueGraph, partitions::Vector{Vector{Int64}}) = partitions

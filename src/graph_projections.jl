@@ -11,14 +11,16 @@ mutable struct ProjectionMap
     opti_map::Dict   #map optigraph elements to projected elements
 end
 
-ProjectionMap(optigraph::OptiGraph, lightgraph::LightGraphs.AbstractGraph) = ProjectionMap(optigraph, lightgraph, Dict(), Dict())
+function ProjectionMap(optigraph::OptiGraph, lightgraph::LightGraphs.AbstractGraph)
+    return ProjectionMap(optigraph, lightgraph, Dict(), Dict())
+end
 
 function Base.getindex(graph_map::ProjectionMap, vertex::Int64)
     return graph_map.vertex_map[vertex]
 end
 
 function Base.setindex!(graph_map::ProjectionMap, vertex::Int64, value::Any)
-    graph_map.vertex_map[vertex] = value
+    return graph_map.vertex_map[vertex] = value
 end
 
 function Base.getindex(graph_map::ProjectionMap, element::Any)
@@ -26,7 +28,7 @@ function Base.getindex(graph_map::ProjectionMap, element::Any)
 end
 
 function Base.setindex!(graph_map::ProjectionMap, element::Any, value::Any)
-    graph_map.opti_map[element] = value
+    return graph_map.opti_map[element] = value
 end
 
 Base.broadcastable(graph_map::ProjectionMap) = Ref(graph_map)
@@ -40,7 +42,7 @@ that maps hypernodes and hyperedges to the original optinodes and optiedges.
 function hyper_graph(optigraph::OptiGraph)
     hypergraph = HyperGraph()
     #hyper_map = Dict()  #two-way mapping from hypergraph nodes to optinodes and link_edges
-    hyper_map = ProjectionMap(optigraph,hypergraph)
+    hyper_map = ProjectionMap(optigraph, hypergraph)
 
     for node in all_nodes(optigraph)
         hypernode = add_node!(hypergraph)
@@ -52,13 +54,13 @@ function hyper_graph(optigraph::OptiGraph)
         nodes = edge.nodes
         hypernodes = [hyper_map[optinode] for optinode in nodes]
         if length(hypernodes) >= 2
-            hyperedge = add_hyperedge!(hypergraph,hypernodes...)
+            hyperedge = add_hyperedge!(hypergraph, hypernodes...)
             hyper_map[hyperedge] = edge
             hyper_map[edge] = hyperedge
         end
     end
 
-    return hypergraph,hyper_map
+    return hypergraph, hyper_map
 end
 @deprecate gethypergraph hyper_graph
 
@@ -70,7 +72,7 @@ that maps vertices and edges to the optinodes and optiedges.
 """
 function LightGraphs.clique_graph(optigraph::OptiGraph)
     graph = CliqueGraph()
-    graph_map = ProjectionMap(optigraph,graph)
+    graph_map = ProjectionMap(optigraph, graph)
 
     #optinodes => vertex
     for optinode in all_nodes(optigraph)
@@ -84,16 +86,16 @@ function LightGraphs.clique_graph(optigraph::OptiGraph)
     for edge in all_edges(optigraph)
         nodes = edge.nodes
         edge_vertices = [graph_map[optinode] for optinode in nodes]
-        for i = 1:length(edge_vertices)
+        for i in 1:length(edge_vertices)
             vertex_from = edge_vertices[i]
-            other_vertices = edge_vertices[i+1:end]
-            for j = 1:length(other_vertices)
+            other_vertices = edge_vertices[(i + 1):end]
+            for j in 1:length(other_vertices)
                 vertex_to = other_vertices[j]
-                inserted = LightGraphs.add_edge!(graph,vertex_from,vertex_to)
+                inserted = LightGraphs.add_edge!(graph, vertex_from, vertex_to)
             end
         end
     end
-    return graph,graph_map
+    return graph, graph_map
 end
 @deprecate getcliquegraph clique_graph
 
@@ -106,7 +108,7 @@ Returns a `LightGraphs.Graph` object, as well as a dictionary that maps vertices
 function edge_graph(optigraph::OptiGraph)
     graph = CliqueGraph()
     # graph_map = Dict()
-    graph_map = ProjectionMap(optigraph,graph)
+    graph_map = ProjectionMap(optigraph, graph)
 
     #optiedge => vertex
     for optiedge in all_edges(optigraph)
@@ -118,11 +120,11 @@ function edge_graph(optigraph::OptiGraph)
 
     #add coupling
     edge_array = all_edges(optigraph)
-    for i in 1:(num_all_edges(optigraph)-1)
-        for j in i+1:num_all_edges(optigraph)
+    for i in 1:(num_all_edges(optigraph) - 1)
+        for j in (i + 1):num_all_edges(optigraph)
             e1 = edge_array[i]
             e2 = edge_array[j]
-            if !isempty(intersect(e1.nodes,e2.nodes))
+            if !isempty(intersect(e1.nodes, e2.nodes))
                 LightGraphs.add_edge!(graph, graph_map[e1], graph_map[e2])
             end
         end
@@ -138,7 +140,7 @@ that maps hypernodes and hyperedges to the original optinodes and optiedges. Thi
 """
 function edge_hyper_graph(optigraph::OptiGraph)
     hypergraph = HyperGraph()
-    hyper_map = ProjectionMap(optigraph,hypergraph)
+    hyper_map = ProjectionMap(optigraph, hypergraph)
 
     #optiedges => vertex
     for edge in all_edges(optigraph)
@@ -149,14 +151,14 @@ function edge_hyper_graph(optigraph::OptiGraph)
 
     #add coupling
     for node in all_nodes(optigraph)
-        hyperedges = incident_edges(optigraph,node)
+        hyperedges = incident_edges(optigraph, node)
         if length(hyperedges) >= 2
             dual_nodes = [hyper_map[edge] for edge in hyperedges]
-            add_hyperedge!(hypergraph,dual_nodes...)
+            add_hyperedge!(hypergraph, dual_nodes...)
         end
     end
 
-    return hypergraph,hyper_map
+    return hypergraph, hyper_map
 end
 
 """
@@ -167,11 +169,11 @@ Create a bipartite graph representation from `optigraph`.  The bipartite graph c
 function bipartite_graph(optigraph::OptiGraph)
     graph = BipartiteGraph()
     #graph_map = Dict()
-    graph_map = ProjectionMap(optigraph,graph)
+    graph_map = ProjectionMap(optigraph, graph)
 
     #optinodes => vertices
     for optinode in all_nodes(optigraph)
-        LightGraphs.add_vertex!(graph,bipartite = 1)
+        LightGraphs.add_vertex!(graph; bipartite=1)
         node_vertex = nv(graph)
         graph_map[node_vertex] = optinode
         graph_map[optinode] = node_vertex
@@ -179,15 +181,15 @@ function bipartite_graph(optigraph::OptiGraph)
 
     #optiedges => vertices
     for edge in all_edges(optigraph)
-        LightGraphs.add_vertex!(graph,bipartite = 2)
+        LightGraphs.add_vertex!(graph; bipartite=2)
         edge_vertex = nv(graph)
         graph_map[edge] = edge_vertex
         graph_map[edge_vertex] = edge
         nodes = edge.nodes
         edge_vertices = [graph_map[optinode] for optinode in nodes]
         for node_vertex in edge_vertices
-            LightGraphs.add_edge!(graph,edge_vertex,node_vertex)
+            LightGraphs.add_edge!(graph, edge_vertex, node_vertex)
         end
     end
-    return graph,graph_map
+    return graph, graph_map
 end

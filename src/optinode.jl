@@ -24,15 +24,17 @@ mutable struct OptiNode <: JuMP.AbstractModel
     function OptiNode()
         model = JuMP.Model()
         id = gensym()
-        node_backend = NodeBackend(JuMP.backend(model),id)
+        node_backend = NodeBackend(JuMP.backend(model), id)
         model.moi_backend = node_backend
-        node = new(model,
-        "node",
-        Dict{Int64,AbstractLinkConstraint}(),
-        #nothing,
-        DefaultDict{Symbol,OrderedDict{Int64,Float64}}(OrderedDict()),
-        Dict{Symbol,Any}(),
-        id)
+        node = new(
+            model,
+            "node",
+            Dict{Int64,AbstractLinkConstraint}(),
+            #nothing,
+            DefaultDict{Symbol,OrderedDict{Int64,Float64}}(OrderedDict()),
+            Dict{Symbol,Any}(),
+            id,
+        )
         node.model.ext[:optinode] = node
         return node
     end
@@ -54,8 +56,7 @@ jump_model(node::OptiNode) = node.model
 
 Set the label for optinode `node` to `label`. This is what gets printed.
 """
-set_label(node::OptiNode,label::String) = node.label = label
-
+set_label(node::OptiNode, label::String) = node.label = label
 
 """
     label(node::OptiNode)
@@ -78,12 +79,11 @@ Get the variable value of `vref` on the optinode `node`. This value is always th
 local node value, not the value the node variable takes when solved as part of a
 larger `OptiGraph`.
 """
-JuMP.value(node::OptiNode, vref::VariableRef) =
-    MOI.get(
-    JuMP.backend(node).result_location[node.id],
-    MOI.VariablePrimal(),
-    JuMP.index(vref)
+function JuMP.value(node::OptiNode, vref::VariableRef)
+    return MOI.get(
+        JuMP.backend(node).result_location[node.id], MOI.VariablePrimal(), JuMP.index(vref)
     )
+end
 
 """
     JuMP.dual(c::JuMP.ConstraintRef{OptiNode,NonlinearConstraintIndex})
@@ -101,14 +101,16 @@ end
 
 Checks whether the variable reference `vref` belongs to the optinode `node`.
 """
-is_node_variable(node::OptiNode, vref::JuMP.AbstractVariableRef) = jump_model(node)==vref.model
+function is_node_variable(node::OptiNode, vref::JuMP.AbstractVariableRef)
+    return jump_model(node) == vref.model
+end
 
 """
     is_node_variable(vref::JuMP.AbstractVariableRef)
 
 Checks whether the variable reference `vref` belongs to any `OptiNode`.
 """
-is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext,:optinode)
+is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext, :optinode)
 
 """
     is_set_to_node(m::JuMP.AbstractModel)
@@ -116,8 +118,8 @@ is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext,:optinode
 Checks whether the JuMP model `m` is set to any `OptiNode`
 """
 function is_set_to_node(m::JuMP.AbstractModel)
-    if haskey(m.ext,:optinode)
-        return isa(m.ext[:optinode],OptiNode)
+    if haskey(m.ext, :optinode)
+        return isa(m.ext[:optinode], OptiNode)
     else
         return false
     end
@@ -129,11 +131,12 @@ end
 Set the JuMP model `m` to optinode `node`.
 """
 function set_model(node::OptiNode, m::JuMP.AbstractModel)#; preserve_links=false)
-    !(is_set_to_node(m) && jump_model(node) == m) || error("Model $m is already asigned to another node")
+    !(is_set_to_node(m) && jump_model(node) == m) ||
+        error("Model $m is already asigned to another node")
     node.model = m
     m.ext[:optinode] = node
-    node_backend = NodeBackend(JuMP.backend(m),node.id)
-    m.moi_backend = node_backend
+    node_backend = NodeBackend(JuMP.backend(m), node.id)
+    return m.moi_backend = node_backend
     #TODO: handle link constraints on node
 end
 @deprecate setmodel set_model
@@ -153,9 +156,9 @@ Base.getindex(node::OptiNode, symbol::Symbol) = jump_model(node)[symbol]
 
 Support retrieving node attributes via symbol lookup. (e.g. node[:x])
 """
-Base.setindex(node::OptiNode,
-    value::Any,
-    symbol::Symbol) = JuMP.object_dictionary(node)[symbol] = value
+function Base.setindex(node::OptiNode, value::Any, symbol::Symbol)
+    return JuMP.object_dictionary(node)[symbol] = value
+end
 
 """
     JuMP.object_dictionary(node::OptiNode)
@@ -181,8 +184,10 @@ end
 
 Add a constraint `con` to optinode `node`. This function supports use of the @constraint JuMP macro.
 """
-function JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_name::String="")
-    cref = JuMP.add_constraint(jump_model(node),con,base_name)
+function JuMP.add_constraint(
+    node::OptiNode, con::JuMP.AbstractConstraint, base_name::String=""
+)
+    cref = JuMP.add_constraint(jump_model(node), con, base_name)
     return cref
 end
 
@@ -221,10 +226,10 @@ function num_linked_variables(node::OptiNode)
     partial_link_cons = node.partial_linkconstraints
     num_linked = 0
     vars = []
-    for (idx,link) in partial_link_cons
+    for (idx, link) in partial_link_cons
         for var in keys(link.func.terms)
             if !(var in vars)
-                push!(vars,var)
+                push!(vars, var)
                 num_linked += 1
             end
         end
@@ -241,9 +246,9 @@ Get the number of constraints on optinode `node`
 function JuMP.num_constraints(node::OptiNode)
     m = jump_model(node)
     num_cons = 0
-    for (func,set) in JuMP.list_of_constraint_types(m)
+    for (func, set) in JuMP.list_of_constraint_types(m)
         if func != JuMP.VariableRef
-            num_cons += JuMP.num_constraints(m,func,set)
+            num_cons += JuMP.num_constraints(m, func, set)
         end
     end
     num_cons += JuMP.num_nonlinear_constraints(m)
@@ -262,16 +267,18 @@ JuMP.num_nonlinear_constraints(node::OptiNode) = JuMP.num_nonlinear_constraints(
 
 Get a list of constraint types on optinode `node`
 """
-JuMP.list_of_constraint_types(node::OptiNode) =
-                                JuMP.list_of_constraint_types(jump_model(node))
+function JuMP.list_of_constraint_types(node::OptiNode)
+    return JuMP.list_of_constraint_types(jump_model(node))
+end
 
 """
     JuMP.all_constraints(node::OptiNode,F::DataType,S::DataType)
 
 Get all constraints on optinode `node` of function type `F` and set `S`
 """
-JuMP.all_constraints(node::OptiNode,F::DataType,S::DataType) =
-                            JuMP.all_constraints(jump_model(node),F,S)
+function JuMP.all_constraints(node::OptiNode, F::DataType, S::DataType)
+    return JuMP.all_constraints(jump_model(node), F, S)
+end
 
 """
     num_linkconstraints(node::OptiNode)
@@ -283,18 +290,15 @@ function num_linkconstraints(node::OptiNode)
 end
 @deprecate num_link_constraints num_linkconstraints
 
-
-
-
 """
     has_objective(node::OptiNode)
 
 Check whether optinode `node` has a non-empty linear or quadratic objective function
 """
-has_objective(node::OptiNode) =
-    objective_function(node) != zero(JuMP.AffExpr) &&
-    objective_function(node) != zero(JuMP.QuadExpr)
-
+function has_objective(node::OptiNode)
+    return objective_function(node) != zero(JuMP.AffExpr) &&
+           objective_function(node) != zero(JuMP.QuadExpr)
+end
 
 JuMP.nonlinear_model(node::OptiNode) = JuMP.nonlinear_model(jump_model(node))
 
@@ -325,30 +329,34 @@ JuMP.objective_function(node::OptiNode) = JuMP.objective_function(jump_model(nod
 JuMP.objective_value(node::OptiNode) = JuMP.objective_value(jump_model(node))
 JuMP.objective_sense(node::OptiNode) = JuMP.objective_sense(jump_model(node))
 
-JuMP.set_objective(optinode::OptiNode,
-                    sense::MOI.OptimizationSense,
-                    func::JuMP.AbstractJuMPScalar) =
-                    JuMP.set_objective(jump_model(optinode),sense,func)
+function JuMP.set_objective(
+    optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
+)
+    return JuMP.set_objective(jump_model(optinode), sense, func)
+end
 
 """
     JuMP.set_nonlinear_objective(optinode::OptiNode, sense::MOI.OptimizationSense, obj::Any)
 
 Set a nonlinear objective on optinode `node`
 """
-JuMP.set_nonlinear_objective(optinode::OptiNode,
-                        sense::MOI.OptimizationSense,
-                        obj::Any) =
-                        JuMP.set_nonlinear_objective(optinode.model,sense,obj)
+function JuMP.set_nonlinear_objective(
+    optinode::OptiNode, sense::MOI.OptimizationSense, obj::Any
+)
+    return JuMP.set_nonlinear_objective(optinode.model, sense, obj)
+end
 
-JuMP.set_objective_function(optinode::OptiNode,func::JuMP.AbstractJuMPScalar) =
-                            JuMP.set_objective_function(optinode.model,func)
+function JuMP.set_objective_function(optinode::OptiNode, func::JuMP.AbstractJuMPScalar)
+    return JuMP.set_objective_function(optinode.model, func)
+end
 
-JuMP.set_objective_function(optinode::OptiNode,real::Real) =
-                            JuMP.set_objective_function(optinode.model,real)
+function JuMP.set_objective_function(optinode::OptiNode, real::Real)
+    return JuMP.set_objective_function(optinode.model, real)
+end
 
-JuMP.set_objective_sense(optinode::OptiNode,sense::MOI.OptimizationSense) =
-                            JuMP.set_objective_sense(optinode.model,sense)
-
+function JuMP.set_objective_sense(optinode::OptiNode, sense::MOI.OptimizationSense)
+    return JuMP.set_objective_sense(optinode.model, sense)
+end
 
 # NLP evaluator
 """
@@ -356,7 +364,9 @@ JuMP.set_objective_sense(optinode::OptiNode,sense::MOI.OptimizationSense) =
 
 Retrieve the underlying JuMP NLP evaluator on optinode `node`
 """
-JuMP.NLPEvaluator(node::OptiNode; kwargs...) = JuMP.NLPEvaluator(jump_model(node); kwargs...)
+function JuMP.NLPEvaluator(node::OptiNode; kwargs...)
+    return JuMP.NLPEvaluator(jump_model(node); kwargs...)
+end
 
 # status functions
 """
@@ -372,7 +382,6 @@ JuMP.solver_name(node::OptiNode) = JuMP.solver_name(jump_model(node))
 JuMP.mode(node::OptiNode) = JuMP.mode(jump_model(node))
 JuMP._moi_mode(node_backend::NodeBackend) = node_backend.optimizer.mode
 JuMP._init_NLP(node::OptiNode) = JuMP._init_NLP(jump_model(node))
-
 
 ##############################################
 # Get optinode from other objects
@@ -396,8 +405,10 @@ function optinode(var::JuMP.VariableRef)
     if haskey(var.model.ext, :optinode)
         return optinode(var.model)
     else
-        error("variable $var does not belong to a optinode.  If you're trying to create a linkconstraint, make sure
-        the owning model has been set to a node.")
+        error(
+            "variable $var does not belong to a optinode.  If you're trying to create a linkconstraint, make sure
+      the owning model has been set to a node.",
+        )
     end
 end
 
@@ -407,7 +418,7 @@ end
 Retrieve the optinode corresponding to JuMP `ConstraintRef`
 """
 function optinode(con::JuMP.ConstraintRef)
-    if haskey(con.model.ext,:optinode)
+    if haskey(con.model.ext, :optinode)
         return optinode(con.model)
     else
         error("constraint $con does not belong to a node")
@@ -418,21 +429,31 @@ end
 # Printing
 ###############################################
 function string(node::OptiNode)
-    "OptiNode w/ $(JuMP.num_variables(node)) Variable(s) and $(JuMP.num_constraints(node)) Constraint(s)"
+    return "OptiNode w/ $(JuMP.num_variables(node)) Variable(s) and $(JuMP.num_constraints(node)) Constraint(s)"
 end
-print(io::IO,node::OptiNode) = print(io, string(node))
-show(io::IO,node::OptiNode) = print(io,node)
+print(io::IO, node::OptiNode) = print(io, string(node))
+show(io::IO, node::OptiNode) = print(io, node)
 
-JuMP.nonlinear_constraint_string(
-    node::OptiNode,
-    mode::MIME,
-    c::MOI.Nonlinear.ConstraintIndex) = JuMP.nonlinear_constraint_string(jump_model(node), mode, c)
-
-const NonlinearOptiNodeConstraintRef = ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex}# where T <: OptiObject
-function Base.show(io::IO, c::ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex})
-    print(io, JuMP.nonlinear_constraint_string(c.model, MIME("text/plain"), JuMP.index(c)))
+function JuMP.nonlinear_constraint_string(
+    node::OptiNode, mode::MIME, c::MOI.Nonlinear.ConstraintIndex
+)
+    return JuMP.nonlinear_constraint_string(jump_model(node), mode, c)
 end
 
-function Base.show(io::IO, ::MIME"text/latex", c::ConstraintRef{OptiNode, MOI.Nonlinear.ConstraintIndex})
-    print(io, JuMP._wrap_in_math_mode(JuMP.nonlinear_constraint_string(c.model, MIME"text/latex", JuMP.index(c))))
+const NonlinearOptiNodeConstraintRef = ConstraintRef{OptiNode,MOI.Nonlinear.ConstraintIndex}# where T <: OptiObject
+function Base.show(io::IO, c::ConstraintRef{OptiNode,MOI.Nonlinear.ConstraintIndex})
+    return print(
+        io, JuMP.nonlinear_constraint_string(c.model, MIME("text/plain"), JuMP.index(c))
+    )
+end
+
+function Base.show(
+    io::IO, ::MIME"text/latex", c::ConstraintRef{OptiNode,MOI.Nonlinear.ConstraintIndex}
+)
+    return print(
+        io,
+        JuMP._wrap_in_math_mode(
+            JuMP.nonlinear_constraint_string(c.model, MIME"text/latex", JuMP.index(c))
+        ),
+    )
 end

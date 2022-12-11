@@ -6,24 +6,22 @@ DocMeta.setdocmeta!(PlasmoPlots, :DocTestSetup, :(using PlasmoPlots); recursive=
 #Fix issue with GKS for plotting
 ENV["GKSwstype"] = "100"
 
-
-makedocs(sitename="Plasmo.jl", modules=[Plasmo, PlasmoPlots],
-        doctest=false, format=Documenter.HTML(
-        prettyurls = get(ENV, "CI", nothing) == "true"),
-        authors = "Jordan Jalving",
-        pages = [
+makedocs(;
+    sitename="Plasmo.jl",
+    modules=[Plasmo, PlasmoPlots],
+    doctest=false,
+    format=Documenter.HTML(; prettyurls=get(ENV, "CI", nothing) == "true"),
+    authors="Jordan Jalving",
+    pages=[
         "Introduction" => "index.md",
         "Quickstart" => "documentation/quickstart.md",
         "Modeling with OptiGraphs" => "documentation/modeling.md",
         "Graph Partitioning and Processing" => "documentation/partitioning.md",
         "Solvers" => "documentation/solvers.md",
-        "Tutorials" => [
-           "Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md",
-           ],
-        "API Documentation" => "documentation/api_docs.md"]
-        )
+        "Tutorials" =>
+            ["Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md"],
+        "API Documentation" => "documentation/api_docs.md",
+    ],
+)
 
-deploydocs(
-    repo = "github.com/plasmo-dev/Plasmo.jl.git"
-    )
-
+deploydocs(; repo="github.com/plasmo-dev/Plasmo.jl.git")

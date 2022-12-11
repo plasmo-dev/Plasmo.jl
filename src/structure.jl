@@ -5,7 +5,7 @@
 Query the edges in `graph` that connect nodes within the graph, but not subgraphs
 """
 function local_edges(graph::OptiGraph)
-	return induced_edges(graph, optinodes(graph))
+    return induced_edges(graph, optinodes(graph))
 end
 
 """
@@ -23,8 +23,8 @@ end
 Query the edges in `graph` that connect nodes between subgraphs.
 """
 function cross_edges(graph::OptiGraph)
-	iedges = Plasmo.identify_edges(graph, optinodes.(subgraphs(graph)))
-	return iedges[2]
+    iedges = Plasmo.identify_edges(graph, optinodes.(subgraphs(graph)))
+    return iedges[2]
 end
 
 """
@@ -33,7 +33,7 @@ end
 Query the edges in `graph` that are both hierarchical and cross subgraphs
 """
 function global_edges(graph::OptiGraph)
-	return intersect(hierarchical_edges(graph), cross_edges(graph))
+    return intersect(hierarchical_edges(graph), cross_edges(graph))
 end
 
 """
@@ -92,7 +92,7 @@ end
 #recursively check subgraph depth
 function _subgraph_depth(subgraphs::Vector{OptiGraph})
     depth = 0
-    if any((g) -> has_subgraphs(g),subgraphs)
+    if any((g) -> has_subgraphs(g), subgraphs)
         depth += 1
         for sub in subgraphs
             depth += _subgraph_depth(subgraphs(sub))
