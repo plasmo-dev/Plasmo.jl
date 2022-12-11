@@ -6,3 +6,6 @@
 
 docs/build/
 _*
+
+Manifest.toml
+docs/Manifest.toml

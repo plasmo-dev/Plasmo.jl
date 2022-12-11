@@ -165,21 +165,3 @@ function expand(graph::OptiGraph, subgraph::OptiGraph, distance::Int64)
 
     return new_subgraph
 end
-
-"""
-    hierarchical_edges(graph::OptiGraph)::Vector{OptiEdge}
-
-Query the edges in `graph` that connect its local nodes to nodes in its subgraphs.
-"""
-function hierarchical_edges(graph::OptiGraph)
-    return incident_edges(graph, optinodes(graph))
-end
-
-"""
-    linking_edges(graph::OptiGraph)::Vector{OptiEdge}
-
-Query the edges in `graph` that connect nodes within the graph or between subgraphs.
-"""
-function linking_edges(graph::OptiGraph)
-    return setdiff(optiedges(graph), incident_edges(graph, optinodes(graph)))
-end

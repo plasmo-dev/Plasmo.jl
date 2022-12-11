@@ -40,6 +40,7 @@ function KaHyPar.partition(graph::BipartiteGraph,
 end
 
 #Partition a standard Graph
+#TODO: no type piracy
 function KaHyPar.partition(graph::LightGraphs.AbstractGraph,
                             n_parts::Int64; edge_weights=ones(ne(graph)),
                             node_sizes=ones(nv(graph)),

@@ -34,15 +34,3 @@ LightGraphs.vertices(cgraph::CliqueGraph) = LightGraphs.vertices(cgraph.graph)
 LightGraphs.all_neighbors(cgraph::CliqueGraph,idx::Integer) = LightGraphs.all_neighbors(cgraph.graph,idx)
 LightGraphs.incidence_matrix(cgraph::CliqueGraph) = LightGraphs.incidence_matrix(cgraph.graph)
 induced_elements(cgraph::CliqueGraph,partitions::Vector{Vector{Int64}}) = partitions
-
-
-# macro forward_clique_graph_method(func)
-#     return quote
-#         function $(func)(cgraph::Plasmo.CliqueGraph,args...)
-#             output = $(func)(cgraph.graph,args...)
-#             return output
-#         end
-#     end
-# end
-# @forward_clique_graph_method(LightGraphs.all_neighbors)
-# @forward_clique_graph_method(LightGraphs.incidence_matrix)

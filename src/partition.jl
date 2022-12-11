@@ -283,9 +283,9 @@ end
 
 
 #swap vertex and edge separators in the partition.  Return a new partition.
-#IDEA TODO:
-# function swap_separators!(graph::OptiGraph,partition::Partition)
-# end
+#IDEA
+#function swap_separators!(graph::OptiGraph, partition::Partition)
+#end
 
 
 ##################################################################
@@ -302,7 +302,6 @@ function partition_to_subgraphs!(graph::OptiGraph,partition_func::Function,args.
     membership_vector = partition_func(partitioned_graph,args...;kwargs...)
     partition = Partition(membership_vector,ref_map)
     apply_partition!(graph,partition)
-    @assert graph_structure(graph) == RECURSIVE_GRAPH
     return nothing
 end
 
@@ -311,12 +310,11 @@ end
 
 Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
 """
-function partition_to_tree!(graph::OptiGraph,partition_func::Function,args...;depth = 1,kwargs...) #method = :edge_hypergraph
+function partition_to_tree!(graph::OptiGraph,partition_func::Function,args...;depth = 1,kwargs...)
     partitioned_graph,ref_map = edge_hyper_graph(graph)
     membership_vector = partition_func(partitioned_graph,args...;kwargs...)
     partition = Partition(membership_vector,ref_map)
     apply_partition!(graph,partition)
-    @assert graph_structure(graph) == RECURSIVE_TREE
 end
 
 """
@@ -324,12 +322,11 @@ end
 
 Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
 """
-function partition_to_linked_tree!(graph::OptiGraph,partition_func::Function,args...;depth = 1,kwargs...)
+function partition_to_subgraph_tree!(graph::OptiGraph,partition_func::Function,args...;depth = 1,kwargs...)
     partitioned_graph,ref_map = bipartite_graph(graph)
     membership_vector = partition_func(partitioned_graph,args...;kwargs...)
     partition = Partition(membership_vector,ref_map)
     apply_partition!(graph,partition)
-    @assert graph_structure(graph) in [RECURSIVE_TREE,RECURSIVE_GRAPH,RECURSIVE_LINKED_TREE]
 end
 
 ####################################

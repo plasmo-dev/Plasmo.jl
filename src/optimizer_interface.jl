@@ -120,7 +120,8 @@ function _set_node_results!(graph::OptiGraph)
     end
 
     #Set NLP dual solution for node
-    #Nonlinear duals #TODO: multiple node solutions with nlp duals
+    #Nonlinear duals 
+    #TODO: manage node nlp duals on node backend
     #TODO: Add list of model attributes to graph backend.
     #if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
     try
@@ -131,14 +132,13 @@ function _set_node_results!(graph::OptiGraph)
                 src = JuMP.backend(node)
                 nl_idx_map = src.result_location[id].nl_node_to_optimizer_map #JuMP.backend(node).nl_idx_maps[id]
                 nl_duals = node.nlp_duals[id]
-                #node.nlp_data.nlconstr_duals = Vector{Float64}(undef,length(node.nlp_data.nlconstr))
                 for (src_index,graph_index) in nl_idx_map
                     nl_duals[src_index.value] = nlp_duals[graph_index.value] # node.nlp_data.nlconstr_duals[src_index.value] = nlp_duals[graph_index.value]
                 end
             end
         end
     catch err
-        if !isa(err,ArgumentError)
+        if !isa(err,MathOptInterface.GetAttributeNotAllowed)
             rethrow(err)
         end
     end

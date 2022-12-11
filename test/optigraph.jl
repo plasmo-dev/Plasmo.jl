@@ -1,8 +1,7 @@
 module TestOptiGraph
 
-using Plasmo
-using JuMP
-using Ipopt
+using Plasmo, JuMP
+using Ipopt, GLPK
 using Test
 
 function _create_optigraph()
@@ -61,6 +60,12 @@ function test_optigraph1()
     @test num_variables(graph) == 30
     @test has_node_objective(graph) == true
 
+    JuMP.set_optimizer(graph, GLPK.Optimizer)
+    optimize!(graph)
+
+    @test objective_value(graph) == 30.0
+    @test value(objective_function(graph)) == 30.0
+
     obj = objective_function(graph)
     @test length(optinodes(obj)) == 15
 
@@ -73,6 +78,8 @@ function test_optigraph1()
 
     JuMP.set_objective_coefficient(graph,n1[:x],2)
     @test objective_function(graph).aff.terms[n1[:x]] == 2.0
+
+
 end
 
 function test_optigraph2()

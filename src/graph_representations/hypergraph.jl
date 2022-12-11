@@ -182,7 +182,9 @@ function induced_edges(hypergraph::HyperGraph,hypernodes::Vector{HyperNode})
     sum_vector = sum(C,dims = 1)
     max_vector = maximum(C,dims = 1)
     cross_vector = sum_vector - max_vector
-    indices = findall(cross_vector .!= 0)                   #nonzero indices of the cross vector.  These are edges that cross partitions.
+
+    #nonzero indices of the cross vector.  these are edges that cross partitions.
+    indices = findall(cross_vector .!= 0)                   
     indices = [indices[i].I[2] for i = 1:length(indices)]
 
     inds = findall(C[1,:] .!= 0)

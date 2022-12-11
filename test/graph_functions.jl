@@ -94,14 +94,14 @@ function test_subgraph_functions()
     ex_sub2 = expand(graph,sub1,10)
     @test num_all_nodes(ex_sub2) == 30
 
-    @test length(Plasmo.linking_edges(graph)) == 4
+    @test length(Plasmo.cross_edges(graph)) == 4
 
     main_node = add_node!(graph)
     @variable(main_node,z>=0)
     @linkconstraint(graph,main_node[:z] == optinode(sub1,1)[:x])
 
     @test length(Plasmo.hierarchical_edges(graph)) == 1
-    @test length(Plasmo.linking_edges(graph)) == 4
+    @test length(Plasmo.cross_edges(graph)) == 4
     @test num_linkconstraints(graph) == 5
 end
 
