@@ -7,13 +7,6 @@ DocMeta.setdocmeta!(PlasmoPlots, :DocTestSetup, :(using PlasmoPlots); recursive=
 ENV["GKSwstype"] = "100"
 
 
-# makedocs(sitename="Plasmo.jl", modules=[Plasmo, PlasmoPlots],
-#         doctest=true,
-#         authors = "Jordan Jalving",
-#         pages = [
-#         ]
-#         )
-
 makedocs(sitename="Plasmo.jl", modules=[Plasmo, PlasmoPlots],
         doctest=false, format=Documenter.HTML(
         prettyurls = get(ENV, "CI", nothing) == "true"),
