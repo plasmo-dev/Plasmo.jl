@@ -32,22 +32,33 @@ end
 
 Base.broadcastable(reference_map::AggregateMap) = Ref(reference_map)
 
-function Base.setindex!(reference_map::AggregateMap, graph_cref::JuMP.ConstraintRef,node_cref::JuMP.ConstraintRef)
-    reference_map.conmap[node_cref] = graph_cref
+function Base.setindex!(
+    reference_map::AggregateMap,
+    graph_cref::JuMP.ConstraintRef,
+    node_cref::JuMP.ConstraintRef,
+)
+    return reference_map.conmap[node_cref] = graph_cref
 end
 
-function Base.setindex!(reference_map::AggregateMap, graph_vref::JuMP.VariableRef,node_vref::JuMP.VariableRef)
-    reference_map.varmap[node_vref] = graph_vref
+function Base.setindex!(
+    reference_map::AggregateMap, graph_vref::JuMP.VariableRef, node_vref::JuMP.VariableRef
+)
+    return reference_map.varmap[node_vref] = graph_vref
 end
 
 # AggregateMap(node::OptiNode) = AggregateMap(node,Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{LinkConstraintRef,JuMP.ConstraintRef}())
 
-AggregateMap() = AggregateMap(Dict{JuMP.VariableRef,JuMP.VariableRef}(),Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),Dict{LinkConstraintRef,JuMP.ConstraintRef}())
-function Base.merge!(ref_map1::AggregateMap,ref_map2::AggregateMap)
-    merge!(ref_map1.varmap,ref_map2.varmap)
-    merge!(ref_map1.conmap,ref_map2.conmap)
+function AggregateMap()
+    return AggregateMap(
+        Dict{JuMP.VariableRef,JuMP.VariableRef}(),
+        Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),
+        Dict{LinkConstraintRef,JuMP.ConstraintRef}(),
+    )
 end
-
+function Base.merge!(ref_map1::AggregateMap, ref_map2::AggregateMap)
+    merge!(ref_map1.varmap, ref_map2.varmap)
+    return merge!(ref_map1.conmap, ref_map2.conmap)
+end
 
 #############################################################################################
 # Aggregate Functions
@@ -78,16 +89,18 @@ function aggregate(optigraph::OptiGraph)
     if has_nonlinear_objective
         graph_obj = :(0)
     elseif has_node_quad_objective(optigraph)
-        graph_obj = zero(JuMP.GenericQuadExpr{Float64, JuMP.VariableRef})
+        graph_obj = zero(JuMP.GenericQuadExpr{Float64,JuMP.VariableRef})
     else
-        graph_obj = zero(JuMP.GenericAffExpr{Float64, JuMP.VariableRef})
+        graph_obj = zero(JuMP.GenericAffExpr{Float64,JuMP.VariableRef})
     end
 
     #COPY NODE MODELS INTO AGGREGATE NODE
     for optinode in all_nodes(optigraph)
         # Need to pass master reference so we use those variables instead of creating new ones
         # node_agg_map = _add_to_aggregate_node!(aggregate_node,optinode,reference_map)  #updates combined_model and reference_map
-        graph_obj = _add_to_aggregate_node!(aggregate_node, optinode, reference_map, graph_obj)
+        graph_obj = _add_to_aggregate_node!(
+            aggregate_node, optinode, reference_map, graph_obj
+        )
 
         #NOTE:This doesn't seem to work.  I have to pass the reference map to the function for some reason
         #merge!(reference_map,node_agg_map)
@@ -101,8 +114,10 @@ function aggregate(optigraph::OptiGraph)
 
     #ADD LINK CONSTRAINTS
     for linkconstraint in all_linkconstraints(optigraph)
-        new_constraint = _copy_constraint(JuMP.constraint_object(linkconstraint),reference_map)
-        cref = JuMP.add_constraint(aggregate_node,new_constraint)
+        new_constraint = _copy_constraint(
+            JuMP.constraint_object(linkconstraint), reference_map
+        )
+        cref = JuMP.add_constraint(aggregate_node, new_constraint)
         reference_map.linkconstraintmap[JuMP.constraint_object(linkconstraint)] = cref
     end
 
@@ -113,7 +128,12 @@ end
 @deprecate combine aggregate
 
 #add optinode model to aggregate optinode model
-function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, aggregate_map::AggregateMap, graph_obj::Any)
+function _add_to_aggregate_node!(
+    aggregate_node::OptiNode,
+    add_node::OptiNode,
+    aggregate_map::AggregateMap,
+    graph_obj::Any,
+)
 
     # reference_map = AggregateMap(aggregate_node)
     reference_map = AggregateMap()
@@ -125,19 +145,19 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
         reference_map[var] = new_x               #map variable reference to new reference
         var_name = JuMP.name(var)
         new_name = var_name
-        JuMP.set_name(new_x,new_name)
+        JuMP.set_name(new_x, new_name)
         if JuMP.start_value(var) != nothing
-            JuMP.set_start_value(new_x,JuMP.start_value(var))
+            JuMP.set_start_value(new_x, JuMP.start_value(var))
         end
     end
 
     #COPY  CONSTRAINTS
-    for (func,set) in constraint_types
+    for (func, set) in constraint_types
         constraint_refs = JuMP.all_constraints(add_node, func, set)
         for constraint_ref in constraint_refs
             constraint = JuMP.constraint_object(constraint_ref)
             new_constraint = _copy_constraint(constraint, reference_map)
-            new_ref= JuMP.add_constraint(aggregate_node, new_constraint)
+            new_ref = JuMP.add_constraint(aggregate_node, new_constraint)
             reference_map[constraint_ref] = new_ref
         end
     end
@@ -148,19 +168,20 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
     #if add_node.nlp_data !== nothing
     if nlp != nothing
         #d = JuMP.NLPEvaluator(add_node)   #Get the NLP evaluator object.  Initialize the expression graph
-        evaluator = JuMP.NLPEvaluator(add_node; _differentiation_backend = MOI.Nonlinear.ExprGraphOnly())
+        evaluator = JuMP.NLPEvaluator(
+            add_node; _differentiation_backend=MOI.Nonlinear.ExprGraphOnly()
+        )
         MOI.initialize(evaluator, [:ExprGraph])
         nlp_initialized = true
         #add_node.nlp_data = add_node.model.nlp_data
-        for i = 1:length(nlp.constraints)
-        #for i = 1:length(add_node.nlp_data.nlconstr)
+        for i in 1:length(nlp.constraints)
+            #for i = 1:length(add_node.nlp_data.nlconstr)
             expr = MOI.constraint_expr(evaluator, i)                                  #this returns a julia expression
             _splice_nonlinear_variables!(expr, add_node, reference_map)        #splice the variables from var_map into the expression
             new_nl_constraint = JuMP.add_nonlinear_constraint(aggregate_node, expr)      #raw expression input for non-linear constraint
             constraint_ref = JuMP.ConstraintRef(
-                add_node,
-                JuMP.NonlinearConstraintIndex(i),
-                new_nl_constraint.shape)
+                add_node, JuMP.NonlinearConstraintIndex(i), new_nl_constraint.shape
+            )
             reference_map[constraint_ref] = new_nl_constraint
         end
     end
@@ -171,7 +192,9 @@ function _add_to_aggregate_node!(aggregate_node::OptiNode, add_node::OptiNode, a
         if !nlp_initialized
             JuMP._init_NLP(add_node)
             #d = JuMP.NLPEvaluator(add_node)
-            evaluator = JuMP.NLPEvaluator(add_node; _differentiation_backend = MOI.Nonlinear.ExprGraphOnly())
+            evaluator = JuMP.NLPEvaluator(
+                add_node; _differentiation_backend=MOI.Nonlinear.ExprGraphOnly()
+            )
             MOI.initialize(evaluator, [:ExprGraph])
             #add_node.nlp_data = add_node.model.nlp_data
         end
@@ -218,13 +241,13 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
             subs = subgraphs(parent)
             for sub in subs
                 new_subgraph = OptiGraph()
-                add_subgraph!(new_parent,new_subgraph)
+                add_subgraph!(new_parent, new_subgraph)
                 sg_dict[sub] = new_subgraph
             end
-            append!(subs_to_check,subs)
+            append!(subs_to_check, subs)
         end
         depth += 1
-        append!(final_parents,parents)
+        append!(final_parents, parents)
         parents = subs_to_check
     end
 
@@ -234,9 +257,9 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
         for leaf_subgraph in subgraphs(parent)
             #create a new optinode
             combined_node, combine_ref_map = aggregate(leaf_subgraph)
-            merge!(reference_map,combine_ref_map)
+            merge!(reference_map, combine_ref_map)
             new_parent = sg_dict[parent]
-            add_node!(new_parent,combined_node)
+            add_node!(new_parent, combined_node)
             combined_node.label = "$name_idx'"
             name_idx += 1
         end
@@ -253,9 +276,9 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
 
         #Add copy optinodes
         for node in nodes
-            new_node,ref_map = _copy_node(node)
-            merge!(reference_map,ref_map)
-            add_node!(new_graph,new_node)
+            new_node, ref_map = _copy_node(node)
+            merge!(reference_map, ref_map)
+            add_node!(new_graph, new_node)
             new_node.label = "$name_idx'"
             name_idx += 1
         end
@@ -268,7 +291,7 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
             end
         end
     end
-    return root_optigraph,reference_map
+    return root_optigraph, reference_map
 end
 
 """
@@ -279,7 +302,7 @@ subgraphs remain in the new aggregated optigraph. For example, a `max_depth` of 
 the aggregated optigraph.
 """
 function aggregate!(graph::OptiGraph, max_depth::Int64)
-    new_graph,ref_map = aggregate(graph,max_depth)
+    new_graph, ref_map = aggregate(graph, max_depth)
     Base.empty!(graph)
 
     graph.obj_dict = new_graph.obj_dict
