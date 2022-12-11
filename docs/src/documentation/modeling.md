@@ -128,6 +128,11 @@ julia> set_optimizer_attribute(graph1, "print_level", 0) #suppress Ipopt output
 
 julia> optimize!(graph1)
 
+******************************************************************************
+This program contains Ipopt, a library for large-scale nonlinear optimization.
+ Ipopt is released as open source code under the Eclipse Public License (EPL).
+         For more information visit https://github.com/coin-or/Ipopt
+******************************************************************************
 ```
 
 The solution of an optigraph is stored directly on its optinodes and optiedges. Variables values, constraint duals, objective function values, and solution status codes can be queried just like in JuMP.
