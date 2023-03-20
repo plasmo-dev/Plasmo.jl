@@ -12,13 +12,12 @@ create optimization problems and facilitates the management of distributed and h
 behavior of JuMP as much as possible.  Consequently, almost every function that works on a JuMP `Model` object will also work on a Plasmo.jl `OptiGraph` object.   
 
 ## Overview
-The core object in Plasmo.jl is the `OptiGraph` wherein a user can add `OptiNodes` which represent individual optimization problems. The optinodes in an optigraph can be linked together
-using `LinkConstraint`s which induces an underlying hypergraph structure. Furthermore, optigraphs be embedded within other optigraphs to induce nested hierarchical structures.
-The graph structures obtained using Plasmo.jl can be used for model and data management, specialized graph partitioning, and for communicating structured problems to distributed optimization solvers (e.g. such as with [PipsNLP.jl](https://github.com/zavalab/PipsNLP.jl)).
+The core object in Plasmo.jl is the `OptiGraph` wherein a user can add `OptiNodes` which represent individual optimization problems. The optinodes in an optigraph can be linked together using `LinkConstraint`s which induces an underlying hypergraph structure. Furthermore, optigraphs be embedded within other optigraphs to induce nested hierarchical structures.
+The graph structures obtained using Plasmo.jl can be used for model and data management, specialized graph partitioning, and for communicating structured problems to distributed optimization solvers.
 
 ## Documentation
-The latest documentation is available through [GitHub Pages](https://zavalab.github.io/Plasmo.jl/dev/).
-Additional examples can be found in the [examples](https://github.com/zavalab/Plasmo.jl/tree/master/examples/) folder.
+The latest documentation is available through [GitHub Pages](https://plasmo-dev.github.io/Plasmo.jl/dev/).
+Additional examples can be found in the [examples](https://github.com/plasmo-dev/Plasmo.jl/tree/main/examples) folder.
 
 ## Installation
 
