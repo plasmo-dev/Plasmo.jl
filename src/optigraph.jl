@@ -638,7 +638,8 @@ function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr
     #put objective terms onto nodes
     for (coef,term) in JuMP.linear_terms(expr)
         node = optinode(term)
-        JuMP.set_objective_function(node,objective_function(node) + coef*term)
+        # JuMP.set_objective_function(node,objective_function(node) + coef*term)
+        JuMP.add_to_expression!(objective_function(node, coef, term)
     end
     graph.objective_function = expr
 end
