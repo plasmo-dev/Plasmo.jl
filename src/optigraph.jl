@@ -648,8 +648,7 @@ function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr
     #put objective terms onto nodes
     for (coef, term) in JuMP.linear_terms(expr)
         node = optinode(term)
-        # JuMP.set_objective_function(node,objective_function(node) + coef*term)
-        JuMP.add_to_expression!(objective_function(node, coef, term)
+        JuMP.add_to_expression!(objective_function(node), coef, term)
     end
     return graph.objective_function = expr
 end
@@ -661,11 +660,11 @@ function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExp
     for (coef, term1, term2) in JuMP.quad_terms(expr)
         @assert optinode(term1) == optinode(term2)
         node = optinode(term1)
-        JuMP.set_objective_function(node, objective_function(node) + coef * term1 * term2)
+        JuMP.add_to_expression!(objective_function(node), coef, term1, term2)
     end
     for (coef, term) in JuMP.linear_terms(expr)
         node = optinode(term)
-        JuMP.set_objective_function(node, objective_function(node) + coef * term)
+        JuMP.add_to_expression!(objective_function(node), coef, term)
     end
     return graph.objective_function = expr
 end
