@@ -14,24 +14,23 @@ Creates a linking constraint from a JuMP.ScalarConstraint.
 
 Retrieves a linking constraint from a LinkConstraintRef.
 """
-mutable struct LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
+mutable struct LinkConstraint{F<:JuMP.AbstractJuMPScalar,S<:MOI.AbstractScalarSet} <:
+               AbstractLinkConstraint
     func::F
     set::S
     attached_node::Union{Nothing,OptiNode}
 end
-LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func,con.set,nothing)
-
+LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func, con.set, nothing)
 
 """
     set_attached_node(con::LinkConstraint,node::OptiNode).
 
 Set the linkconstraint `con` to optinode `node`. Mostly useful for algorithms that need an "owning" node on a linkconstraint
 """
-function set_attached_node(con::LinkConstraint,node::OptiNode)
+function set_attached_node(con::LinkConstraint, node::OptiNode)
     @assert node in optinodes(con)
-    con.attached_node = node
+    return con.attached_node = node
 end
-
 
 """
     attached_node(con::LinkConstraint)
@@ -72,11 +71,15 @@ struct LinkConstraintRef <: AbstractLinkConstraintRef
 end
 LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
 
-OptiEdge() = OptiEdge(OrderedSet{OptiNode}(),
-                Vector{LinkConstraintRef}(),
-                OrderedDict{Int, LinkConstraint}(),
-                OrderedDict{Int64,String}(),
-                EdgeBackend())
+function OptiEdge()
+    return OptiEdge(
+        OrderedSet{OptiNode}(),
+        Vector{LinkConstraintRef}(),
+        OrderedDict{Int,LinkConstraint}(),
+        OrderedDict{Int64,String}(),
+        EdgeBackend(),
+    )
+end
 
 function OptiEdge(nodes::Vector{OptiNode})
     optiedge = OptiEdge()
@@ -89,18 +92,20 @@ JuMP.jump_function(constraint::LinkConstraint) = constraint.func
 JuMP.moi_set(constraint::LinkConstraint) = constraint.set
 JuMP.shape(::LinkConstraint) = JuMP.ScalarShape()
 function JuMP.constraint_object(cref::LinkConstraintRef, F::Type, S::Type)
-   con = cref.optiedge.linkconstraints[cref.idx]
-   con.func::F
-   con.set::S
-   return con
+    con = cref.optiedge.linkconstraints[cref.idx]
+    con.func::F
+    con.set::S
+    return con
 end
-JuMP.set_name(cref::LinkConstraintRef, s::String) = JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
+function JuMP.set_name(cref::LinkConstraintRef, s::String)
+    return JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
+end
 JuMP.name(con::LinkConstraintRef) = JuMP.owner_model(con).linkconstraint_names[con.idx]
 getname(cref::LinkConstraintRef) = JuMP.name(cref)
 
 function MOI.delete!(cref::LinkConstraintRef)
     delete!(cref.optiedge.linkconstraints, cref.idx)
-    delete!(cref.optiedge.linkconstraint_names, cref.idx)
+    return delete!(cref.optiedge.linkconstraint_names, cref.idx)
 end
 MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.optiedge.linkconstraints, cref.idx)
 
@@ -109,7 +114,9 @@ optinodes(con::JuMP.ScalarConstraint) = [optinode(var) for var in keys(con.func.
 optinodes(con::LinkConstraint) = [optinode(var) for var in keys(con.func.terms)]
 optinodes(cref::LinkConstraintRef) = optinodes(cref.optiedge.linkconstraints[cref.idx])
 num_nodes(con::LinkConstraint) = length(optinodes(con))
-JuMP.constraint_object(linkref::LinkConstraintRef) = linkref.optiedge.linkconstraints[linkref.idx]
+function JuMP.constraint_object(linkref::LinkConstraintRef)
+    return linkref.optiedge.linkconstraints[linkref.idx]
+end
 
 #TODO: Update this
 function JuMP.dual(linkref::LinkConstraintRef)
@@ -123,25 +130,25 @@ linkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
 @deprecate getlinkconstraints linkconstraints
 
 function Base.string(edge::OptiEdge)
-    "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"
+    return "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"
 end
-Base.print(io::IO,edge::OptiEdge) = print(io, string(edge))
-Base.show(io::IO,edge::OptiEdge) = print(io,edge)
+Base.print(io::IO, edge::OptiEdge) = print(io, string(edge))
+Base.show(io::IO, edge::OptiEdge) = print(io, edge)
 
 function Base.string(con::AbstractLinkConstraint)
-    "LinkConstraint: $(con.func), $(con.set)"
+    return "LinkConstraint: $(con.func), $(con.set)"
 end
-Base.print(io::IO,con::AbstractLinkConstraint) = print(io, string(con))
-Base.show(io::IO,con::AbstractLinkConstraint) = print(io,con)
+Base.print(io::IO, con::AbstractLinkConstraint) = print(io, string(con))
+Base.show(io::IO, con::AbstractLinkConstraint) = print(io, con)
 
-function JuMP.constraint_string(mode::Any,ref::LinkConstraintRef)
+function JuMP.constraint_string(mode::Any, ref::LinkConstraintRef)
     con = JuMP.constraint_object(ref)
     return "$(getname(ref)): $(con.func) $(JuMP.in_set_string(mode,con.set))"
 end
 
 function Base.show(io::IO, ref::LinkConstraintRef)
-    print(io, JuMP.constraint_string(MIME("text/plain"), ref))
+    return print(io, JuMP.constraint_string(MIME("text/plain"), ref))
 end
 function Base.show(io::IO, ::MIME"text/latex", ref::LinkConstraintRef)
-    print(io, JuMP.constraint_string(MIME("text/latex"), ref))
+    return print(io, JuMP.constraint_string(MIME("text/latex"), ref))
 end

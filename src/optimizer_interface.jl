@@ -7,7 +7,7 @@ JuMP.backend(edge::OptiEdge) = edge.backend
 #Extend OptiNode and OptiGraph with MOI interface
 MOI.get(node::OptiNode, args...) = MOI.get(jump_model(node), args...)
 MOI.set(node::OptiNode, args...) = MOI.set(jump_model(node), args...)
-MOI.get(graph::OptiGraph,args...) = MOI.get(JuMP.backend(graph),args...)
+MOI.get(graph::OptiGraph, args...) = MOI.get(JuMP.backend(graph), args...)
 
 #Set the optigraph objective to the sume of the nodes
 function _set_graph_objective(graph::OptiGraph)
@@ -15,11 +15,13 @@ function _set_graph_objective(graph::OptiGraph)
         nodes = all_nodes(graph)
         for node in nodes
             if JuMP.objective_sense(node) == MOI.MAX_SENSE
-                JuMP.set_objective_sense(node,MOI.MIN_SENSE)
-                JuMP.set_objective_function(node,-1*JuMP.objective_function(node))
+                JuMP.set_objective_sense(node, MOI.MIN_SENSE)
+                JuMP.set_objective_function(node, -1 * JuMP.objective_function(node))
             end
         end
-        JuMP.set_objective(graph, MOI.MIN_SENSE, sum(objective_function(nodes[i]) for i = 1:length(nodes)))
+        JuMP.set_objective(
+            graph, MOI.MIN_SENSE, sum(objective_function(nodes[i]) for i in 1:length(nodes))
+        )
     end
     return nothing
 end
@@ -32,26 +34,34 @@ function _set_backend_objective(graph::OptiGraph)
     return nothing
 end
 
-function _set_backend_objective(graph::OptiGraph, obj::JuMP.GenericAffExpr{Float64,VariableRef})
+function _set_backend_objective(
+    graph::OptiGraph, obj::JuMP.GenericAffExpr{Float64,VariableRef}
+)
     graph_backend = JuMP.backend(graph)
     moi_obj = moi_function(obj)
-    for (i,terms) in enumerate(linear_terms(obj))
+    for (i, terms) in enumerate(linear_terms(obj))
         term = terms[2]
         moi_term = index(term)
         node = optinode(term)
         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
         new_moi_idx = node_idx_map[moi_term]
-        moi_obj = _swap_linear_term!(moi_obj,i,new_moi_idx)
+        moi_obj = _swap_linear_term!(moi_obj, i, new_moi_idx)
     end
     MOI.set(graph_backend.optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.set(graph_backend.optimizer, MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(), moi_obj)
+    MOI.set(
+        graph_backend.optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
+        moi_obj,
+    )
     return nothing
 end
 
-function _set_backend_objective(graph::OptiGraph, obj::JuMP.GenericQuadExpr{Float64,VariableRef})
+function _set_backend_objective(
+    graph::OptiGraph, obj::JuMP.GenericQuadExpr{Float64,VariableRef}
+)
     graph_backend = JuMP.backend(graph)
     moi_obj = moi_function(obj)
-    for (i,terms) in enumerate(quad_terms(obj))
+    for (i, terms) in enumerate(quad_terms(obj))
         term1 = terms[2]
         term2 = terms[3]
         node = optinode(term1)
@@ -61,43 +71,58 @@ function _set_backend_objective(graph::OptiGraph, obj::JuMP.GenericQuadExpr{Floa
         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
         new_moi_idx_1 = node_idx_map[moi_term1]
         new_moi_idx_2 = node_idx_map[moi_term2]
-        moi_obj = _swap_quad_term!(moi_obj,i,new_moi_idx_1,new_moi_idx_2)
+        moi_obj = _swap_quad_term!(moi_obj, i, new_moi_idx_1, new_moi_idx_2)
     end
 
-    for (i,terms) in enumerate(linear_terms(obj))
+    for (i, terms) in enumerate(linear_terms(obj))
         term = terms[2]
         moi_term = index(term)
         node = optinode(term)
         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
         new_moi_idx = node_idx_map[moi_term]
-        moi_obj = _swap_linear_term!(moi_obj,i,new_moi_idx)
+        moi_obj = _swap_linear_term!(moi_obj, i, new_moi_idx)
     end
 
     MOI.set(graph_backend.optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.set(graph_backend.optimizer, MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(), moi_obj)
+    MOI.set(
+        graph_backend.optimizer,
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+        moi_obj,
+    )
     return nothing
 end
 
-function _swap_linear_term!(moi_obj::MOI.ScalarAffineFunction,idx::Int64,new_moi_idx::MOI.VariableIndex)
+function _swap_linear_term!(
+    moi_obj::MOI.ScalarAffineFunction, idx::Int64, new_moi_idx::MOI.VariableIndex
+)
     term = moi_obj.terms[idx]
     coeff = term.coefficient
-    moi_obj.terms[idx] = MOI.ScalarAffineTerm{Float64}(coeff,new_moi_idx)
+    moi_obj.terms[idx] = MOI.ScalarAffineTerm{Float64}(coeff, new_moi_idx)
     return moi_obj
 end
 
-function _swap_linear_term!(moi_obj::MOI.ScalarQuadraticFunction,idx::Int64,new_moi_idx::MOI.VariableIndex)
+function _swap_linear_term!(
+    moi_obj::MOI.ScalarQuadraticFunction, idx::Int64, new_moi_idx::MOI.VariableIndex
+)
     term = moi_obj.affine_terms[idx]
     coeff = term.coefficient
-    moi_obj.affine_terms[idx] = MOI.ScalarAffineTerm{Float64}(coeff,new_moi_idx)
+    moi_obj.affine_terms[idx] = MOI.ScalarAffineTerm{Float64}(coeff, new_moi_idx)
     return moi_obj
 end
 
-function _swap_quad_term!(moi_obj::MOI.ScalarQuadraticFunction,idx::Int64,new_moi_idx1::MOI.VariableIndex,new_moi_idx2::MOI.VariableIndex)
+function _swap_quad_term!(
+    moi_obj::MOI.ScalarQuadraticFunction,
+    idx::Int64,
+    new_moi_idx1::MOI.VariableIndex,
+    new_moi_idx2::MOI.VariableIndex,
+)
     term = moi_obj.quadratic_terms[idx]
     coeff = term.coefficient
     var_idx1 = term.variable_1
     var_idx2 = term.variable_2
-    moi_obj.quadratic_terms[idx] = MOI.ScalarQuadraticTerm{Float64}(coeff,new_moi_idx1,new_moi_idx2)
+    moi_obj.quadratic_terms[idx] = MOI.ScalarQuadraticTerm{Float64}(
+        coeff, new_moi_idx1, new_moi_idx2
+    )
     return moi_obj
 end
 
@@ -120,25 +145,25 @@ function _set_node_results!(graph::OptiGraph)
     end
 
     #Set NLP dual solution for node
-    #Nonlinear duals #TODO: multiple node solutions with nlp duals
+    #Nonlinear duals 
+    #TODO: manage node nlp duals on node backend
     #TODO: Add list of model attributes to graph backend.
     #if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
     try
         nlp_duals = MOI.get(graph_backend, MOI.NLPBlockDual())
         for node in nodes
             if JuMP.nonlinear_model(node) != nothing
-            #if node.nlp_data != nothing
+                #if node.nlp_data != nothing
                 src = JuMP.backend(node)
                 nl_idx_map = src.result_location[id].nl_node_to_optimizer_map #JuMP.backend(node).nl_idx_maps[id]
                 nl_duals = node.nlp_duals[id]
-                #node.nlp_data.nlconstr_duals = Vector{Float64}(undef,length(node.nlp_data.nlconstr))
-                for (src_index,graph_index) in nl_idx_map
+                for (src_index, graph_index) in nl_idx_map
                     nl_duals[src_index.value] = nlp_duals[graph_index.value] # node.nlp_data.nlconstr_duals[src_index.value] = nlp_duals[graph_index.value]
                 end
             end
         end
     catch err
-        if !isa(err,ArgumentError)
+        if !isa(err, MathOptInterface.GetAttributeNotAllowed)
             rethrow(err)
         end
     end
@@ -163,19 +188,19 @@ graph = OptiGraph()
 set_optimizer(graph, GLPK.Optimizer)
 ```
 """
-function JuMP.set_optimizer(graph::OptiGraph,
+function JuMP.set_optimizer(
+    graph::OptiGraph,
     optimizer_constructor,
     add_bridges::Bool=true,
-    bridge_constraints::Union{Nothing,Bool}=nothing)
-
+    bridge_constraints::Union{Nothing,Bool}=nothing,
+)
     if bridge_constraints != nothing
-        @warn(
-            "`bridge_constraints` argument is deprecated. Use `add_bridges` instead.")
+        @warn("`bridge_constraints` argument is deprecated. Use `add_bridges` instead.")
         add_bridges = bridge_constraints
     end
 
     if add_bridges
-        optimizer = MOI.instantiate(optimizer_constructor, with_bridge_type = Float64)
+        optimizer = MOI.instantiate(optimizer_constructor; with_bridge_type=Float64)
         for bridge_type in graph.bridge_types
             _moi_add_bridge(optimizer, bridge_type)
         end
@@ -205,7 +230,9 @@ optimize!(graph)
 function JuMP.optimize!(graph::OptiGraph)
     graph_backend = JuMP.backend(graph)
     if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
-        error("Please set an optimizer on the optigraph before calling `optimize!` by using `set_optimizer(graph,optimizer)`")
+        error(
+            "Please set an optimizer on the optigraph before calling `optimize!` by using `set_optimizer(graph,optimizer)`",
+        )
     end
 
     if graph_backend.state == MOIU.EMPTY_OPTIMIZER
@@ -240,8 +267,10 @@ function JuMP.optimize!(graph::OptiGraph)
         MOI.optimize!(graph_backend)
     catch err
         if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
-            error("The solver does not support nonlinear problems " *
-                  "(i.e., @NLobjective and @NLconstraint).")
+            error(
+                "The solver does not support nonlinear problems " *
+                "(i.e., @NLobjective and @NLconstraint).",
+            )
         else
             rethrow(err)
         end
@@ -290,9 +319,8 @@ function JuMP.set_optimizer_attribute(graph::OptiGraph, name::String, value)
 end
 
 function JuMP.set_optimizer_attribute(
-    graph::OptiGraph,
-    attr::MOI.AbstractOptimizerAttribute,
-    value)
+    graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute, value
+)
     return MOI.set(graph, attr, value)
 end
 
@@ -301,8 +329,8 @@ function JuMP.get_optimizer_attribute(graph::OptiGraph, name::String)
 end
 
 function JuMP.get_optimizer_attribute(
-    graph::OptiGraph,
-    attr::MOI.AbstractOptimizerAttribute)
+    graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute
+)
     return MOI.get(graph, attr)
 end
 
@@ -322,7 +350,6 @@ function MOI.set(graph::OptiGraph, attr::MOI.AbstractModelAttribute, value)
     return MOI.set(backend(graph), attr, value)
 end
 
-
 #######################################################
 #Optinode optimizer interface
 #######################################################
@@ -334,15 +361,17 @@ function JuMP.set_optimizer(node::OptiNode, optimizer_constructor)
     return nothing
 end
 
-function JuMP.optimize!(node::OptiNode;kwargs...)
-    JuMP.optimize!(jump_model(node);kwargs...)
+function JuMP.optimize!(node::OptiNode; kwargs...)
+    JuMP.optimize!(jump_model(node); kwargs...)
     return nothing
 end
 
-function set_node_primals(node::OptiNode, vars::Vector{JuMP.VariableRef}, values::Vector{Float64})
+function set_node_primals(
+    node::OptiNode, vars::Vector{JuMP.VariableRef}, values::Vector{Float64}
+)
     node_backend = JuMP.backend(node)
     moi_indices = index.(vars)
-    set_backend_primals!(node_backend,moi_indices,values,node.id)
+    set_backend_primals!(node_backend, moi_indices, values, node.id)
     node.model.is_model_dirty = false
     return nothing
 end
@@ -350,13 +379,13 @@ end
 function set_node_duals(node::OptiNode, cons, values::Vector{Float64})
     node_backend = JuMP.backend(node)
     moi_indices = index.(cons)
-    set_backend_duals!(node_backend,moi_indices,values,node.id)
+    set_backend_duals!(node_backend, moi_indices, values, node.id)
     node.model.is_model_dirty = false
     return nothing
 end
 
 function set_node_status(node::OptiNode, status::MOI.TerminationStatusCode)
     node_backend = JuMP.backend(node)
-    set_backend_status!(node_backend,status,node.id)
-    node.model.is_model_dirty = false
+    set_backend_status!(node_backend, status, node.id)
+    return node.model.is_model_dirty = false
 end
