@@ -642,29 +642,36 @@ end
 
 function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr)
     #clear optinodes objective functions
+    node_expressions = Dict()
     for node in all_nodes(graph)
-        JuMP.set_objective_function(node, JuMP.AffExpr())
+        node_expressions[node] = JuMP.AffExpr()
     end
-    #put objective terms onto nodes
     for (coef, term) in JuMP.linear_terms(expr)
         node = optinode(term)
-        JuMP.set_objective_function(node,JuMP.add_to_expression!(objective_function(node), coef, term))
+        JuMP.add_to_expression!(node_expressions[node], coef, term)
+    end
+    for node in all_nodes(graph)
+        JuMP.set_objective_function(node, node_expressions[node])
     end
     return graph.objective_function = expr
 end
 
 function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExpr)
+    node_expressions = Dict()
     for node in all_nodes(graph)
-        JuMP.set_objective_function(node, JuMP.QuadExpr())
+        node_expressions[node] = JuMP.QuadExpr()
     end
     for (coef, term1, term2) in JuMP.quad_terms(expr)
         @assert optinode(term1) == optinode(term2)
         node = optinode(term1)
-        JuMP.set_objective_function(node,JuMP.add_to_expression!(objective_function(node), coef, term1, term2))
+        JuMP.add_to_expression!(node_expressions[node], coef, term1, term2)
     end
     for (coef, term) in JuMP.linear_terms(expr)
         node = optinode(term)
-        JuMP.set_objective_function(node,JuMP.add_to_expression!(objective_function(node), coef, term))
+        JuMP.add_to_expression!(node_expressions[node], coef, term)
+    end
+    for node in all_nodes(graph)
+        JuMP.set_objective_function(node, node_expressions[node])
     end
     return graph.objective_function = expr
 end
