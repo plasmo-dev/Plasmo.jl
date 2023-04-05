@@ -642,37 +642,37 @@ end
 
 function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr)
     #clear optinodes objective functions
-    node_expressions = Dict()
-    for node in all_nodes(graph)
-        node_expressions[node] = JuMP.AffExpr()
-    end
-    for (coef, term) in JuMP.linear_terms(expr)
-        node = optinode(term)
-        JuMP.add_to_expression!(node_expressions[node], coef, term)
-    end
-    for node in all_nodes(graph)
-        JuMP.set_objective_function(node, node_expressions[node])
-    end
+    # node_expressions = Dict()
+    # for node in all_nodes(graph)
+    #     node_expressions[node] = JuMP.AffExpr()
+    # end
+    # for (coef, term) in JuMP.linear_terms(expr)
+    #     node = optinode(term)
+    #     JuMP.add_to_expression!(node_expressions[node], coef, term)
+    # end
+    # for node in all_nodes(graph)
+    #     JuMP.set_objective_function(node, node_expressions[node])
+    # end
     return graph.objective_function = expr
 end
 
 function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExpr)
-    node_expressions = Dict()
-    for node in all_nodes(graph)
-        node_expressions[node] = JuMP.QuadExpr()
-    end
-    for (coef, term1, term2) in JuMP.quad_terms(expr)
-        @assert optinode(term1) == optinode(term2)
-        node = optinode(term1)
-        JuMP.add_to_expression!(node_expressions[node], coef, term1, term2)
-    end
-    for (coef, term) in JuMP.linear_terms(expr)
-        node = optinode(term)
-        JuMP.add_to_expression!(node_expressions[node], coef, term)
-    end
-    for node in all_nodes(graph)
-        JuMP.set_objective_function(node, node_expressions[node])
-    end
+    # node_expressions = Dict()
+    # for node in all_nodes(graph)
+    #     node_expressions[node] = JuMP.QuadExpr()
+    # end
+    # for (coef, term1, term2) in JuMP.quad_terms(expr)
+    #     @assert optinode(term1) == optinode(term2)
+    #     node = optinode(term1)
+    #     JuMP.add_to_expression!(node_expressions[node], coef, term1, term2)
+    # end
+    # for (coef, term) in JuMP.linear_terms(expr)
+    #     node = optinode(term)
+    #     JuMP.add_to_expression!(node_expressions[node], coef, term)
+    # end
+    # for node in all_nodes(graph)
+    #     JuMP.set_objective_function(node, node_expressions[node])
+    # end
     return graph.objective_function = expr
 end
 
