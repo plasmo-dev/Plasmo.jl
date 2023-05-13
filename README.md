@@ -1,4 +1,4 @@
-![Logo](./docs/plasmo3.svg)
+![Logo](./docs/plasmo_logo.svg)
 
 
 [![CI](https://github.com/plasmo-dev/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/plasmo-dev/Plasmo.jl/actions)
@@ -7,13 +7,12 @@
 [![DOI](https://zenodo.org/badge/96967382.svg)](https://zenodo.org/badge/latestdoi/96967382)
 
 # Plasmo.jl
-Plasmo.jl (which stands for Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework.  It adopts a modular style to
-create optimization problems and facilitates the management of distributed and hierarchical structures.  Plasmo.jl has been developed with the key notion that it aligns with the
-behavior of JuMP as much as possible.  Consequently, almost every function that works on a JuMP `Model` object will also work on a Plasmo.jl `OptiGraph` object.   
+Plasmo.jl (Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework that adopts a modular style to
+create mathematical optimization problems and manage distributed and hierarchical structures. The package has been developed as a [JuMP](https://github.com/jump-dev/JuMP.jl) extension and consequently supports 
+most JuMP syntax and functions. 
 
 ## Overview
-The core object in Plasmo.jl is the `OptiGraph` wherein a user can add `OptiNodes` which represent individual optimization problems. The optinodes in an optigraph can be linked together using `LinkConstraint`s which induces an underlying hypergraph structure. Furthermore, optigraphs be embedded within other optigraphs to induce nested hierarchical structures.
-The graph structures obtained using Plasmo.jl can be used for model and data management, specialized graph partitioning, and for communicating structured problems to distributed optimization solvers.
+The core data structure in Plasmo.jl is the `OptiGraph`. The optigraph contains a set of optinodes which represent self-contained optimization problems and optiedges that represent coupling between optinodes (which produces an underlying [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) structure of optinodes and optiedges). Optigraphs can further be embedded within other optigraphs to create nested hierarchical graph structures. The graph structures obtained using Plasmo.jl can be used for simple model and data management, but they can also be used to perform graph partitioning or develop interfaces to structured optimization solvers.
 
 ## Documentation
 The latest documentation is available through [GitHub Pages](https://plasmo-dev.github.io/Plasmo.jl/dev/).
@@ -35,28 +34,28 @@ using Ipopt
 graph = OptiGraph()
 
 #add nodes to an optigraph
-@optinode(graph,n1)
-@optinode(graph,n2)
+@optinode(graph, n1)
+@optinode(graph, n2)
 
 #add variables, constraints, and objective functions to nodes
-@variable(n1,0 <= x <= 2)
-@variable(n1,0 <= y <= 3)
-@constraint(n1,x+y <= 4)
-@objective(n1,Min,x)
+@variable(n1, 0 <= x <= 2)
+@variable(n1, 0 <= y <= 3)
+@constraint(n1, x+y <= 4)
+@objective(n1, Min, x)
 
 @variable(n2,x)
-@NLconstraint(n2,exp(x) >= 2)
+@NLconstraint(n2, exp(x) >= 2)
 
 #add a linkconstraint to couple nodes
-@linkconstraint(graph,n1[:x] == n2[:x])
+@linkconstraint(graph, n1[:x] == n2[:x])
 
 #optimize with Ipopt
-set_optimizer(graph,Ipopt.Optimizer)
+set_optimizer(graph, Ipopt.Optimizer)
 optimize!(graph)
 
 #Print solution values
-println("n1[:x] = ",value(n1[:x]))
-println("n2[:x] = ",value(n2[:x]))
+println("n1[:x] = ", value(n1[:x]))
+println("n2[:x] = ", value(n2[:x]))
 ```
 
 ## Acknowledgments
@@ -76,8 +75,19 @@ The primary developer is Jordan Jalving (@jalving) with support from the followi
 
 ## Citing Plasmo.jl
 
-If you find Plasmo.jl useful for your work, you may cite the current [pre-print](https://arxiv.org/abs/2006.05378):
+If you find Plasmo.jl useful for your work, you may cite the [manuscript](https://link.springer.com/article/10.1007/s12532-022-00223-3) as:
+```
+@article{Jalving2022,
+  title={A Graph-Based Modeling Abstraction for Optimization: Concepts and Implementation in Plasmo.jl},
+  author={Jordan Jalving and Sungho Shin and Victor M. Zavala},
+  journal={Mathematical Programming Computation},
+  year={2022},
+  volume={14},
+  pages={699 - 747}
+}
+```
 
+There is also a freely available [pre-print](https://arxiv.org/abs/2006.05378):
 ```
 @misc{JalvingShinZavala2020,
 title = {A Graph-Based Modeling Abstraction for Optimization: Concepts and Implementation in Plasmo.jl},
@@ -89,19 +99,3 @@ primaryClass = {math.OC}
 }
 ```
 
-There is also an earlier manuscript where we presented the initial ideas behind Plasmo.jl which you can find
-[here](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
-
-```
-@article{JalvingCaoZavala2019,
-author = {Jalving, Jordan and Cao, Yankai and Zavala, Victor M},
-journal = {Computers {\&} Chemical Engineering},
-pages = {134--154},
-title = {Graph-based modeling and simulation of complex systems},
-volume = {125},
-year = {2019},
-doi = {https://doi.org/10.1016/j.compchemeng.2019.03.009}
-}
-```
-
-A pre-print of this paper can also be found [here](https://arxiv.org/abs/1812.04983)
