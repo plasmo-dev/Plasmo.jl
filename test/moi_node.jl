@@ -126,6 +126,7 @@ function test_multiple_graph_changes()
     optimize!(graph)
 
     sub = Plasmo.induced_subgraph(graph, nodes[1:2])
+    @objective(sub, Min, sum(node[:x] for node in all_nodes(sub)))
     set_optimizer(sub, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(sub)
 

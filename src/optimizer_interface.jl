@@ -9,11 +9,12 @@ MOI.get(node::OptiNode, args...) = MOI.get(jump_model(node), args...)
 MOI.set(node::OptiNode, args...) = MOI.set(jump_model(node), args...)
 MOI.get(graph::OptiGraph, args...) = MOI.get(JuMP.backend(graph), args...)
 
-#Set the optigraph objective to the sume of the nodes
+#Set the optigraph objective to the sum of the nodes
 function _set_graph_objective(graph::OptiGraph)
     if !has_objective(graph) && has_node_objective(graph)
         nodes = all_nodes(graph)
         for node in nodes
+            # TODO: do not modify the nodes
             if JuMP.objective_sense(node) == MOI.MAX_SENSE
                 JuMP.set_objective_sense(node, MOI.MIN_SENSE)
                 JuMP.set_objective_function(node, -1 * JuMP.objective_function(node))
