@@ -85,7 +85,7 @@ function test_optigraph2()
     @test Plasmo.has_nlp_data(graph) == true
     @test Plasmo.has_objective(graph) == true
     @test Plasmo.has_nl_objective(graph) == false
-    @test Plasmo.has_node_objective(graph) == true
+    @test Plasmo.has_node_objective(graph) == false
 
     #test quadratic objective
     @objective(graph, Min, graph[1][:x]^2 + graph[2][:x]^2 + graph[4][:x])
