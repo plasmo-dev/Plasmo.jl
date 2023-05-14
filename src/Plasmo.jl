@@ -84,8 +84,12 @@ export
     induced_graph,
     apply_partition!,
     cross_edges,
+    cross_edges_not_global,
     hierarchical_edges,
+    hierarchical_edges_not_global,
     global_edges,
+    graph_depth,
+
     aggregate,
     aggregate!,
 
