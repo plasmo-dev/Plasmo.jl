@@ -1,7 +1,7 @@
 # Modeling with OptiGraphs
-The primary modeling object in Plasmo.jl is the [`OptiGraph`](@ref). An optigraph is composed of [`OptiNode`](@ref)s (which represent self-contained optimization problems) which are connected by [`OptiEdge`](@ref)s
-(which encapsulate [`LinkConstraint`](@ref)s that couple optinodes). The optigraph provides a modular approach to create optimization problems and provides
-graph functions which can be used to manage model development, reveal inherent structures, and perform graph processing tasks such as partitioning.
+The primary modeling object in Plasmo.jl is the [`OptiGraph`](@ref). An optigraph is composed of [`OptiNode`](@ref)s (which represent self-contained optimization problems) that are connected by [`OptiEdge`](@ref)s
+(which encapsulate [`LinkConstraint`](@ref)s that couple optinodes). The optigraph is meant to be a standard modular structure to create optimization problems and provide
+graph functions that help develop specialized solvers, visualize problem structure, and perform graph processing tasks such as partitioning.
 
 The optigraph ultimately describes the following mathematical representation of an optimization problem:
 ```math
@@ -93,7 +93,7 @@ julia>  for node in optinodes(graph1)
      The [`OptiNode`](@ref) extends a `JuMP.AbstractModel` and supports `JuMP` macros such as `@variable`, `@constraint`, `@NLconstraint`, and `@objective`
 
 Variables within an optinode can be accessed directly by indexing the associated symbol. This enclosed name-space is useful for
-referencing variables on different optinodes when creating link-constraints or optigraph objective functions.
+referencing variables on different optinodes when creating linking constraints or optigraph objective functions.
 ```jldoctest modeling
 julia> n1[:x]
 n1[:x]
@@ -103,7 +103,7 @@ nodes[2][:x]
 ```
 
 ## Adding LinkConstraints
-[`LinkConstraint`](@ref)s are linear constraints that couple variables across optinodes. The simplest way to create a link-constraint
+[`LinkConstraint`](@ref)s are linear constraints that couple variables across optinodes. The simplest way to create a linking constraint
 is to use the [`@linkconstraint`](@ref) macro. This macro accepts the same input as the `@constraint` macro, but it requires variables to be on at least two different optinodes.
 
 ```jldoctest modeling
@@ -240,7 +240,7 @@ julia>  for node in optinodes(graph3)
 julia> @linkconstraint(graph3, nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] == 7);
 ```
 
-We now have three optigraphs (`graph1`,`graph2`, and `graph3`), each with their own local optinodes and optiedges (link-constraints).  
+We now have three optigraphs (`graph1`,`graph2`, and `graph3`), each with their own local optinodes and optiedges.  
 These optigraphs can be embedded into a higher level optigraph with the following snippet:
 
 ```jldoctest modeling
@@ -277,10 +277,9 @@ LinkConstraints:     0              (3)
  sub-OptiGraphs:     3              (3)
 
 ```
-Here, we see the distinction between local and  total elements. After we add all three subgraphs
+Here, we see the distinction between local and total graph elements. After we add all three subgraphs
 to `graph0`, we see that it contains 0 local optinodes, but contains 9 total optinodes which are elements of its subgraphs. This hierarchical distinction is also
-made for optiedges (link-constraints) and additional subgraphs. Subgraphs can be nested recursively such that an optigraph might contain
-local subgraphs, and the highest level optigraph contains all of the subgraphs.
+made for optiedges and nested subgraphs.
 
 Using this hierarchical approach, link-constraints can be expressed both locally and globally. For instance, we can add a link-constraint to `graph0` that
 connects optinodes across its subgraphs like following:
@@ -298,7 +297,7 @@ LinkConstraints:     1              (4)
 ```
 `graph0` now contains 1 local link-constraint, and 4 total link-constraints (3 from the subgraphs).
 Here, the local link-constraint in `graph0` is a global constraint to the entire optigraph that connects each of its subgraphs.
-This hierarchical construction is often useful for constructing more complex optimization problems
+This hierarchical construction can be useful for constructing optigraph optimization problems
 separately and then coupling them in a higher level optigraph.
 
 We can lastly plot the hierarchical optigraph and see the nested subgraph structure.
@@ -381,7 +380,7 @@ plt_matrix0 = PlasmoPlots.matrix(graph0,
 
 
 ## Query OptiGraph Attributes
-There are many functions in Plasmo.jl used to query optigraph attributes (see the [API Documentation](@ref) for a full list). We can use [`optinodes`](@ref) to retrieve an array of
+There are numerous functions in Plasmo.jl used to query optigraph attributes (see the [API Documentation](@ref) for a full list). We can use [`optinodes`](@ref) to retrieve an array of
 the local optinodes in an optigraph, whereas [`all_nodes`](@ref) will recursively retrieve all of the optinodes in an optigraph, including the optinodes in its subgraphs.
 
 ```jldoctest modeling

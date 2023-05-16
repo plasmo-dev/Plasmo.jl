@@ -104,8 +104,13 @@ Plasmo.identify_edges
 Plasmo.identify_nodes
 Plasmo.neighborhood
 expand
-hierarchical_edges
-linking_edges
+Plasmo.local_edges
+Plasmo.global_edges
+Plasmo.hierarchical_edges
+Plasmo.cross_edges
+Plasmo.cross_edges_not_global
+Plasmo.hierarchical_edges_not_global
+Plasmo.graph_depth
 ```
 
 ## Plotting
