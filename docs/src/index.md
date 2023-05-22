@@ -47,7 +47,7 @@ There are currently a few major development avenues for Plasmo.jl. Here is a lis
 * Graph metrics and custom partitioning algorithms
 * Better distributed solver support
 
-We are also looking for help from new contributors. If you would like to contribute to Plasmo.jl, please create a new issue or pull request on the [GitHub page](https://github.com/zavalab/Plasmo.jl)
+We are also looking for help from new contributors. If you would like to contribute to Plasmo.jl, please create a new issue or pull request on the [GitHub page](https://github.com/plasmo-dev/Plasmo.jl)
 
 ## Index
 
