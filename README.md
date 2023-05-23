@@ -1,5 +1,4 @@
-![Logo](./docs/plasmo_logo.svg)
-
+<img src="https://github.com/plasmo-dev/Plasmo.jl/blob/main/docs/plasmo_logo.svg?raw=true"/>
 
 [![CI](https://github.com/plasmo-dev/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/plasmo-dev/Plasmo.jl/actions)
 [![codecov](https://codecov.io/gh/plasmo-dev/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/plasmo-dev/Plasmo.jl)
@@ -7,22 +6,31 @@
 [![DOI](https://zenodo.org/badge/96967382.svg)](https://zenodo.org/badge/latestdoi/96967382)
 
 # Plasmo.jl
-Plasmo.jl (Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework that adopts a modular style to
+
+[Plasmo.jl](https://github.com/plasmo-dev/Plasmo.jl) (Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework that adopts a modular style to
 create mathematical optimization problems and manage distributed and hierarchical structures. The package has been developed as a [JuMP](https://github.com/jump-dev/JuMP.jl) extension and consequently supports 
 most JuMP syntax and functions. 
 
 ## Overview
+
 The core data structure in Plasmo.jl is the `OptiGraph`. The optigraph contains a set of optinodes which represent self-contained optimization problems and optiedges that represent coupling between optinodes (which produces an underlying [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) structure of optinodes and optiedges). Optigraphs can further be embedded within other optigraphs to create nested hierarchical graph structures. The graph structures obtained using Plasmo.jl can be used for simple model and data management, but they can also be used to perform graph partitioning or develop interfaces to structured optimization solvers.
 
-## Documentation
-The latest documentation is available through [GitHub Pages](https://plasmo-dev.github.io/Plasmo.jl/dev/).
-Additional examples can be found in the [examples](https://github.com/plasmo-dev/Plasmo.jl/tree/main/examples) folder.
+## License
+
+Plasmo is licensed under the [MPL 2.0 license](https://github.com/plasmo-dev/Plasmo.jl/blob/main/LICENSE.md).
 
 ## Installation
 
+Install Plasmo using `Pkg.add`:
 ```julia
-pkg> add Plasmo
+import Pkg
+Pkg.add("Plasmo")
 ```
+
+## Documentation
+
+The latest documentation is available through [GitHub Pages](https://plasmo-dev.github.io/Plasmo.jl/dev/).
+Additional examples can be found in the [examples](https://github.com/plasmo-dev/Plasmo.jl/tree/main/examples) folder.
 
 ## Simple Example
 
@@ -59,6 +67,7 @@ println("n2[:x] = ", value(n2[:x]))
 ```
 
 ## Acknowledgments
+
 This code is based on work supported by the following funding agencies:
 
 * U.S. Department of Energy (DOE), Office of Science, under Contract No. DE-AC02-06CH11357
@@ -98,4 +107,3 @@ archivePrefix = {arXiv},
 primaryClass = {math.OC}
 }
 ```
-
