@@ -11,9 +11,14 @@ mutable struct OptiNode <: JuMP.AbstractModel
     label::String                                               #what gets printed
     partial_linkconstraints::Dict{Int64,AbstractLinkConstraint} #local node contribution to link constraint
 
-    # nlp_data is a reference to `model.nlp_data`
-    #nlp_data::Union{Nothing,JuMP._NLPData}
+    nlp_data is a reference to `model.nlp_data`
+    nlp_data::Union{Nothing,JuMP._NLPData}
     nlp_duals::DefaultDict{Symbol,OrderedDict{Int64,Float64}}
+
+    # unique identifier
+    id::Symbol
+
+
 
     # extension data
     ext::Dict{Symbol,Any}

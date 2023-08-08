@@ -6,8 +6,8 @@ by mapping optigraph elements to hypergraph elements.
 """
 mutable struct HyperGraphBackend
     hypergraph::HyperGraph
-    hyper_map#::ProjectionMap
-    update_backend::Bool  #flag that graph backend needs to be re-created when querying graph attributes
+    hyper_map #::ProjectionMap
+    update_backend::Bool  # flag that graph backend needs to be re-created when querying graph attributes
 end
 ##############################################################################
 # OptiGraph
@@ -31,7 +31,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     objective_function::JuMP.AbstractJuMPScalar
 
     #IDEA: An optigraph optimizer can be a MOI model.  For standard optimization solvers, we can either 1) aggregate a MOI backend on the fly using optinodes or 2) build up the MOI backend with nodes simultaneously
-    moi_backend::Union{Nothing,MOI.ModelLike}
+    moi_backend::MOI.ModelLike
 
     #IDEA: graph_backend is used for hypergraph topology functions (e.g. neighbors,expand,etc...)
     graph_backend::Union{Nothing,HyperGraphBackend}
@@ -40,7 +40,7 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
 
     obj_dict::Dict{Symbol,Any}
 
-    ext::Dict{Symbol,Any} #Extension Information
+    ext::Dict{Symbol,Any} # extension information
 
     id::Symbol
 
