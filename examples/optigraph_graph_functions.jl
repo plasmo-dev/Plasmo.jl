@@ -2,8 +2,8 @@ using Plasmo
 using LightGraphs
 
 function create_optigraph()
-    optigraph = OptiGraph()
-    @optinode(optigraph, nodes[1:4])
+    graph = OptiGraph()
+    @optinode(graph, nodes[1:3])
 
     #node 1
     @variable(nodes[1], 0 <= x <= 2)
@@ -14,7 +14,7 @@ function create_optigraph()
     #node 2
     @variable(nodes[2], x >= 1)
     @variable(nodes[2], 0 <= y <= 5)
-    @NLconstraint(nodes[2], exp(x) + y <= 7)
+    @constraint(nodes[2], x + y <= 7)
     @objective(nodes[2], Min, x)
 
     #node 3
@@ -23,40 +23,53 @@ function create_optigraph()
     @constraint(nodes[3], x + y == 2)
     @objective(nodes[3], Max, x)
 
-    #node 4
-    @variable(nodes[4], 0 <= x <= 1)
-    @variable(nodes[4], y >= 0)
-    @constraint(nodes[4], x + y <= 3)
-    @objective(nodes[4], Max, y)
-
     #Link constraints take the same expressions as the JuMP @constraint macro
-    @linkconstraint(optigraph, nodes[1][:x] == nodes[2][:x])
-    @linkconstraint(optigraph, nodes[2][:y] == nodes[3][:x])
-    @linkconstraint(optigraph, nodes[3][:x] == nodes[4][:x])
+    @linkconstraint(graph, nodes[1][:x] == nodes[2][:x])
+    @linkconstraint(graph, nodes[2][:y] == nodes[3][:x])
+    @linkconstraint(graph, nodes[3][:x] == nodes[1][:x])
+    @linkconstraint(graph, nodes[1][:y] + nodes[2][:y] + nodes[3][:y] == 3)
 
-    return optigraph
+    return graph
 end
 
-optigraph = create_optigraph()
-n1 = getnode(optigraph, 1)
-n2 = getnode(optigraph, 2)
+graph = OptiGraph()
 
-all_neighbors(optigraph, n1)
-all_neighbors(optigraph, n2)
+graph1 = create_optigraph()
+graph2 = create_optigraph()
+graph3 = create_optigraph()
 
-n3 = @optinode(optigraph)
-@variable(n3, x >= 0)
-@linkconstraint(optigraph, n2[:x] == n3[:x])
-all_neighbors(optigraph, n2)
+add_subgraph!(graph, graph1)
+add_subgraph!(graph, graph2)
+add_subgraph!(graph, graph3)
 
-nodes = all_nodes(optigraph)
-node_vectors = [[nodes[1], nodes[2], nodes[5]], [nodes[3], nodes[4]]]
-partition = Partition(optigraph, node_vectors)
-make_subgraphs!(optigraph, partition)
+# node from each subgraph
+n1 = graph1[1]
+n2 = graph2[1]
+n3 = graph3[1]
 
-overlap = 1
-expanded_subs = expand.(Ref(optigraph), getsubgraphs(optigraph), Ref(overlap))
+# link subgraphs
+@linkconstraint(graph, n1[:x] + n2[:x] + n3[:x] == 5)
 
-#Set Clique graph
+# incident edges
+incident_edges(graph, n1)                # incident to node
+incident_edges(graph, all_nodes(graph1)) # incident to graph
 
-#Set Bipartite graph
+# neighbors
+all_neighbors(graph1, n1)       # local
+all_neighbors(graph, n1) # global
+
+# induced optigraph
+induced_graph = induced_subgraph(graph, [n1, n2, n3])
+@objective(induced_graph, Min, sum(all_variables(induced_graph)))
+set_optimizer(induced_graph, HiGHS.Optimizer)
+optimize!(induced_graph)
+
+# expanded optigraph
+expanded_graph = expand(graph, graph1, 1)
+@objective(expanded_graph, Min, sum(all_variables(expanded_graph)))
+set_optimizer(expanded_graph, HiGHS.Optimizer)
+optimize!(expanded_graph)
+
+# nodes store solution for each graph
+value(induced_graph, n1[:x])
+value(expanded_graph, n1[:x])

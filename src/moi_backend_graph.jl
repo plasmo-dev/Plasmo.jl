@@ -1,3 +1,37 @@
+abstract type AbstractOptiGraph <: JuMP.AbstractModel end
+
+struct OptiNode{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
+    source_graph::GT
+    id::Symbol
+    label::String
+end
+
+function JuMP.object_dictionary(node::OptiNode)
+    return node.source_graph.obj_dict
+end
+
+struct NodeVariableRef <: JuMP.AbstractVariableRef
+    node::OptiNode
+    index::MOI.VariableIndex
+end
+Base.broadcastable(v::NodeVariableRef) = Ref(v)
+function Base.string(vref::NodeVariableRef)
+    return "$(vref.node.label)"*"$(vref.index)"
+end
+Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
+Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
+
+struct NodeConstraintRef
+    node::OptiNode
+    index::MOI.ConstraintIndex
+end
+Base.broadcastable(c::NodeConstraintRef) = Ref(c)
+
+struct OptiEdge{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
+    source_graph::GT
+    id::Symbol
+end
+
 # const ConstraintRefUnion = Union{JuMP.ConstraintRef,LinkConstraintRef}
 
 # maps node/edge variable and constraints to the optigraph backend
@@ -43,15 +77,19 @@ end
 Initialize an empty optigraph backend. Contains a model_cache that can be used to set
 `MOI.AbstractModelAttribute`s and `MOI.AbstractOptimizerAttribute`s.
 """
-function GraphBackend(optigraph::OptiGraph)
-    inner = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{T}())
+function GraphBackend(optigraph::AbstractOptiGraph)
+    inner = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
     cache = MOI.Utilities.CachingOptimizer(inner, MOI.Utilities.AUTOMATIC)
-    return GraphBackend{OptiGraph}(
+    return GraphBackend(
         optigraph,
         cache,
         NodeToGraphMap(),
         GraphToNodeMap(),
     )
+end
+
+function backend(gb::GraphBackend)
+    return gb.moi_backend
 end
 
 function MOI.get(graph_backend::GraphBackend, attr::MOI.AnyAttribute)
@@ -67,13 +105,24 @@ function MOI.set(graph_backend::GraphBackend, attr::MOI.AnyAttribute, args...)
 end
 
 function MOI.add_variable(graph_backend::GraphBackend, vref::NodeVariableRef)
-    #graph_var_index = MOI.add_variable(graph_backend.optimizer)
-    _moi_add_node_variable(graph_backend.optimizer)
-    graph_backend.node_to_graph_map[vref] = graph_var_index
-    graph_backend.graph_to_node_map[graph_var_index] = vref
-    return node_index
+    graph_index = MOI.add_variable(graph_backend.moi_backend)
+    graph_backend.node_to_graph_map[vref] = graph_index
+    graph_backend.graph_to_node_map[graph_index] = vref
+    return graph_index
 end
 
+function MOI.optimize!(graph_backend::GraphBackend)
+    # # TODO: support modes
+    # # if graph_backend.mode == MOIU.AUTOMATIC && graph_backend.state == MOIU.EMPTY_OPTIMIZER
+    # # normally the `attach_optimizer` gets called in a higher scope, but we can attach here for testing purposes
+    # if MOIU.state(graph_backend) == MOIU.EMPTY_OPTIMIZER
+    #     MOIU.attach_optimizer(graph_backend)
+    # else
+    #     @assert MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
+    # end
+    MOI.optimize!(graph_backend.moi_backend)
+    return nothing
+end
 
 #In MOI this uses lots of `map_indices` magic, but we go for something simple
 # function MOI.get(graph_backend::GraphBackend, attr::MOI.AbstractModelAttribute)
@@ -130,68 +179,68 @@ end
 # MOIU.state(graph_backend::GraphBackend) = graph_backend.state
 # MOIU.mode(graph_backend::GraphBackend) = graph_backend.mode
 
-"""
-    append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
+# """
+#     append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
 
-Copy the underylying model from `src` into `dest`, but ignore attributes
-such as objective function and objective sense
-"""
-function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
-    vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
-    index_map = MOIU.IndexMap()
+# Copy the underylying model from `src` into `dest`, but ignore attributes
+# such as objective function and objective sense
+# """
+# function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
+#     vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
+#     index_map = MOIU.IndexMap()
 
-    # per the comment in MOI:
-    # "The `NLPBlock` assumes that the order of variables does not change (#849)
-    # Therefore, all VariableIndex and VectorOfVariable constraints are added
-    # seprately, and no variables constrained-on-creation are added.""
-    # Consequently, Plasmo avoids using the constrained-on-creation approach because
-    # of the way it constructs the NLPBlock for the optimizer.
+#     # per the comment in MOI:
+#     # "The `NLPBlock` assumes that the order of variables does not change (#849)
+#     # Therefore, all VariableIndex and VectorOfVariable constraints are added
+#     # seprately, and no variables constrained-on-creation are added.""
+#     # Consequently, Plasmo avoids using the constrained-on-creation approach because
+#     # of the way it constructs the NLPBlock for the optimizer.
 
-    # has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
-    # constraints_not_added = if has_nlp
-    constraints_not_added = Any[
-        MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
-        (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
-        MOIU._is_variable_function(F)
-    ]
-    # else
-    #     Any[
-    #         MOIU._try_constrain_variables_on_creation(dest, src, index_map, S)
-    #         for S in MOIU.sorted_variable_sets_by_cost(dest, src)
-    #     ]
-    # end
+#     # has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
+#     # constraints_not_added = if has_nlp
+#     constraints_not_added = Any[
+#         MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
+#         (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
+#         MOIU._is_variable_function(F)
+#     ]
+#     # else
+#     #     Any[
+#     #         MOIU._try_constrain_variables_on_creation(dest, src, index_map, S)
+#     #         for S in MOIU.sorted_variable_sets_by_cost(dest, src)
+#     #     ]
+#     # end
 
-    # Copy free variables into graph optimizer
-    MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
+#     # Copy free variables into graph optimizer
+#     MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
 
-    # Copy variable attributes (e.g. name, and VariablePrimalStart())
-    MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
+#     # Copy variable attributes (e.g. name, and VariablePrimalStart())
+#     MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
 
-    # Normally this copies ObjectiveSense() and ObjectiveFunction(), but we don't want to do that here
-    #MOI.Utilities.pass_attributes(dest, src, idxmap)
+#     # Normally this copies ObjectiveSense() and ObjectiveFunction(), but we don't want to do that here
+#     #MOI.Utilities.pass_attributes(dest, src, idxmap)
 
-    MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
+#     MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
 
-    return index_map    #return an idxmap for each source model
-end
+#     return index_map    #return an idxmap for each source model
+# end
 
-#Add a LinkConstraint to the MOI backend.  This is used as part of _aggregate_backends!
-function _add_link_constraint!(id::Symbol, dest::MOI.ModelLike, link::LinkConstraint)
-    jump_func = JuMP.jump_function(link)
-    moi_func = JuMP.moi_function(link)
-    for (i, term) in enumerate(JuMP.linear_terms(jump_func))
-        coeff = term[1]
-        var = term[2]
-        src = JuMP.backend(optinode(var))
-        idx_map = src.optimizers[id].node_to_optimizer_map
-        var_idx = JuMP.index(var)
-        dest_idx = idx_map[var_idx]
-        moi_func.terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, dest_idx)
-    end
-    moi_set = JuMP.moi_set(link)
-    constraint_index = MOI.add_constraint(dest, moi_func, moi_set)
-    return constraint_index
-end
+# #Add a LinkConstraint to the MOI backend.  This is used as part of _aggregate_backends!
+# function _add_link_constraint!(id::Symbol, dest::MOI.ModelLike, link::LinkConstraint)
+#     jump_func = JuMP.jump_function(link)
+#     moi_func = JuMP.moi_function(link)
+#     for (i, term) in enumerate(JuMP.linear_terms(jump_func))
+#         coeff = term[1]
+#         var = term[2]
+#         src = JuMP.backend(optinode(var))
+#         idx_map = src.optimizers[id].node_to_optimizer_map
+#         var_idx = JuMP.index(var)
+#         dest_idx = idx_map[var_idx]
+#         moi_func.terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, dest_idx)
+#     end
+#     moi_set = JuMP.moi_set(link)
+#     constraint_index = MOI.add_constraint(dest, moi_func, moi_set)
+#     return constraint_index
+# end
 
 
 
@@ -275,15 +324,3 @@ Populate the underlying optigraph optimizer. Works in a similar way to the
 #     return nothing
 # end
 
-function MOI.optimize!(graph_backend::GraphBackend)
-    # # TODO: support modes
-    # # if graph_backend.mode == MOIU.AUTOMATIC && graph_backend.state == MOIU.EMPTY_OPTIMIZER
-    # # normally the `attach_optimizer` gets called in a higher scope, but we can attach here for testing purposes
-    # if MOIU.state(graph_backend) == MOIU.EMPTY_OPTIMIZER
-    #     MOIU.attach_optimizer(graph_backend)
-    # else
-    #     @assert MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
-    # end
-    MOI.optimize!(graph_backend.optimizer)
-    return nothing
-end
