@@ -367,6 +367,12 @@ function JuMP.optimize!(node::OptiNode; kwargs...)
     return nothing
 end
 
+function JuMP.relax_integrality(graph::OptiGraph)
+    for node in all_nodes(graph)
+        JuMP.relax_integrality(jump_model(node))
+    end
+end
+
 function set_node_primals(
     node::OptiNode, vars::Vector{JuMP.VariableRef}, values::Vector{Float64}
 )
