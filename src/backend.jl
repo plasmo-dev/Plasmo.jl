@@ -1,37 +1,3 @@
-abstract type AbstractOptiGraph <: JuMP.AbstractModel end
-
-struct OptiNode{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
-    source_graph::GT
-    id::Symbol
-    label::String
-end
-
-function JuMP.object_dictionary(node::OptiNode)
-    return node.source_graph.obj_dict
-end
-
-struct NodeVariableRef <: JuMP.AbstractVariableRef
-    node::OptiNode
-    index::MOI.VariableIndex
-end
-Base.broadcastable(v::NodeVariableRef) = Ref(v)
-function Base.string(vref::NodeVariableRef)
-    return "$(vref.node.label)"*"$(vref.index)"
-end
-Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
-Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
-
-struct NodeConstraintRef
-    node::OptiNode
-    index::MOI.ConstraintIndex
-end
-Base.broadcastable(c::NodeConstraintRef) = Ref(c)
-
-struct OptiEdge{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
-    source_graph::GT
-    id::Symbol
-end
-
 # const ConstraintRefUnion = Union{JuMP.ConstraintRef,LinkConstraintRef}
 
 # maps node/edge variable and constraints to the optigraph backend
@@ -45,6 +11,10 @@ function NodeToGraphMap()
         OrderedDict{NodeConstraintRef,MOI.ConstraintIndex}(),
     )
 end
+function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.VariableIndex, vref::NodeVariableRef)
+    n2g_map.var_map[vref] = idx
+    return
+end
 
 # maps optigraph backend to node/edge
 mutable struct GraphToNodeMap
@@ -57,6 +27,10 @@ function GraphToNodeMap()
         OrderedDict{MOI.VariableIndex,NodeVariableRef}(),
         OrderedDict{MOI.ConstraintIndex,NodeConstraintRef}(),
     )
+end
+function Base.setindex!(g2n_map::GraphToNodeMap,  vref::NodeVariableRef, idx::MOI.VariableIndex,)
+    g2n_map.var_map[idx] = vref
+    return
 end
 
 #acts like a caching optimizer, except it uses references to underlying nodes in the graph

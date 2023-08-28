@@ -1,0 +1,25 @@
+# Development Notes:
+
+## Create our own MOI interface for the OptiGraph
+
+## Why we can't use JuMP.Model for an OptiGraph backend
+- No way to handle linking between subproblems (variables must be owned by their model)
+- Less prone to user 'messing things up' by working directly with 'Model'
+- More flexibility creating our own MOI wrapper: Use MOI or GOI
+
+## Use MOI.copy_to to create final optimization problem if necessary
+- e.g. we need to transfer modular subgraphs into aggregated optigraph to solve
+
+
+## Nodes are associated with variables and constraints through GraphBackend
+- Nodes are 'light-weight' memory objects
+
+## Edges point to a constraint index on an owning optigraph
+
+
+## adding a subgraph can (optionally) directly update the parent graph
+- `add_subgraph!(graph; modular=false)`
+
+
+## It is possible to obtain a JuMP Model from an optigraph
+- `jump_model(graph)`

@@ -9,9 +9,10 @@ using Printf
 
 using MathOptInterface
 const MOI = MathOptInterface
-
 using Reexport
 @reexport using JuMP
+
+export OptiGraph
 
 # import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
 # import Base: ==, show, print, string, getindex, copy
@@ -20,11 +21,9 @@ using Reexport
 # import Base: ==, string, print, show
 
 
-include("moi_backend_graph.jl")
+include("optigraph.jl")
 
-include("dev_rewrite.jl")
-
-
+include("backend.jl")
 # export
 
 #     #################################
