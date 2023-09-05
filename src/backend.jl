@@ -18,6 +18,13 @@ end
 function Base.getindex(n2g_map::NodeToGraphMap, vref::NodeVariableRef)
     return n2g_map.var_map[vref]
 end
+function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.ConstraintIndex, cref::NodeConstraintRef)
+    n2g_map.con_map[cref] = idx
+    return
+end
+function Base.getindex(n2g_map::NodeToGraphMap, cref::NodeConstraintRef)
+    return n2g_map.con_map[cref]
+end
 
 # maps optigraph backend to node/edge
 mutable struct GraphToNodeMap
@@ -37,6 +44,13 @@ function Base.setindex!(g2n_map::GraphToNodeMap,  vref::NodeVariableRef, idx::MO
 end
 function Base.getindex(g2n_map::GraphToNodeMap, idx::MOI.VariableIndex)
     return g2n_map.var_map[idx]
+end
+function Base.setindex!(g2n_map::GraphToNodeMap,  cref::NodeConstraintRef, idx::MOI.ConstraintIndex)
+    g2n_map.con_map[idx] = cref
+    return
+end
+function Base.getindex(g2n_map::GraphToNodeMap, idx::MOI.ConstraintIndex)
+    return g2n_map.con_map[idx]
 end
 
 #acts like a caching optimizer, except it uses references to underlying nodes in the graph
@@ -94,13 +108,13 @@ end
 function MOI.add_constraint(
     graph_backend::GraphMOIBackend,
     cref::NodeConstraintRef,
-    con::JuMP.AbstractConstraint
-)
-    # TODO: swap variable indices for other contained graphs
+    func::F,
+    set::S,
+) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     graph_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
     graph_backend.node_to_graph_map[cref] = graph_index
     graph_backend.graph_to_node_map[graph_index] = cref
-    return node_index
+    return graph_index
 end
 
 ### TODO

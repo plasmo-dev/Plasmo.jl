@@ -37,7 +37,7 @@ Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
 # end
 # Base.broadcastable(c::NodeConstraintRef) = Ref(c)
 
-function backend(node::OptiNode)
+function JuMP.backend(node::OptiNode)
     return backend(node.source_graph.backend)
 end
 
@@ -108,6 +108,12 @@ end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 
+# TODO: PR for JuMP on name_to_register. This lets us overrride how objects get registered in OptiGraphs
+function JuMP.name_to_register(node::OptiNode, name::Symbol)
+    return (node,name)
+end
+
+### Add Node
 
 function add_node(graph::OptiGraph; label::String="n$(length(graph.optinodes) + 1)")
     optinode = OptiNode{OptiGraph}(graph, label) # , Dict{Symbol,Any}()
@@ -116,23 +122,11 @@ function add_node(graph::OptiGraph; label::String="n$(length(graph.optinodes) + 
     return optinode
 end
 
+### Variables
+
 function next_variable_index(node::OptiNode)
-    #current_index = node.source_graph.node_var_idx[node]
-    #return MOI.VariableIndex(current_index+1)
     return MOI.VariableIndex(num_variables(node) + 1)
 end
-
-# function increment_variable_index!(node::OptiNode)
-#     node.source_graph.node_var_idx[node] += 1
-#     return
-# end
-
-# TODO: PR for JuMP on name_to_register
-function JuMP.name_to_register(node::OptiNode, name::Symbol)
-    return (node,name)
-end
-
-### Variables
 
 """
     JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
@@ -146,9 +140,9 @@ function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::Strin
 
     _moi_add_node_variable(vref, v)
     
-    #increment_variable_index!(node)
+    # increment_variable_index!(node)
     
-    if !isempty(name) && MOI.supports(backend(node), MOI.VariableName(), MOI.VariableIndex)
+    if !isempty(name) && MOI.supports(JuMP.backend(node), MOI.VariableName(), MOI.VariableIndex)
         JuMP.set_name(vref, "$(node.label).$(name)")
     end
     return vref
@@ -184,12 +178,12 @@ end
 
 function JuMP.name(vref::NodeVariableRef)
     gb = vref.node.source_graph.backend
-    return MOI.get(backend(vref.node), MOI.VariableName(), gb.node_to_graph_map[vref])
+    return MOI.get(JuMP.backend(vref.node), MOI.VariableName(), gb.node_to_graph_map[vref])
 end
 
 function JuMP.set_name(vref::NodeVariableRef, s::String)
     gb = vref.node.source_graph.backend
-    MOI.set(backend(vref.node), MOI.VariableName(), gb.node_to_graph_map[vref], s)
+    MOI.set(JuMP.backend(vref.node), MOI.VariableName(), gb.node_to_graph_map[vref], s)
     return
 end
 
@@ -243,7 +237,24 @@ end
 
 ### Constraints
 
-const NodeConstraintRef = JuMP.ConstraintRef{OptiNode,MOI.ConstraintIndex}
+const NodeConstraintRef = JuMP.ConstraintRef{OptiNode,MOI.ConstraintIndex,S where S <: JuMP.AbstractShape} 
+
+function next_constraint_index(
+    node::OptiNode, 
+    ::Type{F}, 
+    ::Type{S}
+) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    index = num_constraints(node, F, S)
+    return MOI.ConstraintIndex{F,S}(index + 1)
+end
+
+function JuMP.num_constraints(
+    node::OptiNode,
+    ::Type{F}, 
+    ::Type{S}
+)::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    return MOI.get(JuMP.backend(node), MOI.NumberOfConstraints{F,S}())
+end
 
 """
     JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_name::String="")
@@ -253,108 +264,58 @@ Add a constraint `con` to optinode `node`. This function supports use of the @co
 function JuMP.add_constraint(
     node::OptiNode, con::JuMP.AbstractConstraint, name::String=""
 )
+    # TODO: determine whether `model_convert` is necessary
     con = JuMP.model_convert(node, con)
     func, set = moi_function(con), moi_set(con)
-    # determine constraint index from source graph
     constraint_index = next_constraint_index(node, typeof(func), typeof(set))
     cref = NodeConstraintRef(node, constraint_index, JuMP.shape(con))
-    _moi_add_node_constraint(cref, func, set)   
+    _moi_add_node_constraint(cref, func, set)  
     return cref
+end
+
+function MOI.ScalarAffineFunction(
+    a::GenericAffExpr{C,<:NodeVariableRef},
+) where {C}
+    _assert_isfinite(a)
+    terms = MOI.ScalarAffineTerm{C}[
+        MOI.ScalarAffineTerm(t[1], index(t[2])) for t in linear_terms(a)
+    ]
+    return MOI.ScalarAffineFunction(terms, a.constant)
+end
+
+# copied from: https://github.com/jump-dev/JuMP.jl/blob/f496535f560ea1a6bbf5df19031997bdcc1e4022/src/aff_expr.jl#L651
+function _assert_isfinite(a::GenericAffExpr)
+    for (coef, var) in linear_terms(a)
+        if !isfinite(coef)
+            error("Invalid coefficient $coef on variable $var.")
+        end
+    end
+    if isnan(a.constant)
+        error(
+            "Expression contains an invalid NaN constant. This could be " *
+            "produced by `Inf - Inf`.",
+        )
+    end
+    return
 end
 
 # copied from from: https://github.com/jump-dev/JuMP.jl/blob/master/src/variables.jl
 function _moi_add_node_constraint(
-    model::MOI.ModelLike,
-    f::F,
-    s::S,
+    cref::NodeConstraintRef,
+    func::F,
+    set::S,
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-
-    node = cref.node
-    graph_index = MOI.add_constraint(node.source_graph.backend, f, s)
-
+    node = cref.model
+    graph_index = MOI.add_constraint(node.source_graph.backend, cref, func, set)
     for graph in contained_optigraphs(node)
-        graph_index = MOI.add_constraint(graph.backend, f, s)
+        graph_index = MOI.add_constraint(graph.backend, cref, func, set)
     end
     return nothing
 end
 
-# function _moi_add_constraint(
-#     model::MOI.ModelLike,
-#     f::F,
-#     s::S,
-# ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-#     if !MOI.supports_constraint(model, F, S)
-#         error(
-#             "Constraints of type $(F)-in-$(S) are not supported by the " *
-#             "solver.\n\nIf you expected the solver to support your problem, " *
-#             "you may have an error in your formulation. Otherwise, consider " *
-#             "using a different solver.\n\nThe list of available solvers, " *
-#             "along with the problem types they support, is available at " *
-#             "https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers.",
-#         )
-#     end
-#     return MOI.add_constraint(model, f, s)
-# end
-
-# function _moi_add_node_variable(
-#     vref::NodeVariableRef,
-#     v::JuMP.AbstractVariable
-# )
-#     node = vref.node
-
-#     # add variable to source graph
-#     graph_index = MOI.add_variable(node.source_graph.backend, vref)
-#     _moi_constrain_variable(backend(node.source_graph.backend), graph_index, v.info, Float64)
-    
-#     # add variable to all other contained graphs
-#     for graph in contained_optigraphs(node)
-#         graph_index = MOI.add_variable(graph)
-#          _moi_constrain_variable(backend(graph.backend), graph_index, v.info, Float64)
-#     end
-#     return nothing
-# end
-
-# function add_constraint(
-#     model::GenericModel,
-#     con::AbstractConstraint,
-#     name::String = "",
-# )
-#     con = model_convert(model, con)
-#     # The type of backend(model) is unknown so we directly redirect to another
-#     # function.
-#     check_belongs_to_model(con, model)
-#     func, set = moi_function(con), moi_set(con)
-#     cindex = _moi_add_constraint(
-#         backend(model),
-#         func,
-#         set,
-#     )::MOI.ConstraintIndex{typeof(func),typeof(set)}
-#     cshape = shape(con)
-#     if !(cshape isa ScalarShape) && !(cshape isa VectorShape)
-#         model.shapes[cindex] = cshape
-#     end
-#     con_ref = ConstraintRef(model, cindex, cshape)
-#     # Only set names if appropriate!
-#     if !(func isa MOI.VariableIndex) &&
-#        !isempty(name) &&
-#        MOI.supports(backend(model), MOI.ConstraintName(), typeof(cindex))
-#         set_name(con_ref, name)
-#     end
-#     model.is_model_dirty = true
-#     return con_ref
-# end
-
-
-# function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
-#     variable_index = next_variable_index(node)
-#     vref = NodeVariableRef(node, variable_index)
-#     _moi_add_node_variable(vref, v)
-#     increment_variable_index!(node)
-#     if !isempty(name) && MOI.supports(backend(node), MOI.VariableName(), MOI.VariableIndex)
-#         JuMP.set_name(vref, "$(node.label).$(name)")
-#     end
-#     return vref
-# end
+function MOI.get(node::OptiNode, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
+    return MOI.get(JuMP.backend(node), attr, ref.index)
+end
 
 """
     JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
