@@ -15,6 +15,9 @@ function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.VariableIndex, vref::N
     n2g_map.var_map[vref] = idx
     return
 end
+function Base.getindex(n2g_map::NodeToGraphMap, vref::NodeVariableRef)
+    return n2g_map.var_map[vref]
+end
 
 # maps optigraph backend to node/edge
 mutable struct GraphToNodeMap
@@ -28,33 +31,36 @@ function GraphToNodeMap()
         OrderedDict{MOI.ConstraintIndex,NodeConstraintRef}(),
     )
 end
-function Base.setindex!(g2n_map::GraphToNodeMap,  vref::NodeVariableRef, idx::MOI.VariableIndex,)
+function Base.setindex!(g2n_map::GraphToNodeMap,  vref::NodeVariableRef, idx::MOI.VariableIndex)
     g2n_map.var_map[idx] = vref
     return
+end
+function Base.getindex(g2n_map::GraphToNodeMap, idx::MOI.VariableIndex)
+    return g2n_map.var_map[idx]
 end
 
 #acts like a caching optimizer, except it uses references to underlying nodes in the graph
 #NOTE: OptiGraph does not support modes yet. Eventually we will
 #try to support Direct, Manual, and Automatic modes on an optigraph.
-mutable struct GraphBackend <: MOI.AbstractOptimizer
+mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     optigraph::AbstractOptiGraph
     # TODO: nlp model
     # nlp_model::MOI.Nonlinear.Model
-    moi_backend::MOI.AbstractOptimizer     # the actual attached optimizer
+    moi_backend::MOI.AbstractOptimizer
     node_to_graph_map::NodeToGraphMap
     graph_to_node_map::GraphToNodeMap
 end
 
 """
-    GraphBackend()
+    GraphMOIBackend()
 
 Initialize an empty optigraph backend. Contains a model_cache that can be used to set
 `MOI.AbstractModelAttribute`s and `MOI.AbstractOptimizerAttribute`s.
 """
-function GraphBackend(optigraph::AbstractOptiGraph)
+function GraphMOIBackend(optigraph::AbstractOptiGraph)
     inner = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
     cache = MOI.Utilities.CachingOptimizer(inner, MOI.Utilities.AUTOMATIC)
-    return GraphBackend(
+    return GraphMOIBackend(
         optigraph,
         cache,
         NodeToGraphMap(),
@@ -62,30 +68,44 @@ function GraphBackend(optigraph::AbstractOptiGraph)
     )
 end
 
-function backend(gb::GraphBackend)
+function backend(gb::GraphMOIBackend)
     return gb.moi_backend
 end
 
-function MOI.get(graph_backend::GraphBackend, attr::MOI.AnyAttribute)
+function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute)
     return MOI.get(graph_backend.optimizer, attr)
 end
 
-function MOI.get(graph_backend::GraphBackend, attr::MOI.AnyAttribute, idx::MOI.Index)
+function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, idx::MOI.Index)
     return MOI.get(graph_backend.optimizer, attr, idx)
 end
 
-function MOI.set(graph_backend::GraphBackend, attr::MOI.AnyAttribute, args...)
+function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
     MOI.set(graph_backend.optimizer, attr, args...)
 end
 
-function MOI.add_variable(graph_backend::GraphBackend, vref::NodeVariableRef)
+function MOI.add_variable(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
     graph_index = MOI.add_variable(graph_backend.moi_backend)
     graph_backend.node_to_graph_map[vref] = graph_index
     graph_backend.graph_to_node_map[graph_index] = vref
     return graph_index
 end
 
-function MOI.optimize!(graph_backend::GraphBackend)
+function MOI.add_constraint(
+    graph_backend::GraphMOIBackend,
+    cref::NodeConstraintRef,
+    con::JuMP.AbstractConstraint
+)
+    # TODO: swap variable indices for other contained graphs
+    graph_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
+    graph_backend.node_to_graph_map[cref] = graph_index
+    graph_backend.graph_to_node_map[graph_index] = cref
+    return node_index
+end
+
+### TODO
+
+function MOI.optimize!(graph_backend::GraphMOIBackend)
     # # TODO: support modes
     # # if graph_backend.mode == MOIU.AUTOMATIC && graph_backend.state == MOIU.EMPTY_OPTIMIZER
     # # normally the `attach_optimizer` gets called in a higher scope, but we can attach here for testing purposes
@@ -98,8 +118,26 @@ function MOI.optimize!(graph_backend::GraphBackend)
     return nothing
 end
 
+
+#Helpful utilities
+function _swap_indices(variable::MOI.VariableIndex, idxmap::MOIU.IndexMap)
+    return idxmap[variable]
+end
+
+function _swap_indices(func::MOI.ScalarAffineFunction, idxmap::MOIU.IndexMap)
+    new_func = copy(func)
+    terms = new_func.terms
+    for i in 1:length(terms)
+        coeff = terms[i].coefficient
+        var_idx = terms[i].variable
+        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, idxmap[var_idx])
+    end
+    return new_func
+end
+
+
 #In MOI this uses lots of `map_indices` magic, but we go for something simple
-# function MOI.get(graph_backend::GraphBackend, attr::MOI.AbstractModelAttribute)
+# function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AbstractModelAttribute)
 #     #if the attribute is set by the optimizer, query it directly from optimizer
 #     if MOI.is_set_by_optimize(attr)
 #         if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
@@ -115,7 +153,7 @@ end
 #     end
 # end
 
-# function MOI.set(graph_backend::GraphBackend, attr::MOI.AbstractModelAttribute, value)
+# function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AbstractModelAttribute, value)
 #     #if an optimizer is attached, set the underlying attribute
 #     if MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
 #         MOI.set(graph_backend.optimizer, attr, value)
@@ -125,7 +163,7 @@ end
 #     return nothing
 # end
 
-# function MOI.get(graph_backend::GraphBackend, attr::MOI.AbstractOptimizerAttribute)
+# function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AbstractOptimizerAttribute)
 #     #NOTE: See MOI.CachingOptimizer for dealing with copyable attributes in the future
 #     if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
 #         error("Cannot query $(attr) from optimizer because no " * "optimizer is attached.")
@@ -133,7 +171,7 @@ end
 #     return MOI.get(graph_backend.optimizer, attr)
 # end
 
-# function MOI.set(graph_backend::GraphBackend, attr::MOI.AbstractOptimizerAttribute, value)
+# function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AbstractOptimizerAttribute, value)
 #     #if an optimizer is attached, set the underlying attribute
 #     if graph_backend.optimizer != nothing #NOTE: should this be checking MOIU.state?
 #         MOI.set(graph_backend.optimizer, attr, value)
@@ -144,14 +182,14 @@ end
 
 # TODO: properly support variable and constraint attributes
 # function MOI.get(
-#     graph_backend::GraphBackend, attr::MOI.VariablePrimalStart, idx::MOI.VariableIndex
+#     graph_backend::GraphMOIBackend, attr::MOI.VariablePrimalStart, idx::MOI.VariableIndex
 # )
 #     return MOI.get(graph_backend.model_cache, attr, idx)
 # end
 
-# MOI.set(graph_backend::GraphBackend,attr::MOI.AnyAttribute,args...) = MOI.set(graph_backend.optimizer,attr,args...)
-# MOIU.state(graph_backend::GraphBackend) = graph_backend.state
-# MOIU.mode(graph_backend::GraphBackend) = graph_backend.mode
+# MOI.set(graph_backend::GraphMOIBackend,attr::MOI.AnyAttribute,args...) = MOI.set(graph_backend.optimizer,attr,args...)
+# MOIU.state(graph_backend::GraphMOIBackend) = graph_backend.state
+# MOIU.mode(graph_backend::GraphMOIBackend) = graph_backend.mode
 
 # """
 #     append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
@@ -219,12 +257,12 @@ end
 
 
 """
-    MOIU.attach_optimizer(model::GraphBackend)
+    MOIU.attach_optimizer(model::GraphMOIBackend)
 
 Populate the underlying optigraph optimizer. Works in a similar way to the
 `MOIU.CachingOptimizer`, except it populates using the node and edge models.
 """
-# function MOIU.attach_optimizer(graph_backend::GraphBackend)
+# function MOIU.attach_optimizer(graph_backend::GraphMOIBackend)
 #     @assert MOIU.state(graph_backend) == MOIU.EMPTY_OPTIMIZER
 
 #     # `dest_optimizer` is the underlying MOI optimizer

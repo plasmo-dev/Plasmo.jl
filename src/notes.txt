@@ -5,11 +5,10 @@
 ## Why we can't use JuMP.Model for an OptiGraph backend
 - No way to handle linking between subproblems (variables must be owned by their model)
 - Less prone to user 'messing things up' by working directly with 'Model'
-- More flexibility creating our own MOI wrapper: Use MOI or GOI
+- More flexibility creating our own MOI wrapper: We could use MOI or GOI backends
 
 ## Use MOI.copy_to to create final optimization problem if necessary
 - e.g. we need to transfer modular subgraphs into aggregated optigraph to solve
-
 
 ## Nodes are associated with variables and constraints through GraphBackend
 - Nodes are 'light-weight' memory objects
@@ -21,5 +20,18 @@
 - `add_subgraph!(graph; modular=false)`
 
 
-## It is possible to obtain a JuMP Model from an optigraph
+## It should be  possible to obtain a JuMP Model from an optigraph
 - `jump_model(graph)`
+
+## Multiple dictionaries are not memory efficient
+- creating a new dictionary for each node does not scale. We need to keep the amount of node data to an absolute minimum and levarage aggregate data structures where possible
+- need to PR JuMP with something like a 'register' call in the macro
+
+## OptiGraph Backends
+- MOI Backend
+- GOI Backend
+
+## Distributed OptiGraph Backend
+- MOI Backends
+- GOI Backends
+- DGOI Backend
