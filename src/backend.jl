@@ -3,12 +3,12 @@
 # maps node/edge variable and constraints to the optigraph backend
 mutable struct NodeToGraphMap
     var_map::OrderedDict{NodeVariableRef,MOI.VariableIndex}        #node variable to optimizer
-    con_map::OrderedDict{NodeConstraintRef,MOI.ConstraintIndex}    #node constraint to optimizer
+    con_map::OrderedDict{ConstraintRef,MOI.ConstraintIndex}    #node constraint to optimizer
 end
 function NodeToGraphMap()
     return NodeToGraphMap(
         OrderedDict{NodeVariableRef,MOI.VariableIndex}(),
-        OrderedDict{NodeConstraintRef,MOI.ConstraintIndex}(),
+        OrderedDict{ConstraintRef,MOI.ConstraintIndex}(),
     )
 end
 function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.VariableIndex, vref::NodeVariableRef)
@@ -18,24 +18,24 @@ end
 function Base.getindex(n2g_map::NodeToGraphMap, vref::NodeVariableRef)
     return n2g_map.var_map[vref]
 end
-function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.ConstraintIndex, cref::NodeConstraintRef)
+function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.ConstraintIndex, cref::ConstraintRef)
     n2g_map.con_map[cref] = idx
     return
 end
-function Base.getindex(n2g_map::NodeToGraphMap, cref::NodeConstraintRef)
+function Base.getindex(n2g_map::NodeToGraphMap, cref::ConstraintRef)
     return n2g_map.con_map[cref]
 end
 
 # maps optigraph backend to node/edge
 mutable struct GraphToNodeMap
     var_map::OrderedDict{MOI.VariableIndex,NodeVariableRef}        #node variable to optimizer
-    con_map::OrderedDict{MOI.ConstraintIndex,NodeConstraintRef}    #node constraint to optimizer
+    con_map::OrderedDict{MOI.ConstraintIndex,ConstraintRef}    #node constraint to optimizer
 end
 
 function GraphToNodeMap()
     return GraphToNodeMap(
         OrderedDict{MOI.VariableIndex,NodeVariableRef}(),
-        OrderedDict{MOI.ConstraintIndex,NodeConstraintRef}(),
+        OrderedDict{MOI.ConstraintIndex,ConstraintRef}(),
     )
 end
 function Base.setindex!(g2n_map::GraphToNodeMap,  vref::NodeVariableRef, idx::MOI.VariableIndex)
@@ -45,7 +45,7 @@ end
 function Base.getindex(g2n_map::GraphToNodeMap, idx::MOI.VariableIndex)
     return g2n_map.var_map[idx]
 end
-function Base.setindex!(g2n_map::GraphToNodeMap,  cref::NodeConstraintRef, idx::MOI.ConstraintIndex)
+function Base.setindex!(g2n_map::GraphToNodeMap,  cref::ConstraintRef, idx::MOI.ConstraintIndex)
     g2n_map.con_map[idx] = cref
     return
 end
@@ -82,35 +82,158 @@ function GraphMOIBackend(optigraph::AbstractOptiGraph)
     )
 end
 
-function backend(gb::GraphMOIBackend)
+function JuMP.backend(gb::GraphMOIBackend)
     return gb.moi_backend
 end
 
-function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute)
-    return MOI.get(graph_backend.optimizer, attr)
+# function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute)
+#     return MOI.get(graph_backend.optimizer, attr)
+# end
+
+function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::ConstraintRef)
+    graph_index = gb.node_to_graph_map[ref]
+    return MOI.get(gb.moi_backend, attr, graph_index)
 end
 
-function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, idx::MOI.Index)
-    return MOI.get(graph_backend.optimizer, attr, idx)
+# function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
+#     MOI.set(graph_backend.optimizer, attr, args...)
+# end
+
+### Variables
+
+function next_variable_index(node::OptiNode)
+    return MOI.VariableIndex(num_variables(node) + 1)
 end
 
-function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
-    MOI.set(graph_backend.optimizer, attr, args...)
+function _moi_add_node_variable(
+    node::OptiNode,
+    v::JuMP.AbstractVariable
+)
+    # add variable to source graph
+    variable_index = next_variable_index(node)
+    vref = NodeVariableRef(node, variable_index)
+    graph_var_index = _add_variable_to_backend(graph_backend(node), vref)
+    _moi_constrain_node_variable(graph_backend(node), graph_var_index, v.info, Float64)
+
+    # add variable to all other contained graphs
+    for graph in contained_optigraphs(node)
+        graph_var_index = _add_variable_to_backend(graph_backend(graph), vref)
+         _moi_constrain_node_variable(
+            graph_backend(graph),
+            graph_var_index,
+            v.info, 
+            Float64
+        )
+    end
+    return vref
 end
 
-function MOI.add_variable(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
+function _add_variable_to_backend(
+    graph_backend::GraphMOIBackend,
+    vref::NodeVariableRef
+)
     graph_index = MOI.add_variable(graph_backend.moi_backend)
     graph_backend.node_to_graph_map[vref] = graph_index
     graph_backend.graph_to_node_map[graph_index] = vref
+
     return graph_index
 end
 
-function MOI.add_constraint(
-    graph_backend::GraphMOIBackend,
-    cref::NodeConstraintRef,
-    func::F,
-    set::S,
+function _moi_constrain_node_variable(
+    gb::GraphMOIBackend,
+    index,
+    info,
+    ::Type{T},
+) where {T}
+    if info.has_lb
+        _moi_add_constraint(
+            gb.moi_backend,
+            index,
+            MOI.GreaterThan{T}(info.lower_bound),
+        )
+    end
+    if info.has_ub
+        _moi_add_constraint(
+            gb.moi_backend,
+            index,
+            MOI.LessThan{T}(info.upper_bound),
+        )
+    end
+    if info.has_fix
+        _moi_add_constraint(
+            gb.moi_backend,
+            index,
+            MOI.EqualTo{T}(info.fixed_value),
+        )
+    end
+    if info.binary
+        _moi_add_constraint(gb.moi_backend, index, MOI.ZeroOne())
+    end
+    if info.integer
+        _moi_add_constraint(gb.moi_backend, index, MOI.Integer())
+    end
+    if info.has_start && info.start !== nothing
+        MOI.set(
+            gb.moi_backend,
+            MOI.VariablePrimalStart(),
+            index,
+            convert(T, info.start),
+        )
+    end
+end
+
+### Constraints
+
+function next_constraint_index(
+    node::OptiNode, 
+    ::Type{F}, 
+    ::Type{S}
+)::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    index = num_constraints(node, F, S)
+    return MOI.ConstraintIndex{F,S}(index + 1)
+end
+
+# copied from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/constraints.jl#L673
+function _moi_add_constraint(
+    model::MOI.ModelLike,
+    f::F,
+    s::S,
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    if !MOI.supports_constraint(model, F, S)
+        error(
+            "Constraints of type $(F)-in-$(S) are not supported by the " *
+            "solver.\n\nIf you expected the solver to support your problem, " *
+            "you may have an error in your formulation. Otherwise, consider " *
+            "using a different solver.\n\nThe list of available solvers, " *
+            "along with the problem types they support, is available at " *
+            "https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers.",
+        )
+    end
+    return MOI.add_constraint(model, f, s)
+end
+
+function _moi_add_node_constraint(
+    node::OptiNode,
+    con::JuMP.AbstractConstraint
+)
+    func, set = moi_function(con), moi_set(con)
+    constraint_index = next_constraint_index(
+        node, 
+        typeof(func), 
+        typeof(set)
+    )::MOI.ConstraintIndex{typeof(func),typeof(set)}
+    cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
+    _add_constraint_to_backend(graph_backend(node), cref, func, set)
+    return cref
+end
+
+function _add_constraint_to_backend(
+    graph_backend::GraphMOIBackend,
+    cref::ConstraintRef,
+    func::F,
+    set::S
+) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+
     graph_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
     graph_backend.node_to_graph_map[cref] = graph_index
     graph_backend.graph_to_node_map[graph_index] = cref
@@ -133,7 +256,8 @@ function MOI.optimize!(graph_backend::GraphMOIBackend)
 end
 
 
-#Helpful utilities
+### Helpful utilities
+
 function _swap_indices(variable::MOI.VariableIndex, idxmap::MOIU.IndexMap)
     return idxmap[variable]
 end
