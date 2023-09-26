@@ -890,7 +890,14 @@ Retrieve the dual value of `linkref` on optigraph `graph`.
 function JuMP.dual(graph::OptiGraph, linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
     id = graph.id
-    return MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
+
+    last_solution_id = optiedge.backend.last_solution_id
+    optiedge.backend.last_solution_id = graph_id
+
+    dual_value = MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
+    optiedge.backend.last_solution_id = last_solution_id
+
+    return dual_value
 end
 
 # set start value for a graph backend
