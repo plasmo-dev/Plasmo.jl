@@ -161,6 +161,7 @@ end
 
 ### Constraints
 
+# NOTE: Using an alias on ConstraintRef{M,C,S} causes issues with dispatching JuMP functions. I'm not sure it is really necessary vs just using ConstraintRef for dispatch.
 # const NodeConstraintRef = JuMP.ConstraintRef{OptiNode, MOI.ConstraintIndex{F,S} where {F,S}, Shape where Shape <: JuMP.AbstractShape}
 
 function JuMP.num_constraints(
@@ -185,6 +186,7 @@ function JuMP.add_constraint(
     return cref
 end
 
+# Adapted from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/aff_expr.jl#L633-L641
 function MOI.ScalarAffineFunction(
     a::GenericAffExpr{C,<:NodeVariableRef},
 ) where {C}
@@ -195,12 +197,7 @@ function MOI.ScalarAffineFunction(
     return MOI.ScalarAffineFunction(terms, a.constant)
 end
 
-# TODO: update using graph mappings
-function MOI.get(node::OptiNode, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
-    #index = graph_backend(node).node_to_graph_map
-    return MOI.get(graph_backend(node), attr, ref)
-end
-
+# Adapted from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/aff_expr.jl#L706-L719
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
     node::OptiNode,
     f::MOI.ScalarAffineFunction,
@@ -223,6 +220,11 @@ function JuMP.jump_function(
     return JuMP.GenericAffExpr{C,NodeVariableRef}(model, f)
 end
 
+function MOI.get(node::OptiNode, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
+    return MOI.get(graph_backend(node), attr, ref)
+end
+
+
 """
     JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
 
@@ -244,41 +246,41 @@ end
 
 ### private methods
 
-function _moi_add_node_variable(
-    vref::NodeVariableRef,
-    v::JuMP.AbstractVariable
-)
-    # add variable to source graph
-    node = vref.node
-    graph_var_index = MOI.add_variable(graph_backend(node), vref)
-    _moi_constrain_node_variable(JuMP.backend(node), graph_var_index, v.info, Float64)
+# function _moi_add_node_variable(
+#     vref::NodeVariableRef,
+#     v::JuMP.AbstractVariable
+# )
+#     # add variable to source graph
+#     node = vref.node
+#     graph_var_index = MOI.add_variable(graph_backend(node), vref)
+#     _moi_constrain_node_variable(JuMP.backend(node), graph_var_index, v.info, Float64)
     
-    # add variable to all other contained graphs
-    for graph in contained_optigraphs(node)
-        graph_var_index = MOI.add_variable(graph_backend(graph), vref)
-         _moi_constrain_node_variable(
-            JuMP.backend(graph.backend),
-            graph_var_index,
-            v.info, 
-            Float64
-        )
-    end
-    return nothing
-end
+#     # add variable to all other contained graphs
+#     for graph in contained_optigraphs(node)
+#         graph_var_index = MOI.add_variable(graph_backend(graph), vref)
+#          _moi_constrain_node_variable(
+#             JuMP.backend(graph.backend),
+#             graph_var_index,
+#             v.info, 
+#             Float64
+#         )
+#     end
+#     return nothing
+# end
 
 # modified based on: https://github.com/jump-dev/JuMP.jl/blob/master/src/variables.jl
-function _moi_add_node_constraint(
-    cref::ConstraintRef,
-    func::F,
-    set::S,
-) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    node = cref.model
-    graph_index = MOI.add_constraint(node.source_graph.backend, cref, func, set)
-    for graph in contained_optigraphs(node)
-        MOI.add_constraint(graph.backend, cref, func, set)
-    end
-    return nothing
-end
+# function _moi_add_node_constraint(
+#     cref::ConstraintRef,
+#     func::F,
+#     set::S,
+# ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+#     node = cref.model
+#     graph_index = MOI.add_constraint(node.source_graph.backend, cref, func, set)
+#     for graph in contained_optigraphs(node)
+#         MOI.add_constraint(graph.backend, cref, func, set)
+#     end
+#     return nothing
+# end
 
 # copied from: https://github.com/jump-dev/JuMP.jl/blob/f496535f560ea1a6bbf5df19031997bdcc1e4022/src/aff_expr.jl#L651
 function _assert_isfinite(a::GenericAffExpr)
