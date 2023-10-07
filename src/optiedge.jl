@@ -118,10 +118,9 @@ function JuMP.constraint_object(linkref::LinkConstraintRef)
     return linkref.optiedge.linkconstraints[linkref.idx]
 end
 
-#TODO: Update this
 function JuMP.dual(linkref::LinkConstraintRef)
     optiedge = JuMP.owner_model(linkref)
-    id = optiedge.backend.last_solution_id
+    # this grabs the last solution
     return MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
 end
 
