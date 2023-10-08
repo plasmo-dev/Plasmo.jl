@@ -264,6 +264,44 @@ function test_nlp_exceptions()
     @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
 end
 
+function test_multiple_graphs()
+    graph = OptiGraph()
+    set_optimizer(graph, Ipopt.Optimizer)
+    @optinode(graph, nodes[1:4])
+    for (i, node) in enumerate(nodes)
+        @variable(node, x >= i)
+        @objective(node, Min, 2 * x)
+    end
+    for i in 1:3
+        @linkconstraint(graph, nodes[i + 1][:x] + nodes[i][:x] >= i * 4)
+    end
+
+    node_membership = [1, 1, 2, 2]
+    hypergraph, hyper_map = hyper_graph(graph)
+    partition = Partition(hypergraph, node_membership, hyper_map)
+    apply_partition!(graph, partition)
+    subs = subgraphs(graph)
+    expanded_subgraphs = Plasmo.expand.(graph, subs, 1)
+
+    set_optimizer(
+        expanded_subgraphs[1], 
+        optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+    )
+    set_optimizer(
+        expanded_subgraphs[2], 
+        optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+    )
+
+    middle_link = graph.optiedges[1].linkrefs[1]
+    optimize!(expanded_subgraphs[1])
+    dual1 = dual(middle_link)
+    optimize!(expanded_subgraphs[2])
+    dual2 = dual(middle_link)
+
+    @test dual(expanded_subgraphs[1], middle_link) == dual1
+    @test dual(expanded_subgraphs[2], middle_link) == dual2
+end
+
 function run_tests()
     for name in names(@__MODULE__; all=true)
         if !startswith("$(name)", "test_")
