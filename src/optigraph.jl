@@ -503,7 +503,8 @@ the optinode variable value obtained by solving `graph` which contains said opti
 function JuMP.value(graph::OptiGraph, var::JuMP.VariableRef)
     node_pointer = JuMP.backend(var.model).result_location[graph.id]
     var_idx = node_pointer.node_to_optimizer_map[index(var)]
-    return MOI.get(backend(graph).optimizer, MOI.VariablePrimal(), var_idx)
+    # return MOI.get(backend(graph).optimizer, MOI.VariablePrimal(), var_idx)
+    return MOI.get(node_pointer, MOI.VariablePrimal(), var_idx)
 end
 
 """
