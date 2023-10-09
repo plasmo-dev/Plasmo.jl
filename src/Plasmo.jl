@@ -89,7 +89,6 @@ export
     hierarchical_edges_not_global,
     global_edges,
     graph_depth,
-
     aggregate,
     aggregate!,
 

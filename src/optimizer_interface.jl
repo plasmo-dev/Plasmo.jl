@@ -175,6 +175,10 @@ function MOIU.attach_optimizer(graph::OptiGraph)
     return MOIU.attach_optimizer(backend(graph))
 end
 
+function MOIU.reset_optimizer(graph::OptiGraph)
+    return MOIU.reset_optimizer(backend(graph))
+end
+
 #################################
 # Optimizer
 #################################

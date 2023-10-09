@@ -642,17 +642,17 @@ end
 
 function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericAffExpr)
     graph.objective_function = expr
-    return
+    return nothing
 end
 
 function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.GenericQuadExpr)
     graph.objective_function = expr
-    return
+    return nothing
 end
 
 function set_node_objective_functions(graph::OptiGraph)
     _set_node_objective_functions(graph, objective_function(graph))
-    return
+    return nothing
 end
 
 function _set_node_objective_functions(graph::OptiGraph, expr::JuMP.GenericAffExpr)
@@ -667,7 +667,7 @@ function _set_node_objective_functions(graph::OptiGraph, expr::JuMP.GenericAffEx
     for node in all_nodes(graph)
         JuMP.set_objective_function(node, node_expressions[node])
     end
-    return
+    return nothing
 end
 
 function _set_node_objective_functions(graph::OptiGraph, expr::JuMP.GenericQuadExpr)
@@ -687,7 +687,7 @@ function _set_node_objective_functions(graph::OptiGraph, expr::JuMP.GenericQuadE
     for node in all_nodes(graph)
         JuMP.set_objective_function(node, node_expressions[node])
     end
-    return
+    return nothing
 end
 
 """
