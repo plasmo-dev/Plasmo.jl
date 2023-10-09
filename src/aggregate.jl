@@ -121,8 +121,6 @@ function aggregate(optigraph::OptiGraph)
         reference_map.linkconstraintmap[JuMP.constraint_object(linkconstraint)] = cref
     end
 
-    #aggregate_node.nlp_data = aggregate_node.model.nlp_data
-
     return aggregate_node, reference_map
 end
 @deprecate combine aggregate
@@ -247,8 +245,8 @@ function aggregate(graph::OptiGraph, max_depth::Int64)  #0 means no subgraphs
             append!(subs_to_check, subs)
         end
         depth += 1
-        append!(final_parents, parents)
         parents = subs_to_check
+        append!(final_parents, parents)
     end
 
     #ADD THE BOTTOM LEVEL NODES from the corresponding subgraphs
