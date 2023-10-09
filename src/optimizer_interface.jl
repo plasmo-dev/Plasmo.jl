@@ -362,6 +362,9 @@ function JuMP.set_optimizer(node::OptiNode, optimizer_constructor)
     return nothing
 end
 
+# NOTE: this resets NLP data on every NodePointer, so graph solutions get cleared
+# This is currently a known limitation in Plasmo.jl. If you solve a node after a graph,
+# it will remove the graph solution.
 function JuMP.optimize!(node::OptiNode; kwargs...)
     JuMP.optimize!(jump_model(node); kwargs...)
     return nothing
