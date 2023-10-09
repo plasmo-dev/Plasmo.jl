@@ -273,3 +273,16 @@ function MOI.optimize!(graph_backend::GraphBackend)
     MOI.optimize!(graph_backend.optimizer)
     return nothing
 end
+
+function MOIU.reset_optimizer(graph_backend::GraphBackend)
+    MOI.empty!(graph_backend.optimizer)
+    # delete graph backend from all nodes
+    graph = graph_backend.optigraph
+    for node in all_nodes(graph_backend.optigraph)
+        nb = JuMP.backend(node)
+        filter!(x -> x != graph.id, nb.graph_ids)
+        delete!(nb.optimizers, graph.id)
+    end
+    graph_backend.state = MOIU.EMPTY_OPTIMIZER
+    return nothing
+end

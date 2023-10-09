@@ -284,12 +284,12 @@ function test_multiple_graphs()
     expanded_subgraphs = Plasmo.expand.(graph, subs, 1)
 
     set_optimizer(
-        expanded_subgraphs[1], 
-        optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+        expanded_subgraphs[1],
+        optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0),
     )
     set_optimizer(
-        expanded_subgraphs[2], 
-        optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+        expanded_subgraphs[2],
+        optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0),
     )
 
     middle_link = graph.optiedges[1].linkrefs[1]
