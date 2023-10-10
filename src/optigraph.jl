@@ -223,6 +223,13 @@ function add_node!(graph::OptiGraph, optinode::OptiNode)
     return optinode
 end
 
+function add_node!(graph::OptiGraph, m::JuMP.Model, label::String)
+    optinode = add_node!(graph)
+    set_model(optinode, m)
+    optinode.label = label
+    return optinode
+end
+
 """
     optinodes(graph::OptiGraph)::Vector{OptiNode}
 
@@ -927,6 +934,19 @@ function JuMP.start_value(graph::OptiGraph, variable::JuMP.VariableRef)
     return MOI.get(backend(graph), MOI.VariablePrimalStart(), var_idx)
 end
 
+function JuMP.set_attribute(
+    graph::OptiGraph,
+    attr::MOI.AbstractModelAttribute,
+    value
+)
+    MOI.set(graph, attr, value)
+    return
+end
+
+function JuMP.solver_name(graph::OptiGraph)
+    return MOI.get(graph.moi_backend, MOI.SolverName())
+end
+
 """
     JuMP.termination_status(graph::OptiGraph)
 
@@ -934,6 +954,26 @@ Retrieve the current termination status of optigraph `graph`.
 """
 function JuMP.termination_status(graph::OptiGraph)
     return MOI.get(graph.moi_backend, MOI.TerminationStatus())
+end
+
+function JuMP.primal_status(graph::OptiGraph)
+    return MOI.get(graph.moi_backend, MOI.PrimalStatus())
+end
+
+function JuMP.dual_status(graph::OptiGraph)
+    return MOI.get(graph.moi_backend, MOI.DualStatus())
+end
+
+function JuMP.callback_value(cb_data, x::GenericVariableRef, graph::OptiGraph)
+    return MOI.get(
+        graph.moi_backend.optimizer,
+        MOI.CallbackVariablePrimal(cb_data),
+        index(x),
+    )
+end
+
+function JuMP.callback_node_status(cb_data, graph::OptiGraph)
+    return MOI.get(graph.moi_backend.optimizer, MOI.CallbackNodeStatus(cb_data))
 end
 
 ####################################
