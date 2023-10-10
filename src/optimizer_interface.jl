@@ -355,6 +355,14 @@ function MOI.set(graph::OptiGraph, attr::MOI.AbstractModelAttribute, value)
     return MOI.set(backend(graph), attr, value)
 end
 
+function MOI.submit(
+    graph::OptiGraph,
+    cb::MOI.LazyConstraint,
+    con::ScalarConstraint,
+)
+    return MOI.submit(graph.moi_backend.optimizer, cb, moi_function(con.func), con.set)
+end
+
 #######################################################
 #Optinode optimizer interface
 #######################################################
