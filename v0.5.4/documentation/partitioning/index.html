@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Graph Partitioning and Processing · Plasmo.jl</title><link href="https://fonts.googleapis.com/css?family=Lato|Roboto+Mono" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.0/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.11.1/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Plasmo.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit">Plasmo.jl</span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../modeling/">Modeling with OptiGraphs</a></li><li class="is-active"><a class="tocitem" href>Graph Partitioning and Processing</a><ul class="internal"><li><a class="tocitem" href="#Example-Partitioning-Problem:-Dynamic-Optimization"><span>Example Partitioning Problem: Dynamic Optimization</span></a></li><li><a class="tocitem" href="#Partitioning-OptiGraphs"><span>Partitioning OptiGraphs</span></a></li><li><a class="tocitem" href="#Aggregating-OptiGraphs"><span>Aggregating OptiGraphs</span></a></li><li><a class="tocitem" href="#OptiGraph-Projections"><span>OptiGraph Projections</span></a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../../tutorials/gas_pipeline/">Optimal Control of a Natural Gas Network</a></li></ul></li><li><a class="tocitem" href="../api_docs/">API Documentation</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Graph Partitioning and Processing</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Graph Partitioning and Processing</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/plasmo-dev/Plasmo.jl/blob/master/docs/src/documentation/partitioning.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Graph-Partitioning-and-Processing"><a class="docs-heading-anchor" href="#Graph-Partitioning-and-Processing">Graph Partitioning and Processing</a><a id="Graph-Partitioning-and-Processing-1"></a><a class="docs-heading-anchor-permalink" href="#Graph-Partitioning-and-Processing" title="Permalink"></a></h1><p>The <a href="../modeling/#Modeling-with-OptiGraphs">Modeling with OptiGraphs</a> section describes how to construct optigraphs using a bottom-up approach with a focus on <a href="../modeling/#Hierarchical-Modeling-using-Subgraphs">Hierarchical Modeling using Subgraphs</a> to create multi-level optigraphs. Plasmo.jl also supports creating multi-level optigraphs using a top-down approach. This is done using the optigraph partition functions and interfaces to standard graph partitioning tools such as <a href="https://github.com/JuliaSparse/Metis.jl">Metis</a> and <a href="https://github.com/kahypar/KaHyPar.jl">KaHyPar</a>.</p><h2 id="Example-Partitioning-Problem:-Dynamic-Optimization"><a class="docs-heading-anchor" href="#Example-Partitioning-Problem:-Dynamic-Optimization">Example Partitioning Problem: Dynamic Optimization</a><a id="Example-Partitioning-Problem:-Dynamic-Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Example-Partitioning-Problem:-Dynamic-Optimization" title="Permalink"></a></h2><p>To help demonstrate graph partitioning capabilities in Plasmo.jl, we instantiate a simple optimal control problem described by the following equations. In this problem, <span>$x$</span> is a vector of states and <span>$u$</span> is a vector of control actions which are both indexed over the set of time indices <span>$t \in \{1,...,T\}$</span>. The objective function minimizes the state trajectory with minimal control effort, the second equation describes the state dynamics, and the third equation defines the initial condition. The last two equations define limits on the state and control actions.</p><p class="math-container">\[\begin{aligned}
+    \min_{\{ x,u \}} &amp; \sum_{t = 1}^T x_t^2 + u_t^2  &amp; \\
+    \textrm{s.t.} \quad &amp; x_{t+1} = x_t + u_t + d_t, \quad t \in \{1,...,T-1\}  &amp; \\
+    &amp; x_{1} = 0  &amp;\\
+    &amp; x_t \ge 0, \quad t \in \{1,...,T\}\\
+    &amp; u_t \ge -1000, \quad t \in \{1,...,T-1\}
+\end{aligned}\]</p><p>This snippet shows how to construct the optimal control problem in Plasmo.jl. We create an optigraph, add optinodes which represent states and controls at each time period, we set objective functions for each optinode, and we use link-constraints to describe the dynamics.</p><pre><code class="language-julia">using Plasmo
+
+T = 100          #number of time points
+d = sin.(1:T)    #disturbance vector
+
+graph = OptiGraph()
+@optinode(graph,state[1:T])
+@optinode(graph,control[1:T-1])
+
+for node in state
+    @variable(node,x)
+    @constraint(node, x &gt;= 0)
+    @objective(node,Min,x^2)
+end
+for node in control
+    @variable(node,u)
+    @constraint(node, u &gt;= -1000)
+    @objective(node,Min,u^2)
+end
+
+@linkconstraint(graph,[i = 1:T-1],state[i+1][:x] == state[i][:x] + control[i][:u] + d[i])
+n1 = state[1]
+@constraint(n1,n1[:x] == 0)</code></pre><p>When we print the newly created optigraph for our optimal control problem, we see it contains about 200 optinodes (one for each state and control) and contains almost 100 linking constraints (which couple the time periods).</p><pre><code class="language-julia-repl">julia&gt; println(graph)
+      OptiGraph: # elements (including subgraphs)
+-------------------------------------------------------------------
+      OptiNodes:   199            (199)
+      OptiEdges:    99             (99)
+LinkConstraints:    99             (99)
+ sub-OptiGraphs:     0              (0)</code></pre><p>We can also plot the resulting optigraph (see <a href="../api_docs/#Plotting">Plotting</a>) which produces a simple chain of optinodes.</p><pre><code class="language-julia">using PlasmoPlots
+
+plt_chain_layout = layout_plot(graph,
+                               layout_options=Dict(:tol=&gt;0.1,:iterations=&gt;500),
+                               linealpha = 0.2,
+                               markersize = 6)
+
+plt_chain_matrix = matrix_plot(graph)</code></pre><p><img src="../../assets/chain_layout.svg" alt="partition_layout_1"/> <img src="../../assets/chain_layout_matrix.svg" alt="partition_matrix_1"/></p><h2 id="Partitioning-OptiGraphs"><a class="docs-heading-anchor" href="#Partitioning-OptiGraphs">Partitioning OptiGraphs</a><a id="Partitioning-OptiGraphs-1"></a><a class="docs-heading-anchor-permalink" href="#Partitioning-OptiGraphs" title="Permalink"></a></h2><p>At its core, the <a href="../api_docs/#Plasmo.OptiGraph"><code>OptiGraph</code></a> is a <a href="https://en.wikipedia.org/wiki/Hypergraph">hypergraph</a> and can naturally interface to hypergraph partitioning tools.   For our example here we demonstrate how to use hypergraph partitioning (using <a href="https://github.com/kahypar/KaHyPar.jl">KaHyPar</a>), but Plasmo.jl also supports standard graph partitioning algorithms using graph projections. The below snippet uses the <a href="../api_docs/#Plasmo.hyper_graph"><code>hyper_graph</code></a> function which returns a <a href="../api_docs/#Plasmo.HyperGraph"><code>Plasmo.HyperGraph</code></a> object and a <code>hyper_map</code> (a Julia dictionary) which maps hypernodes and hyperedges back to the original optigraph.</p><pre><code class="language-julia-repl">julia&gt; hgraph, hyper_map = hyper_graph(graph);
+
+julia&gt; println(hgraph)
+Hypergraph: (199 , 99)</code></pre><p>With our hypergraph we can now perform hypergraph partitioning in the next snippet which returns a <code>partition_vector</code>. Each index in the <code>partition_vector</code> corresponds to a hypernode in <code>hypergraph</code>, and each value denotes which partition the hypernode belongs to. So in our example, <code>partition_vector</code> contains 199 elements which take on integer values between 0 and 7 (for 8 total partitions). Once we have a <code>partition_vector</code>, we can create a <a href="../api_docs/#Plasmo.Partition"><code>Partition</code></a> object which describes partitions of optinodes and optiedges, as well as the shared optinodes and optiedges that cross partitions. We can lastly use the produced <code>partition</code> object to formulate subgraphs in our original optigraph (<code>graph</code>) using <a href="../api_docs/#Plasmo.apply_partition!"><code>apply_partition!</code></a>. After doing so, we see that our <code>graph</code> now contains 8 subgraphs with 7 link-constraints that correspond to the optiedges that cross partitions (i.e. connect subgraphs).</p><pre><code class="language-julia">julia&gt; using KaHyPar
+
+julia&gt; partition_vector = KaHyPar.partition(hypergraph,
+                                            8,
+                                            configuration=:connectivity,
+                                            imbalance=0.01);
+
+julia&gt; partition = Partition(partition_vector, hyper_map);
+
+julia&gt; apply_partition!(graph, partition);</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Plasmo.jl contains a direct interface to KaHyPar which is used here. However, a user can always provide the <code>partition_vector</code> themselves using some other partitioning or community detection approach.</p></div></div><pre><code class="language-julia-repl">julia&gt; length(partition_vector)
+199
+
+julia&gt; partition
+OptiGraph Partition w/ 8 subpartitions
+
+julia&gt; num_subgraphs(graph)
+8
+
+julia&gt; num_linkconstraints(graph)
+7
+
+julia&gt; num_all_linkconstraints(graph)
+99</code></pre><p>If we plot the partitioned optigraph, it reveals eight distinct partitions and the coupling between them. The plots show that the partitions are well-balanced and the matrix visualization shows the problem is reordered into a banded structure that is typical of dynamic optimization problems.</p><pre><code class="language-julia">plt_chain_partition_layout = layout_plot(graph,
+                                         layout_options=Dict(:tol=&gt;0.01,
+                                                        :iterations=&gt;500),
+                                         linealpha=0.2,
+                                         markersize=6,
+                                         subgraph_colors=true)
+
+plt_chain_partition_matrix = matrix_layout(graph, subgraph_colors=true)
+</code></pre><p><img src="../../assets/chain_layout_partition.svg" alt="partition_layout_2"/> <img src="../../assets/chain_layout_matrix_partition.svg" alt="partition_matrix_2"/></p><h2 id="Aggregating-OptiGraphs"><a class="docs-heading-anchor" href="#Aggregating-OptiGraphs">Aggregating OptiGraphs</a><a id="Aggregating-OptiGraphs-1"></a><a class="docs-heading-anchor-permalink" href="#Aggregating-OptiGraphs" title="Permalink"></a></h2><p>Subgraphs can be converted into stand-alone optinodes using the using the <a href="../api_docs/#Plasmo.aggregate"><code>aggregate</code></a> function. This can be helpful when the user models using subgraphs, but they want to represent solvable subproblems using optinodes. In the snippet below, we aggregate our optigraph that contains 8 subgraphs.  We include the argument <code>0</code> which specifies how many subgraph levels to retain.  In this case, <code>0</code> means we aggregate subgraphs at the highest level so <code>graph</code> contains only new aggregated optinodes. For hierarchical graphs with many levels, we can define how many subgraph levels we wish to retain. The function returns a new aggregated graph (<code>aggregate_graph</code>), as well as a <code>reference_map</code> which maps elements in <code>aggregate_graph</code> to the original optigraph <code>graph</code>.</p><pre><code class="language-julia-repl">julia&gt; aggregate_graph,reference_map = aggregate(graph,0);
+Aggregating OptiGraph with a maximum subgraph depth of 0
+
+julia&gt; println(aggregate_graph)
+      OptiGraph: # elements (including subgraphs)
+-------------------------------------------------------------------
+      OptiNodes:     8              (8)
+      OptiEdges:     7              (7)
+LinkConstraints:     7              (7)
+ sub-OptiGraphs:     0              (0)</code></pre><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>A user can also use <code>aggregate!</code> to permanently aggregate an existing optigraph. This avoids maintaining a copy of the original optigraph.</p></div></div><p>We can lastly plot the aggregated graph structure which simply shows 8 optinodes with 7 linking constraints.</p><pre><code class="language-julia">plt_chain_aggregate = layout_plot(aggregate_graph,
+                                  layout_options=Dict(:tol=&gt;0.01,:iterations=&gt;10),
+                                  node_labels=true,
+                                  markersize=30,
+                                  labelsize=20,
+                                  node_colors=true)
+
+plt_chain_matrix_aggregate = matrix_plot(aggregate_graph,
+                                         node_labels=true,
+                                         node_colors=true);
+</code></pre><p><img src="../../assets/chain_layout_aggregate.svg" alt="partition_layout_3"/> <img src="../../assets/chain_layout_matrix_aggregate.svg" alt="partition_matrix_3"/></p><h2 id="OptiGraph-Projections"><a class="docs-heading-anchor" href="#OptiGraph-Projections">OptiGraph Projections</a><a id="OptiGraph-Projections-1"></a><a class="docs-heading-anchor-permalink" href="#OptiGraph-Projections" title="Permalink"></a></h2><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Documentation coming soon!</p></div></div></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../modeling/">« Modeling with OptiGraphs</a><a class="docs-footer-nextpage" href="../../tutorials/gas_pipeline/">Optimal Control of a Natural Gas Network »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> on <span class="colophon-date" title="Tuesday 10 October 2023 05:11">Tuesday 10 October 2023</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
