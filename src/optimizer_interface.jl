@@ -383,9 +383,8 @@ function JuMP.optimize!(node::OptiNode; kwargs...)
 end
 
 function JuMP.relax_integrality(graph::OptiGraph)
-    for node in all_nodes(graph)
-        JuMP.relax_integrality(jump_model(node))
-    end
+    # Returns vector of functions to revert the relaxation. Call via map(x->x()).
+    return [JuMP.relax_integrality(jump_model(node)) for node in all_nodes(graph)]
 end
 
 function set_node_primals(
