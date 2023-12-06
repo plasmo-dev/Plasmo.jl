@@ -141,6 +141,14 @@ function test_optinode_set_solution()
     @test JuMP.termination_status(n1) == MOI.OPTIMAL
 end
 
+function test_optinode_set_optimizer_attributes()
+    graph = OptiGraph()
+    n1 = add_node!(graph)
+    set_optimizer(n1, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    JuMP.set_optimizer_attribute(n1, "max_cpu_time", 1e2)
+    @test JuMP.get_optimizer_attribute(n1, "max_cpu_time") == 100.0
+end
+
 function run_tests()
     for name in names(@__MODULE__; all=true)
         if !startswith("$(name)", "test_")
