@@ -129,7 +129,7 @@ function LightGraphs.incidence_matrix(hypergraph::HyperGraph)
     end
     V = Int.(ones(length(I)))
     m = length(hypergraph.vertices)
-    n = m
+    n = length(hypergraph.hyperedge_map)
     return SparseArrays.sparse(I, J, V, m, n)
 end
 
