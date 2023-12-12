@@ -329,6 +329,16 @@ function JuMP.set_optimizer_attribute(
     return MOI.set(graph, attr, value)
 end
 
+function JuMP.set_optimizer_attribute(node::OptiNode, name::String, value)
+    return JuMP.set_optimizer_attribute(node, MOI.RawOptimizerAttribute(name), value)
+end
+
+function JuMP.set_optimizer_attribute(
+    node::OptiNode, attr::MOI.AbstractOptimizerAttribute, value
+)
+    return MOI.set(node, attr, value)
+end
+
 function JuMP.get_optimizer_attribute(graph::OptiGraph, name::String)
     return JuMP.get_optimizer_attribute(graph, MOI.RawOptimizerAttribute(name))
 end
@@ -337,6 +347,16 @@ function JuMP.get_optimizer_attribute(
     graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute
 )
     return MOI.get(graph, attr)
+end
+
+function JuMP.get_optimizer_attribute(node::OptiNode, name::String)
+    return JuMP.get_optimizer_attribute(node, MOI.RawOptimizerAttribute(name))
+end
+
+function JuMP.get_optimizer_attribute(
+    node::OptiNode, attr::MOI.AbstractOptimizerAttribute
+)
+    return MOI.get(node, attr)
 end
 
 function MOI.get(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute)
