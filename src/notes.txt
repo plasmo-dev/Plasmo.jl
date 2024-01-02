@@ -16,17 +16,19 @@
 	- `add_subgraph!(graph, sg)` uses the subgraph backend. same as `add_subgraph!(graph, modular=True)`.
 	- links between subgraphs use referenced variables if all one backend, otherwise creates new references
 
-## Nodes and edges are light-weight in memory. 
-- They are associated with variables and constraints through the GraphBackend
-
 ## Creating JuMP models
 - It should be  possible to obtain a JuMP Model from an optigraph. this performs necessary copy functions
-	- `model = jump_model(graph)`
+- `model = jump_model(graph)`
+
+## Using hypergraphs
+- Looking into HyperGraphs.jl and extend it with anything we already did for orginal Plasmo.jl
 
 
 # Other Notes:
-## Multiple dictionaries are not memory efficient
-- creating a new dictionary for each node does not scale. We need to keep the amount of node data to an absolute minimum and levarage aggregate data structures where possible
+## Memory Efficiency
+- creating a new dictionary for each node does not scale. We need to keep the amount of node data containers to an absolute minimum and levarage aggregate data structures where possible
+- we store such containers on the node's source graph
+- nodes and edges are light-weight in memory. They are associated with variables and constraints through the GraphBackend
 
 
 # OptiGraph Backends

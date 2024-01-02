@@ -1,7 +1,9 @@
-# maps node/edge variable and constraints to the optigraph backend
+"""
+    Mapping of node variables and constraints to the optigraph backend.
+"""
 mutable struct NodeToGraphMap
-    var_map::OrderedDict{NodeVariableRef,MOI.VariableIndex}        #node variable to optimizer
-    con_map::OrderedDict{ConstraintRef,MOI.ConstraintIndex}    #node constraint to optimizer
+    var_map::OrderedDict{NodeVariableRef,MOI.VariableIndex}
+    con_map::OrderedDict{ConstraintRef,MOI.ConstraintIndex}
 end
 function NodeToGraphMap()
     return NodeToGraphMap(
@@ -9,44 +11,54 @@ function NodeToGraphMap()
         OrderedDict{ConstraintRef,MOI.ConstraintIndex}(),
     )
 end
+
 function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.VariableIndex, vref::NodeVariableRef)
     n2g_map.var_map[vref] = idx
     return
 end
+
 function Base.getindex(n2g_map::NodeToGraphMap, vref::NodeVariableRef)
     return n2g_map.var_map[vref]
 end
+
 function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.ConstraintIndex, cref::ConstraintRef)
     n2g_map.con_map[cref] = idx
     return
 end
+
 function Base.getindex(n2g_map::NodeToGraphMap, cref::ConstraintRef)
     return n2g_map.con_map[cref]
 end
 
-# maps optigraph backend to node/edge
+"""
+    Mapping of graph backend variable and constraint indices to 
+    node variables and constraints.
+"""
 mutable struct GraphToNodeMap
-    var_map::OrderedDict{MOI.VariableIndex,NodeVariableRef}        #node variable to optimizer
-    con_map::OrderedDict{MOI.ConstraintIndex,ConstraintRef}    #node constraint to optimizer
+    var_map::OrderedDict{MOI.VariableIndex,NodeVariableRef}
+    con_map::OrderedDict{MOI.ConstraintIndex,ConstraintRef}
 end
-
 function GraphToNodeMap()
     return GraphToNodeMap(
         OrderedDict{MOI.VariableIndex,NodeVariableRef}(),
         OrderedDict{MOI.ConstraintIndex,ConstraintRef}(),
     )
 end
+
 function Base.setindex!(g2n_map::GraphToNodeMap,  vref::NodeVariableRef, idx::MOI.VariableIndex)
     g2n_map.var_map[idx] = vref
     return
 end
+
 function Base.getindex(g2n_map::GraphToNodeMap, idx::MOI.VariableIndex)
     return g2n_map.var_map[idx]
 end
+
 function Base.setindex!(g2n_map::GraphToNodeMap,  cref::ConstraintRef, idx::MOI.ConstraintIndex)
     g2n_map.con_map[idx] = cref
     return
 end
+
 function Base.getindex(g2n_map::GraphToNodeMap, idx::MOI.ConstraintIndex)
     return g2n_map.con_map[idx]
 end
@@ -77,7 +89,7 @@ function GraphMOIBackend(optigraph::AbstractOptiGraph)
         optigraph,
         cache,
         NodeToGraphMap(),
-        GraphToNodeMap(),
+        GraphToNodeMap()
     )
 end
 
@@ -85,9 +97,9 @@ function JuMP.backend(gb::GraphMOIBackend)
     return gb.moi_backend
 end
 
-# function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute)
-#     return MOI.get(graph_backend.optimizer, attr)
-# end
+function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute)
+    return MOI.get(gb.moi_backend, attr)
+end
 
 function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::ConstraintRef)
     graph_index = gb.node_to_graph_map[ref]
@@ -100,7 +112,7 @@ end
 
 ### Variables
 
-# copied from...
+# TODO: attribute where we copied this from in JuMP
 function _moi_constrain_node_variable(
     gb::GraphMOIBackend,
     index,
@@ -152,13 +164,10 @@ function _moi_add_node_variable(
     node::OptiNode,
     v::JuMP.AbstractVariable
 )
-    # add variable to source graph
+    # get node index and create variable reference
     variable_index = next_variable_index(node)
     vref = NodeVariableRef(node, variable_index)
-    # graph_var_index = _add_variable_to_backend(graph_backend(node), vref)
-    # _moi_constrain_node_variable(graph_backend(node), graph_var_index, v.info, Float64)
-
-    # add variable to all other containing optigraphs
+    # add variable to all containing optigraphs
     for graph in containing_optigraphs(node)
         graph_var_index = _add_variable_to_backend(graph_backend(graph), vref)
          _moi_constrain_node_variable(
@@ -175,32 +184,13 @@ function _add_variable_to_backend(
     graph_backend::GraphMOIBackend,
     vref::NodeVariableRef
 )
-    graph_index = MOI.add_variable(graph_backend.moi_backend)
-    graph_backend.node_to_graph_map[vref] = graph_index
-    graph_backend.graph_to_node_map[graph_index] = vref
-    return graph_index
+    graph_var_index = MOI.add_variable(graph_backend.moi_backend)
+    graph_backend.node_to_graph_map[vref] = graph_var_index
+    graph_backend.graph_to_node_map[graph_var_index] = vref
+    return graph_var_index
 end
 
 ### Node Constraints
-
-# copied from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/constraints.jl#L673
-function _moi_add_constraint(
-    model::MOI.ModelLike,
-    f::F,
-    s::S,
-) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    if !MOI.supports_constraint(model, F, S)
-        error(
-            "Constraints of type $(F)-in-$(S) are not supported by the " *
-            "solver.\n\nIf you expected the solver to support your problem, " *
-            "you may have an error in your formulation. Otherwise, consider " *
-            "using a different solver.\n\nThe list of available solvers, " *
-            "along with the problem types they support, is available at " *
-            "https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers.",
-        )
-    end
-    return MOI.add_constraint(model, f, s)
-end
 
 function next_constraint_index(
     node::OptiNode, 
@@ -234,10 +224,10 @@ function _add_node_constraint_to_backend(
     func::F,
     set::S
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    graph_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
-    graph_backend.node_to_graph_map[cref] = graph_index
-    graph_backend.graph_to_node_map[graph_index] = cref
-    return graph_index
+    graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
+    graph_backend.node_to_graph_map[cref] = graph_con_index
+    graph_backend.graph_to_node_map[graph_con_index] = cref
+    return graph_con_index
 end
 
 ### Edge Constraints
@@ -251,36 +241,31 @@ function next_constraint_index(
     return MOI.ConstraintIndex{F,S}(index + 1)
 end
 
-# #Add a LinkConstraint to the MOI backend.  This is used as part of _aggregate_backends!
-# function _add_link_constraint!(id::Symbol, dest::MOI.ModelLike, link::LinkConstraint)
-#     jump_func = JuMP.jump_function(link)
-#     moi_func = JuMP.moi_function(link)
-#     for (i, term) in enumerate(JuMP.linear_terms(jump_func))
-#         coeff = term[1]
-#         var = term[2]
-
-#         src = JuMP.backend(optinode(var))
-#         idx_map = src.optimizers[id].node_to_optimizer_map
-
-#         var_idx = JuMP.index(var)
-#         dest_idx = idx_map[var_idx]
-
-#         moi_func.terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, dest_idx)
-#     end
-#     moi_set = JuMP.moi_set(link)
-#     constraint_index = MOI.add_constraint(dest, moi_func, moi_set)
-#     return constraint_index
-# end
-
-function _has_var_idx(graph_backend::GraphMOIBackend, var::NodeVariableRef)
-    return haskey(graph_backend.node_to_graph_map.var_map, var)
+function _update_moi_func!(
+    backend::GraphMOIBackend,
+    moi_func::MOI.ScalarAffineFunction,
+    jump_func::JuMP.GenericAffExpr
+)
+    for (i, term) in enumerate(JuMP.linear_terms(jump_func))
+        coeff = term[1]
+        var = term[2]
+        backend_var_idx = backend.node_to_graph_map[var]
+        moi_func.terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, backend_var_idx)
+    end
 end
 
-function _set_var_idx(graph_backend::GraphMOIBackend, var::NodeVariableRef)
-    n_vars = MOI.get(graph_backend.moi_backend, MOI.NumberOfVariables())
-    graph_backend.node_to_graph_map[var] = MOI.VariableIndex(n_vars + 1)
-    return
+function _add_backend_variables(
+    backend::GraphMOIBackend,
+    jump_func::JuMP.GenericAffExpr
+)
+    vars = [term[2] for term in JuMP.linear_terms(jump_func)]
+    vars_to_add = setdiff(vars, keys(backend.node_to_graph_map.var_map))
+    for var in vars_to_add
+        _add_variable_to_backend(backend, var)
+    end
 end
+
+# TODO: QuadExpr
 
 function _moi_add_edge_constraint(
     edge::OptiEdge,
@@ -299,20 +284,18 @@ function _moi_add_edge_constraint(
     )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
     cref = ConstraintRef(edge, constraint_index, JuMP.shape(con))
 
-    # TODO: figure out edges between subgraphs
+    # update graph backends
     for graph in containing_optigraphs(edge)
-        # update moi_func with actual indices
-        for (i, term) in enumerate(JuMP.linear_terms(jump_func))
-            coeff = term[1]
-            var = term[2]
-            if !(_has_var_idx(backend(graph), var))
-                _set_var_idx(backend(graph), var)
-            end
-            backend_var_idx = graph.backend.node_to_graph_map[var]
-            moi_func.terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, backend_var_idx)
-        end
+        # add backend variables if linking across optigraphs
+        _add_backend_variables(graph_backend(graph), jump_func)
+
+        # update the moi function variable indices
+        _update_moi_func!(graph_backend(graph), moi_func, jump_func)
+
+        # add the constraint to the backend
         _add_edge_constraint_to_backend(graph_backend(graph), cref, moi_func, moi_set)
     end
+
     return cref
 end
 
@@ -323,43 +306,64 @@ function _add_edge_constraint_to_backend(
     set::S
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
-    graph_backend.edge_to_graph_map[cref] = graph_con_index
-    graph_backend.graph_to_edge_map[graph_con_index] = cref
-    return graph_index
+    graph_backend.node_to_graph_map[cref] = graph_con_index
+    graph_backend.graph_to_node_map[graph_con_index] = cref
+    return graph_con_index
+end
+
+### JuMP interoperability
+
+# copied from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/constraints.jl#L673
+function _moi_add_constraint(
+    model::MOI.ModelLike,
+    f::F,
+    s::S,
+) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    if !MOI.supports_constraint(model, F, S)
+        error(
+            "Constraints of type $(F)-in-$(S) are not supported by the " *
+            "solver.\n\nIf you expected the solver to support your problem, " *
+            "you may have an error in your formulation. Otherwise, consider " *
+            "using a different solver.\n\nThe list of available solvers, " *
+            "along with the problem types they support, is available at " *
+            "https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers.",
+        )
+    end
+    return MOI.add_constraint(model, f, s)
 end
 
 ### TODO
 
-function MOI.optimize!(graph_backend::GraphMOIBackend)
-    # # TODO: support modes
-    # # if graph_backend.mode == MOIU.AUTOMATIC && graph_backend.state == MOIU.EMPTY_OPTIMIZER
-    # # normally the `attach_optimizer` gets called in a higher scope, but we can attach here for testing purposes
-    # if MOIU.state(graph_backend) == MOIU.EMPTY_OPTIMIZER
-    #     MOIU.attach_optimizer(graph_backend)
-    # else
-    #     @assert MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
-    # end
-    MOI.optimize!(graph_backend.moi_backend)
-    return nothing
-end
+# function MOI.optimize!(graph_backend::GraphMOIBackend)
+#     # # TODO: support modes
+#     # # if graph_backend.mode == MOIU.AUTOMATIC && graph_backend.state == MOIU.EMPTY_OPTIMIZER
+#     # # normally the `attach_optimizer` gets called in a higher scope, but we can attach here for testing purposes
+#     # if MOIU.state(graph_backend) == MOIU.EMPTY_OPTIMIZER
+#     #     MOIU.attach_optimizer(graph_backend)
+#     # else
+#     #     @assert MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
+#     # end
+#     MOI.optimize!(graph_backend.moi_backend)
+#     return nothing
+# end
 
 
 ### Helpful utilities
 
-function _swap_indices(variable::MOI.VariableIndex, idxmap::MOIU.IndexMap)
-    return idxmap[variable]
-end
+# function _swap_indices(variable::MOI.VariableIndex, idxmap::MOIU.IndexMap)
+#     return idxmap[variable]
+# end
 
-function _swap_indices(func::MOI.ScalarAffineFunction, idxmap::MOIU.IndexMap)
-    new_func = copy(func)
-    terms = new_func.terms
-    for i in 1:length(terms)
-        coeff = terms[i].coefficient
-        var_idx = terms[i].variable
-        terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, idxmap[var_idx])
-    end
-    return new_func
-end
+# function _swap_indices(func::MOI.ScalarAffineFunction, idxmap::MOIU.IndexMap)
+#     new_func = copy(func)
+#     terms = new_func.terms
+#     for i in 1:length(terms)
+#         coeff = terms[i].coefficient
+#         var_idx = terms[i].variable
+#         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, idxmap[var_idx])
+#     end
+#     return new_func
+# end
 
 
 #In MOI this uses lots of `map_indices` magic, but we go for something simple
