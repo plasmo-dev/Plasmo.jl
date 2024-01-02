@@ -4,7 +4,7 @@ using Requires
 using LinearAlgebra
 using DataStructures
 using SparseArrays
-using LightGraphs
+using Graphs
 using Printf
 
 using MathOptInterface

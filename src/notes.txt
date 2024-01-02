@@ -1,37 +1,41 @@
-# Development Notes:
-
-## Create our own MOI interface for the OptiGraph
+# Motivation
+- The idea for the new Plasmo.jl is to create our own MOI interface for the OptiGraph
 
 ## Why we can't use JuMP.Model for an OptiGraph backend
 - No way to handle linking between subproblems (variables must be owned by their model)
 - Less prone to user 'messing things up' by working directly with 'Model'
-- More flexibility creating our own MOI wrapper: We could use MOI or GOI backends
+- More flexibility creating our own MOI wrapper: We could use either MOI or GOI backends
 
-## Use MOI.copy_to to create final optimization problem if necessary
-- e.g. we need to transfer modular subgraphs into aggregated optigraph to solve
+# Development Notes:
 
-## Nodes are associated with variables and constraints through GraphBackend
-- Nodes are 'light-weight' memory objects
+## Creating the optigraph backend
+- Adding variables to nodes and edges updates the corresponds backend(s)
+- We create a final optigraph backend using contained subgraphs if needed
+- We can optionally choose to build an optigraph using a single backend
+	- `add_subgraph!(graph; modular=False)` creates a graph that points to the parent backend
+	- `add_subgraph!(graph, sg)` uses the subgraph backend. same as `add_subgraph!(graph, modular=True)`.
+	- links between subgraphs use referenced variables if all one backend, otherwise creates new references
 
-## Edges point to a constraint index on an owning optigraph
+## Nodes and edges are light-weight in memory. 
+- They are associated with variables and constraints through the GraphBackend
+
+## Creating JuMP models
+- It should be  possible to obtain a JuMP Model from an optigraph. this performs necessary copy functions
+	- `model = jump_model(graph)`
 
 
-## adding a subgraph can (optionally) directly update the parent graph
-- `add_subgraph!(graph; modular=false)`
-
-
-## It should be  possible to obtain a JuMP Model from an optigraph
-- `jump_model(graph)`
-
+# Other Notes:
 ## Multiple dictionaries are not memory efficient
 - creating a new dictionary for each node does not scale. We need to keep the amount of node data to an absolute minimum and levarage aggregate data structures where possible
-- need to PR JuMP with something like a 'register' call in the macro
+
+
+# OptiGraph Backends
 
 ## OptiGraph Backends
-- MOI Backend
-- GOI Backend
+- MOI Backend (standard solvers)
+- GOI Backend (graph-based solvers)
 
-## Distributed OptiGraph Backend
-- MOI Backends
-- GOI Backends
-- DGOI Backend
+## Distributed OptiGraph Backends
+- MOI Backends (coordinate standard solvers)
+- GOI Backends (coordinate graph-based solvers)
+- DGOI Backend (hookup a distributed solver)

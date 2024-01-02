@@ -2,6 +2,7 @@ abstract type AbstractOptiGraph <: JuMP.AbstractModel end
 
 ### OptiNode
 
+# TODO: node index?
 struct OptiNode{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
     source_graph::GT
     label::String
@@ -12,13 +13,23 @@ function Base.string(node::OptiNode)
 end
 Base.print(io::IO, node::OptiNode) = Base.print(io, Base.string(node))
 Base.show(io::IO, node::OptiNode) = Base.print(io, node)
+
 function JuMP.object_dictionary(node::OptiNode)
     return node.source_graph.node_obj_dict
 end
 
-function Base.setindex!(node::OptiNode, value::Any, t::Tuple{Plasmo.OptiNode, Symbol})
+function Base.setindex!(node::OptiNode, value::Any, name::Symbol)
+    t = (node, name)
     node.source_graph.node_obj_dict[t] = value
+    return
 end
+
+function Base.getindex(node::OptiNode, name::Symbol)
+    t = (node,name)
+    return node.source_graph.node_obj_dict[t]
+end
+
+### Node Variables
 
 struct NodeVariableRef <: JuMP.AbstractVariableRef
     node::OptiNode
@@ -39,13 +50,13 @@ function JuMP.backend(node::OptiNode)
     return JuMP.backend(node.source_graph.backend)
 end
 
-function contained_optigraphs(node::OptiNode)
+function containing_optigraphs(node::OptiNode)
     source_graph = node.source_graph
+    graphs = [source_graph]
     if haskey(source_graph.node_to_graphs, node)
-        return source_graph.node_to_graphs[node]
-    else
-        return OptiGraph[]
+        graphs = [graphs; source_graph.node_to_graphs[node]]
     end
+    return graphs
 end
 
 ### OptiEdge
@@ -53,13 +64,33 @@ end
 struct OptiEdge{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
     source_graph::GT
     label::String
+    nodes::OrderedSet{OptiNode}
 end
 
-struct LinkConstraintRef
-    edge::OptiEdge
-    index::MOI.ConstraintIndex
+# const NodeOrEdge = Union{OptiNode,OptiEdge}
+
+# struct LinkConstraintRef
+#     edge::OptiEdge
+#     index::MOI.ConstraintIndex
+# end
+# Base.broadcastable(c::LinkConstraintRef) = Ref(c)
+
+function graph_backend(edge::OptiEdge)
+    return graph_backend(edge.source_graph)
 end
-Base.broadcastable(c::LinkConstraintRef) = Ref(c)
+
+function JuMP.backend(edge::OptiEdge)
+    return JuMP.backend(edge.source_graph.backend)
+end
+
+function containing_optigraphs(edge::OptiEdge)
+    source_graph = edge.source_graph
+    graphs = [source_graph]
+    if haskey(source_graph.edge_to_graphs, edge)
+        graphs = [graphs; source_graph.node_to_graphs[edge]]
+    end
+    return graphs
+end
 
 ### OptiGraph
 
@@ -69,12 +100,14 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
     optiedges::Vector{OptiEdge}                  #Local optiedges
     subgraphs::Vector{OptiGraph}
 
-    node_to_graphs::OrderedDict{OptiNode,Vector{OptiGraph}}     # track node membership in other graphs; nodes use this to query different backends
+    # track node membership in other graphs; nodes use this to query different backends
+    node_to_graphs::OrderedDict{OptiNode,Vector{OptiGraph}}
+    edge_to_graphs::OrderedDict{OptiEdge,Vector{OptiGraph}}
 
     backend::MOI.ModelLike
 
-    # objects on nodes
-    node_obj_dict::OrderedDict{Tuple{OptiNode,Symbol},Any}
+    node_obj_dict::OrderedDict{Tuple{OptiNode,Symbol},Any} # object dictionary for nodes
+    edge_obj_dict::OrderedDict{Tuple{OptiNode,Symbol},Any} # object dictionary for edges
     obj_dict::Dict{Symbol,Any}
     ext::Dict{Symbol,Any}      # extension information
 
@@ -87,6 +120,8 @@ mutable struct OptiGraph <: AbstractOptiGraph #<: JuMP.AbstractModel
 
         optigraph.node_to_graphs = OrderedDict{OptiNode,Vector{OptiGraph}}()
         optigraph.node_obj_dict = OrderedDict{Tuple{OptiNode,Symbol},Any}()
+        optigraph.edge_to_graphs = OrderedDict{OptiEdge,Vector{OptiGraph}}()
+        optigraph.edge_obj_dict = OrderedDict{Tuple{OptiEdge,Symbol},Any}()
 
         optigraph.backend = GraphMOIBackend(optigraph)
         optigraph.obj_dict = Dict{Symbol,Any}()
@@ -106,19 +141,19 @@ Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 
 # TODO: PR for JuMP on name_to_register. This lets us overrride how objects get registered in OptiGraphs
-function JuMP.name_to_register(node::OptiNode, name::Symbol)
-    return (node,name)
-end
+# function JuMP.name_to_register(node::OptiNode, name::Symbol)
+#     return (node,name)
+# end
 
 ### Add Node
 
 function add_node(graph::OptiGraph; label::String="n$(length(graph.optinodes) + 1)")
-    optinode = OptiNode{OptiGraph}(graph, label) # , Dict{Symbol,Any}()
+    optinode = OptiNode{OptiGraph}(graph, label)
     push!(graph.optinodes, optinode)
     return optinode
 end
 
-### Variables
+### Node Variables
 
 """
     JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
@@ -161,31 +196,7 @@ end
 
 ### Constraints
 
-# NOTE: Using an alias on ConstraintRef{M,C,S} causes issues with dispatching JuMP functions. I'm not sure it is really necessary vs just using ConstraintRef for dispatch.
-# const NodeConstraintRef = JuMP.ConstraintRef{OptiNode, MOI.ConstraintIndex{F,S} where {F,S}, Shape where Shape <: JuMP.AbstractShape}
-
-function JuMP.num_constraints(
-    node::OptiNode,
-    ::Type{F}, 
-    ::Type{S}
-)::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    return MOI.get(JuMP.backend(node), MOI.NumberOfConstraints{F,S}())
-end
-
-"""
-    JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_name::String="")
-
-Add a constraint `con` to optinode `node`. This function supports use of the @constraint JuMP macro.
-"""
-function JuMP.add_constraint(
-    node::OptiNode, con::JuMP.AbstractConstraint, name::String=""
-)
-    # TODO: determine whether `model_convert` is necessary?
-    con = JuMP.model_convert(node, con)
-    cref = _moi_add_node_constraint(node, con)
-    return cref
-end
-
+# TODO: figure out if JuMP really needs this level of customization
 # Adapted from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/aff_expr.jl#L633-L641
 function MOI.ScalarAffineFunction(
     a::GenericAffExpr{C,<:NodeVariableRef},
@@ -213,15 +224,43 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     return aff
 end
 
+### Node Constraints
+
+# NOTE: Using an alias on ConstraintRef{M,C,S} causes issues with dispatching JuMP functions. I'm not sure it is really necessary vs just using ConstraintRef for dispatch.
+# const NodeConstraintRef = JuMP.ConstraintRef{OptiNode, MOI.ConstraintIndex{F,S} where {F,S}, Shape where Shape <: JuMP.AbstractShape}
+# const NodeConstraintRef = JuMP.ConstraintRef{OptiNode, MOI.ConstraintIndex}
+
 function JuMP.jump_function(
-    model::OptiNode,
+    node::OptiNode,
     f::MOI.ScalarAffineFunction{C},
 ) where {C}
-    return JuMP.GenericAffExpr{C,NodeVariableRef}(model, f)
+    return JuMP.GenericAffExpr{C,NodeVariableRef}(node, f)
 end
 
 function MOI.get(node::OptiNode, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
     return MOI.get(graph_backend(node), attr, ref)
+end
+
+function JuMP.num_constraints(
+    node::OptiNode,
+    ::Type{F}, 
+    ::Type{S}
+)::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    return MOI.get(JuMP.backend(node), MOI.NumberOfConstraints{F,S}())
+end
+
+"""
+    JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_name::String="")
+
+Add a constraint `con` to optinode `node`. This function supports use of the @constraint JuMP macro.
+"""
+function JuMP.add_constraint(
+    node::OptiNode, con::JuMP.AbstractConstraint, name::String=""
+)
+    # TODO: determine whether `model_convert` is necessary?
+    con = JuMP.model_convert(node, con)
+    cref = _moi_add_node_constraint(node, con)
+    return cref
 end
 
 
@@ -242,6 +281,44 @@ end
 
 function JuMP.add_nonlinear_expression(node::OptiNode, expr::Any)
     return JuMP.add_nonlinear_expression(jump_model(node), expr)
+end
+
+### Add Edges
+
+function add_edge(
+    graph::OptiGraph,
+    nodes::OptiNode...;
+    label::String="e$(length(graph.optiedges) + 1)"
+)
+    edge = OptiEdge{OptiGraph}(graph, label, OrderedSet(collect(nodes)))
+    push!(graph.optiedges, optiedge)
+    return edge
+end
+
+function JuMP.num_constraints(
+    edge::OptiEdge,
+    ::Type{F}, 
+    ::Type{S}
+)::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    return MOI.get(JuMP.backend(edge), MOI.NumberOfConstraints{F,S}())
+end
+
+function JuMP.add_constraint(
+    edge::OptiEdge, con::JuMP.AbstractConstraint, name::String=""
+)
+    con = JuMP.model_convert(edge, con) # converts coefficient and constant types
+    cref = _moi_add_edge_constraint(node, con)
+    # TODO: set name
+    return cref
+end
+
+function add_link_constraint(
+    graph::OptiGraph, con::JuMP.ScalarConstraint, name::String=""
+)
+    nodes = get_nodes(con)
+    optiedge = add_optiedge(graph, nodes)
+    cref = JuMP.add_constraint(optiedge, con, name)
+    return cref
 end
 
 ### private methods
