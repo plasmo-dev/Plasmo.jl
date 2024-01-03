@@ -71,20 +71,6 @@ function JuMP.num_constraints(
     return MOI.get(JuMP.backend(node), MOI.NumberOfConstraints{F,S}())
 end
 
-### Node Variables
-
-struct NodeVariableRef <: JuMP.AbstractVariableRef
-    node::OptiNode
-    index::MOI.VariableIndex
-end
-
-function Base.string(vref::NodeVariableRef)
-    return JuMP.name(vref)
-end
-Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
-Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
-Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
-
 ### OptiEdge
 
 struct OptiEdge{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
@@ -151,17 +137,6 @@ function JuMP.num_constraints(
     return MOI.get(JuMP.backend(edge), MOI.NumberOfConstraints{F,S}())
 end
 
-
-# const NodeOrEdge = Union{OptiNode,OptiEdge}
-
-# struct LinkConstraintRef
-#     edge::OptiEdge
-#     index::MOI.ConstraintIndex
-# end
-# Base.broadcastable(c::LinkConstraintRef) = Ref(c)
-
-
-
 ### OptiGraph
 
 mutable struct OptiGraph <: AbstractOptiGraph
@@ -213,10 +188,17 @@ end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 
-# TODO: PR for JuMP on name_to_register. This lets us overrride how objects get registered in OptiGraphs
-# function JuMP.name_to_register(node::OptiNode, name::Symbol)
-#     return (node,name)
-# end
+function JuMP.backend(graph::OptiGraph)
+    return graph_backend(graph).moi_backend
+end
+
+function JuMP.jump_function(
+    graph::OptiGraph,
+    f::MOI.ScalarAffineFunction{C},
+) where {C}
+    return JuMP.GenericAffExpr{C,NodeVariableRef}(graph, f)
+end
+
 
 ### Add Node
 
@@ -231,6 +213,18 @@ function add_node(
 end
 
 ### Node Variables
+
+struct NodeVariableRef <: JuMP.AbstractVariableRef
+    node::OptiNode
+    index::MOI.VariableIndex
+end
+
+function Base.string(vref::NodeVariableRef)
+    return JuMP.name(vref)
+end
+Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
+Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
+Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
 
 """
     JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
@@ -271,15 +265,12 @@ function JuMP.num_variables(node::OptiNode)
     return length(filter((vref) -> vref.node == node, keys(n2g.var_map)))
 end
 
-### Constraints
 
 ### Node Constraints
 
 # NOTE: Using an alias on ConstraintRef{M,C,S} causes issues with dispatching JuMP functions. I'm not sure it is really necessary vs just using ConstraintRef for dispatch.
 # const NodeConstraintRef = JuMP.ConstraintRef{OptiNode, MOI.ConstraintIndex{F,S} where {F,S}, Shape where Shape <: JuMP.AbstractShape}
 # const NodeConstraintRef = JuMP.ConstraintRef{OptiNode, MOI.ConstraintIndex}
-
-
 
 """
     JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_name::String="")
@@ -295,25 +286,24 @@ function JuMP.add_constraint(
     return cref
 end
 
+# """
+#     JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
 
-"""
-    JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
+# Add a non-linear constraint to an optinode using a Julia expression.
+# """
+# function JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
+#     cref = JuMP.add_nonlinear_constraint(jump_model(node), expr)
+#     node_cref = ConstraintRef(node, cref.index, JuMP.ScalarShape())
+#     return node_cref
+# end
 
-Add a non-linear constraint to an optinode using a Julia expression.
-"""
-function JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
-    cref = JuMP.add_nonlinear_constraint(jump_model(node), expr)
-    node_cref = ConstraintRef(node, cref.index, JuMP.ScalarShape())
-    return node_cref
-end
+# function JuMP.add_nonlinear_parameter(node::OptiNode, p::Real)
+#     return JuMP.add_nonlinear_parameter(jump_model(node), p)
+# end
 
-function JuMP.add_nonlinear_parameter(node::OptiNode, p::Real)
-    return JuMP.add_nonlinear_parameter(jump_model(node), p)
-end
-
-function JuMP.add_nonlinear_expression(node::OptiNode, expr::Any)
-    return JuMP.add_nonlinear_expression(jump_model(node), expr)
-end
+# function JuMP.add_nonlinear_expression(node::OptiNode, expr::Any)
+#     return JuMP.add_nonlinear_expression(jump_model(node), expr)
+# end
 
 ### Add Edges
 
@@ -327,6 +317,8 @@ function add_edge(
     return edge
 end
 
+### Node Constraints
+
 function JuMP.add_constraint(
     edge::OptiEdge, con::JuMP.AbstractConstraint, name::String=""
 )
@@ -338,6 +330,57 @@ end
 
 ### Objective Function
 
+# TODO: get objective function
+# function JuMP.objective_function(graph::OptiGraph)
+#     return jump_function(MOI.get(graph_backend(graph), MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}()))
+# end
+
+function JuMP.objective_function(
+    graph::OptiGraph,
+    ::Type{F},
+) where {F<:MOI.AbstractFunction}
+    func = MOI.get(JuMP.backend(graph), MOI.ObjectiveFunction{F}())::F
+    return JuMP.jump_function(graph, func)
+end
+
+function JuMP.objective_function(graph::OptiGraph, ::Type{T}) where {T}
+    return JuMP.objective_function(graph, JuMP.moi_function_type(T))
+end
+
+function JuMP.objective_function(graph::OptiGraph)
+    F = MOI.get(JuMP.backend(graph), MOI.ObjectiveFunctionType())
+    return JuMP.objective_function(graph, F)
+end
+
+function JuMP.set_objective(
+    graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
+)
+    JuMP.set_objective_sense(graph, sense)
+    JuMP.set_objective_function(graph, func)
+    return
+end
+
+function JuMP.set_objective_sense(graph::OptiGraph, sense::MOI.OptimizationSense)
+    MOI.set(graph_backend(graph), MOI.ObjectiveSense(), sense)
+    return
+end
+
+function JuMP.set_objective_function(
+    graph::OptiGraph, 
+    expr::JuMP.GenericAffExpr{C,NodeVariableRef}
+) where C <: Real
+    _moi_set_objective_function(graph, expr)
+    return
+end
+
+"""
+    JuMP.objective_value(graph::OptiGraph)
+
+Retrieve the current objective value on optigraph `graph`.
+"""
+function JuMP.objective_value(graph::OptiGraph)
+    return MOI.get(backend(graph), MOI.ObjectiveValue())
+end
 
 
 ### JuMP interoperability
@@ -393,6 +436,26 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     # build JuMP Affine Expression over edge variables
     for t in f.terms
         node_var = edge.source_graph.backend.graph_to_node_map[t.variable]
+        node = node_var.node
+        node_index = node_var.index
+        JuMP.add_to_expression!(
+            aff,
+            t.coefficient,
+            NodeVariableRef(node, node_index),
+        )
+    end
+    return aff
+end
+
+function JuMP.GenericAffExpr{C,NodeVariableRef}(
+    graph::OptiGraph,
+    f::MOI.ScalarAffineFunction,
+) where {C}
+    aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
+    # build JuMP Affine Expression over func variables
+    for t in f.terms
+        gb = graph_backend(graph)
+        node_var = gb.graph_to_node_map[t.variable]
         node = node_var.node
         node_index = node_var.index
         JuMP.add_to_expression!(

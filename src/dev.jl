@@ -11,11 +11,14 @@ n2 = Plasmo.add_node(graph)
 @variable(n2, y >= 2)
 @constraint(n2, ref2, x+y==4)
 
+# linking constraint
 edge1 = Plasmo.add_edge(graph, n1, n2)
-
 @constraint(edge1, ref3, n1[:x] == n2[:x])
 
 @objective(graph, Min, n1[:x] + n2[:x])
+
+objective_function(graph)
+
 
 # TODO
 #@linkconstraint(graph, n1[:x] + n2[:x] == 2)

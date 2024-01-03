@@ -93,9 +93,13 @@ function GraphMOIBackend(optigraph::AbstractOptiGraph)
     )
 end
 
+# JuMP Extension
+
 function JuMP.backend(gb::GraphMOIBackend)
     return gb.moi_backend
 end
+
+# MOI Wrapper
 
 function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute)
     return MOI.get(gb.moi_backend, attr)
@@ -106,9 +110,9 @@ function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::ConstraintRef
     return MOI.get(gb.moi_backend, attr, graph_index)
 end
 
-# function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
-#     MOI.set(graph_backend.optimizer, attr, args...)
-# end
+function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
+    MOI.set(graph_backend.moi_backend, attr, args...)
+end
 
 ### Variables
 
@@ -310,6 +314,64 @@ function _add_edge_constraint_to_backend(
     graph_backend.graph_to_node_map[graph_con_index] = cref
     return graph_con_index
 end
+
+### Objective Function
+
+function _moi_set_objective_function(
+    graph::OptiGraph, 
+    expr::JuMP.GenericAffExpr{C,NodeVariableRef}
+) where C <: Real
+    moi_func = JuMP.moi_function(expr)
+    
+    # add variables to backend if using subgraphs
+    _add_backend_variables(graph_backend(graph), expr)
+
+    # update the moi function variable indices
+    _update_moi_func!(graph_backend(graph), moi_func, expr)
+
+    MOI.set(
+        graph_backend(graph),
+        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{C}}(),
+        moi_func,
+    )
+    return
+end
+
+# function _set_backend_objective(
+#     graph::OptiGraph, obj::JuMP.GenericQuadExpr{Float64,VariableRef}
+# )
+#     graph_backend = JuMP.backend(graph)
+#     moi_obj = moi_function(obj)
+#     for (i, terms) in enumerate(quad_terms(obj))
+#         term1 = terms[2]
+#         term2 = terms[3]
+#         node = optinode(term1)
+#         @assert optinode(term1) == optinode(term2)
+#         moi_term1 = index(term1)
+#         moi_term2 = index(term2)
+#         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
+#         new_moi_idx_1 = node_idx_map[moi_term1]
+#         new_moi_idx_2 = node_idx_map[moi_term2]
+#         moi_obj = _swap_quad_term!(moi_obj, i, new_moi_idx_1, new_moi_idx_2)
+#     end
+
+#     for (i, terms) in enumerate(linear_terms(obj))
+#         term = terms[2]
+#         moi_term = index(term)
+#         node = optinode(term)
+#         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
+#         new_moi_idx = node_idx_map[moi_term]
+#         moi_obj = _swap_linear_term!(moi_obj, i, new_moi_idx)
+#     end
+
+#     MOI.set(graph_backend.optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+#     MOI.set(
+#         graph_backend.optimizer,
+#         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+#         moi_obj,
+#     )
+#     return nothing
+# end
 
 ### JuMP interoperability
 
