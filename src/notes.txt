@@ -16,6 +16,9 @@
 	- `add_subgraph!(graph, sg)` uses the subgraph backend. same as `add_subgraph!(graph, modular=True)`.
 	- links between subgraphs use referenced variables if all one backend, otherwise creates new references
 
+- node and edge backends contain their 'truth' information. A node or edge may use a parent graph 
+as the backend as opposed to its source graph. this is purely for performance and not necessarily required.
+
 ## Creating JuMP models
 - It should be  possible to obtain a JuMP Model from an optigraph. this performs necessary copy functions
 - `model = jump_model(graph)`

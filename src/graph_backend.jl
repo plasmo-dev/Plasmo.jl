@@ -337,41 +337,10 @@ function _moi_set_objective_function(
     return
 end
 
-# function _set_backend_objective(
-#     graph::OptiGraph, obj::JuMP.GenericQuadExpr{Float64,VariableRef}
-# )
-#     graph_backend = JuMP.backend(graph)
-#     moi_obj = moi_function(obj)
-#     for (i, terms) in enumerate(quad_terms(obj))
-#         term1 = terms[2]
-#         term2 = terms[3]
-#         node = optinode(term1)
-#         @assert optinode(term1) == optinode(term2)
-#         moi_term1 = index(term1)
-#         moi_term2 = index(term2)
-#         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
-#         new_moi_idx_1 = node_idx_map[moi_term1]
-#         new_moi_idx_2 = node_idx_map[moi_term2]
-#         moi_obj = _swap_quad_term!(moi_obj, i, new_moi_idx_1, new_moi_idx_2)
-#     end
-
-#     for (i, terms) in enumerate(linear_terms(obj))
-#         term = terms[2]
-#         moi_term = index(term)
-#         node = optinode(term)
-#         node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
-#         new_moi_idx = node_idx_map[moi_term]
-#         moi_obj = _swap_linear_term!(moi_obj, i, new_moi_idx)
-#     end
-
-#     MOI.set(graph_backend.optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-#     MOI.set(
-#         graph_backend.optimizer,
-#         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
-#         moi_obj,
-#     )
-#     return nothing
-# end
+function MOI.optimize!(graph_backend::GraphMOIBackend)
+    MOI.optimize!(graph_backend.moi_backend)
+    return nothing
+end
 
 ### JuMP interoperability
 
@@ -393,22 +362,6 @@ function _moi_add_constraint(
     end
     return MOI.add_constraint(model, f, s)
 end
-
-### TODO
-
-# function MOI.optimize!(graph_backend::GraphMOIBackend)
-#     # # TODO: support modes
-#     # # if graph_backend.mode == MOIU.AUTOMATIC && graph_backend.state == MOIU.EMPTY_OPTIMIZER
-#     # # normally the `attach_optimizer` gets called in a higher scope, but we can attach here for testing purposes
-#     # if MOIU.state(graph_backend) == MOIU.EMPTY_OPTIMIZER
-#     #     MOIU.attach_optimizer(graph_backend)
-#     # else
-#     #     @assert MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
-#     # end
-#     MOI.optimize!(graph_backend.moi_backend)
-#     return nothing
-# end
-
 
 ### Helpful utilities
 
