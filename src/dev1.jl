@@ -16,6 +16,12 @@ n2 = Plasmo.add_node(graph)
 @constraint(n2, nlref, x^3 + y <= 10)
 
 
+# add external function
+f(x::Real) = x^2
+@operator(graph, op_f, 1, f)
+@expression(graph, z, op_f(x))
+
+
 # linking constraint
 edge1 = Plasmo.add_edge(graph, n1, n2)
 @constraint(edge1, ref3a, n1[:x] == n2[:x])

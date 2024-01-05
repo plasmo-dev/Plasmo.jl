@@ -16,7 +16,7 @@ mutable struct OptiGraph <: AbstractOptiGraph
     node_to_graphs::OrderedDict{OptiNode,Vector{OptiGraph}}
     edge_to_graphs::OrderedDict{OptiEdge,Vector{OptiGraph}}
 
-    # intermediate moi backend that maps graph elements to MOI model
+    # intermediate moi backend that maps graph elements to an MOI model
     backend::MOI.ModelLike
 
     node_obj_dict::OrderedDict{Tuple{OptiNode,Symbol},Any} # object dictionary for nodes
@@ -64,8 +64,42 @@ end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 
+### JuMP Extension
+
+function MOI.get(graph::OptiGraph, attr::MOI.AnyAttribute)
+    MOI.get(graph_backend(graph), attr)
+end
+
+function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...)
+    MOI.set(graph_backend(graph), attr, args...)
+end
+
 function JuMP.backend(graph::OptiGraph)
     return graph_backend(graph).moi_backend
+end
+
+function JuMP.object_dictionary(graph::OptiGraph)
+    return graph.obj_dict
+end
+
+function JuMP.add_nonlinear_operator(
+    graph::OptiGraph,
+    dim::Int,
+    f::Function,
+    args::Vararg{Function,N};
+    name::Symbol = Symbol(f),
+) where {N}
+    nargs = 1 + N
+    if !(1 <= nargs <= 3)
+        error(
+            "Unable to add operator $name: invalid number of functions " *
+            "provided. Got $nargs, but expected 1 (if function only), 2 (if " *
+            "function and gradient), or 3 (if function, gradient, and " *
+            "hesssian provided)",
+        )
+    end
+    MOI.set(graph, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
+    return JuMP.NonlinearOperator(f, name)
 end
 
 ### Add Node
@@ -106,7 +140,7 @@ function add_subgraph(
 )
     subgraph = OptiGraph(; name=name)
     subgraph.parent_graph=graph
-    # TODO check provided model backend graph
+    # TODO check provided model backend graph makes sense
     subgraph.optimizer_graph = optimizer_graph
     push!(graph.subgraphs, subgraph)
     return subgraph
@@ -163,7 +197,7 @@ end
 function JuMP.set_objective_function(
     graph::OptiGraph, 
     expr::JuMP.GenericNonlinearExpr{NodeVariableRef}
-) where C <: Real
+)
     _moi_set_objective_function(graph, expr)
     return
 end

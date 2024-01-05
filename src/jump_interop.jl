@@ -106,10 +106,11 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
 ) where {C}
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     for t in f.terms
+        node_var_index = graph_backend(node).graph_to_node_map[t.variable].index
         JuMP.add_to_expression!(
             aff,
             t.coefficient,
-            NodeVariableRef(node, t.variable),
+            NodeVariableRef(node, node_var_index),
         )
     end
     return aff
@@ -127,10 +128,10 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     edge::OptiEdge,
     f::MOI.ScalarAffineFunction,
 ) where {C}
+    println(f)
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     # build JuMP Affine Expression over edge variables
     for t in f.terms
-        # node_var = edge.source_graph.backend.graph_to_node_map[t.variable]
         node_var = graph_backend(edge).graph_to_node_map[t.variable]
         node = node_var.node
         node_index = node_var.index
@@ -221,8 +222,10 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
         ),
     )
     for t in f.quadratic_terms
-        v1 = t.variable_1
-        v2 = t.variable_2
+        v1 = graph_backend(node).graph_to_node_map[t.variable_1].index
+        v2 = graph_backend(node).graph_to_node_map[t.variable_2].index
+        # v1 = t.variable_1
+        # v2 = t.variable_2
         coef = t.coefficient
         if v1 == v2
             coef /= 2

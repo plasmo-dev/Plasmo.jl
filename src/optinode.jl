@@ -69,6 +69,10 @@ end
 
 ### OptiNode Extension
 
+function MOI.get(node::OptiNode, attr::MOI.AnyAttribute)
+    return MOI.get(graph_backend(node), attr)
+end
+
 function MOI.get(node::OptiNode, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
     return MOI.get(graph_backend(node), attr, ref)
 end
@@ -106,10 +110,6 @@ Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
 Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
 Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
 
-function JuMP.value(nvref::NodeVariableRef)
-    return MOI.get(graph_backend(nvref.node), MOI.VariablePrimal(), nvref)
-end
-
 """
     JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
 
@@ -126,6 +126,18 @@ end
 
 function JuMP.index(vref::NodeVariableRef)
     return vref.index
+end
+
+function JuMP.value(nvref::NodeVariableRef; result::Int = 1)
+    return MOI.get(graph_backend(nvref.node), MOI.VariablePrimal(result), nvref)
+end
+
+function JuMP.value(var_value::Function, vref::NodeVariableRef)
+    return var_value(vref)
+end
+
+function JuMP.owner_model(nvref::NodeVariableRef)
+    return nvref.node
 end
 
 function JuMP.name(vref::NodeVariableRef)

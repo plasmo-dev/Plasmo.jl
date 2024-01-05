@@ -36,7 +36,7 @@ function JuMP.optimize!(
     _differentiation_backend::MOI.Nonlinear.AbstractAutomaticDifferentiation = MOI.Nonlinear.SparseReverseMode(),
     kwargs...,
 )
-	# TODO: legacy nlp model
+	# TODO: legacy nlp model (low priority)
     # The nlp_model is not kept in sync, so re-set it here.
     # TODO: Consider how to handle incremental solves.
     # nlp = nonlinear_model(model)
@@ -61,6 +61,7 @@ function JuMP.optimize!(
     # if !ignore_optimize_hook
     #     return model.optimize_hook(model; kwargs...)
     # end
+
     if !isempty(kwargs)
         error(
             "Unrecognized keyword arguments: $(join([k[1] for k in kwargs], ", "))",

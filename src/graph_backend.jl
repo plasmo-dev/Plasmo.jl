@@ -425,7 +425,7 @@ end
 function _moi_set_objective_function(
     graph::OptiGraph, 
     expr::JuMP.GenericNonlinearExpr{NodeVariableRef}
-) where C <: Real
+)
     moi_func = JuMP.moi_function(expr)
     
     # add variables to backend if using subgraphs
@@ -448,77 +448,6 @@ function MOI.optimize!(graph_backend::GraphMOIBackend)
 end
 
 ### Helpful utilities
-
-# function _swap_indices(variable::MOI.VariableIndex, idxmap::MOIU.IndexMap)
-#     return idxmap[variable]
-# end
-
-# function _swap_indices(func::MOI.ScalarAffineFunction, idxmap::MOIU.IndexMap)
-#     new_func = copy(func)
-#     terms = new_func.terms
-#     for i in 1:length(terms)
-#         coeff = terms[i].coefficient
-#         var_idx = terms[i].variable
-#         terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, idxmap[var_idx])
-#     end
-#     return new_func
-# end
-
-
-#In MOI this uses lots of `map_indices` magic, but we go for something simple
-# function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AbstractModelAttribute)
-#     #if the attribute is set by the optimizer, query it directly from optimizer
-#     if MOI.is_set_by_optimize(attr)
-#         if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
-#             error(
-#                 "Cannot query $(attr) from graph backend because no " *
-#                 "optimizer is attached.",
-#             )
-#         end
-#         return MOI.get(graph_backend.optimizer, attr)
-#     #otherwise, grab it from the model cache
-#     else
-#         return MOI.get(graph_backend.model_cache, attr)
-#     end
-# end
-
-# function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AbstractModelAttribute, value)
-#     #if an optimizer is attached, set the underlying attribute
-#     if MOIU.state(graph_backend) == MOIU.ATTACHED_OPTIMIZER
-#         MOI.set(graph_backend.optimizer, attr, value)
-#     end
-#     # always set the attribute on the model cache
-#     MOI.set(graph_backend.model_cache, attr, value)
-#     return nothing
-# end
-
-# function MOI.get(graph_backend::GraphMOIBackend, attr::MOI.AbstractOptimizerAttribute)
-#     #NOTE: See MOI.CachingOptimizer for dealing with copyable attributes in the future
-#     if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
-#         error("Cannot query $(attr) from optimizer because no " * "optimizer is attached.")
-#     end
-#     return MOI.get(graph_backend.optimizer, attr)
-# end
-
-# function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AbstractOptimizerAttribute, value)
-#     #if an optimizer is attached, set the underlying attribute
-#     if graph_backend.optimizer != nothing #NOTE: should this be checking MOIU.state?
-#         MOI.set(graph_backend.optimizer, attr, value)
-#     end
-#     MOI.set(graph_backend.model_cache, attr, value)
-#     return nothing
-# end
-
-# TODO: properly support variable and constraint attributes
-# function MOI.get(
-#     graph_backend::GraphMOIBackend, attr::MOI.VariablePrimalStart, idx::MOI.VariableIndex
-# )
-#     return MOI.get(graph_backend.model_cache, attr, idx)
-# end
-
-# MOI.set(graph_backend::GraphMOIBackend,attr::MOI.AnyAttribute,args...) = MOI.set(graph_backend.optimizer,attr,args...)
-# MOIU.state(graph_backend::GraphMOIBackend) = graph_backend.state
-# MOIU.mode(graph_backend::GraphMOIBackend) = graph_backend.mode
 
 # """
 #     append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
@@ -564,86 +493,3 @@ end
 
 #     return index_map    #return an idxmap for each source model
 # end
-
-
-
-"""
-    MOIU.attach_optimizer(model::GraphMOIBackend)
-
-Populate the underlying optigraph optimizer. Works in a similar way to the
-`MOIU.CachingOptimizer`, except it populates using the node and edge models.
-"""
-# function MOIU.attach_optimizer(graph_backend::GraphMOIBackend)
-#     @assert MOIU.state(graph_backend) == MOIU.EMPTY_OPTIMIZER
-
-#     # `dest_optimizer` is the underlying MOI optimizer
-#     dest_optimizer = graph_backend.optimizer
-#     optigraph = graph_backend.optigraph
-
-#     # copy model and optimizer attributes previously set
-#     # NOTE: this copies objective function and sense
-#     if !MOI.is_empty(graph_backend.model_cache)
-#         MOI.copy_to(dest_optimizer, graph_backend.model_cache)
-#     end
-
-#     id = optigraph.id
-#     indexmap = NodeToGraphMap()  #node to optimizer
-#     rindexmap = GraphToNodeMap() #optimizer to nodes
-
-#     # TODO: check for subgraphs to append
-#     # copy node backends
-#     for node in all_nodes(optigraph)
-#         src = JuMP.backend(node)
-
-#         # copy attributes directly to graph optimizer
-#         idx_map = append_to_backend!(dest_optimizer, src) #node to graph map
-
-#         # create a new `NodePointer` that points to this graph optimizer
-#         # TODO: point to the graph backend instead?
-#         node_pointer = NodePointer(dest_optimizer, idx_map)
-#         src.optimizers[id] = node_pointer
-#         if !(id in src.graph_ids)
-#             push!(src.graph_ids, id)
-#         end
-
-#         # update index maps
-#         for (v_src, v_dst) in idx_map.var_map
-#             var_src = JuMP.VariableRef(node.model, v_src)
-#             indexmap.var_map[var_src] = v_dst
-#             rindexmap.var_map[v_dst] = var_src
-#         end
-
-#         for (c_src, c_dst) in idx_map.con_map
-#             con_src = JuMP.constraint_ref_with_index(node.model, c_src)
-#             indexmap.con_map[con_src] = c_dst
-#             rindexmap.con_map[c_dst] = con_src
-#         end
-#     end
-
-#     # setup edge backends
-#     for edge in all_edges(optigraph)
-#         edge_pointer = EdgePointer(dest_optimizer)
-#         edge.backend.result_location[id] = edge_pointer
-#         edge.backend.optimizers[id] = edge_pointer
-#     end
-
-#     # copy link-constraints to backend
-#     for linkref in all_linkconstraints(optigraph)
-#         constraint_index = Plasmo._add_link_constraint!(
-#             id, dest_optimizer, JuMP.constraint_object(linkref)
-#         )
-#         linkref.optiedge.backend.result_location[id].edge_to_optimizer_map[linkref] =
-#             constraint_index
-#         indexmap.con_map[linkref] = constraint_index
-#         rindexmap.con_map[constraint_index] = linkref
-#     end
-
-#     graph_backend.model_to_optimizer_map = indexmap
-#     graph_backend.optimizer_to_model_map = rindexmap
-#     graph_backend.state = MOIU.ATTACHED_OPTIMIZER
-
-#     #TODO: possibly put the objective function stuff here
-
-#     return nothing
-# end
-
