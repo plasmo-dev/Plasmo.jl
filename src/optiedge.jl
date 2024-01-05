@@ -83,6 +83,13 @@ function JuMP.jump_function(
     return JuMP.GenericAffExpr{C,NodeVariableRef}(edge, f)
 end
 
+function JuMP.jump_function(
+    edge::OptiEdge,
+    f::MOI.ScalarQuadraticFunction{C},
+) where {C}
+    return JuMP.GenericQuadExpr{C,NodeVariableRef}(edge, f)
+end
+
 function JuMP.num_constraints(
     edge::OptiEdge,
     ::Type{F}, 
@@ -95,13 +102,12 @@ function JuMP.num_constraints(
     return length(filter((cref) -> cref.model == edge, refs))
 end
 
-
 ### Edge Constraints
 
 function JuMP.add_constraint(
     edge::OptiEdge, con::JuMP.AbstractConstraint, name::String=""
 )
-    con = JuMP.model_convert(edge, con) # converts coefficient and constant types
+    con = JuMP.model_convert(edge, con)
     cref = _moi_add_edge_constraint(edge, con)
     # TODO: set constraint name
     return cref

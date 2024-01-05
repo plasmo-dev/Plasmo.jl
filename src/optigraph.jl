@@ -75,6 +75,13 @@ function JuMP.jump_function(
     return JuMP.GenericAffExpr{C,NodeVariableRef}(graph, f)
 end
 
+function JuMP.jump_function(
+    graph::OptiGraph,
+    f::MOI.ScalarQuadraticFunction{C},
+) where {C}
+    return JuMP.GenericQuadExpr{C,NodeVariableRef}(graph, f)
+end
+
 ### Add Node
 
 function add_node(
@@ -158,6 +165,15 @@ function JuMP.set_objective_function(
     _moi_set_objective_function(graph, expr)
     return
 end
+
+function JuMP.set_objective_function(
+    graph::OptiGraph, 
+    expr::JuMP.GenericQuadExpr{C,NodeVariableRef}
+) where C <: Real
+    _moi_set_objective_function(graph, expr)
+    return
+end
+
 
 """
     JuMP.objective_value(graph::OptiGraph)

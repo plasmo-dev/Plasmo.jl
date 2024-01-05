@@ -88,6 +88,13 @@ function JuMP.jump_function(
     return JuMP.GenericAffExpr{C,NodeVariableRef}(node, f)
 end
 
+function JuMP.jump_function(
+    node::OptiNode,
+    f::MOI.ScalarQuadraticFunction{C},
+) where {C}
+    return JuMP.GenericQuadExpr{C,NodeVariableRef}(node, f)
+end
+
 function JuMP.num_constraints(
     node::OptiNode,
     ::Type{F}, 
@@ -112,6 +119,11 @@ end
 Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
 Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
 Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
+
+function JuMP.value(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    return MOI.get(gb, MOI.VariablePrimal(), nvref)
+end
 
 """
     JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
@@ -147,12 +159,7 @@ function JuMP.num_variables(node::OptiNode)
     return length(filter((vref) -> vref.node == node, keys(n2g.var_map)))
 end
 
-
 ### Node Constraints
-
-# NOTE: Using an alias on ConstraintRef{M,C,S} causes issues with dispatching JuMP functions. I'm not sure it is really necessary vs just using ConstraintRef for dispatch.
-# const NodeConstraintRef = JuMP.ConstraintRef{OptiNode, MOI.ConstraintIndex{F,S} where {F,S}, Shape where Shape <: JuMP.AbstractShape}
-# const NodeConstraintRef = JuMP.ConstraintRef{OptiNode, MOI.ConstraintIndex}
 
 """
     JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_name::String="")

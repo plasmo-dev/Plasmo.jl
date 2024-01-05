@@ -99,7 +99,7 @@ function JuMP.backend(gb::GraphMOIBackend)
     return gb.moi_backend
 end
 
-# MOI Wrapper
+# MOI Extension
 
 function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute)
     return MOI.get(gb.moi_backend, attr)
@@ -110,55 +110,18 @@ function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::ConstraintRef
     return MOI.get(gb.moi_backend, attr, graph_index)
 end
 
+function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::NodeVariableRef)
+    graph_index = gb.node_to_graph_map[ref]
+    return MOI.get(gb.moi_backend, attr, graph_index)
+end
+
 function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
     MOI.set(graph_backend.moi_backend, attr, args...)
 end
 
 ### Variables
 
-# TODO: attribute where we copied this from in JuMP
-function _moi_constrain_node_variable(
-    gb::GraphMOIBackend,
-    index,
-    info,
-    ::Type{T},
-) where {T}
-    if info.has_lb
-        _moi_add_constraint(
-            gb.moi_backend,
-            index,
-            MOI.GreaterThan{T}(info.lower_bound),
-        )
-    end
-    if info.has_ub
-        _moi_add_constraint(
-            gb.moi_backend,
-            index,
-            MOI.LessThan{T}(info.upper_bound),
-        )
-    end
-    if info.has_fix
-        _moi_add_constraint(
-            gb.moi_backend,
-            index,
-            MOI.EqualTo{T}(info.fixed_value),
-        )
-    end
-    if info.binary
-        _moi_add_constraint(gb.moi_backend, index, MOI.ZeroOne())
-    end
-    if info.integer
-        _moi_add_constraint(gb.moi_backend, index, MOI.Integer())
-    end
-    if info.has_start && info.start !== nothing
-        MOI.set(
-            gb.moi_backend,
-            MOI.VariablePrimalStart(),
-            index,
-            convert(T, info.start),
-        )
-    end
-end
+
 
 function next_variable_index(node::OptiNode)
     return MOI.VariableIndex(num_variables(node) + 1)
@@ -209,15 +172,21 @@ function _moi_add_node_constraint(
     node::OptiNode,
     con::JuMP.AbstractConstraint
 )
-    func, set = moi_function(con), moi_set(con)
+    # get moi function and set
+    jump_func = JuMP.jump_function(con)
+    moi_func = JuMP.moi_function(con)
+    moi_set = JuMP.moi_set(con)
+
     constraint_index = next_constraint_index(
         node, 
-        typeof(func), 
-        typeof(set)
-    )::MOI.ConstraintIndex{typeof(func),typeof(set)}
+        typeof(moi_func), 
+        typeof(moi_set)
+    )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
     cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
     for graph in containing_optigraphs(node)
-        _add_node_constraint_to_backend(graph_backend(graph), cref, func, set)
+         _update_moi_func!(graph_backend(graph), moi_func, jump_func)
+
+        _add_node_constraint_to_backend(graph_backend(graph), cref, moi_func, moi_set)
     end
     return cref
 end
@@ -245,6 +214,15 @@ function next_constraint_index(
     return MOI.ConstraintIndex{F,S}(index + 1)
 end
 
+"""
+    _update_moi_func!(
+        backend::GraphMOIBackend,
+        moi_func::MOI.ScalarAffineFunction,
+        jump_func::JuMP.GenericAffExpr
+    )
+
+Update an MOI function with the actual variable indices from a backend graph.
+"""
 function _update_moi_func!(
     backend::GraphMOIBackend,
     moi_func::MOI.ScalarAffineFunction,
@@ -256,6 +234,37 @@ function _update_moi_func!(
         backend_var_idx = backend.node_to_graph_map[var]
         moi_func.terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, backend_var_idx)
     end
+    return
+end
+
+function _update_moi_func!(
+    backend::GraphMOIBackend,
+    moi_func::MOI.ScalarQuadraticFunction,
+    jump_func::JuMP.GenericQuadExpr
+)
+    #quadratic terms
+    for (i, term) in enumerate(JuMP.quad_terms(jump_func))
+        coeff = term[1]
+        var1 = term[2]
+        var2 = term[3]
+        var_idx_1 = backend.node_to_graph_map[var1]
+        var_idx_2 = backend.node_to_graph_map[var2]
+
+        moi_func.quadratic_terms[i] = MOI.ScalarQuadraticTerm{Float64}(
+            coeff, 
+            var_idx_1, 
+            var_idx_2
+        )
+    end
+
+    # linear terms
+    for (i, term) in enumerate(JuMP.linear_terms(jump_func))
+        coeff = term[1]
+        var = term[2]
+        backend_var_idx = backend.node_to_graph_map[var]
+        moi_func.affine_terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, backend_var_idx)
+    end
+    return
 end
 
 function _add_backend_variables(
@@ -267,9 +276,26 @@ function _add_backend_variables(
     for var in vars_to_add
         _add_variable_to_backend(backend, var)
     end
+    return
 end
 
 # TODO: QuadExpr
+
+function _add_backend_variables(
+    backend::GraphMOIBackend,
+    jump_func::JuMP.GenericQuadExpr
+)
+    vars_aff = [term[2] for term in JuMP.linear_terms(jump_func)]
+    vars_quad = vcat([[term[2], term[3]] for term in JuMP.quad_terms(jump_func)]...)
+    vars_unique = unique([vars_aff;vars_quad])
+    vars_to_add = setdiff(vars_unique, keys(backend.node_to_graph_map.var_map))
+    for var in vars_to_add
+        _add_variable_to_backend(backend, var)
+    end
+    return
+end
+
+# TODO: NonlinearExpr
 
 function _moi_add_edge_constraint(
     edge::OptiEdge,
@@ -337,30 +363,29 @@ function _moi_set_objective_function(
     return
 end
 
+function _moi_set_objective_function(
+    graph::OptiGraph, 
+    expr::JuMP.GenericQuadExpr{C,NodeVariableRef}
+) where C <: Real
+    moi_func = JuMP.moi_function(expr)
+    
+    # add variables to backend if using subgraphs
+    _add_backend_variables(graph_backend(graph), expr)
+
+    # update the moi function variable indices
+    _update_moi_func!(graph_backend(graph), moi_func, expr)
+
+    MOI.set(
+        graph_backend(graph),
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{C}}(),
+        moi_func,
+    )
+    return
+end
+
 function MOI.optimize!(graph_backend::GraphMOIBackend)
     MOI.optimize!(graph_backend.moi_backend)
     return nothing
-end
-
-### JuMP interoperability
-
-# copied from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/constraints.jl#L673
-function _moi_add_constraint(
-    model::MOI.ModelLike,
-    f::F,
-    s::S,
-) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    if !MOI.supports_constraint(model, F, S)
-        error(
-            "Constraints of type $(F)-in-$(S) are not supported by the " *
-            "solver.\n\nIf you expected the solver to support your problem, " *
-            "you may have an error in your formulation. Otherwise, consider " *
-            "using a different solver.\n\nThe list of available solvers, " *
-            "along with the problem types they support, is available at " *
-            "https://jump.dev/JuMP.jl/stable/installation/#Supported-solvers.",
-        )
-    end
-    return MOI.add_constraint(model, f, s)
 end
 
 ### Helpful utilities
@@ -479,24 +504,6 @@ end
 #     MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
 
 #     return index_map    #return an idxmap for each source model
-# end
-
-# #Add a LinkConstraint to the MOI backend.  This is used as part of _aggregate_backends!
-# function _add_link_constraint!(id::Symbol, dest::MOI.ModelLike, link::LinkConstraint)
-#     jump_func = JuMP.jump_function(link)
-#     moi_func = JuMP.moi_function(link)
-#     for (i, term) in enumerate(JuMP.linear_terms(jump_func))
-#         coeff = term[1]
-#         var = term[2]
-#         src = JuMP.backend(optinode(var))
-#         idx_map = src.optimizers[id].node_to_optimizer_map
-#         var_idx = JuMP.index(var)
-#         dest_idx = idx_map[var_idx]
-#         moi_func.terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, dest_idx)
-#     end
-#     moi_set = JuMP.moi_set(link)
-#     constraint_index = MOI.add_constraint(dest, moi_func, moi_set)
-#     return constraint_index
 # end
 
 
