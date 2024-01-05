@@ -81,46 +81,6 @@ function JuMP.backend(node::OptiNode)
     return JuMP.backend(graph_backend(node))
 end
 
-function JuMP.jump_function(node::OptiNode, vidx::MOI.VariableIndex)
-    return NodeVariableRef(node, vidx)
-end
-
-function JuMP.jump_function(
-    node::OptiNode,
-    f::MOI.ScalarAffineFunction{C},
-) where {C}
-    return JuMP.GenericAffExpr{C,NodeVariableRef}(node, f)
-end
-
-function JuMP.jump_function(
-    node::OptiNode,
-    f::MOI.ScalarQuadraticFunction{C},
-) where {C}
-    return JuMP.GenericQuadExpr{C,NodeVariableRef}(node, f)
-end
-
-function jump_function(node::OptiNode, f::MOI.ScalarNonlinearFunction)
-    V = JuMP.variable_ref_type(typeof(node))
-    ret = GenericNonlinearExpr{V}(f.head, Any[])
-    stack = Tuple{GenericNonlinearExpr,Any}[]
-    for arg in reverse(f.args)
-        push!(stack, (ret, arg))
-    end
-    while !isempty(stack)
-        parent, arg = pop!(stack)
-        if arg isa MOI.ScalarNonlinearFunction
-            new_ret = GenericNonlinearExpr{V}(arg.head, Any[])
-            push!(parent.args, new_ret)
-            for child in reverse(arg.args)
-                push!(stack, (new_ret, child))
-            end
-        else
-            push!(parent.args, jump_function(node, arg))
-        end
-    end
-    return ret
-end
-
 function JuMP.num_constraints(
     node::OptiNode,
     ::Type{F}, 
@@ -145,8 +105,6 @@ end
 Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
 Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
 Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
-
-JuMP.variable_ref_type(node::Type{OptiNode{OptiGraph}}) = NodeVariableRef
 
 function JuMP.value(nvref::NodeVariableRef)
     return MOI.get(graph_backend(nvref.node), MOI.VariablePrimal(), nvref)

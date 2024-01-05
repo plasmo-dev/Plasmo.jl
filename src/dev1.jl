@@ -1,5 +1,4 @@
 using Plasmo
-# using HiGHS
 using Ipopt
 
 graph = OptiGraph(; name=:g1)
@@ -17,22 +16,22 @@ n2 = Plasmo.add_node(graph)
 @constraint(n2, nlref, x^3 + y <= 10)
 
 
-# # linking constraint
+# linking constraint
 edge1 = Plasmo.add_edge(graph, n1, n2)
 @constraint(edge1, ref3a, n1[:x] == n2[:x])
 @constraint(edge1, ref3b, n1[:x]^2 + n2[:x]^2 <= 3)
+@constraint(edge1, ref3c, n1[:x]^3 + n2[:x]^3 <= 10)
 
+# quadratic objective
+# @objective(graph, Min, n1[:x]^2 + n2[:x]^2)
+# obj = objective_function(graph)
 
-@objective(graph, Min, n1[:x]^2 + n2[:x]^2)
+# nonlinear objective
+@objective(graph, Min, n1[:x]^3 + n2[:x]^2)
 obj = objective_function(graph)
 
 # # TODO linkconstraint macro: 
 # # @linkconstraint(graph, n1[:x] + n2[:x] == 2)
 
-# # TODO: nonlinear functions
-# # @constraint(n1, )
-
-
-# # set_optimizer(graph, HiGHS.Optimizer)
 set_optimizer(graph, Ipopt.Optimizer)
 Plasmo.optimize!(graph)

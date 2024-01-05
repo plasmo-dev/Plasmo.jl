@@ -76,20 +76,6 @@ function JuMP.backend(edge::OptiEdge)
     return JuMP.backend(graph_backend(edge))
 end
 
-function JuMP.jump_function(
-    edge::OptiEdge,
-    f::MOI.ScalarAffineFunction{C},
-) where {C}
-    return JuMP.GenericAffExpr{C,NodeVariableRef}(edge, f)
-end
-
-function JuMP.jump_function(
-    edge::OptiEdge,
-    f::MOI.ScalarQuadraticFunction{C},
-) where {C}
-    return JuMP.GenericQuadExpr{C,NodeVariableRef}(edge, f)
-end
-
 function JuMP.num_constraints(
     edge::OptiEdge,
     ::Type{F}, 

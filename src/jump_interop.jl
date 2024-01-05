@@ -91,6 +91,14 @@ function MOI.ScalarAffineFunction(
     return MOI.ScalarAffineFunction(terms, a.constant)
 end
 
+# OptiNode
+
+function JuMP.jump_function(
+    node::OptiNode,
+    f::MOI.ScalarAffineFunction{C},
+) where {C}
+    return JuMP.GenericAffExpr{C,NodeVariableRef}(node, f)
+end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
     node::OptiNode,
@@ -105,6 +113,14 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
         )
     end
     return aff
+end
+
+# OptiEdge
+function JuMP.jump_function(
+    edge::OptiEdge,
+    f::MOI.ScalarAffineFunction{C},
+) where {C}
+    return JuMP.GenericAffExpr{C,NodeVariableRef}(edge, f)
 end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
@@ -125,6 +141,14 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
         )
     end
     return aff
+end
+
+# OptiGraph
+function JuMP.jump_function(
+    graph::OptiGraph,
+    f::MOI.ScalarAffineFunction{C},
+) where {C}
+    return JuMP.GenericAffExpr{C,NodeVariableRef}(graph, f)
 end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
@@ -151,20 +175,20 @@ end
 
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/quad_expr.jl
 
-function _assert_isfinite(q::GenericQuadExpr)
-    _assert_isfinite(q.aff)
-    for (coef, var1, var2) in quad_terms(q)
-        isfinite(coef) ||
-            error("Invalid coefficient $coef on quadratic term $var1*$var2.")
-    end
-end
-
 function _moi_quadratic_term(t::Tuple)
     return MOI.ScalarQuadraticTerm(
         t[2] == t[3] ? 2t[1] : t[1],
         index(t[2]),
         index(t[3]),
     )
+end
+
+function _assert_isfinite(q::GenericQuadExpr)
+    _assert_isfinite(q.aff)
+    for (coef, var1, var2) in quad_terms(q)
+        isfinite(coef) ||
+            error("Invalid coefficient $coef on quadratic term $var1*$var2.")
+    end
 end
 
 function MOI.ScalarQuadraticFunction(
@@ -178,7 +202,15 @@ function MOI.ScalarQuadraticFunction(
     return MOI.ScalarQuadraticFunction(qterms, moi_aff.terms, moi_aff.constant)
 end
 
-function GenericQuadExpr{C,NodeVariableRef}(
+# OptiNode
+function JuMP.jump_function(
+    node::OptiNode,
+    f::MOI.ScalarQuadraticFunction{C},
+) where {C}
+    return JuMP.GenericQuadExpr{C,NodeVariableRef}(node, f)
+end
+
+function JuMP.GenericQuadExpr{C,NodeVariableRef}(
     node::OptiNode,
     f::MOI.ScalarQuadraticFunction,
 ) where {C}
@@ -205,7 +237,15 @@ function GenericQuadExpr{C,NodeVariableRef}(
     return quad
 end
 
-function GenericQuadExpr{C,NodeVariableRef}(
+# OptiEdge
+function JuMP.jump_function(
+    edge::OptiEdge,
+    f::MOI.ScalarQuadraticFunction{C},
+) where {C}
+    return JuMP.GenericQuadExpr{C,NodeVariableRef}(edge, f)
+end
+
+function JuMP.GenericQuadExpr{C,NodeVariableRef}(
     edge::OptiEdge,
     f::MOI.ScalarQuadraticFunction,
 ) where {C}
@@ -249,7 +289,15 @@ function GenericQuadExpr{C,NodeVariableRef}(
     return quad
 end
 
-function GenericQuadExpr{C,NodeVariableRef}(
+# OptiGraph
+function JuMP.jump_function(
+    graph::OptiGraph,
+    f::MOI.ScalarQuadraticFunction{C},
+) where {C}
+    return JuMP.GenericQuadExpr{C,NodeVariableRef}(graph, f)
+end
+
+function JuMP.GenericQuadExpr{C,NodeVariableRef}(
     graph::OptiGraph,
     f::MOI.ScalarQuadraticFunction,
 ) where {C}
@@ -297,4 +345,101 @@ end
 
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/nlp_expr.jl
 
+# OptiNode
+JuMP.variable_ref_type(::Type{OptiNode{OptiGraph}}) = NodeVariableRef
+
 JuMP.jump_function(::OptiNode, x::Number) = convert(Float64, x)
+
+function JuMP.jump_function(node::OptiNode, vidx::MOI.VariableIndex)
+    return NodeVariableRef(node, vidx)
+end
+
+function JuMP.jump_function(node::OptiNode, f::MOI.ScalarNonlinearFunction)
+    V = JuMP.variable_ref_type(typeof(node))
+    ret = JuMP.GenericNonlinearExpr{V}(f.head, Any[])
+    stack = Tuple{JuMP.GenericNonlinearExpr,Any}[]
+    for arg in reverse(f.args)
+        push!(stack, (ret, arg))
+    end
+    while !isempty(stack)
+        parent, arg = pop!(stack)
+        if arg isa MOI.ScalarNonlinearFunction
+            new_ret = JuMP.GenericNonlinearExpr{V}(arg.head, Any[])
+            push!(parent.args, new_ret)
+            for child in reverse(arg.args)
+                push!(stack, (new_ret, child))
+            end
+        else
+            push!(parent.args, JuMP.jump_function(node, arg))
+        end
+    end
+    return ret
+end
+
+# OptiEdge
+JuMP.variable_ref_type(::Type{OptiEdge{OptiGraph}}) = NodeVariableRef
+
+JuMP.jump_function(::OptiEdge, x::Number) = convert(Float64, x)
+
+function JuMP.jump_function(edge::OptiEdge, vidx::MOI.VariableIndex)
+    node_var = graph_backend(edge).graph_to_node_map[vidx]
+    node = node_var.node
+    node_idx = node_var.index
+    return NodeVariableRef(node, node_idx)
+end
+
+function JuMP.jump_function(edge::OptiEdge, f::MOI.ScalarNonlinearFunction)
+    V = JuMP.variable_ref_type(typeof(edge))
+    ret = JuMP.GenericNonlinearExpr{V}(f.head, Any[])
+    stack = Tuple{JuMP.GenericNonlinearExpr,Any}[]
+    for arg in reverse(f.args)
+        push!(stack, (ret, arg))
+    end
+    while !isempty(stack)
+        parent, arg = pop!(stack)
+        if arg isa MOI.ScalarNonlinearFunction
+            new_ret = JuMP.GenericNonlinearExpr{V}(arg.head, Any[])
+            push!(parent.args, new_ret)
+            for child in reverse(arg.args)
+                push!(stack, (new_ret, child))
+            end
+        else
+            push!(parent.args, JuMP.jump_function(edge, arg))
+        end
+    end
+    return ret
+end
+
+# OptiGraph
+JuMP.variable_ref_type(::Type{OptiGraph}) = NodeVariableRef
+
+JuMP.jump_function(::OptiGraph, x::Number) = convert(Float64, x)
+
+function JuMP.jump_function(graph::OptiGraph, vidx::MOI.VariableIndex)
+    node_var = graph_backend(graph).graph_to_node_map[vidx]
+    node = node_var.node
+    node_idx = node_var.index
+    return NodeVariableRef(node, node_idx)
+end
+
+function JuMP.jump_function(graph::OptiGraph, f::MOI.ScalarNonlinearFunction)
+    V = JuMP.variable_ref_type(typeof(graph))
+    ret = JuMP.GenericNonlinearExpr{V}(f.head, Any[])
+    stack = Tuple{JuMP.GenericNonlinearExpr,Any}[]
+    for arg in reverse(f.args)
+        push!(stack, (ret, arg))
+    end
+    while !isempty(stack)
+        parent, arg = pop!(stack)
+        if arg isa MOI.ScalarNonlinearFunction
+            new_ret = JuMP.GenericNonlinearExpr{V}(arg.head, Any[])
+            push!(parent.args, new_ret)
+            for child in reverse(arg.args)
+                push!(stack, (new_ret, child))
+            end
+        else
+            push!(parent.args, JuMP.jump_function(graph, arg))
+        end
+    end
+    return ret
+end

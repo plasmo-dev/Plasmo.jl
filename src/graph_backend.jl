@@ -272,24 +272,6 @@ function _update_moi_func!(
     return
 end
 
-# function _splice_nonlinear_variables!(
-#     expr::Expr, node::OptiNode, 
-# )
-#     for i in 1:length(expr.args)
-#         if typeof(expr.args[i]) == Expr
-#             if expr.args[i].head != :ref #call `_splice_nonlinear_variables!`` on the expression until it is a :ref. (i.e. :(x[index]))
-#                 _splice_nonlinear_variables!(expr.args[i], node, reference_map)
-#             else  #it is a variable
-#                 var_index = expr.args[i].args[2]     #this is the actual MOI index (e.g. x[1], x[2]) in the node model
-#                 new_var = :(
-#                     $(reference_map.varmap[JuMP.VariableRef(jump_model(node), var_index)])
-#                 )
-#                 expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
-#             end
-#         end
-#     end
-# end
-
 function _update_moi_func!(
     backend::GraphMOIBackend,
     moi_func::MOI.ScalarNonlinearFunction,
@@ -327,6 +309,27 @@ function _add_backend_variables(
     vars_quad = vcat([[term[2], term[3]] for term in JuMP.quad_terms(jump_func)]...)
     vars_unique = unique([vars_aff;vars_quad])
     vars_to_add = setdiff(vars_unique, keys(backend.node_to_graph_map.var_map))
+    for var in vars_to_add
+        _add_variable_to_backend(backend, var)
+    end
+    return
+end
+
+function _add_backend_variables(
+    backend::GraphMOIBackend,
+    jump_func::JuMP.GenericNonlinearExpr
+)
+    vars = NodeVariableRef[]
+    for i = 1:length(jump_func.args)
+        jump_arg = jump_func.args[i]
+        if typeof(jump_arg) == JuMP.GenericNonlinearExpr
+            _add_backend_variables(backend, jump_arg)
+        elseif typeof(jump_arg) == NodeVariableRef
+            push!(vars, jump_arg)
+        end
+    end
+
+    vars_to_add = setdiff(vars, keys(backend.node_to_graph_map.var_map))
     for var in vars_to_add
         _add_variable_to_backend(backend, var)
     end
@@ -414,6 +417,26 @@ function _moi_set_objective_function(
     MOI.set(
         graph_backend(graph),
         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{C}}(),
+        moi_func,
+    )
+    return
+end
+
+function _moi_set_objective_function(
+    graph::OptiGraph, 
+    expr::JuMP.GenericNonlinearExpr{NodeVariableRef}
+) where C <: Real
+    moi_func = JuMP.moi_function(expr)
+    
+    # add variables to backend if using subgraphs
+    _add_backend_variables(graph_backend(graph), expr)
+
+    # update the moi function variable indices
+    _update_moi_func!(graph_backend(graph), moi_func, expr)
+
+    MOI.set(
+        graph_backend(graph),
+        MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}(),
         moi_func,
     )
     return

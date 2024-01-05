@@ -68,20 +68,6 @@ function JuMP.backend(graph::OptiGraph)
     return graph_backend(graph).moi_backend
 end
 
-function JuMP.jump_function(
-    graph::OptiGraph,
-    f::MOI.ScalarAffineFunction{C},
-) where {C}
-    return JuMP.GenericAffExpr{C,NodeVariableRef}(graph, f)
-end
-
-function JuMP.jump_function(
-    graph::OptiGraph,
-    f::MOI.ScalarQuadraticFunction{C},
-) where {C}
-    return JuMP.GenericQuadExpr{C,NodeVariableRef}(graph, f)
-end
-
 ### Add Node
 
 function add_node(
@@ -174,6 +160,13 @@ function JuMP.set_objective_function(
     return
 end
 
+function JuMP.set_objective_function(
+    graph::OptiGraph, 
+    expr::JuMP.GenericNonlinearExpr{NodeVariableRef}
+) where C <: Real
+    _moi_set_objective_function(graph, expr)
+    return
+end
 
 """
     JuMP.objective_value(graph::OptiGraph)
