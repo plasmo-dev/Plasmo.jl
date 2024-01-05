@@ -68,7 +68,7 @@ end
 # try to support Direct, Manual, and Automatic modes on an optigraph.
 mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     optigraph::AbstractOptiGraph
-    # TODO: nlp model
+    # TODO: legacy nlp model
     # nlp_model::MOI.Nonlinear.Model
     moi_backend::MOI.AbstractOptimizer
     node_to_graph_map::NodeToGraphMap
@@ -120,8 +120,6 @@ function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...
 end
 
 ### Variables
-
-
 
 function next_variable_index(node::OptiNode)
     return MOI.VariableIndex(num_variables(node) + 1)
@@ -183,9 +181,14 @@ function _moi_add_node_constraint(
         typeof(moi_set)
     )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
     cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
-    for graph in containing_optigraphs(node)
-         _update_moi_func!(graph_backend(graph), moi_func, jump_func)
 
+    for graph in containing_optigraphs(node)
+        # TODO: i think we need to make copies here for moi_funcs
+        # moi_func_graph = copy(moi_func)
+        # update func variable indices
+        _update_moi_func!(graph_backend(graph), moi_func, jump_func)
+
+        # add to optinode backend
         _add_node_constraint_to_backend(graph_backend(graph), cref, moi_func, moi_set)
     end
     return cref
@@ -213,6 +216,8 @@ function next_constraint_index(
     index = num_constraints(edge, F, S)
     return MOI.ConstraintIndex{F,S}(index + 1)
 end
+
+### MOI Utilities
 
 """
     _update_moi_func!(
@@ -267,6 +272,41 @@ function _update_moi_func!(
     return
 end
 
+# function _splice_nonlinear_variables!(
+#     expr::Expr, node::OptiNode, 
+# )
+#     for i in 1:length(expr.args)
+#         if typeof(expr.args[i]) == Expr
+#             if expr.args[i].head != :ref #call `_splice_nonlinear_variables!`` on the expression until it is a :ref. (i.e. :(x[index]))
+#                 _splice_nonlinear_variables!(expr.args[i], node, reference_map)
+#             else  #it is a variable
+#                 var_index = expr.args[i].args[2]     #this is the actual MOI index (e.g. x[1], x[2]) in the node model
+#                 new_var = :(
+#                     $(reference_map.varmap[JuMP.VariableRef(jump_model(node), var_index)])
+#                 )
+#                 expr.args[i] = new_var               #replace :(x[index]) with a :(JuMP.Variable)
+#             end
+#         end
+#     end
+# end
+
+function _update_moi_func!(
+    backend::GraphMOIBackend,
+    moi_func::MOI.ScalarNonlinearFunction,
+    jump_func::JuMP.GenericNonlinearExpr
+)
+    for i = 1:length(jump_func.args)
+        jump_arg = jump_func.args[i]
+        moi_arg = moi_func.args[i]
+        if typeof(jump_arg) == JuMP.GenericNonlinearExpr
+            _update_moi_func!(backend, moi_arg, jump_arg)
+        elseif typeof(jump_arg) == NodeVariableRef
+            moi_func.args[i] = backend.node_to_graph_map[jump_arg]
+        end
+    end
+    return
+end
+
 function _add_backend_variables(
     backend::GraphMOIBackend,
     jump_func::JuMP.GenericAffExpr
@@ -278,8 +318,6 @@ function _add_backend_variables(
     end
     return
 end
-
-# TODO: QuadExpr
 
 function _add_backend_variables(
     backend::GraphMOIBackend,
@@ -294,8 +332,6 @@ function _add_backend_variables(
     end
     return
 end
-
-# TODO: NonlinearExpr
 
 function _moi_add_edge_constraint(
     edge::OptiEdge,

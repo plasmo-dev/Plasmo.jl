@@ -62,8 +62,9 @@ function _moi_add_constraint(
     return MOI.add_constraint(model, f, s)
 end
 
+### Affine Expressions
 
-### functions adapted from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/aff_expr.jl
+# adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/aff_expr.jl
 
 function _assert_isfinite(a::JuMP.GenericAffExpr)
     for (coef, var) in linear_terms(a)
@@ -146,7 +147,9 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     return aff
 end
 
-### TODO: quadratic interop attribution
+### Quadratic Expressions
+
+# adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/quad_expr.jl
 
 function _assert_isfinite(q::GenericQuadExpr)
     _assert_isfinite(q.aff)
@@ -247,50 +250,6 @@ function GenericQuadExpr{C,NodeVariableRef}(
 end
 
 function GenericQuadExpr{C,NodeVariableRef}(
-    edge::OptiEdge,
-    f::MOI.ScalarQuadraticFunction,
-) where {C}
-    
-    # affine terms
-    quad = JuMP.GenericQuadExpr{C,NodeVariableRef}(
-        JuMP.GenericAffExpr{C,NodeVariableRef}(
-            edge,
-            MOI.ScalarAffineFunction(f.affine_terms, f.constant),
-        ),
-    )
-
-    # quadratic terms
-    for t in f.quadratic_terms
-        # node variable indices
-        v1 = t.variable_1
-        v2 = t.variable_2
-        coef = t.coefficient
-        if v1 == v2
-            coef /= 2
-        end
-
-        # variable index 1
-        node_var_1 = graph_backend(edge).graph_to_node_map[v1]
-        node1 = node_var_1.node
-        var_index_1 = node_var_1.index
-
-        # variable index 2
-        node_var_2 = graph_backend(edge).graph_to_node_map[v2]
-        node2 = node_var_2.node
-        var_index_2 = node_var_2.index
-
-        # add to quadratic expression
-        add_to_expression!(
-            quad,
-            coef,
-            NodeVariableRef(node1, var_index_1),
-            NodeVariableRef(node2, var_index_2),
-        )
-    end
-    return quad
-end
-
-function GenericQuadExpr{C,NodeVariableRef}(
     graph::OptiGraph,
     f::MOI.ScalarQuadraticFunction,
 ) where {C}
@@ -302,9 +261,7 @@ function GenericQuadExpr{C,NodeVariableRef}(
             MOI.ScalarAffineFunction(f.affine_terms, f.constant),
         ),
     )
-
     gb = graph_backend(graph)
-    
     # quadratic terms
     for t in f.quadratic_terms
         # node variable indices
@@ -336,21 +293,8 @@ function GenericQuadExpr{C,NodeVariableRef}(
     return quad
 end
 
-function JuMP.GenericAffExpr{C,NodeVariableRef}(
-    graph::OptiGraph,
-    f::MOI.ScalarAffineFunction,
-) where {C}
-    aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
-    for t in f.terms
-        gb = graph_backend(graph)
-        node_var = gb.graph_to_node_map[t.variable]
-        node = node_var.node
-        node_index = node_var.index
-        JuMP.add_to_expression!(
-            aff,
-            t.coefficient,
-            NodeVariableRef(node, node_index),
-        )
-    end
-    return aff
-end
+### Nonlinear Expressions
+
+# adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/nlp_expr.jl
+
+JuMP.jump_function(::OptiNode, x::Number) = convert(Float64, x)

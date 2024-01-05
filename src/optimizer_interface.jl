@@ -30,12 +30,13 @@ function JuMP.set_optimizer(
 end
 
 # mostly copied from: https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
-function optimize!(
+function JuMP.optimize!(
     graph::OptiGraph;
     #ignore_optimize_hook = (graph.optimize_hook === nothing),
     _differentiation_backend::MOI.Nonlinear.AbstractAutomaticDifferentiation = MOI.Nonlinear.SparseReverseMode(),
     kwargs...,
 )
+	# TODO: legacy nlp model
     # The nlp_model is not kept in sync, so re-set it here.
     # TODO: Consider how to handle incremental solves.
     # nlp = nonlinear_model(model)

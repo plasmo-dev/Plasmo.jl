@@ -1,10 +1,11 @@
 # Motivation
-- The idea for the new Plasmo.jl is to create our own MOI interface for the OptiGraph
+- The idea for the new Plasmo.jl rewrite is to create our own MOI interface for an OptiGraph
 
-## Why we can't use JuMP.Model for an OptiGraph backend
-- No way to handle linking between subproblems (variables must be owned by their model)
-- Less prone to user 'messing things up' by working directly with 'Model'
-- More flexibility creating our own MOI wrapper: We could use either MOI or GOI backends
+## Why we can't just extend or wrap a JuMP.Model
+- No way to handle linking between subproblems (in JuMP, variables in constraints must be owned by their model)
+- Less prone to user 'messing things up' by working directly with a 'Model'
+- More flexibility creating our own MOI interface: We could use either MOI or GOI backends
+- No real reason to wrap the extra layer as a `Model`
 
 # Development Notes:
 
@@ -33,7 +34,6 @@ as the backend as opposed to its source graph. this is purely for performance an
 - we store such containers on the node's source graph
 - nodes and edges are light-weight in memory. They are associated with variables and constraints through the GraphBackend
 
-
 # OptiGraph Backends
 
 ## OptiGraph Backends
@@ -44,3 +44,7 @@ as the backend as opposed to its source graph. this is purely for performance an
 - MOI Backends (coordinate standard solvers)
 - GOI Backends (coordinate graph-based solvers)
 - DGOI Backend (hookup a distributed solver)
+
+# TODO
+- build backend from multiple graphs
+- standard hypergraph interface

@@ -81,6 +81,10 @@ function JuMP.backend(node::OptiNode)
     return JuMP.backend(graph_backend(node))
 end
 
+function JuMP.jump_function(node::OptiNode, vidx::MOI.VariableIndex)
+    return NodeVariableRef(node, vidx)
+end
+
 function JuMP.jump_function(
     node::OptiNode,
     f::MOI.ScalarAffineFunction{C},
@@ -93,6 +97,28 @@ function JuMP.jump_function(
     f::MOI.ScalarQuadraticFunction{C},
 ) where {C}
     return JuMP.GenericQuadExpr{C,NodeVariableRef}(node, f)
+end
+
+function jump_function(node::OptiNode, f::MOI.ScalarNonlinearFunction)
+    V = JuMP.variable_ref_type(typeof(node))
+    ret = GenericNonlinearExpr{V}(f.head, Any[])
+    stack = Tuple{GenericNonlinearExpr,Any}[]
+    for arg in reverse(f.args)
+        push!(stack, (ret, arg))
+    end
+    while !isempty(stack)
+        parent, arg = pop!(stack)
+        if arg isa MOI.ScalarNonlinearFunction
+            new_ret = GenericNonlinearExpr{V}(arg.head, Any[])
+            push!(parent.args, new_ret)
+            for child in reverse(arg.args)
+                push!(stack, (new_ret, child))
+            end
+        else
+            push!(parent.args, jump_function(node, arg))
+        end
+    end
+    return ret
 end
 
 function JuMP.num_constraints(
@@ -120,9 +146,10 @@ Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
 Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
 Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
 
+JuMP.variable_ref_type(node::Type{OptiNode{OptiGraph}}) = NodeVariableRef
+
 function JuMP.value(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
-    return MOI.get(gb, MOI.VariablePrimal(), nvref)
+    return MOI.get(graph_backend(nvref.node), MOI.VariablePrimal(), nvref)
 end
 
 """
@@ -173,22 +200,3 @@ function JuMP.add_constraint(
     cref = _moi_add_node_constraint(node, con)
     return cref
 end
-
-# """
-#     JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
-
-# Add a non-linear constraint to an optinode using a Julia expression.
-# """
-# function JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
-#     cref = JuMP.add_nonlinear_constraint(jump_model(node), expr)
-#     node_cref = ConstraintRef(node, cref.index, JuMP.ScalarShape())
-#     return node_cref
-# end
-
-# function JuMP.add_nonlinear_parameter(node::OptiNode, p::Real)
-#     return JuMP.add_nonlinear_parameter(jump_model(node), p)
-# end
-
-# function JuMP.add_nonlinear_expression(node::OptiNode, expr::Any)
-#     return JuMP.add_nonlinear_expression(jump_model(node), expr)
-# end
