@@ -56,6 +56,8 @@ function JuMP.optimize!(
     #     )
     #     MOI.set(model, MOI.NLPBlock(), MOI.NLPBlockData(evaluator))
     # end
+
+    # TODO: optimize hooks
     # If the user or an extension has provided an optimize hook, call
     # that instead of solving the model ourselves
     # if !ignore_optimize_hook
@@ -70,6 +72,12 @@ function JuMP.optimize!(
     if JuMP.mode(graph) != DIRECT && MOIU.state(JuMP.backend(graph)) == MOIU.NO_OPTIMIZER
         throw(JuMP.NoOptimizer())
     end
+
+    # TODO: check subgraphs; determine whether we need to aggregate
+    # if !(_optimizer_has_subgraphs(graph))
+    #     aggregate_backends!(graph)
+    # end
+
     try
         MOI.optimize!(JuMP.backend(graph))
     catch err

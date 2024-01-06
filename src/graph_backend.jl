@@ -183,13 +183,13 @@ function _moi_add_node_constraint(
     cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
 
     for graph in containing_optigraphs(node)
-        # TODO: i think we need to make copies here for moi_funcs
-        # moi_func_graph = copy(moi_func)
+        moi_func_graph = deepcopy(moi_func)
+
         # update func variable indices
-        _update_moi_func!(graph_backend(graph), moi_func, jump_func)
+        _update_moi_func!(graph_backend(graph), moi_func_graph, jump_func)
 
         # add to optinode backend
-        _add_node_constraint_to_backend(graph_backend(graph), cref, moi_func, moi_set)
+        _add_node_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
     end
     return cref
 end
@@ -219,6 +219,7 @@ end
 
 ### MOI Utilities
 
+#TODO: use copies for updating
 """
     _update_moi_func!(
         backend::GraphMOIBackend,
@@ -280,7 +281,7 @@ function _update_moi_func!(
     for i = 1:length(jump_func.args)
         jump_arg = jump_func.args[i]
         moi_arg = moi_func.args[i]
-        if typeof(jump_arg) == JuMP.GenericNonlinearExpr
+        if jump_arg isa JuMP.GenericNonlinearExpr
             _update_moi_func!(backend, moi_arg, jump_arg)
         elseif typeof(jump_arg) == NodeVariableRef
             moi_func.args[i] = backend.node_to_graph_map[jump_arg]
@@ -288,6 +289,9 @@ function _update_moi_func!(
     end
     return
 end
+
+### add variables to a backend for purpose of creating linking constraints or objectives 
+# across subgraphs
 
 function _add_backend_variables(
     backend::GraphMOIBackend,
@@ -328,7 +332,6 @@ function _add_backend_variables(
             push!(vars, jump_arg)
         end
     end
-
     vars_to_add = setdiff(vars, keys(backend.node_to_graph_map.var_map))
     for var in vars_to_add
         _add_variable_to_backend(backend, var)
@@ -358,11 +361,13 @@ function _moi_add_edge_constraint(
         # add backend variables if linking across optigraphs
         _add_backend_variables(graph_backend(graph), jump_func)
 
+        moi_func_graph = deepcopy(moi_func)
+
         # update the moi function variable indices
-        _update_moi_func!(graph_backend(graph), moi_func, jump_func)
+        _update_moi_func!(graph_backend(graph), moi_func_graph, jump_func)
 
         # add the constraint to the backend
-        _add_edge_constraint_to_backend(graph_backend(graph), cref, moi_func, moi_set)
+        _add_edge_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
     end
 
     return cref
@@ -446,50 +451,3 @@ function MOI.optimize!(graph_backend::GraphMOIBackend)
     MOI.optimize!(graph_backend.moi_backend)
     return nothing
 end
-
-### Helpful utilities
-
-# """
-#     append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
-
-# Copy the underylying model from `src` into `dest`, but ignore attributes
-# such as objective function and objective sense
-# """
-# function append_to_backend!(dest::MOI.ModelLike, src::MOI.ModelLike)
-#     vis_src = MOI.get(src, MOI.ListOfVariableIndices())   #returns vector of MOI.VariableIndex
-#     index_map = MOIU.IndexMap()
-
-#     # per the comment in MOI:
-#     # "The `NLPBlock` assumes that the order of variables does not change (#849)
-#     # Therefore, all VariableIndex and VectorOfVariable constraints are added
-#     # seprately, and no variables constrained-on-creation are added.""
-#     # Consequently, Plasmo avoids using the constrained-on-creation approach because
-#     # of the way it constructs the NLPBlock for the optimizer.
-
-#     # has_nlp = MOI.NLPBlock() in MOI.get(src, MOI.ListOfModelAttributesSet())
-#     # constraints_not_added = if has_nlp
-#     constraints_not_added = Any[
-#         MOI.get(src, MOI.ListOfConstraintIndices{F,S}()) for
-#         (F, S) in MOI.get(src, MOI.ListOfConstraintTypesPresent()) if
-#         MOIU._is_variable_function(F)
-#     ]
-#     # else
-#     #     Any[
-#     #         MOIU._try_constrain_variables_on_creation(dest, src, index_map, S)
-#     #         for S in MOIU.sorted_variable_sets_by_cost(dest, src)
-#     #     ]
-#     # end
-
-#     # Copy free variables into graph optimizer
-#     MOI.Utilities._copy_free_variables(dest, index_map, vis_src)
-
-#     # Copy variable attributes (e.g. name, and VariablePrimalStart())
-#     MOI.Utilities.pass_attributes(dest, src, index_map, vis_src)
-
-#     # Normally this copies ObjectiveSense() and ObjectiveFunction(), but we don't want to do that here
-#     #MOI.Utilities.pass_attributes(dest, src, idxmap)
-
-#     MOI.Utilities._pass_constraints(dest, src, index_map, constraints_not_added)
-
-#     return index_map    #return an idxmap for each source model
-# end

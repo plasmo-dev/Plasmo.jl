@@ -1,15 +1,16 @@
 mutable struct OptiGraph <: AbstractOptiGraph
     label::Symbol
 
-    # topology
-    optinodes::Vector{OptiNode}                  #Local optinodes
-    optiedges::Vector{OptiEdge}                  #Local optiedges
-    subgraphs::Vector{OptiGraph}
+    # topology: TODO: OrderedSets
+    optinodes::Vector{OptiNode}       # local optinodes
+    optiedges::Vector{OptiEdge}       # local optiedges
+    subgraphs::Vector{OptiGraph}      # local subgraphs
 
     # subgraphs keep a reference to their parent
     parent_graph::Union{Nothing,OptiGraph}
 
     # it is possible nodes and edges may use a parent graph as their model backend
+    # this is the case if constructing an optigraph from subgraphs
     optimizer_graph::OptiGraph
 
     # track node membership in other graphs; nodes use this to query different backends
@@ -52,6 +53,7 @@ mutable struct OptiGraph <: AbstractOptiGraph
     end
 end
 
+# TODO: numerical precision like JuMP Models do
 # JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
 
 function graph_backend(graph::OptiGraph)
@@ -135,15 +137,39 @@ end
 
 function add_subgraph(
     graph::OptiGraph; 
-    optimizer_graph=graph,
+    optimizer_graph=nothing,
     name::Symbol=Symbol(:sg,gensym())
 )
     subgraph = OptiGraph(; name=name)
     subgraph.parent_graph=graph
-    # TODO check provided model backend graph makes sense
-    subgraph.optimizer_graph = optimizer_graph
+    if optimizer_graph != nothing
+        if optimizer_graph in traverse_parents(subgraph)
+            subgraph.optimizer_graph = optimizer_graph
+        else
+            error("Invalid optigraph passed as `optimizer_graph`")
+        end
+    else
+        subgraph.optimizer_graph = subgraph
+    end
     push!(graph.subgraphs, subgraph)
     return subgraph
+end
+
+function traverse_parents(graph::OptiGraph)
+    parents = OptiGraph[]
+    if graph.parent_graph != nothing
+        push!(parents, graph.parent_graph)
+        append!(parents, traverse_parents(graph.parent_graph))
+    end
+    return parents
+end
+
+function _optimizer_has_subgraphs(graph::OptiGraph)
+    if all(sg -> sg.optimizer_graph == graph, graph.subgraphs)
+        return true
+    else
+        return false
+    end
 end
 
 ### Objective Function

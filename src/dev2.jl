@@ -1,4 +1,4 @@
-# dev file for subgraphs
+# dev file for subgraphs; single backend
 using Plasmo
 using HiGHS
 

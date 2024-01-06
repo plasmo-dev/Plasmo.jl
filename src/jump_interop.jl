@@ -63,7 +63,6 @@ function _moi_add_constraint(
 end
 
 ### Affine Expressions
-
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/aff_expr.jl
 
 function _assert_isfinite(a::JuMP.GenericAffExpr)
@@ -128,7 +127,6 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     edge::OptiEdge,
     f::MOI.ScalarAffineFunction,
 ) where {C}
-    println(f)
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     # build JuMP Affine Expression over edge variables
     for t in f.terms
@@ -173,7 +171,6 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
 end
 
 ### Quadratic Expressions
-
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/quad_expr.jl
 
 function _moi_quadratic_term(t::Tuple)
@@ -224,8 +221,6 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
     for t in f.quadratic_terms
         v1 = graph_backend(node).graph_to_node_map[t.variable_1].index
         v2 = graph_backend(node).graph_to_node_map[t.variable_2].index
-        # v1 = t.variable_1
-        # v2 = t.variable_2
         coef = t.coefficient
         if v1 == v2
             coef /= 2
@@ -345,7 +340,6 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
 end
 
 ### Nonlinear Expressions
-
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/nlp_expr.jl
 
 # OptiNode
@@ -354,7 +348,9 @@ JuMP.variable_ref_type(::Type{OptiNode{OptiGraph}}) = NodeVariableRef
 JuMP.jump_function(::OptiNode, x::Number) = convert(Float64, x)
 
 function JuMP.jump_function(node::OptiNode, vidx::MOI.VariableIndex)
-    return NodeVariableRef(node, vidx)
+    gb = graph_backend(node)
+    node_var = gb.graph_to_node_map[vidx]
+    return NodeVariableRef(node, node_var.index)
 end
 
 function JuMP.jump_function(node::OptiNode, f::MOI.ScalarNonlinearFunction)
