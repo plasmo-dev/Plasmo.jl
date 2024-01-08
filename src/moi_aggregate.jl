@@ -20,8 +20,10 @@ function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
     src = graph_backend(node)
     dest = graph_backend(graph)
 
-    node_variables = all_variables(node)
-    vis_src = graph_index.(node_variables) # variable indices on src graph
+    # node_variables = all_variables(node)
+    # vis_src = graph_index.(node_variables) # variable indices on src graph
+
+    vis_src = MOI.get(src, node, MOI.ListOfConstraintIndices())
 
     # TODO: get variable constraints specifically for this node
     # variable_constraints = Any[
@@ -70,6 +72,8 @@ function _copy_node_variables(
     return
 end
 
+# TODO
+
 function _copy_variable_node_constraints(dest::GraphMOIBackend, src::OptiNode)
     for cis in variable_constraints
         _copy_constraints(dest, src, index_map, cis)
@@ -106,9 +110,6 @@ function _copy_nonvariable_node_constraints(
     
     return
 end
-
-
-
 
 # function MOIU.pass_attributes(
 #     dest::GraphMOIBackend, 

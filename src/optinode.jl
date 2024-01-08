@@ -104,7 +104,6 @@ function JuMP.num_constraints(
 )::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     g2n = graph_backend(node).graph_to_node_map
     cons = MOI.get(JuMP.backend(node), MOI.ListOfConstraintIndices{F,S}())
-    println(cons)
     refs = [g2n[con] for con in cons]
     return length(filter((cref) -> cref.model == node, refs))
 end
