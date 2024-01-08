@@ -1,48 +1,4 @@
 ### directly copied functions from JuMP
-# TODO: attribute file
-function _moi_constrain_node_variable(
-    gb::GraphMOIBackend,
-    index,
-    info,
-    ::Type{T},
-) where {T}
-    if info.has_lb
-        _moi_add_constraint(
-            gb.moi_backend,
-            index,
-            MOI.GreaterThan{T}(info.lower_bound),
-        )
-    end
-    if info.has_ub
-        _moi_add_constraint(
-            gb.moi_backend,
-            index,
-            MOI.LessThan{T}(info.upper_bound),
-        )
-    end
-    if info.has_fix
-        _moi_add_constraint(
-            gb.moi_backend,
-            index,
-            MOI.EqualTo{T}(info.fixed_value),
-        )
-    end
-    if info.binary
-        _moi_add_constraint(gb.moi_backend, index, MOI.ZeroOne())
-    end
-    if info.integer
-        _moi_add_constraint(gb.moi_backend, index, MOI.Integer())
-    end
-    if info.has_start && info.start !== nothing
-        MOI.set(
-            gb.moi_backend,
-            MOI.VariablePrimalStart(),
-            index,
-            convert(T, info.start),
-        )
-    end
-end
-
 # copied from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/constraints.jl
 function _moi_add_constraint(
     model::MOI.ModelLike,

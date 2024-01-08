@@ -85,13 +85,26 @@ function JuMP.backend(node::OptiNode)
     return JuMP.backend(graph_backend(node))
 end
 
+# TODO: determine if caching node references is possible without dict-of-dicts
+function JuMP.all_variables(node::OptiNode)
+    return collect(
+        filter(var -> var.node == node, keys(graph_backend(node).node_to_graph_map.var_map))
+    )
+end
+
+function JuMP.num_variables(node::OptiNode)
+    n2g = graph_backend(node).node_to_graph_map
+    return length(filter((vref) -> vref.node == node, keys(n2g.var_map)))
+end
+
 function JuMP.num_constraints(
     node::OptiNode,
     ::Type{F}, 
     ::Type{S}
 )::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     g2n = graph_backend(node).graph_to_node_map
-    cons = MOI.get(JuMP.backend(node),MOI.ListOfConstraintIndices{F,S}())
+    cons = MOI.get(JuMP.backend(node), MOI.ListOfConstraintIndices{F,S}())
+    println(cons)
     refs = [g2n[con] for con in cons]
     return length(filter((cref) -> cref.model == node, refs))
 end
@@ -109,6 +122,10 @@ end
 Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
 Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
 Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
+
+function graph_index(vref::NodeVariableRef)
+    return graph_backend(vref.node).node_to_graph_map[vref]
+end
 
 """
     JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
@@ -151,10 +168,7 @@ function JuMP.set_name(vref::NodeVariableRef, s::String)
     return
 end
 
-function JuMP.num_variables(node::OptiNode)
-    n2g = graph_backend(node).node_to_graph_map
-    return length(filter((vref) -> vref.node == node, keys(n2g.var_map)))
-end
+
 
 ### Node Constraints
 

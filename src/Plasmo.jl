@@ -12,13 +12,7 @@ const MOI = MathOptInterface
 using Reexport
 @reexport using JuMP
 
-export OptiGraph
-
-# import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
-# import Base: ==, show, print, string, getindex, copy
-# import LightGraphs: AbstractGraph, AbstractEdge, Graph
-# import DataStructures.OrderedDict
-# import Base: ==, string, print, show
+export OptiGraph, graph_backend
 
 abstract type AbstractOptiGraph <: JuMP.AbstractModel end
 
@@ -28,7 +22,9 @@ include("optiedge.jl")
 
 include("optigraph.jl")
 
-include("graph_backend.jl")
+include("moi_graph_backend.jl")
+
+include("moi_aggregate.jl")
 
 include("optimizer_interface.jl")
 

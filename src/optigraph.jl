@@ -113,6 +113,7 @@ function add_node(
     node_index = NodeIndex(length(graph.optinodes)+1)
     optinode = OptiNode{OptiGraph}(graph, node_index, label)
     push!(graph.optinodes, optinode)
+    add_node(graph.backend, optinode)
     return optinode
 end
 

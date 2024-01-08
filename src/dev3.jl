@@ -19,6 +19,7 @@ n2 = Plasmo.add_node(sg1)
 @variable(n2, y >= 2)
 @constraint(n2, ref2, n2[:x] + n2[:y] <= 4)
 
+
 # linking constraint on subgraph1
 edge1 = Plasmo.add_edge(sg1, n1, n2)
 @constraint(edge1, ref_edge_1, n1[:x] == n2[:x])
@@ -73,3 +74,5 @@ optimize!(sg2)
 # @show value(n4[:y])
 
 # println(objective_value(graph))
+
+# Plasmo._append_node_to_backend!(graph, n1)

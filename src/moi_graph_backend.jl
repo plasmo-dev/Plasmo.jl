@@ -12,6 +12,18 @@ function NodeToGraphMap()
     )
 end
 
+# mutable struct NodeToGraphMap
+#     var_map::OrderedDict{NodeVariableRef,MOI.VariableIndex}
+#     con_map::OrderedDict{ConstraintRef,MOI.ConstraintIndex}
+# end
+# function NodeToGraphMap()
+#     return NodeToGraphMap(
+#         OrderedDict{NodeVariableRef,MOI.VariableIndex}(),
+#         OrderedDict{ConstraintRef,MOI.ConstraintIndex}(),
+#     )
+# end
+
+
 function Base.setindex!(n2g_map::NodeToGraphMap, idx::MOI.VariableIndex, vref::NodeVariableRef)
     n2g_map.var_map[vref] = idx
     return
@@ -68,19 +80,20 @@ end
 # try to support Direct, Manual, and Automatic modes on an optigraph.
 mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     optigraph::AbstractOptiGraph
-    # TODO: legacy nlp model
+    # TODO (maybe): legacy nlp model
     # nlp_model::MOI.Nonlinear.Model
     moi_backend::MOI.AbstractOptimizer
     node_to_graph_map::NodeToGraphMap
     graph_to_node_map::GraphToNodeMap
+    node_variables::OrderedDict{OptiNode,Vector{MOI.VariableIndex}}
+    node_constraints::OrderedDict{OptiNode,Vector{MOI.ConstraintIndex}}
 end
 
 """
     GraphMOIBackend()
 
-Initialize an empty optigraph backend. Contains a model_cache that can be used to set
-`MOI.AbstractModelAttribute`s and `MOI.AbstractOptimizerAttribute`s. By default we 
-use a `CachingOptimizer` to store the underlying optimizer.
+Initialize an empty optigraph backend that uses MOI. 
+By default we use a `CachingOptimizer` to store the underlying optimizer just like JuMP.
 """
 function GraphMOIBackend(optigraph::AbstractOptiGraph)
     inner = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
@@ -89,8 +102,15 @@ function GraphMOIBackend(optigraph::AbstractOptiGraph)
         optigraph,
         cache,
         NodeToGraphMap(),
-        GraphToNodeMap()
+        GraphToNodeMap(),
+        OrderedDict{OptiNode,Vector{MOI.VariableIndex}}(),
+        OrderedDict{OptiNode,Vector{MOI.ConstraintIndex}}()
     )
+end
+
+function add_node(gb::GraphMOIBackend, node::OptiNode)
+    gb.node_variables[node] = MOI.VariableIndex[]
+    gb.node_constraints[node] = MOI.ConstraintIndex[]
 end
 
 # JuMP Extension
@@ -135,8 +155,10 @@ function _moi_add_node_variable(
     # add variable to all containing optigraphs
     for graph in containing_optigraphs(node)
         graph_var_index = _add_variable_to_backend(graph_backend(graph), vref)
-         _moi_constrain_node_variable(
+        push!(graph_backend(graph).node_variables[node], graph_var_index)
+        _moi_constrain_node_variable(
             graph_backend(graph),
+            node,
             graph_var_index,
             v.info, 
             Float64
@@ -145,10 +167,68 @@ function _moi_add_node_variable(
     return vref
 end
 
+function _moi_constrain_node_variable(
+    gb::GraphMOIBackend,
+    node::OptiNode,
+    index,
+    info,
+    ::Type{T},
+) where {T}
+    #TODO: set local node constraint indices
+    if info.has_lb
+        # next_node_index = next_constraint_index(node, MOI.VariableIndex, MOI.GreaterThan{T})
+        con = _moi_add_constraint(
+            gb.moi_backend,
+            index,
+            MOI.GreaterThan{T}(info.lower_bound),
+        )
+        push!(gb.node_constraints[node], con)
+        #push!(gb.node_constraints[node], next_node_index)
+        # gb.node_to_graph_map.con_map[next_node_index] = con
+        # gb.graph_to_node_map.con_map[con] = next_node_index
+    end
+    if info.has_ub
+        con = _moi_add_constraint(
+            gb.moi_backend,
+            index,
+            MOI.LessThan{T}(info.upper_bound),
+        )
+        push!(gb.node_constraints[node], con)
+    end
+    if info.has_fix
+        con = _moi_add_constraint(
+            gb.moi_backend,
+            index,
+            MOI.EqualTo{T}(info.fixed_value),
+        )
+        push!(gb.node_constraints[node], con)
+    end
+    if info.binary
+        con = _moi_add_constraint(gb.moi_backend, index, MOI.ZeroOne())
+        push!(gb.node_constraints[node], con)
+    end
+    if info.integer
+        con = _moi_add_constraint(gb.moi_backend, index, MOI.Integer())
+        push!(gb.node_constraints[node], con)
+    end
+    if info.has_start && info.start !== nothing
+        MOI.set(
+            gb.moi_backend,
+            MOI.VariablePrimalStart(),
+            index,
+            convert(T, info.start),
+        )
+    end
+end
+
 function _add_variable_to_backend(
     graph_backend::GraphMOIBackend,
     vref::NodeVariableRef
 )
+    # return if variable already in backend
+    vref in keys(graph_backend.node_to_graph_map.var_map) && return
+
+    # add variable, track index
     graph_var_index = MOI.add_variable(graph_backend.moi_backend)
     graph_backend.node_to_graph_map[vref] = graph_var_index
     graph_backend.graph_to_node_map[graph_var_index] = vref
