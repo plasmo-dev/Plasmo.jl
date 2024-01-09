@@ -144,7 +144,7 @@ function _moi_add_node_variable(
     # add variable to all containing optigraphs
     for graph in containing_optigraphs(node)
         graph_var_index = _add_variable_to_backend(graph_backend(graph), vref)
-        push!(graph_backend(graph).node_variables[node], graph_var_index) # TODO: move
+        #push!(graph_backend(graph).node_variables[node], graph_var_index) # TODO: move
         _moi_constrain_node_variable(
             graph_backend(graph),
             vref,
@@ -204,6 +204,11 @@ function _add_variable_to_backend(
     graph_var_index = MOI.add_variable(graph_backend.moi_backend)
     graph_backend.node_to_graph_map[vref] = graph_var_index
     graph_backend.graph_to_node_map[graph_var_index] = vref
+
+    if !haskey(graph_backend.node_variables, vref.node)
+        graph_backend.node_variables[vref.node] = MOI.VariableIndex[]
+    end
+    push!(graph_backend.node_variables[vref.node], graph_var_index)
     return graph_var_index
 end
 
@@ -235,8 +240,6 @@ function _moi_add_node_constraint(
     cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
 
     for graph in containing_optigraphs(node)
-        # moi_func_graph = deepcopy(moi_func)
-
         # update func variable indices
         moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
 

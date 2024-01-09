@@ -87,16 +87,16 @@ end
 
 # TODO: determine if caching node references is possible without dict-of-dicts
 function JuMP.all_variables(node::OptiNode)
-    return collect(
-        filter(var -> var.node == node, keys(graph_backend(node).node_to_graph_map.var_map))
-    )
+    gb = graph_backend(node)
+    graph_indices = gb.node_variables[node]
+    return getindex.(Ref(gb.graph_to_node_map), graph_indices)
 end
 
 function JuMP.num_variables(node::OptiNode)
-    n2g = graph_backend(node).node_to_graph_map
-    return length(filter((vref) -> vref.node == node, keys(n2g.var_map)))
+    return length(graph_backend(node).node_variables[node])
 end
 
+# TODO: update
 function JuMP.num_constraints(
     node::OptiNode,
     ::Type{F}, 
@@ -167,8 +167,6 @@ function JuMP.set_name(vref::NodeVariableRef, s::String)
     return
 end
 
-
-
 ### Node Constraints
 
 """
@@ -182,4 +180,32 @@ function JuMP.add_constraint(
     con = JuMP.model_convert(node, con)
     cref = _moi_add_node_constraint(node, con)
     return cref
+end
+
+### MOI extensions for optinode
+# TODO: cache constraint types in graph backend versus using unique and filters?
+
+function MOI.get(node::OptiNode, attr::MOI.ListOfConstraintTypesPresent)
+    cons = graph_backend(node).node_constraints[node]
+    con_types = unique(typeof.(cons))
+    type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
+    return type_tuple
+end
+
+function MOI.get(
+    node::OptiNode, 
+    attr::MOI.ListOfConstraintIndices{F,S}
+) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
+    
+    con_inds = MOI.ConstraintIndex{F,S}[]
+    for con in graph_backend(node).node_constraints[node]
+        if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
+            push!(con_inds, con)
+        end
+    end
+    return con_inds
+    # return collect(filter(
+    #     con -> (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S),
+    #     graph_backend(node).node_constraints[node]
+    # ))
 end

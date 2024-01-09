@@ -12,7 +12,7 @@ const MOI = MathOptInterface
 using Reexport
 @reexport using JuMP
 
-export OptiGraph, graph_backend
+export OptiGraph, graph_backend, graph_index
 
 abstract type AbstractOptiGraph <: JuMP.AbstractModel end
 
