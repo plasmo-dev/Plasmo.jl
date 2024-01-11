@@ -184,7 +184,6 @@ end
 
 ### MOI extensions for optinode
 # TODO: cache constraint types in graph backend versus using unique and filters?
-
 function MOI.get(node::OptiNode, attr::MOI.ListOfConstraintTypesPresent)
     cons = graph_backend(node).node_constraints[node]
     con_types = unique(typeof.(cons))
@@ -196,7 +195,6 @@ function MOI.get(
     node::OptiNode, 
     attr::MOI.ListOfConstraintIndices{F,S}
 ) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
-    
     con_inds = MOI.ConstraintIndex{F,S}[]
     for con in graph_backend(node).node_constraints[node]
         if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
@@ -204,8 +202,4 @@ function MOI.get(
         end
     end
     return con_inds
-    # return collect(filter(
-    #     con -> (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S),
-    #     graph_backend(node).node_constraints[node]
-    # ))
 end

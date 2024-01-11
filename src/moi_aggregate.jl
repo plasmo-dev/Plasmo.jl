@@ -39,7 +39,7 @@ function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
         variable_constraint_types
     )
 
-    # # copy non-variable constraints
+    # copy non-variable constraints
     nonvariable_constraint_types = filter(all_constraint_types) do (F, S)
         return !MOIU._is_variable_function(F)
     end
@@ -55,7 +55,6 @@ function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
     return
 end
 
-# TODO: update graph backend mappings
 function _copy_node_variables(
     dest::GraphMOIBackend,
     node::OptiNode,
@@ -93,12 +92,12 @@ function _copy_node_constraints(
     index_map::MOIU.IndexMap,
     constraint_types
 )
-    src = graph_backend(node)
     for (F, S) in constraint_types
         cis_src = MOI.get(node, MOI.ListOfConstraintIndices{F,S}())
-        MOIU._copy_constraints(dest.moi_backend, src.moi_backend, index_map, cis_src)
+        _copy_node_constraints(dest, node, index_map, cis_src)
     end
-
+    
+    src = graph_backend(node)
     for (F, S) in constraint_types
         MOIU.pass_attributes(
             dest.moi_backend,
@@ -106,6 +105,38 @@ function _copy_node_constraints(
             index_map,
             MOI.get(node, MOI.ListOfConstraintIndices{F,S}()),
         )
+    end
+    return
+end
+
+function _copy_node_constraints(
+    dest::GraphMOIBackend, 
+    node::OptiNode, 
+    index_map::MOIU.IndexMap, 
+    cis_src::Vector{MOI.ConstraintIndex{F,S}}
+) where {F,S}
+    return _copy_node_constraints(dest, node, index_map, index_map[F, S], cis_src)
+end
+
+function _copy_node_constraints(
+    dest::GraphMOIBackend,
+    node::OptiNode,
+    index_map::MOIU.IndexMap,
+    index_map_FS,
+    cis_src::Vector{<:MOI.ConstraintIndex},
+)
+    src = graph_backend(node)
+    for ci in cis_src
+        f = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
+        s = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
+        cref = src.graph_to_node_map[ci]
+        dest_index = _add_node_constraint_to_backend(
+            dest,
+            cref,
+            MOIU.map_indices(index_map, f), 
+            s
+        )
+        index_map_FS[ci] = dest_index
     end
     return
 end

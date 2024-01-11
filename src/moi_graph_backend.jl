@@ -205,6 +205,7 @@ function _add_variable_to_backend(
     graph_backend.node_to_graph_map[vref] = graph_var_index
     graph_backend.graph_to_node_map[graph_var_index] = vref
 
+    # create key for node if necessary
     if !haskey(graph_backend.node_variables, vref.node)
         graph_backend.node_variables[vref.node] = MOI.VariableIndex[]
     end
@@ -255,6 +256,9 @@ function _add_node_constraint_to_backend(
     func::F,
     set::S
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    if !haskey(graph_backend.node_constraints, cref.model)
+        graph_backend.node_constraints[cref.model] = MOI.ConstraintIndex[]
+    end
     graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
     graph_backend.node_to_graph_map[cref] = graph_con_index
     graph_backend.graph_to_node_map[graph_con_index] = cref
