@@ -61,7 +61,7 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
 ) where {C}
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     for t in f.terms
-        node_var_index = graph_backend(node).graph_to_node_map[t.variable].index
+        node_var_index = graph_backend(node).graph_to_element_map[t.variable].index
         JuMP.add_to_expression!(
             aff,
             t.coefficient,
@@ -86,7 +86,7 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     # build JuMP Affine Expression over edge variables
     for t in f.terms
-        node_var = graph_backend(edge).graph_to_node_map[t.variable]
+        node_var = graph_backend(edge).graph_to_element_map[t.variable]
         node = node_var.node
         node_index = node_var.index
         JuMP.add_to_expression!(
@@ -114,7 +114,7 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     # build JuMP Affine Expression over func variables
     for t in f.terms
         gb = graph_backend(graph)
-        node_var = gb.graph_to_node_map[t.variable]
+        node_var = gb.graph_to_element_map[t.variable]
         node = node_var.node
         node_index = node_var.index
         JuMP.add_to_expression!(
@@ -175,8 +175,8 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
         ),
     )
     for t in f.quadratic_terms
-        v1 = graph_backend(node).graph_to_node_map[t.variable_1].index
-        v2 = graph_backend(node).graph_to_node_map[t.variable_2].index
+        v1 = graph_backend(node).graph_to_element_map[t.variable_1].index
+        v2 = graph_backend(node).graph_to_element_map[t.variable_2].index
         coef = t.coefficient
         if v1 == v2
             coef /= 2
@@ -223,12 +223,12 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
         end
 
         # variable index 1
-        node_var_1 = graph_backend(edge).graph_to_node_map[v1]
+        node_var_1 = graph_backend(edge).graph_to_element_map[v1]
         node1 = node_var_1.node
         var_index_1 = node_var_1.index
 
         # variable index 2
-        node_var_2 = graph_backend(edge).graph_to_node_map[v2]
+        node_var_2 = graph_backend(edge).graph_to_element_map[v2]
         node2 = node_var_2.node
         var_index_2 = node_var_2.index
 
@@ -275,12 +275,12 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
         end
 
         # variable index 1
-        node_var_1 = gb.graph_to_node_map[v1]
+        node_var_1 = gb.graph_to_element_map[v1]
         node1 = node_var_1.node
         var_index_1 = node_var_1.index
 
         # variable index 2
-        node_var_2 = gb.graph_to_node_map[v2]
+        node_var_2 = gb.graph_to_element_map[v2]
         node2 = node_var_2.node
         var_index_2 = node_var_2.index
 
@@ -305,7 +305,7 @@ JuMP.jump_function(::OptiNode, x::Number) = convert(Float64, x)
 
 function JuMP.jump_function(node::OptiNode, vidx::MOI.VariableIndex)
     gb = graph_backend(node)
-    node_var = gb.graph_to_node_map[vidx]
+    node_var = gb.graph_to_element_map[vidx]
     return NodeVariableRef(node, node_var.index)
 end
 
@@ -337,7 +337,7 @@ JuMP.variable_ref_type(::Type{OptiEdge{OptiGraph}}) = NodeVariableRef
 JuMP.jump_function(::OptiEdge, x::Number) = convert(Float64, x)
 
 function JuMP.jump_function(edge::OptiEdge, vidx::MOI.VariableIndex)
-    node_var = graph_backend(edge).graph_to_node_map[vidx]
+    node_var = graph_backend(edge).graph_to_element_map[vidx]
     node = node_var.node
     node_idx = node_var.index
     return NodeVariableRef(node, node_idx)
@@ -371,7 +371,7 @@ JuMP.variable_ref_type(::Type{OptiGraph}) = NodeVariableRef
 JuMP.jump_function(::OptiGraph, x::Number) = convert(Float64, x)
 
 function JuMP.jump_function(graph::OptiGraph, vidx::MOI.VariableIndex)
-    node_var = graph_backend(graph).graph_to_node_map[vidx]
+    node_var = graph_backend(graph).graph_to_element_map[vidx]
     node = node_var.node
     node_idx = node_var.index
     return NodeVariableRef(node, node_idx)

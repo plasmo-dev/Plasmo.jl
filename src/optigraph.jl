@@ -117,9 +117,31 @@ function add_node(
     return optinode
 end
 
+"""
+    get_subgraphs(graph::OptiGraph)::Vector{OptiGraph}
+
+Retrieve the local subgraphs of `graph`.
+"""
+function get_subgraphs(optigraph::OptiGraph)
+    return optigraph.subgraphs
+end
+
+"""
+    all_nodes(graph::OptiGraph)::Vector{OptiNode}
+
+Recursively collect all optinodes in `graph` by traversing each of its subgraphs.
+"""
+function all_nodes(graph::OptiGraph)
+    nodes = graph.optinodes
+    for subgraph in graph.subgraphs
+        nodes = [nodes; all_nodes(subgraph)]
+    end
+    return nodes
+end
+
 function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
     gb = graph_backend(graph)
-    return gb.node_to_graph_map[vref]
+    return gb.element_to_graph_map[vref]
 end
 
 ### Add Edges

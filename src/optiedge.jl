@@ -68,6 +68,26 @@ function MOI.get(edge::OptiEdge, attr::MOI.AbstractConstraintAttribute, ref::Con
     return MOI.get(graph_backend(edge), attr, ref)
 end
 
+function MOI.get(edge::OptiEdge, attr::MOI.ListOfConstraintTypesPresent)
+    cons = graph_backend(edge).edge_constraints[edge]
+    con_types = unique(typeof.(cons))
+    type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
+    return type_tuple
+end
+
+function MOI.get(
+    edge::OptiEdge, 
+    attr::MOI.ListOfConstraintIndices{F,S}
+) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
+    con_inds = MOI.ConstraintIndex{F,S}[]
+    for con in graph_backend(edge).edge_constraints[edge]
+        if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
+            push!(con_inds, con)
+        end
+    end
+    return con_inds
+end
+
 function JuMP.object_dictionary(edge::OptiEdge)
     return edge.source_graph.edge_obj_dict
 end
@@ -82,7 +102,7 @@ function JuMP.num_constraints(
     ::Type{S}
 )::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     # TODO: more efficent method to track number of constraints on nodes and edges
-    g2e = graph_backend(edge).graph_to_node_map
+    g2e = graph_backend(edge).graph_to_element_map
     cons = MOI.get(JuMP.backend(edge),MOI.ListOfConstraintIndices{F,S}())
     refs = [g2e[con] for con in cons]
     return length(filter((cref) -> cref.model == edge, refs))
