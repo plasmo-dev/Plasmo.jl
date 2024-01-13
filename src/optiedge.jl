@@ -69,7 +69,7 @@ function MOI.get(edge::OptiEdge, attr::MOI.AbstractConstraintAttribute, ref::Con
 end
 
 function MOI.get(edge::OptiEdge, attr::MOI.ListOfConstraintTypesPresent)
-    cons = graph_backend(edge).edge_constraints[edge]
+    cons = graph_backend(edge).element_constraints[edge]
     con_types = unique(typeof.(cons))
     type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
     return type_tuple
@@ -80,7 +80,7 @@ function MOI.get(
     attr::MOI.ListOfConstraintIndices{F,S}
 ) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
     con_inds = MOI.ConstraintIndex{F,S}[]
-    for con in graph_backend(edge).edge_constraints[edge]
+    for con in graph_backend(edge).element_constraints[edge]
         if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
             push!(con_inds, con)
         end
@@ -96,16 +96,20 @@ function JuMP.backend(edge::OptiEdge)
     return JuMP.backend(graph_backend(edge))
 end
 
+function JuMP.all_variables(edge::OptiEdge)
+    gb = graph_backend(edge)
+    con_refs = getindex.(Ref(gb.graph_to_element_map), gb.element_constraints[edge])
+    vars = vcat(_extract_variables.(con_refs)...)
+    return unique(vars)
+end
+
 function JuMP.num_constraints(
     edge::OptiEdge,
     ::Type{F}, 
     ::Type{S}
 )::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    # TODO: more efficent method to track number of constraints on nodes and edges
-    g2e = graph_backend(edge).graph_to_element_map
-    cons = MOI.get(JuMP.backend(edge),MOI.ListOfConstraintIndices{F,S}())
-    refs = [g2e[con] for con in cons]
-    return length(filter((cref) -> cref.model == edge, refs))
+    cons = MOI.get(edge, MOI.ListOfConstraintIndices{F,S}())
+    return length(cons)
 end
 
 ### Edge Constraints
@@ -115,6 +119,35 @@ function JuMP.add_constraint(
 )
     con = JuMP.model_convert(edge, con)
     cref = _moi_add_edge_constraint(edge, con)
-    # TODO: set constraint name
     return cref
+end
+
+### Utilities for querying variables used in constraints
+
+function _extract_variables(ref::ConstraintRef)
+    func = JuMP.jump_function(JuMP.constraint_object(ref))
+    return _extract_variables(func)
+end
+
+function _extract_variables(func::JuMP.GenericAffExpr)
+    return collect(keys(func.terms))
+end
+
+function _extract_variables(func::JuMP.GenericQuadExpr)
+    quad_vars = vcat([[term[2];term[3]] for term in JuMP.quad_terms(func)]...)
+    aff_vars = _extract_variables(func.aff)
+    return union(quad_vars,aff_vars)
+end
+
+function _extract_variables(func::JuMP.GenericNonlinearExpr)
+    vars = NodeVariableRef[]
+    for i = 1:length(func.args)
+        func_arg = func.args[i]
+        if func_arg isa JuMP.GenericNonlinearExpr
+            append!(vars, _extract_variables(func_arg))
+        elseif typeof(func_arg) == NodeVariableRef
+            push!(vars, func_arg)
+        end
+    end
+    return vars
 end

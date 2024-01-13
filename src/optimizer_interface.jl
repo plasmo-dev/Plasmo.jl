@@ -73,10 +73,9 @@ function JuMP.optimize!(
         throw(JuMP.NoOptimizer())
     end
 
-    # TODO: check subgraphs; determine whether we need to aggregate
-    # if !(_optimizer_has_subgraphs(graph))
-    #     aggregate_backends!(graph)
-    # end
+    if !(_optimizer_has_full_backend(graph))
+        aggregate_backends!(graph)
+    end
 
     try
         MOI.optimize!(JuMP.backend(graph))
@@ -92,4 +91,13 @@ function JuMP.optimize!(
     end
     graph.is_model_dirty = false
     return
+end
+
+# to do; easier check if we already aggregated
+function _optimizer_has_full_backend(graph::OptiGraph)
+    if all(sg -> sg.optimizer_graph == graph, graph.subgraphs)
+        return true
+    else
+        return false
+    end
 end

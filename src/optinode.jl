@@ -79,7 +79,7 @@ end
 
 # TODO: look into caching constraint types in graph backend versus using unique and filters
 function MOI.get(node::OptiNode, attr::MOI.ListOfConstraintTypesPresent)
-    cons = graph_backend(node).node_constraints[node]
+    cons = graph_backend(node).element_constraints[node]
     con_types = unique(typeof.(cons))
     type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
     return type_tuple
@@ -90,7 +90,7 @@ function MOI.get(
     attr::MOI.ListOfConstraintIndices{F,S}
 ) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
     con_inds = MOI.ConstraintIndex{F,S}[]
-    for con in graph_backend(node).node_constraints[node]
+    for con in graph_backend(node).element_constraints[node]
         if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
             push!(con_inds, con)
         end

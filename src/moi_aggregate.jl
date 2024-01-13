@@ -5,20 +5,23 @@ Aggregate the moi backends from each subgraph within `graph` to create a single 
 """
 function aggregate_backends!(graph::OptiGraph)
     for subgraph in get_subgraphs(graph)
-        _aggregate_subgraph_nodes!(graph, subgraph)
-        # _aggregate_subgraph_edges!(subgraph)
+        _copy_subgraph_nodes!(graph, subgraph)
+        _copy_subgraph_edges!(graph, subgraph)
+
+        # TODO: pass non-objective graph attributes (use an MOI Filter?)
+
     end
 end
 
-function _aggregate_subgraph_nodes!(graph::OptiGraph, subgraph::OptiGraph)
+function _copy_subgraph_nodes!(graph::OptiGraph, subgraph::OptiGraph)
     for node in all_nodes(subgraph)
         _append_node_to_backend!(graph, node)
     end
 end
 
-function _aggregate_subgraph_edges!(graph::OptiGraph, subgraph::OptiGraph)
-    for edges in all_edges(subgraph)
-        _append_edge_to_backend!(graph, node)
+function _copy_subgraph_edges!(graph::OptiGraph, subgraph::OptiGraph)
+    for edge in all_edges(subgraph)
+        _append_edge_to_backend!(graph, edge)
     end
 end
 
@@ -38,7 +41,7 @@ function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
     variable_constraint_types = filter(all_constraint_types) do (F, S)
         return MOIU._is_variable_function(F)
     end
-    _copy_node_constraints(
+    _copy_element_constraints(
         dest, 
         node,
         index_map, 
@@ -49,15 +52,12 @@ function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
     nonvariable_constraint_types = filter(all_constraint_types) do (F, S)
         return !MOIU._is_variable_function(F)
     end
-    _copy_node_constraints(
+    _copy_element_constraints(
         dest,
         node,
         index_map,
         nonvariable_constraint_types
     )
-
-    # TODO: pass non-objective graph attributes (use an MOI Filter?)
-
     return
 end
 
@@ -91,52 +91,53 @@ function _copy_node_variables(
     return
 end
 
-function _copy_node_constraints(
+function _copy_element_constraints(
     dest::GraphMOIBackend, 
-    node::OptiNode,
+    element::OptiElement,
     index_map::MOIU.IndexMap,
     constraint_types
 )
     for (F, S) in constraint_types
-        cis_src = MOI.get(node, MOI.ListOfConstraintIndices{F,S}())
-        _copy_node_constraints(dest, node, index_map, cis_src)
+        cis_src = MOI.get(element, MOI.ListOfConstraintIndices{F,S}())
+        _copy_element_constraints(dest, element, index_map, cis_src)
     end
     
-    src = graph_backend(node)
+    # pass constraint attributes
+    src = graph_backend(element)
     for (F, S) in constraint_types
         MOIU.pass_attributes(
             dest.moi_backend,
             src.moi_backend,
             index_map,
-            MOI.get(node, MOI.ListOfConstraintIndices{F,S}()),
+            MOI.get(element, MOI.ListOfConstraintIndices{F,S}()),
         )
     end
     return
 end
 
-function _copy_node_constraints(
+function _copy_element_constraints(
     dest::GraphMOIBackend, 
-    node::OptiNode, 
+    element::OptiElement, 
     index_map::MOIU.IndexMap, 
     cis_src::Vector{MOI.ConstraintIndex{F,S}}
 ) where {F,S}
-    return _copy_node_constraints(dest, node, index_map, index_map[F, S], cis_src)
+    return _copy_element_constraints(dest, element, index_map, index_map[F, S], cis_src)
 end
 
-function _copy_node_constraints(
+function _copy_element_constraints(
     dest::GraphMOIBackend,
-    node::OptiNode,
+    element::OptiElement,
     index_map::MOIU.IndexMap,
     index_map_FS,
     cis_src::Vector{<:MOI.ConstraintIndex},
 )
-    src = graph_backend(node)
+    src = graph_backend(element)
     for ci in cis_src
         f = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
         s = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
         cref = src.graph_to_element_map[ci]
         cref in keys(dest.element_to_graph_map.con_map) && return
-        dest_index = _add_node_constraint_to_backend(
+        dest_index = _add_element_constraint_to_backend(
             dest,
             cref,
             MOIU.map_indices(index_map, f), 
@@ -150,10 +151,17 @@ end
 function _append_edge_to_backend!(graph::OptiGraph, edge::OptiEdge)
     src = graph_backend(edge)
     dest = graph_backend(graph)
-    index_map = MOIU.IndexMap()
 
+    # populate index map with node data for src -- > dest
+    index_map = MOIU.IndexMap()
+    vars = all_variables(edge)
+    for var in vars
+        index_map[src.element_to_graph_map[var]] = dest.element_to_graph_map[var]
+    end
+
+    # copy the constraints
     constraint_types = MOI.get(edge, MOI.ListOfConstraintTypesPresent())
-    _copy_edge_constraints(
+    _copy_element_constraints(
         dest,
         edge,
         index_map,

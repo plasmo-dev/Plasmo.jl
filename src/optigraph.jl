@@ -1,10 +1,12 @@
+const OptiElement = Union{OptiNode,OptiEdge}
+
 mutable struct OptiGraph <: AbstractOptiGraph
     label::Symbol
 
     # topology: TODO: OrderedSets
-    optinodes::Vector{OptiNode}       # local optinodes
-    optiedges::Vector{OptiEdge}       # local optiedges
-    subgraphs::Vector{OptiGraph}      # local subgraphs
+    optinodes::OrderedSet{OptiNode}       # local optinodes
+    optiedges::OrderedSet{OptiEdge}       # local optiedges
+    subgraphs::OrderedSet{OptiGraph}      # local subgraphs
 
     # subgraphs keep a reference to their parent
     parent_graph::Union{Nothing,OptiGraph}
@@ -31,9 +33,9 @@ mutable struct OptiGraph <: AbstractOptiGraph
     #Constructor
     function OptiGraph(;name::Symbol=Symbol(:g,gensym()))
         optigraph = new()
-        optigraph.optinodes = Vector{OptiNode}()
-        optigraph.optiedges = Vector{OptiEdge}()
-        optigraph.subgraphs = Vector{OptiGraph}()
+        optigraph.optinodes = OrderedSet{OptiNode}()
+        optigraph.optiedges = OrderedSet{OptiEdge}()
+        optigraph.subgraphs = OrderedSet{OptiGraph}()
         optigraph.parent_graph = nothing
         optigraph.optimizer_graph = optigraph
 
@@ -53,107 +55,17 @@ mutable struct OptiGraph <: AbstractOptiGraph
     end
 end
 
-# TODO: numerical precision like JuMP Models do
-# JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
-
-function graph_backend(graph::OptiGraph)
-    return graph.backend
-end
-
 function Base.string(graph::OptiGraph)
     return "OptiGraph" * " " * string(graph.label)
 end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 
-### JuMP Extension
+# TODO: numerical precision like JuMP Models do
+# JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
 
-function MOI.get(graph::OptiGraph, attr::MOI.AnyAttribute)
-    MOI.get(graph_backend(graph), attr)
-end
-
-function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...)
-    MOI.set(graph_backend(graph), attr, args...)
-end
-
-function JuMP.backend(graph::OptiGraph)
-    return graph_backend(graph).moi_backend
-end
-
-function JuMP.object_dictionary(graph::OptiGraph)
-    return graph.obj_dict
-end
-
-function JuMP.add_nonlinear_operator(
-    graph::OptiGraph,
-    dim::Int,
-    f::Function,
-    args::Vararg{Function,N};
-    name::Symbol = Symbol(f),
-) where {N}
-    nargs = 1 + N
-    if !(1 <= nargs <= 3)
-        error(
-            "Unable to add operator $name: invalid number of functions " *
-            "provided. Got $nargs, but expected 1 (if function only), 2 (if " *
-            "function and gradient), or 3 (if function, gradient, and " *
-            "hesssian provided)",
-        )
-    end
-    MOI.set(graph, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
-    return JuMP.NonlinearOperator(f, name)
-end
-
-### Add Node
-
-function add_node(
-    graph::OptiGraph; 
-    label=Symbol(graph.label,Symbol(".n"),length(graph.optinodes)+1)
-)
-    node_index = NodeIndex(length(graph.optinodes)+1)
-    optinode = OptiNode{OptiGraph}(graph, node_index, label)
-    push!(graph.optinodes, optinode)
-    add_node(graph.backend, optinode)
-    return optinode
-end
-
-"""
-    get_subgraphs(graph::OptiGraph)::Vector{OptiGraph}
-
-Retrieve the local subgraphs of `graph`.
-"""
-function get_subgraphs(optigraph::OptiGraph)
-    return optigraph.subgraphs
-end
-
-"""
-    all_nodes(graph::OptiGraph)::Vector{OptiNode}
-
-Recursively collect all optinodes in `graph` by traversing each of its subgraphs.
-"""
-function all_nodes(graph::OptiGraph)
-    nodes = graph.optinodes
-    for subgraph in graph.subgraphs
-        nodes = [nodes; all_nodes(subgraph)]
-    end
-    return nodes
-end
-
-function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
-    gb = graph_backend(graph)
-    return gb.element_to_graph_map[vref]
-end
-
-### Add Edges
-
-function add_edge(
-    graph::OptiGraph,
-    nodes::OptiNode...;
-    label=Symbol(graph.label,Symbol(".e"),length(graph.optiedges)+1)
-)
-    edge = OptiEdge{OptiGraph}(graph, label, OrderedSet(collect(nodes)))
-    push!(graph.optiedges, edge)
-    return edge
+function graph_backend(graph::OptiGraph)
+    return graph.backend
 end
 
 ### Add subgraph
@@ -187,12 +99,116 @@ function traverse_parents(graph::OptiGraph)
     return parents
 end
 
-function _optimizer_has_subgraphs(graph::OptiGraph)
-    if all(sg -> sg.optimizer_graph == graph, graph.subgraphs)
-        return true
-    else
-        return false
+### Add nodes
+
+function add_node(
+    graph::OptiGraph; 
+    label=Symbol(graph.label,Symbol(".n"),length(graph.optinodes)+1)
+)
+    node_index = NodeIndex(length(graph.optinodes)+1)
+    optinode = OptiNode{OptiGraph}(graph, node_index, label)
+    push!(graph.optinodes, optinode)
+    add_node(graph.backend, optinode)
+    return optinode
+end
+
+"""
+    all_nodes(graph::OptiGraph)::Vector{OptiNode}
+
+Recursively collect all optinodes in `graph` by traversing each of its subgraphs.
+"""
+function all_nodes(graph::OptiGraph)
+    nodes = graph.optinodes
+    for subgraph in graph.subgraphs
+        nodes = [nodes; all_nodes(subgraph)]
     end
+    return nodes
+end
+
+### Add edges
+
+function add_edge(
+    graph::OptiGraph,
+    nodes::OptiNode...;
+    label=Symbol(graph.label,Symbol(".e"),length(graph.optiedges)+1)
+)
+    edge = OptiEdge{OptiGraph}(graph, label, OrderedSet(collect(nodes)))
+    push!(graph.optiedges, edge)
+    add_edge(graph.backend, edge)
+    return edge
+end
+
+"""
+    all_edges(graph::OptiGraph)::Vector{OptiNode}
+
+Recursively collect all optiedges in `graph` by traversing each of its subgraphs.
+"""
+function all_edges(graph::OptiGraph)
+    edges = graph.optiedges
+    for subgraph in graph.subgraphs
+        edges = [edges; all_edges(subgraph)]
+    end
+    return edges
+end
+
+### Add subgraphs
+
+"""
+    get_subgraphs(graph::OptiGraph)::Vector{OptiGraph}
+
+Retrieve the local subgraphs of `graph`.
+"""
+function get_subgraphs(optigraph::OptiGraph)
+    return optigraph.subgraphs
+end
+
+### MOI Extension
+
+function MOI.get(graph::OptiGraph, attr::MOI.AnyAttribute)
+    MOI.get(graph_backend(graph), attr)
+end
+
+function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...)
+    MOI.set(graph_backend(graph), attr, args...)
+end
+
+### JuMP Extension
+
+function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
+    gb = graph_backend(graph)
+    return gb.element_to_graph_map[vref]
+end
+
+function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int = 1)
+    return MOI.get(graph_backend(graph), MOI.VariablePrimal(result), nvref)
+end
+
+function JuMP.backend(graph::OptiGraph)
+    return graph_backend(graph).moi_backend
+end
+
+function JuMP.object_dictionary(graph::OptiGraph)
+    return graph.obj_dict
+end
+
+function JuMP.add_nonlinear_operator(
+    graph::OptiGraph,
+    dim::Int,
+    f::Function,
+    args::Vararg{Function,N};
+    name::Symbol = Symbol(f),
+) where {N}
+    nargs = 1 + N
+    if !(1 <= nargs <= 3)
+        error(
+            "Unable to add operator $name: invalid number of functions " *
+            "provided. Got $nargs, but expected 1 (if function only), 2 (if " *
+            "function and gradient), or 3 (if function, gradient, and " *
+            "hesssian provided)",
+        )
+    end
+    MOI.set(graph, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
+    return JuMP.NonlinearOperator(f, name)
 end
 
 ### Objective Function

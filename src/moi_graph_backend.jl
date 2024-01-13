@@ -75,8 +75,8 @@ mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
 
     # map of variables and constraints on nodes and edges to graph backend indices
     node_variables::OrderedDict{OptiNode,Vector{MOI.VariableIndex}}
-    node_constraints::OrderedDict{OptiNode,Vector{MOI.ConstraintIndex}}
-    edge_constraints::OrderedDict{OptiEdge,Vector{MOI.ConstraintIndex}}
+    element_constraints::OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}
+    #edge_constraints::OrderedDict{OptiEdge,Vector{MOI.ConstraintIndex}}
 
     # TODO (maybe): legacy JuMP nonlinear support
     # nlp_model::MOI.Nonlinear.Model
@@ -97,14 +97,18 @@ function GraphMOIBackend(optigraph::AbstractOptiGraph)
         ElementToGraphMap(),
         GraphToElementMap(),
         OrderedDict{OptiNode,Vector{MOI.VariableIndex}}(),
-        OrderedDict{OptiNode,Vector{MOI.ConstraintIndex}}(),
-        OrderedDict{OptiEdge,Vector{MOI.ConstraintIndex}}()
+        OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}(),
+        #OrderedDict{OptiEdge,Vector{MOI.ConstraintIndex}}()
     )
 end
 
 function add_node(gb::GraphMOIBackend, node::OptiNode)
     gb.node_variables[node] = MOI.VariableIndex[]
-    gb.node_constraints[node] = MOI.ConstraintIndex[]
+    gb.element_constraints[node] = MOI.ConstraintIndex[]
+end
+
+function add_edge(gb::GraphMOIBackend, edge::OptiEdge)
+    gb.element_constraints[edge] = MOI.ConstraintIndex[]
 end
 
 # JuMP Extension
@@ -218,7 +222,7 @@ function _add_variable_to_backend(
     return graph_var_index
 end
 
-### Node Constraints
+### Constraints
 
 function next_constraint_index(
     node::OptiNode, 
@@ -250,29 +254,11 @@ function _moi_add_node_constraint(
         moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
 
         # add to optinode backend
-        _add_node_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
+        # _add_node_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
+        _add_element_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
     end
     return cref
 end
-
-function _add_node_constraint_to_backend(
-    graph_backend::GraphMOIBackend,
-    cref::ConstraintRef,
-    func::F,
-    set::S
-) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    cref in keys(graph_backend.element_to_graph_map.con_map) && return
-    if !haskey(graph_backend.node_constraints, cref.model)
-        graph_backend.node_constraints[cref.model] = MOI.ConstraintIndex[]
-    end
-    graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
-    graph_backend.element_to_graph_map[cref] = graph_con_index
-    graph_backend.graph_to_element_map[graph_con_index] = cref
-    push!(graph_backend.node_constraints[cref.model], graph_con_index)
-    return graph_con_index
-end
-
-### Edge Constraints
 
 function next_constraint_index(
     edge::OptiEdge, 
@@ -281,6 +267,55 @@ function next_constraint_index(
 )::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     index = num_constraints(edge, F, S)
     return MOI.ConstraintIndex{F,S}(index + 1)
+end
+
+function _moi_add_edge_constraint(
+    edge::OptiEdge,
+    con::JuMP.AbstractConstraint
+)
+    # get moi function and set
+    jump_func = JuMP.jump_function(con)
+    moi_func = JuMP.moi_function(con)
+    moi_set = JuMP.moi_set(con)
+
+    # create constraint index and reference
+    constraint_index = next_constraint_index(
+        edge, 
+        typeof(moi_func), 
+        typeof(moi_set)
+    )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
+    cref = ConstraintRef(edge, constraint_index, JuMP.shape(con))
+
+    # update graph backends
+    for graph in containing_optigraphs(edge)
+        # add backend variables if linking across optigraphs
+        _add_backend_variables(graph_backend(graph), jump_func)
+
+        # update the moi function variable indices
+        moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
+
+        # add the constraint to the backend
+        _add_element_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
+    end
+
+    return cref
+end
+
+function _add_element_constraint_to_backend(
+    graph_backend::GraphMOIBackend,
+    cref::ConstraintRef,
+    func::F,
+    set::S
+) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    cref in keys(graph_backend.element_to_graph_map.con_map) && return
+    if !haskey(graph_backend.element_constraints, cref.model)
+        graph_backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
+    end
+    graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
+    graph_backend.element_to_graph_map[cref] = graph_con_index
+    graph_backend.graph_to_element_map[graph_con_index] = cref
+    push!(graph_backend.element_constraints[cref.model], graph_con_index)
+    return graph_con_index
 end
 
 ### Graph MOI Utilities
@@ -384,9 +419,7 @@ function _update_nonlinear_func!(
     return
 end
 
-### add variables to a backend for purpose of creating linking constraints or objectives 
-# across subgraphs
-
+# add variables to a backend for linking across subgraphs
 function _add_backend_variables(
     backend::GraphMOIBackend,
     jump_func::JuMP.GenericAffExpr
@@ -431,50 +464,6 @@ function _add_backend_variables(
         _add_variable_to_backend(backend, var)
     end
     return
-end
-
-function _moi_add_edge_constraint(
-    edge::OptiEdge,
-    con::JuMP.AbstractConstraint
-)
-    # get moi function and set
-    jump_func = JuMP.jump_function(con)
-    moi_func = JuMP.moi_function(con)
-    moi_set = JuMP.moi_set(con)
-
-    # create constraint index and reference
-    constraint_index = next_constraint_index(
-        edge, 
-        typeof(moi_func), 
-        typeof(moi_set)
-    )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
-    cref = ConstraintRef(edge, constraint_index, JuMP.shape(con))
-
-    # update graph backends
-    for graph in containing_optigraphs(edge)
-        # add backend variables if linking across optigraphs
-        _add_backend_variables(graph_backend(graph), jump_func)
-
-        # update the moi function variable indices
-        moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
-
-        # add the constraint to the backend
-        _add_edge_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
-    end
-
-    return cref
-end
-
-function _add_edge_constraint_to_backend(
-    graph_backend::GraphMOIBackend,
-    cref::ConstraintRef,
-    func::F,
-    set::S
-) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
-    graph_backend.element_to_graph_map[cref] = graph_con_index
-    graph_backend.graph_to_element_map[graph_con_index] = cref
-    return graph_con_index
 end
 
 ### Objective Function
