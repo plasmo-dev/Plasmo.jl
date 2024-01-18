@@ -18,7 +18,8 @@ makedocs(;
         "Modeling with OptiGraphs" => "documentation/modeling.md",
         "Graph Partitioning and Processing" => "documentation/partitioning.md",
         "Tutorials" =>
-            ["Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md"],
+            ["Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md",
+            "Optimal Control of a Quadcopter" => "tutorials/quadcopter.md"],
         "API Documentation" => "documentation/api_docs.md",
     ],
 )
