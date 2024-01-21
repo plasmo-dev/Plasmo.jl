@@ -76,7 +76,6 @@ mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     # map of variables and constraints on nodes and edges to graph backend indices
     node_variables::OrderedDict{OptiNode,Vector{MOI.VariableIndex}}
     element_constraints::OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}
-    #edge_constraints::OrderedDict{OptiEdge,Vector{MOI.ConstraintIndex}}
 
     # TODO (maybe): legacy JuMP nonlinear support
     # nlp_model::MOI.Nonlinear.Model
@@ -97,8 +96,7 @@ function GraphMOIBackend(optigraph::AbstractOptiGraph)
         ElementToGraphMap(),
         GraphToElementMap(),
         OrderedDict{OptiNode,Vector{MOI.VariableIndex}}(),
-        OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}(),
-        #OrderedDict{OptiEdge,Vector{MOI.ConstraintIndex}}()
+        OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}()
     )
 end
 
@@ -133,15 +131,44 @@ function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::NodeVariableR
     return MOI.get(gb.moi_backend, attr, graph_index)
 end
 
-function MOI.set(graph_backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
-    MOI.set(graph_backend.moi_backend, attr, args...)
+function MOI.set(gb::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
+    MOI.set(gb.moi_backend, attr, args...)
+    return
+end
+
+function MOI.delete(gb::GraphMOIBackend, nvref::NodeVariableRef)
+    MOI.delete(gb.moi_backend, gb.element_to_graph_map[nvref])
+    delete!(gb.graph_to_element_map.var_map, gb.element_to_graph_map[nvref])
+    delete!(gb.element_to_graph_map.var_map, nvref)
+    return
+end
+
+function MOI.delete(gb::GraphMOIBackend, cref::ConstraintRef)
+    MOI.delete(gb.moi_backend, gb.element_to_graph_map[cref])
+    delete!(gb.graph_to_element_map.con_map, gb.element_to_graph_map[cref])
+    delete!(gb.element_to_graph_map.con_map, cref)
+    return
+end
+
+function MOI.is_valid(gb::GraphMOIBackend, vi::MOI.VariableIndex)
+    return MOI.is_valid(gb.moi_backend, vi)
+end
+
+function MOI.is_valid(gb::GraphMOIBackend, ci::MOI.ConstraintIndex)
+    return MOI.is_valid(gb.moi_backend, ci)
 end
 
 ### Variables
 
 function next_variable_index(node::OptiNode)
-    return MOI.VariableIndex(num_variables(node) + 1)
+    return MOI.VariableIndex(JuMP.num_variables(node) + 1)
 end
+
+function graph_index(gb::GraphMOIBackend, nvref::NodeVariableRef)
+    return gb.element_to_graph_map[nvref]
+end
+
+# add variable
 
 function _moi_add_node_variable(
     node::OptiNode,
@@ -154,7 +181,6 @@ function _moi_add_node_variable(
     # add variable to all containing optigraphs
     for graph in containing_optigraphs(node)
         graph_var_index = _add_variable_to_backend(graph_backend(graph), vref)
-        #push!(graph_backend(graph).node_variables[node], graph_var_index) # TODO: move
         _moi_constrain_node_variable(
             graph_backend(graph),
             vref,
@@ -222,6 +248,97 @@ function _add_variable_to_backend(
     return graph_var_index
 end
 
+# fix/unfix variable
+
+function _moi_fix_node_variable(
+    nvref::NodeVariableRef,
+    value::Number,
+    force::Bool,
+    ::Type{T}
+) where {T}
+    new_set = MOI.EqualTo(convert(T, value))
+    if _moi_nv_is_fixed(nvref)
+        cref = _nv_fix_ref(nvref)
+        # updates each backend graph
+        MOI.set(nvref.node, MOI.ConstraintSet(), cref, new_set)
+    else  
+        # add a new fixing constraint
+        if _moi_nv_has_upper_bound(nvref) ||
+           _moi_nv_has_lower_bound(nvref)
+            if !force
+                error(
+                    "Unable to fix $(nvref) to $(value) because it has " *
+                    "existing variable bounds. Consider calling " *
+                    "`JuMP.fix(variable, value; force=true)` which will " *
+                    "delete existing bounds before fixing the variable.",
+                )
+            end
+            if _moi_nv_has_upper_bound(nvref)
+                MOI.delete(nvref.node, _nv_upper_bound_ref(nvref))
+            end
+            if _moi_nv_has_lower_bound(nvref)
+                MOI.delete(nvref.node, _nv_lower_bound_ref(nvref))
+            end
+        end
+        con = JuMP.ScalarConstraint(nvref, MOI.EqualTo{T}(value))
+        _moi_add_node_constraint(nvref.node, con)
+    end
+    return
+end
+
+function _moi_nv_is_fixed(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.EqualTo{Float64}}(
+        gb.element_to_graph_map[nvref].value
+    )
+    return MOI.is_valid(graph_backend(nvref.node), ci)
+end
+
+function _nv_fix_ref(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.EqualTo{Float64}}(
+        gb.element_to_graph_map[nvref].value
+    )
+    cref = gb.graph_to_element_map[ci]
+    return cref
+end
+
+# get/set variable bounds
+
+function _moi_nv_has_upper_bound(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.LessThan{Float64}}(
+        gb.element_to_graph_map[nvref].value
+    )
+    return MOI.is_valid(graph_backend(nvref.node), ci)
+end
+
+function _nv_upper_bound_ref(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.LessThan{Float64}}(
+        gb.element_to_graph_map[nvref].value
+    )
+    cref = gb.graph_to_element_map[ci]
+    return cref
+end
+
+function _moi_nv_has_lower_bound(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
+        gb.element_to_graph_map[nvref].value
+    )
+    return MOI.is_valid(graph_backend(nvref.node), ci)
+end
+
+function _nv_lower_bound_ref(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
+        gb.element_to_graph_map[nvref].value
+    )
+    cref = gb.graph_to_element_map[ci]
+    return cref
+end
+
 ### Constraints
 
 function next_constraint_index(
@@ -253,9 +370,13 @@ function _moi_add_node_constraint(
         # update func variable indices
         moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
 
-        # add to optinode backend
-        # _add_node_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
-        _add_element_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
+        # add contraint to backend
+        _add_element_constraint_to_backend(
+            graph_backend(graph), 
+            cref, 
+            moi_func_graph, 
+            moi_set
+        )
     end
     return cref
 end
@@ -295,9 +416,13 @@ function _moi_add_edge_constraint(
         moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
 
         # add the constraint to the backend
-        _add_element_constraint_to_backend(graph_backend(graph), cref, moi_func_graph, moi_set)
+        _add_element_constraint_to_backend(
+            graph_backend(graph), 
+            cref, 
+            moi_func_graph, 
+            moi_set
+        )
     end
-
     return cref
 end
 
