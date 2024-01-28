@@ -115,7 +115,7 @@ function JuMP.backend(gb::GraphMOIBackend)
     return gb.moi_backend
 end
 
-# MOI Extension
+# MOI Interface
 
 function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute)
     return MOI.get(gb.moi_backend, attr)
@@ -280,7 +280,7 @@ function _moi_fix_node_variable(
                 MOI.delete(nvref.node, _nv_lower_bound_ref(nvref))
             end
         end
-        con = JuMP.ScalarConstraint(nvref, MOI.EqualTo{T}(value))
+        con = JuMP.ScalarConstraint(nvref, new_set)
         _moi_add_node_constraint(nvref.node, con)
     end
     return
@@ -305,6 +305,39 @@ end
 
 # get/set variable bounds
 
+function _moi_nv_has_lower_bound(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
+        gb.element_to_graph_map[nvref].value
+    )
+    return MOI.is_valid(graph_backend(nvref.node), ci)
+end
+
+function _nv_lower_bound_ref(nvref::NodeVariableRef)
+    gb = graph_backend(nvref.node)
+    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
+        gb.element_to_graph_map[nvref].value
+    )
+    cref = gb.graph_to_element_map[ci]
+    return cref
+end
+
+function _moi_nv_set_lower_bound(
+    nvref::NodeVariableRef,
+    lower::Number,
+)
+    new_set = MOI.GreaterThan(convert(Float64, lower))
+    if _moi_nv_has_lower_bound(nvref)
+        cref = _nv_lower_bound_ref(nvref)
+        MOI.set(nvref.node, MOI.ConstraintSet(), cref, new_set)
+    else
+        @assert !_moi_nv_is_fixed(nvref)
+        con = JuMP.ScalarConstraint(nvref, new_set)
+        _moi_add_node_constraint(nvref.node, con)
+    end
+    return
+end
+
 function _moi_nv_has_upper_bound(nvref::NodeVariableRef)
     gb = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.LessThan{Float64}}(
@@ -322,22 +355,25 @@ function _nv_upper_bound_ref(nvref::NodeVariableRef)
     return cref
 end
 
-function _moi_nv_has_lower_bound(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
-        gb.element_to_graph_map[nvref].value
-    )
-    return MOI.is_valid(graph_backend(nvref.node), ci)
+function _moi_nv_set_upper_bound(
+    nvref::NodeVariableRef,
+    upper::Number,
+)
+    new_set = MOI.LessThan(convert(Float64, upper))
+    if _moi_nv_has_upper_bound(nvref)
+        cref = _nv_upper_bound_ref(nvref)
+        MOI.set(nvref.node, MOI.ConstraintSet(), cref, new_set)
+    else
+        @assert !_moi_nv_is_fixed(nvref)
+        con = JuMP.ScalarConstraint(nvref, new_set)
+        _moi_add_node_constraint(nvref.node, con)
+    end
+    return
 end
 
-function _nv_lower_bound_ref(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
-    ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
-        gb.element_to_graph_map[nvref].value
-    )
-    cref = gb.graph_to_element_map[ci]
-    return cref
-end
+# get/set variable integer/binary
+
+
 
 ### Constraints
 

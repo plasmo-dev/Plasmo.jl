@@ -25,6 +25,36 @@ function Base.getindex(node::OptiNode, name::Symbol)
     return node.source_graph.node_obj_dict[t]
 end
 
+struct NodeVariableRef <: JuMP.AbstractVariableRef
+    node::OptiNode
+    index::MOI.VariableIndex
+end
+
+function Base.string(vref::NodeVariableRef)
+    return JuMP.name(vref)
+end
+Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
+Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
+Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
+
+# Per JuMP comment:
+# """
+# The default hash is slow. It's important for the performance of AffExpr to
+# define our own.
+# https://github.com/jump-dev/MathOptInterface.jl/issues/234#issuecomment-366868878
+# """
+function Base.hash(nvref::NodeVariableRef, h::UInt)
+    return hash(objectid(JuMP.owner_model(nvref)), hash(v.index.value, h))
+end
+
+function Base.isequal(v1::NodeVariableRef, v2::NodeVariableRef)
+    return owner_model(v1) === owner_model(v2) && v1.index == v2.index
+end
+
+function graph_index(vref::NodeVariableRef)
+    return graph_backend(vref.node).element_to_graph_map[vref]
+end
+
 """
     graph_backend(node::OptiNode)
 
@@ -133,23 +163,19 @@ function JuMP.backend(node::OptiNode)
     return JuMP.backend(graph_backend(node))
 end
 
+function JuMP.delete(node::OptiNode, cref::ConstraintRef)
+    if node !== JuMP.owner_model(cref)
+        error(
+            "The constraint reference you are trying to delete does not " *
+            "belong to the model.",
+        )
+    end
+    _set_dirty(node)
+    MOI.delete(node, cref)
+    return
+end
+
 ### Node Variables
-
-struct NodeVariableRef <: JuMP.AbstractVariableRef
-    node::OptiNode
-    index::MOI.VariableIndex
-end
-
-function Base.string(vref::NodeVariableRef)
-    return JuMP.name(vref)
-end
-Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
-Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
-Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
-
-function graph_index(vref::NodeVariableRef)
-    return graph_backend(vref.node).element_to_graph_map[vref]
-end
 
 """
     JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
@@ -194,6 +220,31 @@ function JuMP.is_valid(node::OptiNode, nvref::NodeVariableRef)
            MOI.is_valid(graph_backend(node), nvref)
 end
 
+function JuMP.owner_model(nvref::NodeVariableRef)
+    return nvref.node
+end
+
+function JuMP.name(vref::NodeVariableRef)
+    gb = graph_backend(vref.node)
+    return MOI.get(
+        JuMP.backend(vref.node), 
+        MOI.VariableName(), 
+        gb.element_to_graph_map[vref]
+    )
+end
+
+function JuMP.set_name(vref::NodeVariableRef, s::String)
+    gb = graph_backend(vref.node)
+    MOI.set(gb.moi_backend, MOI.VariableName(), gb.element_to_graph_map[vref], s)
+    return
+end
+
+function JuMP.index(vref::NodeVariableRef)
+    return vref.index
+end
+
+# fix node variables
+
 function JuMP.fix(nvref::NodeVariableRef, value::Number; force::Bool=false)
     if !JuMP.isfinite(value)
         error("Unable to fix variable to $(value)")
@@ -205,18 +256,77 @@ function JuMP.fix(nvref::NodeVariableRef, value::Number; force::Bool=false)
 end
 
 function JuMP.is_fixed(nvref::NodeVariableRef)
-    return _moi_is_nv_fixed(graph_backend(nvref), nvref)
+    return _moi_nv_is_fixed(nvref)
+end
+
+function JuMP.FixRef(nvref::NodeVariableRef)
+    if !JuMP.is_fixed(nvref)
+        error("Variable $(v) does not have fixed bounds.")
+    end
+    return _nv_fix_ref(nvref)
+end
+
+function JuMP.unfix(nvref::NodeVariableRef)
+    JuMP.delete(JuMP.owner_model(nvref), JuMP.FixRef(nvref))
+end
+
+function JuMP.fix_value(nvref::NodeVariableRef)
+    set = MOI.get(JuMP.owner_model(nvref), MOI.ConstraintSet(), JuMP.FixRef(nvref))
+    return set.value
+end
+
+# node variable bounds
+
+function JuMP.has_lower_bound(nvref::NodeVariableRef)
+    return _moi_nv_has_lower_bound(graph_backend(nvref), nvref)
+end
+
+function JuMP.set_lower_bound(nvref::NodeVariableRef, lower::Number)
+    if !JuMP.isfinite(lower)
+        error(
+            "Unable to set lower bound to $(lower). To remove the bound, use " *
+            "`delete_lower_bound`.",
+        )
+    end
+    _set_dirty(nvref.node)
+    _moi_nv_set_lower_bound(nvref, lower)
+    return
+end
+
+function JuMP.LowerBoundRef(nvref::NodeVariableRef)
+    if !JuMP.has_lower_bound(nvref)
+        error("Variable $(nvref) does not have a lower bound.")
+    end
+    return _nv_lower_bound_ref(nvref)
 end
 
 function JuMP.has_upper_bound(nvref::NodeVariableRef)
-    return _moi_has_upper_bound(graph_backend(nvref), nvref)
+    return _moi_nv_has_upper_bound(graph_backend(nvref), nvref)
 end
 
-function JuMP.index(vref::NodeVariableRef)
-    return vref.index
+function JuMP.set_upper_bound(nvref::NodeVariableRef, upper::Number)
+    if !JuMP.isfinite(upper)
+        error(
+            "Unable to set upper bound to $(upper). To remove the bound, use " *
+            "`delete_upper_bound`.",
+        )
+    end
+    _set_dirty(nvref.node)
+    _moi_nv_set_upper_bound(nvref, upper)
+    return
 end
 
-function JuMP.value(nvref::NodeVariableRef; result::Int = 1)
+function JuMP.UpperBoundRef(nvref::NodeVariableRef)
+    if !JuMP.has_upper_bound(nvref)
+        error("Variable $(nvref) does not have an upper bound.")
+    end
+    return _nv_upper_bound_ref(nvref)
+end
+
+
+# variable values
+
+function JuMP.value(nvref::NodeVariableRef; result::Int=1)
     return MOI.get(graph_backend(nvref.node), MOI.VariablePrimal(result), nvref)
 end
 
@@ -224,20 +334,7 @@ function JuMP.value(var_value::Function, vref::NodeVariableRef)
     return var_value(vref)
 end
 
-function JuMP.owner_model(nvref::NodeVariableRef)
-    return nvref.node
-end
 
-function JuMP.name(vref::NodeVariableRef)
-    gb = graph_backend(vref.node)
-    return MOI.get(JuMP.backend(vref.node), MOI.VariableName(), gb.element_to_graph_map[vref])
-end
-
-function JuMP.set_name(vref::NodeVariableRef, s::String)
-    gb = graph_backend(vref.node)
-    MOI.set(gb.moi_backend, MOI.VariableName(), gb.element_to_graph_map[vref], s)
-    return
-end
 
 ### Node Constraints
 
@@ -266,17 +363,3 @@ function JuMP.num_constraints(
     return length(filter((cref) -> cref.model == node, refs))
 end
 
-function JuMP.delete(node::OptiNode, cref::ConstraintRef)
-    if node !== JuMP.owner_model(cref)
-        error(
-            "The constraint reference you are trying to delete does not " *
-            "belong to the model.",
-        )
-    end
-    _set_dirty(node)
-    MOI.delete(node, cref)
-    # for graph in containing_optigraphs(node)
-    #     MOI.delete(graph_backend(node), cref)
-    # end
-    return
-end
