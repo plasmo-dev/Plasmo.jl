@@ -65,7 +65,7 @@ Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 # JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
 
 function graph_backend(graph::OptiGraph)
-    return graph.backend
+    return graph.optimizer_graph.backend
 end
 
 ### Add subgraph
@@ -108,7 +108,7 @@ function add_node(
     node_index = NodeIndex(length(graph.optinodes)+1)
     optinode = OptiNode{OptiGraph}(graph, node_index, label)
     push!(graph.optinodes, optinode)
-    add_node(graph.backend, optinode)
+    add_node(graph_backend(graph), optinode)
     return optinode
 end
 
@@ -134,7 +134,7 @@ function add_edge(
 )
     edge = OptiEdge{OptiGraph}(graph, label, OrderedSet(collect(nodes)))
     push!(graph.optiedges, edge)
-    add_edge(graph.backend, edge)
+    add_edge(graph_backend(graph), edge)
     return edge
 end
 
