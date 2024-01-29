@@ -57,7 +57,7 @@ function JuMP.optimize!(
     #     MOI.set(model, MOI.NLPBlock(), MOI.NLPBlockData(evaluator))
     # end
 
-    # TODO: optimize hooks
+    # TODO: optimize hooks for optigraphs
     # If the user or an extension has provided an optimize hook, call
     # that instead of solving the model ourselves
     # if !ignore_optimize_hook
