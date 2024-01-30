@@ -311,13 +311,13 @@ function _moi_set_objective_function(
     graph::OptiGraph, 
     expr::JuMP.GenericNonlinearExpr{NodeVariableRef}
 )
-    graph_moi_func = JuMP.moi_function(expr)
+    moi_func = JuMP.moi_function(expr)
     
     # add variables to backend if using subgraphs
     _add_backend_variables(graph_backend(graph), expr)
 
     # update the moi function variable indices
-    _create_graph_moi_func(graph_backend(graph), moi_func, expr)
+    graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
 
     MOI.set(
         graph_backend(graph),
