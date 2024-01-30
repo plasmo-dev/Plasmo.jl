@@ -91,6 +91,28 @@ function JuMP.backend(node::OptiNode)
     return JuMP.backend(graph_backend(node))
 end
 
+# TODO: nonlinear operators on nodes
+function JuMP.add_nonlinear_operator(
+    node::OptiNode,
+    dim::Int,
+    f::Function,
+    args::Vararg{Function,N};
+    name::Symbol = Symbol(f),
+) where {N}
+    nargs = 1 + N
+    if !(1 <= nargs <= 3)
+        error(
+            "Unable to add operator $name: invalid number of functions " *
+            "provided. Got $nargs, but expected 1 (if function only), 2 (if " *
+            "function and gradient), or 3 (if function, gradient, and " *
+            "hesssian provided)",
+        )
+    end
+    name = Symbol(node.label, ".", name)
+    MOI.set(graph_backend(node), MOI.UserDefinedFunction(name, dim), tuple(f, args...))
+    return JuMP.NonlinearOperator(f, name)
+end
+
 function _set_dirty(node::OptiNode)
     for graph in containing_optigraphs(node)
         graph.is_model_dirty = true
@@ -121,7 +143,7 @@ function MOI.get(
     return con_inds
 end
 
-# TODO: store objective functions on nodes and query node attributes
+# TODO: store objective functions on nodes and query as node attributes
 # function MOI.get(node::OptiNode, attr::MOI.AnyAttribute)
 #     return MOI.get(graph_backend(node), attr)
 # end
@@ -193,8 +215,9 @@ function MOI.set(
     args...
 )
     for graph in containing_optigraphs(JuMP.owner_model(cref))
-        graph_index = graph_backend(graph).element_to_graph_map[cref]
-        MOI.set(graph_backend(graph), attr, graph_index, args...)
+        gb = graph_backend(graph)
+        graph_index = gb.element_to_graph_map[cref]
+        MOI.set(gb, attr, graph_index, args...)
     end
     return
 end

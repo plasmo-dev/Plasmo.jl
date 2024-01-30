@@ -277,12 +277,12 @@ function _moi_set_objective_function(
     _add_backend_variables(graph_backend(graph), expr)
 
     # update the moi function variable indices
-    _create_graph_moi_func(graph_backend(graph), moi_func, expr)
+    graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
 
     MOI.set(
         graph_backend(graph),
         MOI.ObjectiveFunction{MOI.ScalarAffineFunction{C}}(),
-        moi_func,
+        graph_moi_func,
     )
     return
 end
@@ -297,12 +297,12 @@ function _moi_set_objective_function(
     _add_backend_variables(graph_backend(graph), expr)
 
     # update the moi function variable indices
-    _create_graph_moi_func(graph_backend(graph), moi_func, expr)
+    graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
 
     MOI.set(
         graph_backend(graph),
         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{C}}(),
-        moi_func,
+        graph_moi_func,
     )
     return
 end
@@ -311,7 +311,7 @@ function _moi_set_objective_function(
     graph::OptiGraph, 
     expr::JuMP.GenericNonlinearExpr{NodeVariableRef}
 )
-    moi_func = JuMP.moi_function(expr)
+    graph_moi_func = JuMP.moi_function(expr)
     
     # add variables to backend if using subgraphs
     _add_backend_variables(graph_backend(graph), expr)
@@ -322,7 +322,7 @@ function _moi_set_objective_function(
     MOI.set(
         graph_backend(graph),
         MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}(),
-        moi_func,
+        graph_moi_func,
     )
     return
 end
