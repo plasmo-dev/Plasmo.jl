@@ -76,11 +76,13 @@ Call the JuMP.@variable macro for each optinode in a given container
 """
 macro nodevariables(nodes, args...)
     macro_code = quote
-        for node in $(esc(nodes))
-            JuMP.@variable(node,$(args...))
+        for node in $(nodes)
+            begin
+                JuMP.@variable(node, $(args...))
+            end
         end
     end
-    return macro_code
+    return esc(macro_code)
 end
 
 # TODO: @nodeconstraints
