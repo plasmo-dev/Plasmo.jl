@@ -236,6 +236,7 @@ function JuMP.add_constraint(
     graph::OptiGraph, con::JuMP.AbstractConstraint, name::String=""
 )
     nodes = _collect_nodes(JuMP.jump_function(con))
+    @assert length(nodes) > 0
     length(nodes) > 1 || error("Cannot create a linking constraint on a single node")
     edge = add_edge(graph, nodes...)
     con = JuMP.model_convert(edge, con)
@@ -251,7 +252,7 @@ function _collect_nodes(
         JuMP.GenericNonlinearExpr
     }
 )
-    vars = _node_variables(jump_func)
+    vars = _extract_variables(jump_func)
     nodes = JuMP.owner_model.(vars)
     return collect(nodes)
 end

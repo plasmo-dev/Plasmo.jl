@@ -169,6 +169,10 @@ end
 
 ### Utilities for querying variables used in constraints
 
+function _extract_variables(jump_func::NodeVariableRef)
+    return [jump_func]
+end
+
 function _extract_variables(ref::ConstraintRef)
     func = JuMP.jump_function(JuMP.constraint_object(ref))
     return _extract_variables(func)

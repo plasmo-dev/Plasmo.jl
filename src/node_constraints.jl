@@ -116,34 +116,6 @@ function _check_node_variables(
         JuMP.GenericNonlinearExpr
     }
 )
-    return isempty(setdiff(_node_variables(jump_func), JuMP.all_variables(node)))
+    return isempty(setdiff(_extract_variables(jump_func), JuMP.all_variables(node)))
 end
 
-function _node_variables(jump_func::NodeVariableRef)
-    return [jump_func]
-end
-
-function _node_variables(jump_func::JuMP.GenericAffExpr)
-    vars = [term[2] for term in JuMP.linear_terms(jump_func)]
-    return vars
-end
-
-function _node_variables(jump_func::JuMP.GenericQuadExpr)
-    vars_aff = [term[2] for term in JuMP.linear_terms(jump_func)]
-    vars_quad = vcat([[term[2], term[3]] for term in JuMP.quad_terms(jump_func)]...)
-    vars_unique = unique([vars_aff;vars_quad])
-    return vars_unique
-end
-
-function _node_variables(jump_func::JuMP.GenericNonlinearExpr)
-    vars = NodeVariableRef[]
-    for i = 1:length(jump_func.args)
-        jump_arg = jump_func.args[i]
-        if typeof(jump_arg) == JuMP.GenericNonlinearExpr
-            append!(vars, _node_variables(jump_arg))
-        elseif typeof(jump_arg) == NodeVariableRef
-            push!(vars, jump_arg)
-        end
-    end
-    return vars
-end
