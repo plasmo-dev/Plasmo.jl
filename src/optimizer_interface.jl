@@ -1,3 +1,99 @@
+### get/set attributes
+
+function JuMP.get_attribute(graph::OptiGraph, attr::MOI.AbstractModelAttribute)
+    return MOI.get(graph, attr)
+end
+
+function JuMP.get_attribute(
+    nvref::NodeVariableRef,
+    attr::MOI.AbstractVariableAttribute,
+)
+    return MOI.get(JuMP.owner_model(nvref), attr, nvref)
+end
+
+function JuMP.get_attribute(
+    model::Union{GenericModel,MOI.OptimizerWithAttributes},
+    attr::MOI.AbstractOptimizerAttribute,
+)
+    return MOI.get(model, attr)
+end
+
+function JuMP.get_attribute(
+    graph::OptiGraph,
+    name::String,
+)
+    return JuMP.get_attribute(graph, MOI.RawOptimizerAttribute(name))
+end
+
+# From JuMP: "This method is needed for string types like String15 coming from a DataFrame."
+function JuMP.get_attribute(
+    graph::OptiGraph,
+    name::AbstractString,
+)
+    return JuMP.get_attribute(graph, String(name))
+end
+
+function JuMP.set_attribute(
+    graph::OptiGraph,
+    attr::MOI.AbstractModelAttribute,
+    value,
+)
+    MOI.set(graph, attr, value)
+    return
+end
+
+# NOTE: ConstraintRef covered by JuMP
+function JuMP.set_attribute(
+    nvref::NodeVariableRef,
+    attr::MOI.AbstractVariableAttribute,
+    value,
+)
+    MOI.set(JuMP.owner_model(nvref), attr, nvref, value)
+    return
+end
+
+function JuMP.set_attribute(
+    graph::OptiGraph,
+    attr::MOI.AbstractOptimizerAttribute,
+    value,
+)
+    MOI.set(graph, attr, value)
+    return
+end
+
+function JuMP.set_attribute(
+    graph::OptiGraph,
+    name::String,
+    value,
+)
+    JuMP.set_attribute(graph, MOI.RawOptimizerAttribute(name), value)
+    return
+end
+
+function JuMP.set_attribute(
+    graph::OptiGraph,
+    name::AbstractString,
+    value,
+)
+    JuMP.set_attribute(graph, String(name), value)
+    return
+end
+
+function JuMP.set_attributes(
+    destination::Union{
+        OptiGraph,
+        NodeVariableRef
+    },
+    pairs::Pair...,
+)
+    for (name, value) in pairs
+        JuMP.set_attribute(destination, name, value)
+    end
+    return
+end
+
+### set optimizer
+
 function JuMP.mode(graph::OptiGraph)
     return JuMP._moi_mode(JuMP.backend(graph))
 end
