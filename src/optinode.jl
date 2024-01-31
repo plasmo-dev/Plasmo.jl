@@ -122,6 +122,10 @@ end
 
 ### OptiNode MOI Extension
 
+function MOI.get(node::OptiNode, attr::MOI.UserDefinedFunction)
+    return MOI.get(graph_backend(node), attr)
+end
+
 # TODO: consider caching constraint types in graph backend versus using unique to filter
 function MOI.get(node::OptiNode, attr::MOI.ListOfConstraintTypesPresent)
     cons = graph_backend(node).element_constraints[node]
