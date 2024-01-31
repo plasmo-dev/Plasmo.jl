@@ -12,10 +12,10 @@ function JuMP.get_attribute(
 end
 
 function JuMP.get_attribute(
-    model::Union{GenericModel,MOI.OptimizerWithAttributes},
+    graph::OptiGraph,
     attr::MOI.AbstractOptimizerAttribute,
 )
-    return MOI.get(model, attr)
+    return MOI.get(graph, attr)
 end
 
 function JuMP.get_attribute(
