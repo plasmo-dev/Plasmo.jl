@@ -4,6 +4,7 @@ function JuMP.get_attribute(graph::OptiGraph, attr::MOI.AbstractModelAttribute)
     return MOI.get(graph, attr)
 end
 
+# NOTE: ConstraintRef covered by JuMP
 function JuMP.get_attribute(
     nvref::NodeVariableRef,
     attr::MOI.AbstractVariableAttribute,

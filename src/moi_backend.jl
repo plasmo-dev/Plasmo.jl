@@ -158,6 +158,11 @@ function MOI.is_valid(gb::GraphMOIBackend, ci::MOI.ConstraintIndex)
     return MOI.is_valid(gb.moi_backend, ci)
 end
 
+function MOI.optimize!(gb::GraphMOIBackend)
+    MOI.optimize!(gb.moi_backend)
+    return nothing
+end
+
 ### Variables and Constraints
 
 function next_variable_index(node::OptiNode)
@@ -351,9 +356,4 @@ function _add_backend_variables(
         _add_variable_to_backend(backend, var)
     end
     return
-end
-
-function MOI.optimize!(graph_backend::GraphMOIBackend)
-    MOI.optimize!(graph_backend.moi_backend)
-    return nothing
 end

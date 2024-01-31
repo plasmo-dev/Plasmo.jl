@@ -7,6 +7,7 @@ mutable struct OptiGraph <: AbstractOptiGraph
     optinodes::OrderedSet{OptiNode}       # local optinodes
     optiedges::OrderedSet{OptiEdge}       # local optiedges
     subgraphs::OrderedSet{OptiGraph}      # local subgraphs
+    optiedge_map::OrderedDict{Set{OptiNode},OptiEdge}
 
     # subgraphs keep a reference to their parent
     parent_graph::Union{Nothing,OptiGraph}
@@ -36,6 +37,7 @@ mutable struct OptiGraph <: AbstractOptiGraph
         optigraph.optinodes = OrderedSet{OptiNode}()
         optigraph.optiedges = OrderedSet{OptiEdge}()
         optigraph.subgraphs = OrderedSet{OptiGraph}()
+        optigraph.optiedge_map = OrderedDict{Set{OptiNode},OptiEdge}()
         optigraph.parent_graph = nothing
         optigraph.optimizer_graph = optigraph
 
@@ -127,14 +129,31 @@ end
 
 ### Add edges
 
+function get_edge(graph::OptiGraph, nodes::Set{OptiNode{OptiGraph}})
+    return graph.optiedge_map[nodes]
+end
+
+function has_edge(graph::OptiGraph, nodes::Set{OptiNode{OptiGraph}})
+    if haskey(graph.optiedge_map, nodes)
+        return true
+    else
+        return false
+    end
+end
+
 function add_edge(
     graph::OptiGraph,
     nodes::OptiNode...;
-    label=Symbol(graph.label,Symbol(".e"),length(graph.optiedges)+1)
+    label=Symbol(graph.label, Symbol(".e"), length(graph.optiedges)+1)
 )
-    edge = OptiEdge{OptiGraph}(graph, label, OrderedSet(collect(nodes)))
-    push!(graph.optiedges, edge)
-    add_edge(graph_backend(graph), edge)
+    if has_edge(graph, Set(nodes))
+        edge = get_edge(graph, Set(nodes))
+    else
+        edge = OptiEdge{OptiGraph}(graph, label, OrderedSet(collect(nodes)))
+        push!(graph.optiedges, edge)
+        graph.optiedge_map[Set(collect(nodes))] = edge
+        add_edge(graph_backend(graph), edge)
+    end
     return edge
 end
 
@@ -209,6 +228,32 @@ function JuMP.add_nonlinear_operator(
     end
     MOI.set(graph, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
     return JuMP.NonlinearOperator(f, name)
+end
+
+### Link Constraints
+
+function JuMP.add_constraint(
+    graph::OptiGraph, con::JuMP.AbstractConstraint, name::String=""
+)
+    nodes = _collect_nodes(JuMP.jump_function(con))
+    length(nodes) > 1 || error("Cannot create a linking constraint on a single node")
+    edge = add_edge(graph, nodes...)
+    con = JuMP.model_convert(edge, con)
+    cref = _moi_add_edge_constraint(edge, con)
+    return cref
+end
+
+function _collect_nodes(
+    jump_func::Union{
+        NodeVariableRef, 
+        JuMP.GenericAffExpr, 
+        JuMP.GenericQuadExpr,
+        JuMP.GenericNonlinearExpr
+    }
+)
+    vars = _node_variables(jump_func)
+    nodes = JuMP.owner_model.(vars)
+    return collect(nodes)
 end
 
 ### Objective Function
