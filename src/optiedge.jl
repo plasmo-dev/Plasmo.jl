@@ -192,10 +192,10 @@ function _extract_variables(func::JuMP.GenericNonlinearExpr)
     vars = NodeVariableRef[]
     for i = 1:length(func.args)
         func_arg = func.args[i]
-        if func_arg isa JuMP.GenericNonlinearExpr
-            append!(vars, _extract_variables(func_arg))
-        elseif typeof(func_arg) == NodeVariableRef
+        if typeof(func_arg) == NodeVariableRef #
             push!(vars, func_arg)
+        else
+            append!(vars, _extract_variables(func_arg))
         end
     end
     return vars
