@@ -4,10 +4,6 @@ function _extract_variables(func::NodeVariableRef)
     return [func]
 end
 
-function _extract_variables(func::NodeVariableRef)
-    return [func]
-end
-
 function _extract_variables(ref::ConstraintRef)
     func = JuMP.jump_function(JuMP.constraint_object(ref))
     return _extract_variables(func)
