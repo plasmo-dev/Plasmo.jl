@@ -33,6 +33,6 @@ function _extract_variables(func::JuMP.GenericNonlinearExpr)
             append!(vars, _extract_variables(func_arg))
         end
     end
-    println("extracted vars ": vars)
+    println("extracted vars ", vars)
     return vars
 end
