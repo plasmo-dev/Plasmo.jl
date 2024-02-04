@@ -199,11 +199,11 @@ function _add_element_constraint_to_backend(
     func::F,
     set::S
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    println("cref to add: ", cref)
     cref in keys(graph_backend.element_to_graph_map.con_map) && return
     if !haskey(graph_backend.element_constraints, cref.model)
         graph_backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
     end
+    println("cref to add: ", cref)
     graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
     graph_backend.element_to_graph_map[cref] = graph_con_index
     graph_backend.graph_to_element_map[graph_con_index] = cref
