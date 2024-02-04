@@ -300,14 +300,27 @@ function _update_nonlinear_func!(
     moi_func::MOI.ScalarNonlinearFunction,
     jump_func::JuMP.GenericNonlinearExpr
 )
+    println("args: ", jump_func.args)
     for i = 1:length(jump_func.args)
         jump_arg = jump_func.args[i]
         moi_arg = moi_func.args[i]
-        if jump_arg isa JuMP.GenericNonlinearExpr
-            _update_nonlinear_func!(backend, moi_arg, jump_arg)
+        println("jump_arg: ", jump_arg)
+        println("typeof(jump_arg): ", typeof(jump_arg))
+        println("moi_arg: ", moi_arg)
+
+        if jump_arg isa Number
+            continue
         elseif typeof(jump_arg) == NodeVariableRef
             moi_func.args[i] = backend.element_to_graph_map[jump_arg]
+        else
+            _update_nonlinear_func!(backend, moi_arg, jump_arg)
         end
+        # if jump_arg isa JuMP.GenericNonlinearExpr
+        #     println("updating nonlinear arg")
+        #     _update_nonlinear_func!(backend, moi_arg, jump_arg)
+        # elseif typeof(jump_arg) == NodeVariableRef
+        #     moi_func.args[i] = backend.element_to_graph_map[jump_arg]
+        # end
     end
     return
 end
