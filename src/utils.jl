@@ -23,6 +23,7 @@ function _extract_variables(func::JuMP.GenericNonlinearExpr)
     vars = NodeVariableRef[]
     for i = 1:length(func.args)
         func_arg = func.args[i]
+        println("func_arg: ", func)
         if func_arg isa Number
         	continue
         elseif typeof(func_arg) == NodeVariableRef
