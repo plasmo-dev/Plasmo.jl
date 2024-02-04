@@ -149,15 +149,12 @@ function _moi_add_edge_constraint(
     cref = ConstraintRef(edge, constraint_index, JuMP.shape(con))
 
     # update graph backends
-    println("con to add: ", con)
     for graph in containing_optigraphs(edge)
         # add backend variables if linking across optigraphs
         _add_backend_variables(graph_backend(graph), jump_func)
 
         # update the moi function variable indices
         moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
-
-        #println("moi_func_graph: ", moi_func_graph)
 
         # add the constraint to the backend
         _add_element_constraint_to_backend(

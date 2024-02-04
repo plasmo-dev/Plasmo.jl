@@ -291,39 +291,41 @@ function _create_graph_moi_func(
     jump_func::JuMP.GenericNonlinearExpr
 )
     moi_func_graph = deepcopy(moi_func)
-    _update_nonlinear_func!(backend, moi_func_graph, jump_func)
-    return moi_func_graph
-end
-
-function _update_nonlinear_func!(
-    backend::GraphMOIBackend,
-    moi_func::MOI.ScalarNonlinearFunction,
-    jump_func::JuMP.GenericNonlinearExpr
-)
-    println("args: ", jump_func.args)
     for i = 1:length(jump_func.args)
         jump_arg = jump_func.args[i]
         moi_arg = moi_func.args[i]
-        println("jump_arg: ", jump_arg)
-        println("typeof(jump_arg): ", typeof(jump_arg))
-        println("moi_arg: ", moi_arg)
-
         if jump_arg isa Number
             continue
         elseif typeof(jump_arg) == NodeVariableRef
-            moi_func.args[i] = backend.element_to_graph_map[jump_arg]
+            moi_func_graph.args[i] = backend.element_to_graph_map[jump_arg]
         else
-            _update_nonlinear_func!(backend, moi_arg, jump_arg)
+            new_func = _create_graph_moi_func(backend, moi_arg, jump_arg)
+            moi_func_graph.args[i] = new_func
         end
-        # if jump_arg isa JuMP.GenericNonlinearExpr
-        #     println("updating nonlinear arg")
-        #     _update_nonlinear_func!(backend, moi_arg, jump_arg)
-        # elseif typeof(jump_arg) == NodeVariableRef
-        #     moi_func.args[i] = backend.element_to_graph_map[jump_arg]
-        # end
     end
-    return
+    #_update_nonlinear_func!(backend, moi_func_graph, jump_func)
+    return moi_func_graph
 end
+
+# function _update_nonlinear_func!(
+#     backend::GraphMOIBackend,
+#     moi_func::MOI.ScalarNonlinearFunction,
+#     jump_func::JuMP.GenericNonlinearExpr
+# )
+#     for i = 1:length(jump_func.args)
+#         jump_arg = jump_func.args[i]
+#         moi_arg = moi_func.args[i]
+#         if jump_arg isa Number
+#             continue
+#         elseif typeof(jump_arg) == NodeVariableRef
+#             moi_func.args[i] = backend.element_to_graph_map[jump_arg]
+#         else
+#             new_func = _create_graph_moi_func(backend, moi_arg, jump_arg)
+#             moi_func.args[i] = new_func
+#         end
+#     end
+#     return
+# end
 
 # add variables to a backend for linking across subgraphs
 function _add_backend_variables(
