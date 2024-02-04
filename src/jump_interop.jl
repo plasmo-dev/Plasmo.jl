@@ -255,7 +255,6 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
     graph::OptiGraph,
     f::MOI.ScalarQuadraticFunction,
 ) where {C}
-    
     # affine terms
     quad = JuMP.GenericQuadExpr{C,NodeVariableRef}(
         JuMP.GenericAffExpr{C,NodeVariableRef}(

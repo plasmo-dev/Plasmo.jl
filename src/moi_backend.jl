@@ -265,11 +265,17 @@ function _create_graph_moi_func(
         coeff = term[1]
         var1 = term[2]
         var2 = term[3]
+
+        # TODO: debug why i have to do this; the coeff is 1, but it prints as 2
+        if var1 == var2
+            coeff *= 2
+        end
+
         var_idx_1 = backend.element_to_graph_map[var1]
         var_idx_2 = backend.element_to_graph_map[var2]
 
         moi_func_graph.quadratic_terms[i] = MOI.ScalarQuadraticTerm{Float64}(
-            coeff, 
+            coeff,
             var_idx_1, 
             var_idx_2
         )
@@ -280,7 +286,10 @@ function _create_graph_moi_func(
         coeff = term[1]
         var = term[2]
         backend_var_idx = backend.element_to_graph_map[var]
-        moi_func_graph.affine_terms[i] = MOI.ScalarAffineTerm{Float64}(coeff, backend_var_idx)
+        moi_func_graph.affine_terms[i] = MOI.ScalarAffineTerm{Float64}(
+            coeff, 
+            backend_var_idx
+        )
     end
     return moi_func_graph
 end
@@ -306,26 +315,6 @@ function _create_graph_moi_func(
     #_update_nonlinear_func!(backend, moi_func_graph, jump_func)
     return moi_func_graph
 end
-
-# function _update_nonlinear_func!(
-#     backend::GraphMOIBackend,
-#     moi_func::MOI.ScalarNonlinearFunction,
-#     jump_func::JuMP.GenericNonlinearExpr
-# )
-#     for i = 1:length(jump_func.args)
-#         jump_arg = jump_func.args[i]
-#         moi_arg = moi_func.args[i]
-#         if jump_arg isa Number
-#             continue
-#         elseif typeof(jump_arg) == NodeVariableRef
-#             moi_func.args[i] = backend.element_to_graph_map[jump_arg]
-#         else
-#             new_func = _create_graph_moi_func(backend, moi_arg, jump_arg)
-#             moi_func.args[i] = new_func
-#         end
-#     end
-#     return
-# end
 
 # add variables to a backend for linking across subgraphs
 function _add_backend_variables(
