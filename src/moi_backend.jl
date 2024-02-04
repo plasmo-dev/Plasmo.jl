@@ -308,6 +308,7 @@ function _update_nonlinear_func!(
             moi_func.args[i] = backend.element_to_graph_map[jump_arg]
         end
     end
+    println(moi_func)
     return
 end
 
