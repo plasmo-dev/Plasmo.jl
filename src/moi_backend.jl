@@ -199,6 +199,7 @@ function _add_element_constraint_to_backend(
     func::F,
     set::S
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    println("cref to add: ", cref)
     cref in keys(graph_backend.element_to_graph_map.con_map) && return
     if !haskey(graph_backend.element_constraints, cref.model)
         graph_backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
@@ -308,7 +309,6 @@ function _update_nonlinear_func!(
             moi_func.args[i] = backend.element_to_graph_map[jump_arg]
         end
     end
-    println(moi_func)
     return
 end
 
