@@ -44,4 +44,6 @@ include("jump_interop.jl")
 
 include("macros.jl")
 
+include("utils.jl")
+
 end
