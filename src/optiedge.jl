@@ -20,6 +20,10 @@ function Base.getindex(edge::OptiEdge, name::Symbol)
     return edge.source_graph.edge_obj_dict[t]
 end
 
+function all_nodes(edge::OptiEdge)
+    return collect(edge.nodes)
+end
+
 """
     graph_backend(edge::OptiEdge)
 

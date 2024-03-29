@@ -120,9 +120,9 @@ end
 Recursively collect all optinodes in `graph` by traversing each of its subgraphs.
 """
 function all_nodes(graph::OptiGraph)
-    nodes = graph.optinodes
+    nodes = collect(graph.optinodes)
     for subgraph in graph.subgraphs
-        nodes = [nodes; all_nodes(subgraph)]
+        nodes = [nodes; collect(all_nodes(subgraph))]
     end
     return nodes
 end
@@ -163,9 +163,9 @@ end
 Recursively collect all optiedges in `graph` by traversing each of its subgraphs.
 """
 function all_edges(graph::OptiGraph)
-    edges = graph.optiedges
+    edges = collect(graph.optiedges)
     for subgraph in graph.subgraphs
-        edges = [edges; all_edges(subgraph)]
+        edges = [edges; collect(all_edges(subgraph))]
     end
     return edges
 end

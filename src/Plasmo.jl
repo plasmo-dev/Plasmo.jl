@@ -9,6 +9,10 @@ using Printf
 
 using MathOptInterface
 const MOI = MathOptInterface
+
+using GraphOptInterface
+const GOI = GraphOptInterface
+
 using Reexport
 @reexport using JuMP
 
@@ -36,8 +40,6 @@ include("optigraph.jl")
 
 include("moi_backend.jl")
 
-include("moi_aggregate.jl")
-
 include("optimizer_interface.jl")
 
 include("jump_interop.jl")
@@ -45,5 +47,9 @@ include("jump_interop.jl")
 include("macros.jl")
 
 include("utils.jl")
+
+include("graph_interface/projections.jl")
+
+include("graph_interface/topology.jl")
 
 end
