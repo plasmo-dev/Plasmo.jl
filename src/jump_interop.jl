@@ -298,7 +298,7 @@ end
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/nlp_expr.jl
 
 # OptiNode
-JuMP.variable_ref_type(::Type{OptiNode{OptiGraph}}) = NodeVariableRef
+JuMP.variable_ref_type(::Type{OptiNode}) = NodeVariableRef
 
 JuMP.jump_function(::OptiNode, x::Number) = convert(Float64, x)
 
@@ -331,7 +331,7 @@ function JuMP.jump_function(node::OptiNode, f::MOI.ScalarNonlinearFunction)
 end
 
 # OptiEdge
-JuMP.variable_ref_type(::Type{OptiEdge{OptiGraph}}) = NodeVariableRef
+JuMP.variable_ref_type(::Type{OptiEdge}) = NodeVariableRef
 
 JuMP.jump_function(::OptiEdge, x::Number) = convert(Float64, x)
 
@@ -365,7 +365,7 @@ function JuMP.jump_function(edge::OptiEdge, f::MOI.ScalarNonlinearFunction)
 end
 
 # OptiGraph
-JuMP.variable_ref_type(::Type{OptiGraph}) = NodeVariableRef
+JuMP.variable_ref_type(::Type{OptiGraph{OptiNode,OptiEdge}}) = NodeVariableRef
 
 JuMP.jump_function(::OptiGraph, x::Number) = convert(Float64, x)
 

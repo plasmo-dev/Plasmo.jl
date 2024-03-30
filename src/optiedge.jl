@@ -1,8 +1,4 @@
-struct OptiEdge{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
-    source_graph::GT
-    label::Symbol
-    nodes::OrderedSet{OptiNode}
-end
+
 function Base.string(edge::OptiEdge)
     return "$(edge.label)"
 end

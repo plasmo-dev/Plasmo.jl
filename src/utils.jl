@@ -33,3 +33,16 @@ function _extract_variables(func::JuMP.GenericNonlinearExpr)
     end
     return vars
 end
+
+function _collect_nodes(
+    jump_func::Union{
+        NodeVariableRef, 
+        JuMP.GenericAffExpr, 
+        JuMP.GenericQuadExpr,
+        JuMP.GenericNonlinearExpr
+    }
+)
+    vars = _extract_variables(jump_func)
+    nodes = JuMP.owner_model.(vars)
+    return collect(nodes)
+end

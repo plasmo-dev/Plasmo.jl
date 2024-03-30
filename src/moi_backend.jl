@@ -67,7 +67,7 @@ end
 # NOTE: OptiGraph does not support modes yet. Eventually we will support more than CachingOptimizer
 # try to support Direct, Manual, and Automatic modes on an optigraph.
 mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
-    optigraph::AbstractOptiGraph
+    optigraph::OptiGraph
     moi_backend::MOI.AbstractOptimizer
     
     element_to_graph_map::ElementToGraphMap
@@ -76,9 +76,6 @@ mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     # map of variables and constraints on nodes and edges to graph backend indices
     node_variables::OrderedDict{OptiNode,Vector{MOI.VariableIndex}}
     element_constraints::OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}
-
-    # TODO (maybe): legacy JuMP nonlinear support
-    # nlp_model::MOI.Nonlinear.Model
 end
 
 """

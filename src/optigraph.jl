@@ -1,60 +1,27 @@
-const OptiElement = Union{OptiNode,OptiEdge}
-
-mutable struct OptiGraph <: AbstractOptiGraph
-    label::Symbol
-
-    # topology: TODO: OrderedSets
-    optinodes::OrderedSet{OptiNode}       # local optinodes
-    optiedges::OrderedSet{OptiEdge}       # local optiedges
-    subgraphs::OrderedSet{OptiGraph}      # local subgraphs
-    optiedge_map::OrderedDict{Set{OptiNode},OptiEdge}
-
-    # subgraphs keep a reference to their parent
-    parent_graph::Union{Nothing,OptiGraph}
-
-    # it is possible nodes and edges may use a parent graph as their model backend
-    # this is the case if constructing an optigraph from subgraphs
-    optimizer_graph::OptiGraph
-
-    # track node membership in other graphs; nodes use this to query different backends
-    node_to_graphs::OrderedDict{OptiNode,Vector{OptiGraph}}
-    edge_to_graphs::OrderedDict{OptiEdge,Vector{OptiGraph}}
-
-    # intermediate moi backend that maps graph elements to an MOI model
-    backend::MOI.ModelLike
-
-    node_obj_dict::OrderedDict{Tuple{OptiNode,Symbol},Any} # object dictionary for nodes
-    edge_obj_dict::OrderedDict{Tuple{OptiEdge,Symbol},Any} # object dictionary for edges
-    obj_dict::Dict{Symbol,Any}
-    ext::Dict{Symbol,Any}
-
-    bridge_types::Set{Any}
-    is_model_dirty::Bool
-
-    #Constructor
-    function OptiGraph(;name::Symbol=Symbol(:g,gensym()))
-        optigraph = new()
-        optigraph.optinodes = OrderedSet{OptiNode}()
-        optigraph.optiedges = OrderedSet{OptiEdge}()
-        optigraph.subgraphs = OrderedSet{OptiGraph}()
-        optigraph.optiedge_map = OrderedDict{Set{OptiNode},OptiEdge}()
-        optigraph.parent_graph = nothing
-        optigraph.optimizer_graph = optigraph
-
-        optigraph.node_to_graphs = OrderedDict{OptiNode,Vector{OptiGraph}}()
-        optigraph.node_obj_dict = OrderedDict{Tuple{OptiNode,Symbol},Any}()
-        optigraph.edge_to_graphs = OrderedDict{OptiEdge,Vector{OptiGraph}}()
-        optigraph.edge_obj_dict = OrderedDict{Tuple{OptiEdge,Symbol},Any}()
-
-        optigraph.backend = GraphMOIBackend(optigraph)
-        optigraph.obj_dict = Dict{Symbol,Any}()
-        optigraph.ext = Dict{Symbol,Any}()
-        optigraph.label = name
-
-        optigraph.bridge_types = Set{Any}()
-        optigraph.is_model_dirty = false 
-        return optigraph
-    end
+function OptiGraph(;
+    name::Symbol=Symbol(:g,gensym())
+)
+    graph = OptiGraph(
+        name,
+        OrderedSet{OptiNode}(),
+        OrderedSet{OptiEdge}(),
+        OrderedSet{OptiGraph}(),
+        OrderedDict{Set{OptiNode},OptiEdge}(),
+        nothing,
+        nothing,
+        OrderedDict{OptiNode,Vector{OptiGraph}}(),
+        OrderedDict{OptiEdge,Vector{OptiGraph}}(),
+        nothing,
+        OrderedDict{Tuple{OptiNode,Symbol},Any}(),
+        OrderedDict{Tuple{OptiEdge,Symbol},Any}(),
+        Dict{Symbol,Any}(),
+        Dict{Symbol,Any}(),
+        Set{Any}(),
+        false
+    )
+    graph.optimizer_graph = graph
+    graph.backend = GraphMOIBackend(graph)
+    return graph
 end
 
 function Base.string(graph::OptiGraph)
@@ -108,7 +75,7 @@ function add_node(
     label=Symbol(graph.label,Symbol(".n"),length(graph.optinodes)+1)
 )
     node_index = NodeIndex(length(graph.optinodes)+1)
-    optinode = OptiNode{OptiGraph}(graph, node_index, label)
+    optinode = OptiNode(graph, node_index, label)
     push!(graph.optinodes, optinode)
     add_node(graph_backend(graph), optinode)
     return optinode
@@ -129,11 +96,11 @@ end
 
 ### Add edges
 
-function get_edge(graph::OptiGraph, nodes::Set{OptiNode{OptiGraph}})
+function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
     return graph.optiedge_map[nodes]
 end
 
-function has_edge(graph::OptiGraph, nodes::Set{OptiNode{OptiGraph}})
+function has_edge(graph::OptiGraph, nodes::Set{OptiNode})
     if haskey(graph.optiedge_map, nodes)
         return true
     else
@@ -149,7 +116,7 @@ function add_edge(
     if has_edge(graph, Set(nodes))
         edge = get_edge(graph, Set(nodes))
     else
-        edge = OptiEdge{OptiGraph}(graph, label, OrderedSet(collect(nodes)))
+        edge = OptiEdge(graph, label, OrderedSet(collect(nodes)))
         push!(graph.optiedges, edge)
         graph.optiedge_map[Set(collect(nodes))] = edge
         add_edge(graph_backend(graph), edge)
@@ -242,19 +209,6 @@ function JuMP.add_constraint(
     con = JuMP.model_convert(edge, con)
     cref = _moi_add_edge_constraint(edge, con)
     return cref
-end
-
-function _collect_nodes(
-    jump_func::Union{
-        NodeVariableRef, 
-        JuMP.GenericAffExpr, 
-        JuMP.GenericQuadExpr,
-        JuMP.GenericNonlinearExpr
-    }
-)
-    vars = _extract_variables(jump_func)
-    nodes = JuMP.owner_model.(vars)
-    return collect(nodes)
 end
 
 ### Objective Function

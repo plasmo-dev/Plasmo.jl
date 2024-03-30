@@ -1,13 +1,15 @@
+const HyperMap = ProjectionMap{GOI.HyperGraph,HyperGraphProjection}
+
 """
     Graphs.all_neighbors(graph::OptiGraph, node::OptiNode)
 
 Retrieve the optinode neighbors of `node` in the optigraph `graph`.  
 Uses an underlying hypergraph to query for neighbors.
 """
-function Graphs.all_neighbors(proj_map::ProjectionMap, node::OptiNode)
-    vertex = proj_map[node]
-    neighbors = Graphs.all_neighbors(proj_map.projected_graph, vertex)
-    return getindex.(Ref(proj_map), neighbors)
+function Graphs.all_neighbors(hyper_map::HyperMap, node::OptiNode)
+    vertex = hyper_map[node]
+    neighbors = Graphs.all_neighbors(hyper_map.projected_graph, vertex)
+    return get_mapped_elements(hyper_map, neighbors) #getindex.(Ref(hyper_map), neighbors)
 end
 
 """
@@ -15,8 +17,8 @@ end
 
 Create an induced subgraph of optigraph given a vector of optinodes.
 """
-function Graphs.induced_subgraph(proj_map::ProjectionMap, nodes::Vector{OptiNode})
-    edges = induced_edges(proj_map, nodes)
+function Graphs.induced_subgraph(hyper_map::HyperMap, nodes::Vector{OptiNode})
+    edges = induced_edges(hyper_map, nodes)
 
     # TODO: assemble_optigraph
     induced_graph = assemble_optigraph(nodes, edges) 
@@ -32,30 +34,30 @@ Retrieve incident edges to a set of optinodes.
 
 Retrieve incident edges to a single optinode.
 """
-function incident_edges(proj_map::ProjectionMap, nodes::Vector{OptiNode{OptiGraph}})
-    hypernodes = Base.getindex.(Ref(proj_map), nodes)
-    edges = GOI.incident_edges(proj_map.projected_graph, hypernodes)
-    return get_mapped_elements(proj_map, edges) #getindex.(Ref(hyper_map), incidentedges))
+function incident_edges(hyper_map::HyperMap, nodes::Vector{OptiNode{OptiGraph}})
+    hypernodes = Base.getindex.(Ref(hyper_map), nodes)
+    edges = GOI.incident_edges(hyper_map.projected_graph, hypernodes)
+    return get_mapped_elements(hyper_map, edges) #getindex.(Ref(hyper_map), incidentedges))
 end
 
-function incident_edges(proj_map::ProjectionMap, node::OptiNode)
-	return incident_edges(proj_map, [node])
+function incident_edges(hyper_map::HyperMap, node::OptiNode)
+	return incident_edges(hyper_map, [node])
 end
 
 
-# """
-#     induced_edges(graph::OptiGraph, nodes::Vector{OptiNode})
+"""
+    induced_edges(graph::OptiGraph, nodes::Vector{OptiNode})
 
-# Retrieve induced edges to a set of optinodes.
-# """
-# function induced_edges(graph::OptiGraph, nodes::Vector{OptiNode})
-#     _init_graph_backend(graph)
-#     hypergraph, hyper_map = Plasmo.graph_backend_data(graph)
-#     hypernodes = getindex.(Ref(hyper_map), nodes)
-#     inducededges = induced_edges(hypergraph, hypernodes)
-#     opti_edges = convert(Vector{OptiEdge}, getindex.(Ref(hyper_map), inducededges))
-#     return opti_edges
-# end
+Retrieve induced edges to a set of optinodes.
+"""
+function induced_edges(hyper_map::HyperMap, nodes::Vector{OptiNode{OptiGraph}})
+    hypernodes = get_mapped_elements(hyper_map, nodes)
+    induced = induced_edges(hyper_map.projected_graph, hypernodes)
+    optiedges = get_mapped_elements(hyper_map, induced)
+
+    #optiedges = convert(Vector{OptiEdge}, getindex.(Ref(hyper_map), inducededges))
+    return optiedges
+end
 
 # """
 #     identify_edges(graph::OptiGraph, node_vectors::Vector{Vector{OptiNode}})

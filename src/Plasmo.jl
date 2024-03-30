@@ -26,7 +26,9 @@ all_nodes, all_edges,
 
 @optinode, @nodevariables, @linkconstraint
 
-abstract type AbstractOptiGraph <: JuMP.AbstractModel end
+include("core_types.jl")
+
+include("optigraph.jl")
 
 include("optinode.jl")
 
@@ -35,8 +37,6 @@ include("node_variables.jl")
 include("node_constraints.jl")
 
 include("optiedge.jl")
-
-include("optigraph.jl")
 
 include("moi_backend.jl")
 
@@ -48,8 +48,8 @@ include("macros.jl")
 
 include("utils.jl")
 
-include("graph_interface/projections.jl")
+# include("graph_interface/projections.jl")
 
-include("graph_interface/topology.jl")
+# include("graph_interface/topology.jl")
 
 end

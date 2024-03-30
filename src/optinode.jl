@@ -1,13 +1,3 @@
-struct NodeIndex
-    value::Int
-end
-
-struct OptiNode{GT<:AbstractOptiGraph} <: JuMP.AbstractModel
-    source_graph::GT
-    idx::NodeIndex
-    label::Symbol
-end
-
 function Base.string(node::OptiNode)
     return "$(node.label)"
 end

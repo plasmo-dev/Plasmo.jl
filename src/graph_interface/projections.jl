@@ -1,3 +1,7 @@
+abstract type AbstractProjection end
+
+const GraphElement = Union{Int64,Graphs.AbstractEdge}
+
 """
     ProjectionMap
 
@@ -5,21 +9,29 @@ A mapping between OptiGraph elements (nodes and edges) and elements in a graph p
 A graph projection can be for example a hypergraph, a bipartite graph
 or a standard graph.
 """
-mutable struct ProjectionMap{GT <: Graphs.AbstractGraph}
+mutable struct ProjectionMap{GT <: Graphs.AbstractGraph, PT <: AbstractProjection}
     optigraph::OptiGraph
     projected_graph::GT
-    proj_to_opti_map::Dict         #map projected graph vertices to optigraph elements
-    opti_to_proj_map::Dict         #map optigraph elements to projected elements
+    projection::PT
+    proj_to_opti_map::Dict{GraphElement,OptiElement}
+    opti_to_proj_map::Dict{OptiElement,GraphElement}
 end
 
 function ProjectionMap(
 	optigraph::OptiGraph, 
-	projection::GT
-) where GT <: Graphs.AbstractGraph
-    return ProjectionMap(optigraph, projection, Dict(), Dict())
+	projected_graph::GT,
+    projection::PT
+) where {GT <: Graphs.AbstractGraph, PT <: AbstractProjection}
+    return ProjectionMap(
+        optigraph, 
+        projected_graph, 
+        projection, 
+        Dict{GraphElement,OptiElement}(), 
+        Dict{OptiElement,GraphElement}()
+    )
 end
 
-function Base.getindex(graph_map::ProjectionMap, vertex::Union{Int64,Graphs.AbstractEdge})
+function Base.getindex(graph_map::ProjectionMap, element::GraphElement)
     return graph_map.proj_to_opti_map[vertex]
 end
 
@@ -58,9 +70,11 @@ function get_mapped_elements(proj_map::ProjectionMap, elements::Vector{OptiEleme
     return getindex.(Ref(proj_map.opti_to_proj_map), elements)
 end
 
-function get_mapped_elements(proj_map::ProjectionMap, elements::Vector)
+function get_mapped_elements(proj_map::ProjectionMap, elements::Vector{GraphElement})
     return getindex.(Ref(proj_map.proj_to_opti_map), elements)
 end
+
+struct HyperGraphProjection <: AbstractProjection end
 
 """
     build_hypergraph(graph::OptiGraph)
@@ -70,7 +84,7 @@ that maps hypernodes and hyperedges to the original optinodes and optiedges.
 """
 function build_hypergraph(optigraph::OptiGraph)
     hypergraph = GOI.HyperGraph()
-    hyper_map = ProjectionMap(optigraph, hypergraph)
+    hyper_map = ProjectionMap(optigraph, hypergraph, HyperGraphProjection())
     for node in all_nodes(optigraph)
         hypernode = Graphs.add_vertex!(hypergraph)
         hyper_map[hypernode] = node
@@ -89,6 +103,9 @@ end
 @deprecate gethypergraph build_hyper_graph
 @deprecate hyper_graph build_hyper_graph
 
+
+struct CliqueGraphProjection <: AbstractProjection end
+
 """
     build_clique_graph(graph::OptiGraph)
 
@@ -97,7 +114,7 @@ that maps vertices and edges to the optinodes and optiedges.
 """
 function build_clique_graph(optigraph::OptiGraph)
     graph = Graphs.Graph()
-    graph_map = ProjectionMap(optigraph, graph)
+    graph_map = ProjectionMap(optigraph, graph, CliqueGraphProjection())
     for optinode in all_nodes(optigraph)
         Graphs.add_vertex!(graph)
         vertex = nv(graph)
@@ -121,6 +138,8 @@ end
 @deprecate getcliquegraph build_clique_graph
 @deprecate clique_graph build_clique_graph
 
+struct EdgeGraphProjection <: AbstractProjection end
+
 """
     edge_graph(optigraph::OptiGraph)
 
@@ -129,7 +148,7 @@ Returns a `ProjectionMap`.
 """
 function build_edge_graph(optigraph::OptiGraph)
     graph = Graphs.Graph()
-    graph_map = ProjectionMap(optigraph, graph)
+    graph_map = ProjectionMap(optigraph, graph, EdgeGraphProjection())
     for optiedge in all_edges(optigraph)
         Graphs.add_vertex!(graph)
         vertex = nv(graph)
@@ -151,6 +170,9 @@ function build_edge_graph(optigraph::OptiGraph)
 end
 @deprecate edge_graph build_edge_graph
 
+
+struct EdgeHyperGraphProjection <: AbstractProjection end
+
 """
     edge_hyper_graph(graph::OptiGraph)
 
@@ -163,7 +185,7 @@ function build_edge_hypergraph(optigraph::OptiGraph)
 
     # build the edge hypergraph
     hypergraph = GOI.HyperGraph()
-    hyper_map = ProjectionMap(optigraph, hypergraph)
+    hyper_map = ProjectionMap(optigraph, hypergraph, EdgeHyperGraphProjection())
     for edge in all_edges(optigraph)
         hypernode = Graphs.add_vertex!(hypergraph)
         hyper_map[hypernode] = edge
@@ -181,6 +203,8 @@ function build_edge_hypergraph(optigraph::OptiGraph)
 end
 @deprecate edge_hyper_graph build_edge_hypergraph
 
+struct BipartiteGraphProjection <: AbstractProjection end
+
 """
     bipartite_graph(optigraph::OptiGraph)
 
@@ -189,7 +213,7 @@ The bipartite graph contains two sets of vertices corresponding to optinodes and
 """
 function build_bipartite_graph(optigraph::OptiGraph)
     graph = GOI.BipartiteGraph()
-    graph_map = ProjectionMap(optigraph, graph)
+    graph_map = ProjectionMap(optigraph, graph, BipartiteGraphProjection())
     for optinode in all_nodes(optigraph)
         Graphs.add_vertex!(graph; bipartite=1)
         node_vertex = nv(graph)
