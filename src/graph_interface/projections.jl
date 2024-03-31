@@ -58,19 +58,21 @@ end
 Base.broadcastable(graph_map::ProjectionMap) = Ref(graph_map)
 
 """
-    get_mapped_elements(proj_map::ProjectionMap, elements::Vector{OptiElement})
+    get_mapped_elements(proj_map::ProjectionMap, elements::Vector{<:OptiElement})
 
-Get the projected graph elements that correspond to the supplied optigraph elements.
+Get the projected graph elements that correspond to the supplied optigraph elements. Note 
+the use of `UnionAll` to catch vectors of either element.
 
-    get_mapped_elements(proj_map::ProjectionMap, elements::Vector{Any})
+    get_mapped_elements(proj_map::ProjectionMap, elements::Vector{<:GraphElement})
 
-Get the optiraph elements that correspond to the supplied projected graph elements.
+Get the optiraph elements that correspond to the supplied projected graph elements. Note 
+the use of `UnionAll` to catch vectors of either element.
 """
-function get_mapped_elements(proj_map::ProjectionMap, elements::Vector{OptiElement})
+function get_mapped_elements(proj_map::ProjectionMap, elements::Vector{<:OptiElement})
     return getindex.(Ref(proj_map.opti_to_proj_map), elements)
 end
 
-function get_mapped_elements(proj_map::ProjectionMap, elements::Vector{GraphElement})
+function get_mapped_elements(proj_map::ProjectionMap, elements::Vector{<:GraphElement})
     return getindex.(Ref(proj_map.proj_to_opti_map), elements)
 end
 
@@ -233,3 +235,4 @@ function build_bipartite_graph(optigraph::OptiGraph)
     end
     return graph, graph_map
 end
+@deprecate bipartite_graph build_bipartite_graph

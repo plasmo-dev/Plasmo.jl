@@ -37,6 +37,31 @@ function graph_backend(graph::OptiGraph)
     return graph.optimizer_graph.backend
 end
 
+"""
+    assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+
+Create a new optigraph from a collection of nodes and edges.
+"""
+function assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+    is_valid_optigraph(nodes, edges) || error(
+        "The provided nodes and edges are not a valid optigraph. 
+        All connected edge nodes must be provided in the node vector."
+    )
+    graph = OptiGraph()
+    for node in nodes
+        add_node(graph, node)
+    end
+    for edge in edges
+        add_edge(graph, edge)
+    end
+    return graph
+end
+
+function is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+    edge_nodes = union(all_nodes.(edges)...)
+    return isempty(setdiff(edge_nodes, nodes)) ? true : false
+end
+
 ### Add subgraph
 
 function add_subgraph(
@@ -75,10 +100,17 @@ function add_node(
     label=Symbol(graph.label,Symbol(".n"),length(graph.optinodes)+1)
 )
     node_index = NodeIndex(length(graph.optinodes)+1)
-    optinode = OptiNode(graph, node_index, label)
-    push!(graph.optinodes, optinode)
-    add_node(graph_backend(graph), optinode)
-    return optinode
+    node = OptiNode(graph, node_index, label)
+    push!(graph.optinodes, node)
+    _add_node(graph_backend(graph), node)
+    return node
+end
+
+function add_node(graph::OptiGraph, node::OptiNode)
+    node in all_nodes(graph) && error("Cannot add the same node to a graph multiple times")
+    push!(graph.optinodes, node)
+    _append_node_to_backend!(graph, node)
+    return
 end
 
 """
@@ -119,9 +151,16 @@ function add_edge(
         edge = OptiEdge(graph, label, OrderedSet(collect(nodes)))
         push!(graph.optiedges, edge)
         graph.optiedge_map[Set(collect(nodes))] = edge
-        add_edge(graph_backend(graph), edge)
+        _add_edge(graph_backend(graph), edge)
     end
     return edge
+end
+
+function add_edge(graph::OptiGraph, edge::OptiEdge)
+    edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
+    push!(graph.optiedges, edge)
+    _append_edge_to_backend!(graph, edge)
+    return
 end
 
 """

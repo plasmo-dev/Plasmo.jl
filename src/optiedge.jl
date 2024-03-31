@@ -1,4 +1,3 @@
-
 function Base.string(edge::OptiEdge)
     return "$(edge.label)"
 end
@@ -57,7 +56,7 @@ function containing_optigraphs(edge::OptiEdge)
     backend = optimizer_graph(edge)
     graphs = [backend]
     if haskey(source.edge_to_graphs, edge)
-        graphs = [graphs; source_graph.edge_to_graphs[edge]]
+        graphs = [graphs; source.edge_to_graphs[edge]]
     end
     return graphs
 end

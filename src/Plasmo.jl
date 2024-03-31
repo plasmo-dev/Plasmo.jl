@@ -22,6 +22,8 @@ add_node, add_edge, add_subgraph,
 
 all_nodes, all_edges,
 
+containing_optigraphs, source_graph,
+
 # macros
 
 @optinode, @nodevariables, @linkconstraint
@@ -48,8 +50,8 @@ include("macros.jl")
 
 include("utils.jl")
 
-# include("graph_interface/projections.jl")
+include("graph_interface/projections.jl")
 
-# include("graph_interface/topology.jl")
+include("graph_interface/topology.jl")
 
 end

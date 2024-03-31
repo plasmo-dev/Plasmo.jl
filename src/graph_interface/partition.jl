@@ -1,35 +1,36 @@
-# The Partition object describes partitions of optinodes and optiedges.
-# Different graph projections can be used to create a Partition object which is the standard interface to form subgraphs
-abstract type AbstractPartition end
 """
-    Partition(hypergraph::HyperGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
+    Partition(hypergraph::HyperGraph, node_membership_vector::Vector{Int64})
 
-Create a partition of optinodes using `hypergraph`, `node_membership_vector`, and 'ref_map'.  The 'ref_map' is a dictionary that maps hypernode indices (integers) and hyperedge indices (tuples) back to optinodes and optiedges.
+Create a partition of optinodes using `hypergraph`, `node_membership_vector`, and 'ref_map'.  
 
-    Partition(optigraph::OptiGraph,node_membership_vector::Vector{Int64},ref_map::Dict)
+    Partition(optigraph::OptiGraph, node_membership_vector::Vector{Int64})
 
-Create a partition using `optigraph`, `node_membership_vector`, and 'ref_map'. The `ref_map` is a mapping of node_indices to the original optinodes.
+Create a partition using `optigraph`, `node_membership_vector`, and 'ref_map'. 
 
-    Partition(optigraph::OptiGraph,optinode_vectors::Vector{Vector{OptiNode}})
+    Partition(optigraph::OptiGraph, optinode_vectors::Vector{Vector{OptiNode}})
 
 Manually create a partition using `optigraph` and a vector of vectors containing sets of optinodes that represent each partition.
 """
-mutable struct Partition <: AbstractPartition
-    optinodes::Vector{OptiNode}   #optinodes at partition level
-    optiedges::Vector{OptiEdge}   #optiedges at partition level
-    subpartitions::Vector{AbstractPartition}      #subpartitions
+mutable struct Partition
+    optinodes::Vector{OptiNode}       
+    optiedges::Vector{OptiEdge}  
+    subpartitions::Vector{Partition}
 end
-Partition() = Partition(Vector{OptiNode}(), Vector{OptiEdge}(), Vector{Partition}())
+
+# function Partition() = Partition(Vector{OptiNode}(), Vector{OptiEdge}(), Vector{Partition}())
 
 function _check_valid_partition(
     graph::OptiGraph, optinode_vectors::Vector{Vector{OptiNode}}
 )
     all_subnodes = vcat(optinode_vectors...)
     all_graph_nodes = all_nodes(graph)
+
     #nodes can only be in one partition
     length(all_subnodes) == length(union(all_subnodes)) || error(
-        "An optinode appears in multiple partition vectors. A partition requires distinct optinode vectors ",
+        "An optinode appears in multiple partition vectors. 
+        A partition requires distinct optinode vectors ",
     )
+
     #all nodes must be in the optigraph
     all(node -> node in all_graph_nodes, all_subnodes) ||
         error("The optinode vectors must contain all of the nodes in optigraph $graph")
@@ -69,7 +70,6 @@ function _check_valid_partition(graph::OptiGraph, subgraphs::Vector{OptiGraph})
     return true
 end
 
-#Partition using HyperGraph backend
 function Partition(graph::OptiGraph, node_membership_vector::Vector{Int64})
     optinode_vectors = partition_list(graph, node_membership_vector)
     return Partition(graph, optinode_vectors)
@@ -137,22 +137,21 @@ function Partition(graph::OptiGraph, subgraphs::Vector{OptiGraph})
     return partition
 end
 
-########################################################################################################
-#PARTITION USING DIFFERENT OPTIGRAPH REPRESENTATIONS (e.g. a hypergraph, cliquegraph, or bipartitegraph)
-########################################################################################################
+#######################################################
+# PARTITION USING DIFFERENT OPTIGRAPH REPRESENTATIONS 
+# (e.g. a hypergraph, cliquegraph, or bipartitegraph)
+#######################################################
 function Partition(
-    graph::LightGraphs.AbstractGraph,
+    proj_map::ProjectionMap;
     membership_vector::Vector{Int64},
-    ref_map::ProjectionMap;
     kwargs...,
 )
-    @assert graph == ref_map.projected_graph
-    return Partition(membership_vector, ref_map; kwargs...)
+    return Partition(proj_map, membership_vector; kwargs...)
 end
 
-function Partition(membership_vector::Vector{Int64}, ref_map::ProjectionMap; kwargs...)
-    optigraph = ref_map.optigraph
-    partition_vectors = Plasmo._partition_list(membership_vector)
+function Partition(proj_map::ProjectionMap, membership_vector::Vector{Int64}; kwargs...)
+    optigraph = proj_map.optigraph
+    partition_vectors = _build_partition_list(membership_vector)
     induced = Plasmo.induced_elements(ref_map.projected_graph, partition_vectors; kwargs...)
     partition_elements = Plasmo._identify_partitions(induced, ref_map)  #could be optinode_vectors, optiedge_vectors, or subgraphs
     partition = Partition(optigraph, partition_elements)
@@ -202,11 +201,10 @@ end
 
 Return a list of optinode partitions given a `membership_vector`
 """
-function partition_list(graph::OptiGraph, membership_vector::Vector{Int64})
-    _init_graph_backend(graph)
-    hypergraph, hyper_map = Plasmo.graph_backend_data(graph)
-    partitions = _partition_list(membership_vector)
-    return [getindex.(Ref(hyper_map), partitions[i]) for i in 1:length(partitions)]
+function partition_list(hyper_map::HyperMap, membership_vector::Vector{Int64})
+    partitions = _build_partition_list(membership_vector)
+    return get_mapped_elements.(Ref(hyper_map), partitions)
+    # return [getindex.(Ref(hyper_map), partitions[i]) for i in 1:length(partitions)]
 end
 @deprecate getpartitionlist partition_list
 
@@ -216,7 +214,7 @@ function partition_list(membership_vector::Vector{Int64}, ref_map::ProjectionMap
 end
 
 #convert membership_vector to a list of partitions
-function _partition_list(membership_vector::Vector)
+function _build_partition_list(membership_vector::Vector)
     unique_parts = unique(membership_vector)
     unique_parts = sort(unique_parts)
 
@@ -282,6 +280,8 @@ end
     apply_partition!(optigraph::OptiGraph,partition::Partition)
 
 Create subgraphs in `optigraph` using a `partition`.
+
+Clears any current subgraphs and re-creates them
 """
 function apply_partition!(graph::OptiGraph, partition::Partition)
     root = partition

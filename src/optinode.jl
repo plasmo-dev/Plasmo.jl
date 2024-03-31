@@ -62,7 +62,7 @@ function containing_optigraphs(node::OptiNode)
     backend_graph = optimizer_graph(node)
     graphs = [backend_graph]
     if haskey(source.node_to_graphs, node)
-        graphs = [graphs; source_graph.node_to_graphs[node]]
+        graphs = [graphs; source.node_to_graphs[node]]
     end
     return graphs
 end

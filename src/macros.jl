@@ -86,4 +86,4 @@ macro nodevariables(nodes, args...)
 end
 
 # TODO: @nodeconstraints
-# We would need to intercept variable arguments and lookup the actual node variables (tough)
+# We would need to intercept variable arguments and lookup the actual node variables
