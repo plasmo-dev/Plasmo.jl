@@ -6,7 +6,7 @@ Base.show(io::IO, edge::OptiEdge) = Base.print(io, edge)
 
 function Base.setindex!(edge::OptiEdge, value::Any, name::Symbol)
     t = (edge, name)
-    edge.source_graph.edge_obj_dict[t] = value
+    source_graph(edge).edge_obj_dict[t] = value
     return
 end
 
@@ -35,7 +35,7 @@ Return the optigraph that contains the optiedge. This is the optigraph that
 defined said edge and stores edge object dictionary data.
 """
 function source_graph(edge::OptiEdge)
-    return edge.source_graph
+    return edge.source_graph.x
 end
 
 """
@@ -88,7 +88,7 @@ function MOI.get(
 end
 
 function JuMP.object_dictionary(edge::OptiEdge)
-    return edge.source_graph.edge_obj_dict
+    return source_graph(edge).edge_obj_dict
 end
 
 function JuMP.backend(edge::OptiEdge)

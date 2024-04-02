@@ -27,7 +27,7 @@ macro optinode(graph, args...)
     if length(args) == 0
         macro_code = :(add_node($graph))
     else
-        var = string(_get_name(args[1]))
+        var = Base.string(_get_name(args[1]))
         macro_code = quote
             container = JuMP.Containers.@container($(args...), add_node($graph))
             #set node labels

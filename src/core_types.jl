@@ -16,7 +16,7 @@ mutable struct OptiGraph{NT <: AbstractNode, ET <: AbstractEdge} <: AbstractOpti
     parent_graph::Union{Nothing,OptiGraph}
 
     # it is possible nodes and edges may use a parent graph as their model backend
-    # this is the case if constructing an optigraph from subgraphs
+    # this is the case if an optigraph is constructed from existing subgraphs
     optimizer_graph::Union{Nothing,OptiGraph}
 
     # track node membership in other graphs; nodes use this to query different backends
@@ -36,17 +36,17 @@ mutable struct OptiGraph{NT <: AbstractNode, ET <: AbstractEdge} <: AbstractOpti
 end
 
 struct NodeIndex
-    value::Int
+    value::Symbol
 end
 
 struct OptiNode <: AbstractNode
-    source_graph::OptiGraph
+    source_graph::Base.RefValue{<:OptiGraph}
     idx::NodeIndex
     label::Symbol
 end
 
 struct OptiEdge <: AbstractEdge
-    source_graph::OptiGraph
+    source_graph::Base.RefValue{<:OptiGraph}
     label::Symbol
     nodes::OrderedSet{OptiNode}
 end
@@ -57,30 +57,3 @@ struct NodeVariableRef <: JuMP.AbstractVariableRef
     node::OptiNode
     index::MOI.VariableIndex
 end
-
-    #Constructor
-    # function OptiGraph(;
-    #     name::Symbol=Symbol(:g,gensym())
-    # )
-    #     optigraph = new{NT,ET}()
-    #     optigraph.optinodes = OrderedSet{NT}()
-    #     optigraph.optiedges = OrderedSet{ET}()
-    #     optigraph.subgraphs = OrderedSet{OptiGraph}()
-    #     optigraph.optiedge_map = OrderedDict{Set{NT},ET}()
-    #     optigraph.parent_graph = nothing
-    #     optigraph.optimizer_graph = optigraph
-
-    #     optigraph.node_to_graphs = OrderedDict{NT,Vector{OptiGraph}}()
-    #     optigraph.node_obj_dict = OrderedDict{Tuple{NT,Symbol},Any}()
-    #     optigraph.edge_to_graphs = OrderedDict{ET,Vector{OptiGraph}}()
-    #     optigraph.edge_obj_dict = OrderedDict{Tuple{ET,Symbol},Any}()
-
-    #     optigraph.backend = GraphMOIBackend(optigraph)
-    #     optigraph.obj_dict = Dict{Symbol,Any}()
-    #     optigraph.ext = Dict{Symbol,Any}()
-    #     optigraph.label = name
-
-    #     optigraph.bridge_types = Set{Any}()
-    #     optigraph.is_model_dirty = false 
-    #     return optigraph
-    # end

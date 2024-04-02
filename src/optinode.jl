@@ -6,13 +6,13 @@ Base.show(io::IO, node::OptiNode) = Base.print(io, node)
 
 function Base.setindex!(node::OptiNode, value::Any, name::Symbol)
     t = (node, name)
-    node.source_graph.node_obj_dict[t] = value
+    source_graph(node).node_obj_dict[t] = value
     return
 end
 
 function Base.getindex(node::OptiNode, name::Symbol)
     t = (node,name)
-    return node.source_graph.node_obj_dict[t]
+    return source_graph(node).node_obj_dict[t]
 end
 
 function JuMP.num_variables(node::OptiNode)
@@ -41,7 +41,7 @@ Return the optigraph that contains the optinode. This is the optigraph that
 defined said node and stores node object dictionary data.
 """
 function source_graph(node::OptiNode)
-    return node.source_graph
+    return node.source_graph.x
 end
 
 """
@@ -74,7 +74,7 @@ end
 ### JuMP Extension
 
 function JuMP.object_dictionary(node::OptiNode)
-    return node.source_graph.node_obj_dict
+    return source_graph(node).node_obj_dict
 end
 
 function JuMP.backend(node::OptiNode)

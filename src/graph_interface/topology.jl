@@ -1,15 +1,15 @@
-const HyperMap = ProjectionMap{GOI.HyperGraph,HyperGraphProjection}
+const HyperGraphProjection = GraphProjection{GOI.HyperGraph,HyperGraphProjectionType}
 
 """
-    Graphs.all_neighbors(hyper_map::HyperMap, node::OptiNode)
+    Graphs.all_neighbors(hyper::HyperGraphProjection, node::OptiNode)
 
 Retrieve the optinode neighbors of `node` in the optigraph `graph`.  
 Uses an underlying hypergraph to query for neighbors.
 """
-function Graphs.all_neighbors(hyper_map::HyperMap, node::OptiNode)
-    vertex = hyper_map[node]
-    neighbors = Graphs.all_neighbors(hyper_map.projected_graph, vertex)
-    return get_mapped_elements(hyper_map, neighbors)
+function Graphs.all_neighbors(hyper::HyperGraphProjection, node::OptiNode)
+    vertex = hyper[node]
+    neighbors = Graphs.all_neighbors(hyper.projected_graph, vertex)
+    return get_mapped_elements(hyper, neighbors)
 end
 
 """
@@ -17,31 +17,29 @@ end
 
 Create an induced subgraph of optigraph given a vector of optinodes.
 """
-function Graphs.induced_subgraph(hyper_map::HyperMap, nodes::Vector{OptiNode})
-    edges = induced_edges(hyper_map, nodes)
-
-    # TODO: assemble_optigraph
+function Graphs.induced_subgraph(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
+    edges = induced_edges(hyper, nodes)
     induced_graph = assemble_optigraph(nodes, edges) 
     return induced_graph
 end
 
 """
-    incident_edges(hyper_map::HyperMap, nodes::Vector{OptiNode})
+    incident_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
 
 Retrieve incident edges to a set of optinodes.
 
-    incident_edges(hyper_map::HyperMap, node::OptiNode)
+    incident_edges(hyper::HyperGraphProjection, node::OptiNode)
 
 Retrieve incident edges to a single optinode.
 """
-function incident_edges(hyper_map::HyperMap, nodes::Vector{OptiNode})
-    hypernodes = Base.getindex.(Ref(hyper_map), nodes)
-    edges = GOI.incident_edges(hyper_map.projected_graph, hypernodes)
-    return get_mapped_elements(hyper_map, edges) #getindex.(Ref(hyper_map), incidentedges))
+function incident_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
+    hypernodes = Base.getindex.(Ref(hyper), nodes)
+    edges = GOI.incident_edges(hyper.projected_graph, hypernodes)
+    return get_mapped_elements(hyper, edges) #getindex.(Ref(hyper), incidentedges))
 end
 
-function incident_edges(hyper_map::HyperMap, node::OptiNode)
-	return incident_edges(hyper_map, [node])
+function incident_edges(hyper::HyperGraphProjection, node::OptiNode)
+	return incident_edges(hyper, [node])
 end
 
 
@@ -50,78 +48,78 @@ end
 
 Retrieve induced edges to a set of optinodes.
 """
-function induced_edges(hyper_map::HyperMap, nodes::Vector{OptiNode})
-    hypernodes = get_mapped_elements(hyper_map, nodes)
-    induced = GOI.induced_edges(hyper_map.projected_graph, hypernodes)
-    optiedges = get_mapped_elements(hyper_map, induced)
+function induced_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
+    hypernodes = get_mapped_elements(hyper, nodes)
+    induced = GOI.induced_edges(hyper.projected_graph, hypernodes)
+    optiedges = get_mapped_elements(hyper, induced)
     return optiedges
 end
 
 """
-    identify_edges(hyper_map::HyperMap, node_vectors::Vector{Vector{OptiNode}})
+    identify_edges(hyper::HyperGraphProjection, node_vectors::Vector{Vector{OptiNode}})
 
 Identify induced edges and edge separators from a vector of optinode partitions.
 
 # Arguments
-- `hyper_map::HyperMap`: A `HyperMap` obtained from `build_hypergraph`.
+- `hyper::HyperGraphProjection`: A `HyperGraphProjection` obtained from `build_hypergraph`.
 - `node_vectors::Vector{Vector{OptiNode}}`: A vector of vectors that contain `OptiNode`s.
 
 # Returns
 - partition_optiedges::Vector{Vector{OptiEdge}}: The `OptiEdge` vectors for each partition.
 - cross_optiedges::Vector{OptiEdge}: A vector of optiedges that cross partitions.
 """
-function identify_edges(hyper_map::HyperMap, node_vectors::Vector{Vector{OptiNode}})
-    hypernode_vectors = get_mapped_elements.(Ref(hyper_map), node_vectors)
+function identify_edges(hyper::HyperGraphProjection, node_vectors::Vector{Vector{OptiNode}})
+    hypernode_vectors = get_mapped_elements.(Ref(hyper), node_vectors)
     partition_edges, cross_edges = GOI.identify_edges(
-        hyper_map.projected_graph, 
+        hyper.projected_graph, 
         hypernode_vectors
     )
-    partition_optiedges = get_mapped_elements.(Ref(hyper_map), partition_edges)
-    cross_optiedges = get_mapped_elements(hyper_map, cross_edges)
+    partition_optiedges = get_mapped_elements.(Ref(hyper), partition_edges)
+    cross_optiedges = get_mapped_elements(hyper, cross_edges)
     return partition_optiedges, cross_optiedges
 end
 
 """
-    identify_nodes(hyper_map::HyperMap, node_vectors::Vector{Vector{OptiEdge}})
+    identify_nodes(hyper::HyperGraphProjection, node_vectors::Vector{Vector{OptiEdge}})
 
 Identify induced nodes and node separators from a vector of optiedge partitions.
 """
-function identify_nodes(hyper_map::HyperMap, edge_vectors::Vector{Vector{OptiEdge}})
-    hyperedge_vectors = get_mapped_elements.(Ref(hyper_map), edge_vectors)
+function identify_nodes(hyper::HyperGraphProjection, edge_vectors::Vector{Vector{OptiEdge}})
+    hyperedge_vectors = get_mapped_elements.(Ref(hyper), edge_vectors)
     partition_nodes, cross_nodes = GOI.identify_nodes(
-        hyper_map.projected_graph, 
+        hyper.projected_graph, 
         hyperedge_vectors
     )
-    partition_optinodes = get_mapped_elements.(Ref(hyper_map), partition_nodes)
-    cross_optinodes = get_mapped_elements(hyper_map, cross_nodes)
+    partition_optinodes = get_mapped_elements.(Ref(hyper), partition_nodes)
+    cross_optinodes = get_mapped_elements(hyper, cross_nodes)
     return partition_optinodes, cross_optinodes
 end
 
 """
     neighborhood(
-        hyper_map::HyperMap, 
+        hyper::HyperGraphProjection, 
         nodes::Vector{OptiNode}, 
         distance::Int64
     )::Vector{OptiNode}
 
 Return the optinodes within `distance` of the given `nodes` in the optigraph `graph`.
 """
-function neighborhood(hyper_map::HyperMap, nodes::Vector{OptiNode}, distance::Int64)
-    vertices = get_mapped_elements(hyper_map, nodes)
-    new_nodes = GOI.neighborhood(hyper_map.projected_graph, vertices, distance)
-    return get_mapped_elements(hyper_map, new_nodes) #getindex.(Ref(hyper_map), new_nodes)
+function neighborhood(hyper::HyperGraphProjection, nodes::Vector{OptiNode}, distance::Int64)
+    vertices = get_mapped_elements(hyper, nodes)
+    new_nodes = GOI.neighborhood(hyper.projected_graph, vertices, distance)
+    return get_mapped_elements(hyper, new_nodes) #getindex.(Ref(hyper), new_nodes)
 end
 
 """
-    expand(hyper_map::HyperMap, subgraph::OptiGraph, distance::Int64)
+    expand(hyper::HyperGraphProjection, subgraph::OptiGraph, distance::Int64)
 
 Return a new expanded subgraph given the optigraph `graph` and an existing subgraph `subgraph`.
 The returned subgraph contains the expanded neighborhood within `distance` of the given `subgraph`.
 """
-function expand(hyper_map::HyperMap, subgraph::OptiGraph, distance::Int64)
+function expand(hyper::HyperGraphProjection, subgraph::OptiGraph, distance::Int64)
     nodes = all_nodes(subgraph)
-    new_optinodes = neighborhood(hyper_map, nodes, distance)
-    new_optiedges = induced_edges(hyper_map, new_optinodes)
+    new_optinodes = neighborhood(hyper, nodes, distance)
+    new_optiedges = induced_edges(hyper, new_optinodes)
     expanded_subgraph = assemble_optigraph(new_optinodes, new_optiedges)
     return expanded_subgraph
 end

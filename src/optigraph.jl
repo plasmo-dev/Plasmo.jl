@@ -25,7 +25,7 @@ function OptiGraph(;
 end
 
 function Base.string(graph::OptiGraph)
-    return "OptiGraph" * " " * string(graph.label)
+    return "OptiGraph" * " " * Base.string(graph.label)
 end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
@@ -99,8 +99,8 @@ function add_node(
     graph::OptiGraph; 
     label=Symbol(graph.label,Symbol(".n"),length(graph.optinodes)+1)
 )
-    node_index = NodeIndex(length(graph.optinodes)+1)
-    node = OptiNode(graph, node_index, label)
+    node_index = NodeIndex(gensym()) #NodeIndex(length(graph.optinodes)+1)
+    node = OptiNode(Ref(graph), node_index, label)
     push!(graph.optinodes, node)
     _add_node(graph_backend(graph), node)
     return node
@@ -148,7 +148,7 @@ function add_edge(
     if has_edge(graph, Set(nodes))
         edge = get_edge(graph, Set(nodes))
     else
-        edge = OptiEdge(graph, label, OrderedSet(collect(nodes)))
+        edge = OptiEdge(Ref(graph), label, OrderedSet(collect(nodes)))
         push!(graph.optiedges, edge)
         graph.optiedge_map[Set(collect(nodes))] = edge
         _add_edge(graph_backend(graph), edge)

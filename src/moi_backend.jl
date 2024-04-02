@@ -84,11 +84,11 @@ end
 Initialize an empty optigraph backend that uses MOI. 
 By default we use a `CachingOptimizer` to store the underlying optimizer just like JuMP.
 """
-function GraphMOIBackend(optigraph::AbstractOptiGraph)
+function GraphMOIBackend(graph::OptiGraph)
     inner = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
     cache = MOI.Utilities.CachingOptimizer(inner, MOI.Utilities.AUTOMATIC)
     return GraphMOIBackend(
-        optigraph,
+        graph,
         cache,
         ElementToGraphMap(),
         GraphToElementMap(),
@@ -100,10 +100,12 @@ end
 function _add_node(gb::GraphMOIBackend, node::OptiNode)
     gb.node_variables[node] = MOI.VariableIndex[]
     gb.element_constraints[node] = MOI.ConstraintIndex[]
+    return
 end
 
 function _add_edge(gb::GraphMOIBackend, edge::OptiEdge)
     gb.element_constraints[edge] = MOI.ConstraintIndex[]
+    return
 end
 
 # JuMP Extension
@@ -200,7 +202,6 @@ function _add_element_constraint_to_backend(
     if !haskey(graph_backend.element_constraints, cref.model)
         graph_backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
     end
-    #println("cref to add: ", cref)
     graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
     graph_backend.element_to_graph_map[cref] = graph_con_index
     graph_backend.graph_to_element_map[graph_con_index] = cref
@@ -309,7 +310,6 @@ function _create_graph_moi_func(
             moi_func_graph.args[i] = new_func
         end
     end
-    #_update_nonlinear_func!(backend, moi_func_graph, jump_func)
     return moi_func_graph
 end
 
@@ -395,7 +395,6 @@ function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
     else
         source.node_to_graphs[node] = [graph]
     end
-
 
     src = graph_backend(node)
     dest = graph_backend(graph)

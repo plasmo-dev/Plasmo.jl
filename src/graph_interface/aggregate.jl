@@ -1,3 +1,5 @@
+# functions for aggregating subgraphs into nodes, or creating stand-alone JuMP models 
+
 """
     AggregateMap
 
