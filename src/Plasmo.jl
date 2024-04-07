@@ -16,25 +16,25 @@ const GOI = GraphOptInterface
 using Reexport
 @reexport using JuMP
 
-export OptiGraph, graph_backend, graph_index,
+export OptiGraph, Partition, graph_backend, graph_index,
 
 add_node, add_edge, add_subgraph,
 
 all_nodes, all_edges,
 
-containing_optigraphs, source_graph,
+containing_optigraphs, source_graph, assemble_optigraph,
 
 @optinode, @nodevariables, @linkconstraint
 
 include("core_types.jl")
 
-include("optigraph.jl")
-
-include("optinode.jl")
-
 include("node_variables.jl")
 
 include("node_constraints.jl")
+
+include("optigraph.jl")
+
+include("optinode.jl")
 
 include("optiedge.jl")
 

@@ -1,3 +1,8 @@
+struct NodeVariableRef <: JuMP.AbstractVariableRef
+    node::OptiNode
+    index::MOI.VariableIndex
+end
+
 function Base.string(vref::NodeVariableRef)
     return JuMP.name(vref)
 end

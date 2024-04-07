@@ -313,16 +313,24 @@ function _create_graph_moi_func(
     return moi_func_graph
 end
 
+function _add_backend_variables(
+    backend::GraphMOIBackend,
+    vars::Vector{NodeVariableRef}
+)
+    vars_to_add = setdiff(vars, keys(backend.element_to_graph_map.var_map))
+    for var in vars_to_add
+        _add_variable_to_backend(backend, var)
+    end
+    return
+end
+
 # add variables to a backend for linking across subgraphs
 function _add_backend_variables(
     backend::GraphMOIBackend,
     jump_func::JuMP.GenericAffExpr
 )
     vars = [term[2] for term in JuMP.linear_terms(jump_func)]
-    vars_to_add = setdiff(vars, keys(backend.element_to_graph_map.var_map))
-    for var in vars_to_add
-        _add_variable_to_backend(backend, var)
-    end
+    _add_backend_variables(backend, vars)
     return
 end
 
@@ -333,10 +341,7 @@ function _add_backend_variables(
     vars_aff = [term[2] for term in JuMP.linear_terms(jump_func)]
     vars_quad = vcat([[term[2], term[3]] for term in JuMP.quad_terms(jump_func)]...)
     vars_unique = unique([vars_aff;vars_quad])
-    vars_to_add = setdiff(vars_unique, keys(backend.element_to_graph_map.var_map))
-    for var in vars_to_add
-        _add_variable_to_backend(backend, var)
-    end
+    _add_backend_variables(backend, vars_unique)
     return
 end
 
@@ -353,10 +358,7 @@ function _add_backend_variables(
             push!(vars, jump_arg)
         end
     end
-    vars_to_add = setdiff(vars, keys(backend.element_to_graph_map.var_map))
-    for var in vars_to_add
-        _add_variable_to_backend(backend, var)
-    end
+    _add_backend_variables(backend, vars)
     return
 end
 
@@ -529,6 +531,9 @@ function _append_edge_to_backend!(graph::OptiGraph, edge::OptiEdge)
     
     src = graph_backend(edge)
     dest = graph_backend(graph)
+
+    # add variables in cases edge connects across subgraphs
+    _add_backend_variables(dest, all_variables(edge))
 
     # populate index map with node data for src -- > dest
     index_map = MOIU.IndexMap()

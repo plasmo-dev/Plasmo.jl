@@ -190,6 +190,23 @@ function Partition(projection::GraphProjection, membership_vector::Vector{Int64}
     return partition
 end
 
+function all_subpartitions(partition::Partition)
+    subparts = partition.subpartitions
+    for part in subparts
+        subparts = [subparts; all_subpartitions(part)]
+    end
+    return subparts
+end
+
+function n_subpartitions(partition::Partition)
+    n_subparts = length(partition.subpartitions)
+    subparts = partition.subpartitions
+    for part in subparts
+        n_subparts += n_subpartitions(part)
+    end
+    return n_subparts
+end
+
 function _induced_elements(graph::GOI.HyperGraph, partitions::Vector)
     return GOI.induced_elements(graph, partitions)
 end
@@ -260,72 +277,70 @@ function _build_partition_list(membership_vector::Vector)
     return partitions
 end
 
-# Partition object functions
-function all_subpartitions(partition::Partition)
-    subparts = partition.subpartitions
-    for part in subparts
-        subparts = [subparts; all_subpartitions(part)]
+
+"""
+    Assemble a new optigraph from a given graph and partition
+"""
+function assemble_optigraph(partition::Partition)
+    new_graph = _assemble_optigraph(partition.optinodes, partition.optiedges)
+    for subpartition in partition.subpartitions
+        subgraph = _assemble_optigraph(subpartition.optinodes, subpartition.optiedges)
+        add_subgraph(new_graph, subgraph)
     end
-    return subparts
+    return new_graph
 end
 
-function n_subpartitions(partition::Partition)
-    n_subparts = length(partition.subpartitions)
-    subparts = partition.subpartitions
-    for part in subparts
-        n_subparts += n_subpartitions(part)
-    end
-    return n_subparts
+# transfer node to new graph
+function _transfer_element(new_graph::OptiGraph, node::OptiNode)
+    node.source_graph.x = graph
+    delete!(new_graph.node_to_graphs, node)
+    return
 end
 
-# TODO: re-write completely
-# This function would potentially delete subgraph backends depending on how the  
-# user chose to model their problem. A lot can happen here.
+function _transfer_element(new_graph::OptiGraph, edge::OptiEdge)
+    edge.source_graph.x = graph
+    delete!(new_graph.edge_to_graphs, edge)
+    return
+end
+
+# TODO
+function _check_valid_partition(graph::OptiGraph, partition::Partition)
+end
+
+function _apply_partition!(graph::OptiGraph, new_graph::OptiGraph, partition::Partition)
+    for node in partition.optinodes
+        _transfer_element(new_graph, node)
+    end
+    for edge in partition.optiedges
+        _transfer_element(new_graph, edge)
+    end
+    for subpartition in partition.subpartitions
+        subgraph = _assemble_optigraph(subpartition.optinodes, subpartition.optiedges)
+        add_subgraph(new_graph, subgraph)
+        _apply_partition!(subgraph, subpartition)
+    end
+    return new_graph
+end
+
 """
     apply_partition!(graph::OptiGraph, partition::Partition)
 
 Generate subgraphs in an optigraph using a partition.
-
-NOTE: this could be a destructive operation in the sense that node and edge references
-will change.
 """
 function apply_partition!(
     graph::OptiGraph, 
-    partition::Partition; 
-    create_subgraph_backends=false
+    partition::Partition
 )
-    # NOTE: Create new graph backends; then populate with partition information.
-    # if we set `create_subgraph_backends = true`, then we transfer nodes and edges to 
-    # new source graphs (this changes their optigraph reference).
+    _check_valid_partition(graph, partition)
+    graph.optinodes = partition.optinodes
+    graph.optiedges = partition.optiedges
+    graph.subgraphs = OrderedSet{OptiGraph}()
 
-    # create graph backend
-    new_backend = GraphBackend(graph)
-
-    # Re-create existing nodes on new backend?
-
-    # populate backend with root nodes and edges
-
-    root = partition
-    graph.optinodes = root.optinodes
-    graph.optiedges = root.optiedges
-
-    # update the backend mapping for root graph
-    # _set_nodes(graph, optinodes)
-    # _set_edges(graph, optiedges)
-
-    # clear subgraphs
-    graph.subgraphs = OptiGraph[]
-    for subpart in root.subpartitions
-        subgraph = OptiGraph()
-        add_subgraph!(graph, subgraph)
-        # copy partition data into subgraphs
-
-        #apply_partition!(subgraph, subpart)
-    end
-
-    # graph.backend = new_backend
-    # delete old backend
-
+    # create new backend for a model
+    new_graph = _assemble_optigraph(partition.optinodes, partition.optiedges)
+    _apply_partition!(graph, new_graph, partition)
+    
+    graph.backend = new_graph.backend
     return
 end
 @deprecate make_subgraphs! apply_partition!
@@ -389,24 +404,3 @@ function Base.string(partition::Partition)
 end
 Base.print(io::IO, partition::Partition) = Base.print(io, string(partition))
 Base.show(io::IO, partition::Partition) = Base.print(io, partition)
-
-
-# #Create a new set of nodes on a optigraph
-# function _set_nodes(graph::OptiGraph, nodes::Vector{OptiNode})
-#     graph.optinodes = nodes
-#     for (idx, node) in enumerate(graph.optinodes)
-#         graph.node_idx_map[node] = idx
-#     end
-#     return nothing
-# end
-
-# #Create a new set of edges on a optigraph
-# function _set_edges(graph::OptiGraph, edges::Vector{OptiEdge})
-#     graph.optiedges = edges
-#     link_idx = 0
-#     for (idx, optiedge) in enumerate(graph.optiedges)
-#         graph.edge_idx_map[optiedge] = idx
-#         graph.optiedge_map[optiedge.nodes] = optiedge
-#     end
-#     return nothing
-# end

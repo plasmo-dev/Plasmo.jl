@@ -37,16 +37,7 @@ function graph_backend(graph::OptiGraph)
     return graph.optimizer_graph.backend
 end
 
-"""
-    assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
-
-Create a new optigraph from a collection of nodes and edges.
-"""
-function assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
-    is_valid_optigraph(nodes, edges) || error(
-        "The provided nodes and edges are not a valid optigraph. 
-        All connected edge nodes must be provided in the node vector."
-    )
+function _assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     graph = OptiGraph()
     for node in nodes
         add_node(graph, node)
@@ -57,7 +48,24 @@ function assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     return graph
 end
 
+"""
+    assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+
+Create a new optigraph from a collection of nodes and edges.
+"""
+function assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+    is_valid_optigraph(nodes, edges) || error(
+        "The provided nodes and edges are not a valid optigraph. 
+        All connected edge nodes must be provided in the node vector."
+    )
+    graph = _assemble_optigraph(nodes, edges)
+    return graph
+end
+
 function is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+    if length(edges) == 0
+        return true
+    end
     edge_nodes = union(all_nodes.(edges)...)
     return isempty(setdiff(edge_nodes, nodes)) ? true : false
 end
@@ -80,6 +88,13 @@ function add_subgraph(
     else
         subgraph.optimizer_graph = subgraph
     end
+    push!(graph.subgraphs, subgraph)
+    return subgraph
+end
+
+function add_subgraph(graph::OptiGraph, subgraph::OptiGraph)
+    subgraph.parent_graph == nothing || error("Cannot add subgraph to multiple graphs")
+    subgraph.parent_graph = graph
     push!(graph.subgraphs, subgraph)
     return subgraph
 end

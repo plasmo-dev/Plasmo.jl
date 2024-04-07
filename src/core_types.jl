@@ -53,7 +53,3 @@ end
 
 const OptiElement = Union{OptiNode,OptiEdge}
 
-struct NodeVariableRef <: JuMP.AbstractVariableRef
-    node::OptiNode
-    index::MOI.VariableIndex
-end
