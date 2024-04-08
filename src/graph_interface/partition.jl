@@ -290,16 +290,29 @@ function assemble_optigraph(partition::Partition)
     return new_graph
 end
 
-# transfer node to new graph
-function _transfer_element(new_graph::OptiGraph, node::OptiNode)
-    node.source_graph.x = graph
+function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
+    """
+        Transfer optinode ownership to new optigraph 
+    """
+    node.source_graph.x = new_graph
+    # delete reference since we made the graph the source
     delete!(new_graph.node_to_graphs, node)
     return
 end
 
-function _transfer_element(new_graph::OptiGraph, edge::OptiEdge)
-    edge.source_graph.x = graph
+function _transfer_element!(new_graph::OptiGraph, edge::OptiEdge)
+    edge.source_graph.x = new_graph
     delete!(new_graph.edge_to_graphs, edge)
+    return
+end
+
+function _transfer_elements!(new_graph::OptiGraph, partition::Partition)
+    for node in partition.optinodes
+        _transfer_element!(new_graph, node)
+    end
+    for edge in partition.optiedges
+        _transfer_element!(new_graph, edge)
+    end
     return
 end
 
@@ -307,19 +320,17 @@ end
 function _check_valid_partition(graph::OptiGraph, partition::Partition)
 end
 
-function _apply_partition!(graph::OptiGraph, new_graph::OptiGraph, partition::Partition)
-    for node in partition.optinodes
-        _transfer_element(new_graph, node)
-    end
-    for edge in partition.optiedges
-        _transfer_element(new_graph, edge)
-    end
+function _make_subgraphs!(graph::OptiGraph, partition::Partition)
     for subpartition in partition.subpartitions
         subgraph = _assemble_optigraph(subpartition.optinodes, subpartition.optiedges)
-        add_subgraph(new_graph, subgraph)
-        _apply_partition!(subgraph, subpartition)
+        add_subgraph(graph, subgraph)
+        _transfer_elements!(subgraph, subpartition)
+
+        # TODO: update node_obj_dict
+
+        _make_subgraphs!(subgraph, subpartition)
     end
-    return new_graph
+    return
 end
 
 """
@@ -332,15 +343,19 @@ function apply_partition!(
     partition::Partition
 )
     _check_valid_partition(graph, partition)
-    graph.optinodes = partition.optinodes
-    graph.optiedges = partition.optiedges
+
+    graph.optinodes = OrderedSet(partition.optinodes)
+    graph.optiedges = OrderedSet(partition.optiedges)
     graph.subgraphs = OrderedSet{OptiGraph}()
 
-    # create new backend for a model
-    new_graph = _assemble_optigraph(partition.optinodes, partition.optiedges)
-    _apply_partition!(graph, new_graph, partition)
-    
-    graph.backend = new_graph.backend
+    # create new subgraphs
+    _make_subgraphs!(graph, partition)
+
+    # create a new top-level graph we use to assemble a new backend
+    temp_graph = _assemble_optigraph(partition.optinodes, partition.optiedges)
+    graph.backend = temp_graph.backend
+    graph.backend.optigraph = graph
+    _transfer_elements!(graph, partition)
     return
 end
 @deprecate make_subgraphs! apply_partition!
