@@ -74,7 +74,8 @@ end
 ### JuMP Extension
 
 function JuMP.object_dictionary(node::OptiNode)
-    return source_graph(node).node_obj_dict
+    d = source_graph(node).node_obj_dict
+    return filter(p -> p.first[1] == node, d)
 end
 
 function JuMP.backend(node::OptiNode)

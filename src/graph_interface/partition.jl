@@ -294,13 +294,23 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
     """
         Transfer optinode ownership to new optigraph 
     """
-    node.source_graph.x = new_graph
-    # delete reference since we made the graph the source
+    # update object dictionary
+    node_dict = JuMP.object_dictionary(node)
+    merge!(new_graph.node_obj_dict, node_dict)
+    
+    # delete the node_to_graphs reference since new_graph is now the source graph
     delete!(new_graph.node_to_graphs, node)
+    for key in keys(node_dict)
+        delete!(source_graph(node).node_obj_dict, key)
+    end
+    node.source_graph.x = new_graph
     return
 end
 
 function _transfer_element!(new_graph::OptiGraph, edge::OptiEdge)
+    """
+        Transfer optiedge ownership to new optigraph 
+    """
     edge.source_graph.x = new_graph
     delete!(new_graph.edge_to_graphs, edge)
     return
@@ -321,13 +331,13 @@ function _check_valid_partition(graph::OptiGraph, partition::Partition)
 end
 
 function _make_subgraphs!(graph::OptiGraph, partition::Partition)
+    """
+        Create new subgraphs in an optigraph using partition information
+    """
     for subpartition in partition.subpartitions
         subgraph = _assemble_optigraph(subpartition.optinodes, subpartition.optiedges)
         add_subgraph(graph, subgraph)
         _transfer_elements!(subgraph, subpartition)
-
-        # TODO: update node_obj_dict
-
         _make_subgraphs!(subgraph, subpartition)
     end
     return
