@@ -207,6 +207,14 @@ function n_subpartitions(partition::Partition)
     return n_subparts
 end
 
+function all_nodes(partition::Partition)
+    nodes = partition.optinodes
+    for subpartition in partition.subpartitions
+        nodes = [nodes; all_nodes(subpartition)]
+    end
+    return nodes
+end
+
 function _induced_elements(graph::GOI.HyperGraph, partitions::Vector)
     return GOI.induced_elements(graph, partitions)
 end
@@ -294,15 +302,20 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
     """
         Transfer optinode ownership to new optigraph 
     """
+    # TODO: make sure `new_graph` has a backend to point to
+    source = source_graph(node)
     # update object dictionary
     node_dict = JuMP.object_dictionary(node)
     merge!(new_graph.node_obj_dict, node_dict)
-    
+    merge!(new_graph.node_to_graphs, source.node_to_graphs)
+
     # delete the node_to_graphs reference since new_graph is now the source graph
     delete!(new_graph.node_to_graphs, node)
+    delete!(source.node_to_graphs, node)
     for key in keys(node_dict)
-        delete!(source_graph(node).node_obj_dict, key)
+        delete!(source.node_obj_dict, key)
     end
+
     node.source_graph.x = new_graph
     return
 end
@@ -311,8 +324,19 @@ function _transfer_element!(new_graph::OptiGraph, edge::OptiEdge)
     """
         Transfer optiedge ownership to new optigraph 
     """
-    edge.source_graph.x = new_graph
+    source = source_graph(edge)
+    edge_dict = JuMP.object_dictionary(edge)
+    # merge!(new_graph.edge_obj_dict, edge_dict)
+    merge!(new_graph.edge_to_graphs, source.node_to_graphs)
+
+    # delete the node_to_graphs reference since new_graph is now the source graph
     delete!(new_graph.edge_to_graphs, edge)
+    delete!(source.edge_to_graphs, edge)
+    for key in keys(edge_dict)
+        delete!(source.edge_obj_dict, key)
+    end
+
+    edge.source_graph.x = new_graph
     return
 end
 
@@ -326,8 +350,11 @@ function _transfer_elements!(new_graph::OptiGraph, partition::Partition)
     return
 end
 
-# TODO
 function _check_valid_partition(graph::OptiGraph, partition::Partition)
+    isempty(setdiff(all_nodes(graph), all_nodes(partition))) || 
+        error(
+            "Invalid partition for graph. All optigraph nodes must be within the partition."
+        )
 end
 
 function _make_subgraphs!(graph::OptiGraph, partition::Partition)

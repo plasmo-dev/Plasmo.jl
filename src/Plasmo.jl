@@ -16,13 +16,15 @@ const GOI = GraphOptInterface
 using Reexport
 @reexport using JuMP
 
-export OptiGraph, Partition, graph_backend, graph_index,
+export OptiGraph, graph_backend, graph_index,
 
 add_node, add_edge, add_subgraph,
 
 all_nodes, all_edges,
 
 containing_optigraphs, source_graph, assemble_optigraph,
+
+Partition, apply_partition!,
 
 @optinode, @nodevariables, @linkconstraint
 

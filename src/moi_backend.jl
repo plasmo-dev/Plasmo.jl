@@ -98,13 +98,19 @@ function GraphMOIBackend(graph::OptiGraph)
 end
 
 function _add_node(gb::GraphMOIBackend, node::OptiNode)
-    gb.node_variables[node] = MOI.VariableIndex[]
-    gb.element_constraints[node] = MOI.ConstraintIndex[]
+    if !haskey(gb.node_variables, node)
+        gb.node_variables[node] = MOI.VariableIndex[]
+    end
+    if !haskey(gb.element_constraints, node)
+        gb.element_constraints[node] = MOI.ConstraintIndex[]
+    end
     return
 end
 
 function _add_edge(gb::GraphMOIBackend, edge::OptiEdge)
-    gb.element_constraints[edge] = MOI.ConstraintIndex[]
+    if !haskey(gb.element_constraints, edge)
+        gb.element_constraints[edge] = MOI.ConstraintIndex[]
+    end
     return
 end
 

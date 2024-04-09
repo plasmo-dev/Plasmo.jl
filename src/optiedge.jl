@@ -88,7 +88,8 @@ function MOI.get(
 end
 
 function JuMP.object_dictionary(edge::OptiEdge)
-    return source_graph(edge).edge_obj_dict
+    d = source_graph(edge).edge_obj_dict
+    return filter(p -> p.first[1] == edge, d)
 end
 
 function JuMP.backend(edge::OptiEdge)
