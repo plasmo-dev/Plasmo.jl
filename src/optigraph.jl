@@ -8,7 +8,6 @@ function OptiGraph(;
         OrderedSet{OptiGraph}(),
         OrderedDict{Set{OptiNode},OptiEdge}(),
         nothing,
-        nothing,
         OrderedDict{OptiNode,Vector{OptiGraph}}(),
         OrderedDict{OptiEdge,Vector{OptiGraph}}(),
         nothing,
@@ -19,7 +18,7 @@ function OptiGraph(;
         Set{Any}(),
         false
     )
-    graph.optimizer_graph = graph
+    #graph.optimizer_graph = graph
     graph.backend = GraphMOIBackend(graph)
     return graph
 end
@@ -34,7 +33,7 @@ Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 # JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
 
 function graph_backend(graph::OptiGraph)
-    return graph.optimizer_graph.backend
+    return graph.backend
 end
 
 function _assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
@@ -73,21 +72,11 @@ end
 ### Add subgraph
 
 function add_subgraph(
-    graph::OptiGraph; 
-    optimizer_graph=nothing,
+    graph::OptiGraph;
     name::Symbol=Symbol(:sg,gensym())
 )
     subgraph = OptiGraph(; name=name)
     subgraph.parent_graph=graph
-    if optimizer_graph != nothing
-        if optimizer_graph in traverse_parents(subgraph)
-            subgraph.optimizer_graph = optimizer_graph
-        else
-            error("Invalid optigraph passed as `optimizer_graph`")
-        end
-    else
-        subgraph.optimizer_graph = subgraph
-    end
     push!(graph.subgraphs, subgraph)
     return subgraph
 end

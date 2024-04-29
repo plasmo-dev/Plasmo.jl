@@ -64,10 +64,13 @@ Add variable `v` to optinode `node`. This function supports use of the `@variabl
 Optionally add a `base_name` to the variable for printing.
 """
 function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
+    t = @elapsed begin
     vref = _moi_add_node_variable(node, v)
     if !isempty(name) && MOI.supports(JuMP.backend(node), MOI.VariableName(), MOI.VariableIndex)
         JuMP.set_name(vref, "$(node.label).$(name)")
     end
+    end
+    #println("JuMP.add_variable: ",t)
     return  vref
 end
 
@@ -83,7 +86,8 @@ function _moi_add_node_variable(
     for graph in containing_optigraphs(node)
         _add_variable_to_backend(graph_backend(graph), vref)
     end
-    # constraint node variable (hits all backends)
+
+    # constrain node variable (hits all backends)
     _moi_constrain_node_variable(
         vref,
         v.info, 

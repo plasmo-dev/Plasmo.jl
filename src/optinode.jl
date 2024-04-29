@@ -31,7 +31,7 @@ end
 Return the `GraphMOIBackend` that holds the associated node model attributes
 """
 function graph_backend(node::OptiNode)
-    return graph_backend(optimizer_graph(node))
+    return graph_backend(source_graph(node))
 end
 
 """
@@ -44,23 +44,9 @@ function source_graph(node::OptiNode)
     return node.source_graph.x
 end
 
-"""
-    optimizer_graph(node::OptiNode)
-
-Return the `OptiGraph` that contains the node backend attributes. In most cases, this is the 
-same as `source_graph(node)`. For improved performance when modeling with subgraphs, it is 
-possible to define all node and edge attributes on a parent graph as opposed to 
-the source graph. In this case, `backend_graph(node)` would return said parent graph, 
-whereas `source_graph(node)` would return the subgraph.
-"""
-function optimizer_graph(node::OptiNode)
-    return source_graph(node).optimizer_graph
-end
-
 function containing_optigraphs(node::OptiNode)
     source = source_graph(node)
-    backend_graph = optimizer_graph(node)
-    graphs = [backend_graph]
+    graphs = [source]
     if haskey(source.node_to_graphs, node)
         graphs = [graphs; source.node_to_graphs[node]]
     end
@@ -75,7 +61,17 @@ end
 
 function JuMP.object_dictionary(node::OptiNode)
     d = source_graph(node).node_obj_dict
+    #return filter(p -> p.first[1] == node, d)
+    return d
+end
+
+"""
+    Filter the object dictionary for values that belong to node
+"""
+function node_object_dictionary(node::OptiNode)
+    d = JuMP.object_dictionary(node::OptiNode)
     return filter(p -> p.first[1] == node, d)
+    return d
 end
 
 function JuMP.backend(node::OptiNode)

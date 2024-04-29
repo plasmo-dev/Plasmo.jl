@@ -5,6 +5,7 @@ repo = "https://github.com/plasmo-dev/Plasmo.jl.git"
 version = "0.6.0"
 
 [deps]
+BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 GraphOptInterface = "2c3d953e-07eb-42f7-9900-e75950e41d88"

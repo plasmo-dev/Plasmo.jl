@@ -15,10 +15,6 @@ mutable struct OptiGraph{NT <: AbstractNode, ET <: AbstractEdge} <: AbstractOpti
     # subgraphs keep a reference to their parent
     parent_graph::Union{Nothing,OptiGraph}
 
-    # it is possible nodes and edges may use a parent graph as their model backend
-    # this is the case if an optigraph is constructed from existing subgraphs
-    optimizer_graph::Union{Nothing,OptiGraph}
-
     # track node membership in other graphs; nodes use this to query different backends
     node_to_graphs::OrderedDict{NT,Vector{OptiGraph}}
     edge_to_graphs::OrderedDict{ET,Vector{OptiGraph}}

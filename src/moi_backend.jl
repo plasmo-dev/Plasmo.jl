@@ -385,19 +385,28 @@ end
 
 function _copy_subgraph_nodes!(graph::OptiGraph, subgraph::OptiGraph)
     for node in all_nodes(subgraph)
-        _append_node_to_backend!(graph, node)
+        # check to make sure we aren't copying again
+        if !(graph in containing_optigraphs(node))
+            _append_node_to_backend!(graph, node)
+        end
     end
 end
 
 function _copy_subgraph_edges!(graph::OptiGraph, subgraph::OptiGraph)
     for edge in all_edges(subgraph)
-        _append_edge_to_backend!(graph, edge)
+        # check to make sure we aren't copying again
+        if !(graph in containing_optigraphs(edge))
+            _append_edge_to_backend!(graph, edge)
+        end
     end
 end
 
 function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
     _add_node(graph_backend(graph), node)
     source = source_graph(node)
+
+    # TODO: I think this needs to go somewhere else.
+    # Add a reference in source graph to the new graph
     if haskey(source.node_to_graphs, node)
         push!(source.node_to_graphs[node], graph)
     else

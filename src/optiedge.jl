@@ -25,7 +25,7 @@ end
 Return the `GraphMOIBackend` that holds the associated edge model attributes
 """
 function graph_backend(edge::OptiEdge)
-    return graph_backend(optimizer_graph(edge))
+    return graph_backend(source_graph(edge))
 end
 
 """
@@ -38,23 +38,9 @@ function source_graph(edge::OptiEdge)
     return edge.source_graph.x
 end
 
-"""
-    backend_graph(edge::OptiEdge)
-
-Return the `OptiGraph` that contains the edge model attributes. In most cases, this is the 
-same as `source_graph(edge)`. For improved performance when modeling with subgraphs, it is 
-possible to define all node and edge attributes on the parent-level graph. In this case,
-`backend_graph(edge)` would return a parent graph, whereas `source_graph(edge)` would return
-the subgraph that contains the node.
-"""
-function optimizer_graph(edge::OptiEdge)
-    return source_graph(edge).optimizer_graph
-end
-
 function containing_optigraphs(edge::OptiEdge)
     source = source_graph(edge)
-    backend = optimizer_graph(edge)
-    graphs = [backend]
+    graphs = [source]
     if haskey(source.edge_to_graphs, edge)
         graphs = [graphs; source.edge_to_graphs[edge]]
     end

@@ -134,8 +134,6 @@ function JuMP.optimize!(
     kwargs...,
 )
 	# NOTE: we do not plan to support legacy nlp model
-    # The nlp_model is not kept in sync, so re-set it here.
-    # TODO: Consider how to handle incremental solves.
     # nlp = nonlinear_model(model)
     # if nlp !== nothing
     #     if _uses_new_nonlinear_interface(model)
@@ -170,10 +168,8 @@ function JuMP.optimize!(
         throw(JuMP.NoOptimizer())
     end
 
-    # If there are subgraphs that do not share the same backend, we need to copy over
-    if !(_optimizer_has_full_backend(graph))
-        aggregate_backends!(graph)
-    end
+    # If there are subgraphs, we need to copy their backend data to this graph
+    aggregate_backends!(graph)
 
     try
         MOI.optimize!(JuMP.backend(graph))
@@ -189,13 +185,4 @@ function JuMP.optimize!(
     end
     graph.is_model_dirty = false
     return
-end
-
-# to do; easier check if we already aggregated
-function _optimizer_has_full_backend(graph::OptiGraph)
-    if all(sg -> sg.optimizer_graph == graph, graph.subgraphs)
-        return true
-    else
-        return false
-    end
 end

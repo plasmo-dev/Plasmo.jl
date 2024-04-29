@@ -42,7 +42,6 @@ function incident_edges(hyper::HyperGraphProjection, node::OptiNode)
 	return incident_edges(hyper, [node])
 end
 
-
 """
     induced_edges(graph::OptiGraph, nodes::Vector{OptiNode})
 
