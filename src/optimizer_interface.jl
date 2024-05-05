@@ -169,7 +169,7 @@ function JuMP.optimize!(
     end
 
     # If there are subgraphs, we need to copy their backend data to this graph
-    aggregate_backends!(graph)
+    _copy_subgraph_backends!(graph)
 
     try
         MOI.optimize!(JuMP.backend(graph))

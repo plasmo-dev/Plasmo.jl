@@ -24,10 +24,6 @@ function Base.isequal(v1::NodeVariableRef, v2::NodeVariableRef)
     return owner_model(v1) === owner_model(v2) && v1.index == v2.index
 end
 
-function graph_index(vref::NodeVariableRef)
-    return graph_backend(vref.node).element_to_graph_map[vref]
-end
-
 function MOI.get(
     node::OptiNode, 
     attr::MOI.AbstractVariableAttribute,
@@ -64,13 +60,10 @@ Add variable `v` to optinode `node`. This function supports use of the `@variabl
 Optionally add a `base_name` to the variable for printing.
 """
 function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
-    t = @elapsed begin
     vref = _moi_add_node_variable(node, v)
     if !isempty(name) && MOI.supports(JuMP.backend(node), MOI.VariableName(), MOI.VariableIndex)
         JuMP.set_name(vref, "$(node.label).$(name)")
     end
-    end
-    #println("JuMP.add_variable: ",t)
     return  vref
 end
 

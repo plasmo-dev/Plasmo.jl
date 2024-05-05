@@ -117,6 +117,18 @@ function add_node(graph::OptiGraph, node::OptiNode)
     return
 end
 
+function get_nodes(graph::OptiGraph)
+    return graph.optinodes
+end
+
+function graph_index(vref::NodeVariableRef)
+    return graph_backend(vref.node).element_to_graph_map[vref]
+end
+
+function graph_index(graph::OptiGraph, vref::NodeVariableRef)
+    return graph_backend(graph).element_to_graph_map[vref]
+end
+
 """
     all_nodes(graph::OptiGraph)::Vector{OptiNode}
 
@@ -134,6 +146,10 @@ end
 
 function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
     return graph.optiedge_map[nodes]
+end
+
+function get_edges(graph::OptiGraph)
+    return graph.optiedges
 end
 
 function has_edge(graph::OptiGraph, nodes::Set{OptiNode})
@@ -178,6 +194,14 @@ function all_edges(graph::OptiGraph)
         edges = [edges; collect(all_edges(subgraph))]
     end
     return edges
+end
+
+function graph_index(cref::ConstraintRef)
+    return graph_backend(cref.model).element_to_graph_map[cref]
+end
+
+function graph_index(graph::OptiGraph, cref::ConstraintRef)
+    return graph_backend(graph).element_to_graph_map[cref]
 end
 
 ### Add subgraphs
@@ -273,6 +297,10 @@ function JuMP.objective_function(graph::OptiGraph)
     return JuMP.objective_function(graph, F)
 end
 
+function JuMP.objective_sense(graph::OptiGraph)
+    return MOI.get(JuMP.backend(graph), MOI.ObjectiveSense())
+end
+
 function JuMP.set_objective(
     graph::OptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
 )
@@ -314,14 +342,14 @@ function _moi_set_objective_function(
     graph::OptiGraph, 
     expr::JuMP.GenericAffExpr{C,NodeVariableRef}
 ) where C <: Real
+    # get the moi function made from local node variable indices
     moi_func = JuMP.moi_function(expr)
     
     # add variables to backend if using subgraphs
     _add_backend_variables(graph_backend(graph), expr)
 
-    # update the moi function variable indices
+    # update the moi function using true graph variable indices
     graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
-
     MOI.set(
         graph_backend(graph),
         MOI.ObjectiveFunction{MOI.ScalarAffineFunction{C}}(),
@@ -334,11 +362,13 @@ function _moi_set_objective_function(
     graph::OptiGraph, 
     expr::JuMP.GenericQuadExpr{C,NodeVariableRef}
 ) where C <: Real
+    # get the moi function made from local node variable indices
     moi_func = JuMP.moi_function(expr)
+
     # add variables to backend if using subgraphs
     _add_backend_variables(graph_backend(graph), expr)
 
-    # update the moi function variable indices
+    # update the moi function using true graph variable indices
     graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
     MOI.set(
         graph_backend(graph),

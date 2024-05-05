@@ -25,6 +25,10 @@ function JuMP.all_variables(node::OptiNode)
     return getindex.(Ref(gb.graph_to_element_map), graph_indices)
 end
 
+function next_variable_index(node::OptiNode)
+    return MOI.VariableIndex(JuMP.num_variables(node) + 1)
+end
+
 """
     graph_backend(node::OptiNode)
 
