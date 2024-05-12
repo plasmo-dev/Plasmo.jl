@@ -16,7 +16,8 @@ function Base.getindex(node::OptiNode, name::Symbol)
 end
 
 function JuMP.num_variables(node::OptiNode)
-    return length(graph_backend(node).node_variables[node])
+    return MOI.get(graph_backend(node), MOI.NumberOfVariables(), node)
+    #return length(graph_backend(node).node_variables[node])
 end
 
 function JuMP.all_variables(node::OptiNode)
@@ -25,6 +26,11 @@ function JuMP.all_variables(node::OptiNode)
     return getindex.(Ref(gb.graph_to_element_map), graph_indices)
 end
 
+"""
+    next_variable_index(node::OptiNode)
+
+Return the next variable index that would be created on this node.
+"""
 function next_variable_index(node::OptiNode)
     return MOI.VariableIndex(JuMP.num_variables(node) + 1)
 end
@@ -61,20 +67,66 @@ function containing_backends(node::OptiNode)
     return graph_backend.(containing_optigraphs(node))
 end
 
-### JuMP Extension
-
-function JuMP.object_dictionary(node::OptiNode)
-    d = source_graph(node).node_obj_dict
-    #return filter(p -> p.first[1] == node, d)
-    return d
-end
-
 """
-    Filter the object dictionary for values that belong to node
+    Filter the object dictionary for values that belong to node. Keep in mind that 
+this function is slow for optigraphs with many nodes.
 """
 function node_object_dictionary(node::OptiNode)
     d = JuMP.object_dictionary(node::OptiNode)
     return filter(p -> p.first[1] == node, d)
+    return d
+end
+
+function next_constraint_index(
+    node::OptiNode, 
+    ::Type{F}, 
+    ::Type{S}
+)::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    index = MOI.get(graph_backend(node), MOI.NumberOfConstraints{F,S}(), node)
+    return MOI.ConstraintIndex{F,S}(index + 1)
+end
+
+### JuMP Methods
+
+function JuMP.delete(node::OptiNode, cref::ConstraintRef)
+    if node !== JuMP.owner_model(cref)
+        error(
+            "The constraint reference you are trying to delete does not " *
+            "belong to the model.",
+        )
+    end
+    _set_dirty(node)
+    MOI.delete(node, cref)
+    return
+end
+
+"""
+    JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, name::String="")
+
+Add a constraint `con` to optinode `node`. This function supports use of the @constraint 
+JuMP macro.
+"""
+function JuMP.add_constraint(
+    node::OptiNode, con::JuMP.AbstractConstraint, name::String=""
+)
+    con = JuMP.model_convert(node, con)
+    cref = _moi_add_node_constraint(node, con)
+    return cref
+end
+
+# function JuMP.num_constraints(
+#     node::OptiNode,
+#     function_type::Type{
+#         <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+#     },
+#     set_type::Type{<:MOI.AbstractSet},
+# )::Int64
+#     F = JuMP.moi_function_type(function_type)
+#     return MOI.get(graph_backend(node), MOI.NumberOfConstraints{F,set_type}(), node)
+# end
+
+function JuMP.object_dictionary(node::OptiNode)
+    d = source_graph(node).node_obj_dict
     return d
 end
 
@@ -110,16 +162,63 @@ function _set_dirty(node::OptiNode)
     return
 end
 
-### MOI Extension
+function _moi_add_node_constraint(
+    node::OptiNode,
+    con::JuMP.AbstractConstraint
+)
+    # get moi function and set
+    jump_func = JuMP.jump_function(con)
+    _check_node_variables(node, jump_func)
+    moi_func = JuMP.moi_function(con)
+    moi_set = JuMP.moi_set(con)
+
+    # create constraint reference
+    constraint_index = next_constraint_index(
+        node, 
+        typeof(moi_func), 
+        typeof(moi_set)
+    )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
+    cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
+
+    # add to each containing optigraph
+    for graph in containing_optigraphs(node)
+        # update func variable indices
+        moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
+
+        # add contraint to backend
+        _add_element_constraint_to_backend(
+            graph_backend(graph), 
+            cref, 
+            moi_func_graph, 
+            moi_set
+        )
+    end
+    return cref
+end
+
+function _check_node_variables(
+    node::OptiNode, 
+    jump_func::Union{
+        NodeVariableRef, 
+        JuMP.GenericAffExpr, 
+        JuMP.GenericQuadExpr,
+        JuMP.GenericNonlinearExpr
+    }
+)
+    return isempty(setdiff(_extract_variables(jump_func), JuMP.all_variables(node)))
+end
+
+### MOI Methods
 
 # TODO: store objective functions on nodes and query as node attributes
-# function MOI.get(node::OptiNode, attr::MOI.AnyAttribute)
-#     return MOI.get(graph_backend(node), attr)
-# end
 
-function MOI.get(node::OptiNode, attr::MOI.UserDefinedFunction)
+function MOI.get(node::OptiNode, attr::MOI.AnyAttribute)
     return MOI.get(graph_backend(node), attr)
 end
+
+# function MOI.get(node::OptiNode, attr::MOI.UserDefinedFunction)
+#     return MOI.get(graph_backend(node), attr)
+# end
 
 # TODO: consider caching constraint types in graph backend versus using unique to filter
 function MOI.get(node::OptiNode, attr::MOI.ListOfConstraintTypesPresent)
@@ -140,4 +239,46 @@ function MOI.get(
         end
     end
     return con_inds
+end
+
+# function MOI.get(
+#     node::OptiNode, 
+#     attr::MOI.ListOfConstraintIndices{F,S}
+# ) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
+#     con_inds = MOI.ConstraintIndex{F,S}[]
+#     for con in graph_backend(node).element_constraints[node]
+#         if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
+#             push!(con_inds, con)
+#         end
+#     end
+#     return con_inds
+# end
+
+function MOI.get(
+    node::OptiNode, 
+    attr::MOI.AbstractConstraintAttribute,
+    cref::ConstraintRef
+)
+    return MOI.get(graph_backend(node), attr, cref)
+end
+
+function MOI.set(
+    node::OptiNode,
+    attr::MOI.AbstractConstraintAttribute,
+    cref::ConstraintRef,
+    args...
+)
+    for graph in containing_optigraphs(JuMP.owner_model(cref))
+        gb = graph_backend(graph)
+        graph_index = gb.element_to_graph_map[cref]
+        MOI.set(gb, attr, graph_index, args...)
+    end
+    return
+end
+
+function MOI.delete(node::OptiNode, cref::ConstraintRef)
+    for graph in containing_optigraphs(node)
+        MOI.delete(graph_backend(graph), cref)
+    end
+    return
 end

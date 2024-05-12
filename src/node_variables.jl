@@ -1,3 +1,4 @@
+# TODO: parameterize on precision
 struct NodeVariableRef <: JuMP.AbstractVariableRef
     node::OptiNode
     index::MOI.VariableIndex

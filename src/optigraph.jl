@@ -32,9 +32,36 @@ Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 # TODO: numerical precision like JuMP Models do
 # JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
 
+"""
+    graph_backend(graph::OptiGraph)
+
+Return the intermediate backend used to map the optigraph to an optimizer. Plasmo.jl 
+currently only supports a backend to MathOptInterface.jl optimizers, but future versions
+intend to support GraphOptInterface.jl as a structured backend. 
+"""
 function graph_backend(graph::OptiGraph)
     return graph.backend
 end
+
+### Graph Index
+
+function graph_index(vref::NodeVariableRef)
+    return graph_backend(vref.node).element_to_graph_map[vref]
+end
+
+function graph_index(graph::OptiGraph, vref::NodeVariableRef)
+    return graph_backend(graph).element_to_graph_map[vref]
+end
+
+function graph_index(cref::ConstraintRef)
+    return graph_backend(cref.model).element_to_graph_map[cref]
+end
+
+function graph_index(graph::OptiGraph, cref::ConstraintRef)
+    return graph_backend(graph).element_to_graph_map[cref]
+end
+
+### Assemble OptiGraph
 
 function _assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     graph = OptiGraph()
@@ -61,6 +88,11 @@ function assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     return graph
 end
 
+"""
+    is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+
+Check whether the given nodes and edges can create a valid optigraph.
+"""
 function is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     if length(edges) == 0
         return true
@@ -69,8 +101,13 @@ function is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     return isempty(setdiff(edge_nodes, nodes)) ? true : false
 end
 
-### Add subgraph
+### Subgraphs
 
+"""
+    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
+
+Create and add a new subgraph to the optigraph `graph`.
+"""
 function add_subgraph(
     graph::OptiGraph;
     name::Symbol=Symbol(:sg,gensym())
@@ -81,6 +118,12 @@ function add_subgraph(
     return subgraph
 end
 
+"""
+    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
+
+Add an existing subgraph to an optigraph. The subgraph cannot already be part of another
+optigraph. It also should not have nodes that already exist in the optigraph.
+"""
 function add_subgraph(graph::OptiGraph, subgraph::OptiGraph)
     subgraph.parent_graph == nothing || error("Cannot add subgraph to multiple graphs")
     subgraph.parent_graph = graph
@@ -97,7 +140,16 @@ function traverse_parents(graph::OptiGraph)
     return parents
 end
 
-### Add nodes
+"""
+    get_subgraphs(graph::OptiGraph)::Vector{OptiGraph}
+
+Retrieve the local subgraphs of `graph`.
+"""
+function get_subgraphs(optigraph::OptiGraph)
+    return optigraph.subgraphs
+end
+
+### OptiNodes
 
 function add_node(
     graph::OptiGraph; 
@@ -117,16 +169,13 @@ function add_node(graph::OptiGraph, node::OptiNode)
     return
 end
 
+"""
+    get_nodes(graph::OptiGraph)::Vector{OptiNode}
+
+Retrieve the optinodes defined within the optigraph `graph`.
+"""
 function get_nodes(graph::OptiGraph)
     return graph.optinodes
-end
-
-function graph_index(vref::NodeVariableRef)
-    return graph_backend(vref.node).element_to_graph_map[vref]
-end
-
-function graph_index(graph::OptiGraph, vref::NodeVariableRef)
-    return graph_backend(graph).element_to_graph_map[vref]
 end
 
 """
@@ -142,7 +191,13 @@ function all_nodes(graph::OptiGraph)
     return nodes
 end
 
-### Add edges
+function JuMP.all_variables(graph::OptiGraph)
+    return vcat(JuMP.all_variables.(all_nodes(graph))...)
+end
+
+
+
+### OptiEdges
 
 function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
     return graph.optiedge_map[nodes]
@@ -196,26 +251,8 @@ function all_edges(graph::OptiGraph)
     return edges
 end
 
-function graph_index(cref::ConstraintRef)
-    return graph_backend(cref.model).element_to_graph_map[cref]
-end
 
-function graph_index(graph::OptiGraph, cref::ConstraintRef)
-    return graph_backend(graph).element_to_graph_map[cref]
-end
-
-### Add subgraphs
-
-"""
-    get_subgraphs(graph::OptiGraph)::Vector{OptiGraph}
-
-Retrieve the local subgraphs of `graph`.
-"""
-function get_subgraphs(optigraph::OptiGraph)
-    return optigraph.subgraphs
-end
-
-### MOI Extension
+### MOI Methods
 
 function MOI.get(graph::OptiGraph, attr::MOI.AnyAttribute)
     MOI.get(graph_backend(graph), attr)
@@ -225,7 +262,7 @@ function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...)
     MOI.set(graph_backend(graph), attr, args...)
 end
 
-### JuMP Extension
+### JuMP Methods
 
 function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
     gb = graph_backend(graph)
@@ -404,6 +441,6 @@ end
 Retrieve the current objective value on optigraph `graph`.
 """
 function JuMP.objective_value(graph::OptiGraph)
-    return MOI.get(backend(graph), MOI.ObjectiveValue())
+    return MOI.get(JuMP.backend(graph), MOI.ObjectiveValue())
 end
 

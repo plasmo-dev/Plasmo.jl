@@ -47,32 +47,6 @@ function containing_optigraphs(edge::OptiEdge)
     return graphs
 end
 
-### OptiEdge Extension
-
-function MOI.get(edge::OptiEdge, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
-    return MOI.get(graph_backend(edge), attr, ref)
-end
-
-function MOI.get(edge::OptiEdge, attr::MOI.ListOfConstraintTypesPresent)
-    cons = graph_backend(edge).element_constraints[edge]
-    con_types = unique(typeof.(cons))
-    type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
-    return type_tuple
-end
-
-function MOI.get(
-    edge::OptiEdge, 
-    attr::MOI.ListOfConstraintIndices{F,S}
-) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
-    con_inds = MOI.ConstraintIndex{F,S}[]
-    for con in graph_backend(edge).element_constraints[edge]
-        if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
-            push!(con_inds, con)
-        end
-    end
-    return con_inds
-end
-
 function JuMP.object_dictionary(edge::OptiEdge)
     d = source_graph(edge).edge_obj_dict
     return filter(p -> p.first[1] == edge, d)
@@ -82,12 +56,16 @@ function JuMP.backend(edge::OptiEdge)
     return JuMP.backend(graph_backend(edge))
 end
 
+### Edge Variables
+
 function JuMP.all_variables(edge::OptiEdge)
     gb = graph_backend(edge)
     con_refs = getindex.(Ref(gb.graph_to_element_map), gb.element_constraints[edge])
     vars = vcat(_extract_variables.(con_refs)...)
     return unique(vars)
 end
+
+### Edge Constraints
 
 function JuMP.num_constraints(
     edge::OptiEdge,
@@ -97,8 +75,6 @@ function JuMP.num_constraints(
     cons = MOI.get(edge, MOI.ListOfConstraintIndices{F,S}())
     return length(cons)
 end
-
-### Edge Constraints
 
 function next_constraint_index(
     edge::OptiEdge, 
@@ -151,4 +127,30 @@ function _moi_add_edge_constraint(
         )
     end
     return cref
+end
+
+### OptiEdge MOI Extension
+
+function MOI.get(edge::OptiEdge, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
+    return MOI.get(graph_backend(edge), attr, ref)
+end
+
+function MOI.get(edge::OptiEdge, attr::MOI.ListOfConstraintTypesPresent)
+    cons = graph_backend(edge).element_constraints[edge]
+    con_types = unique(typeof.(cons))
+    type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
+    return type_tuple
+end
+
+function MOI.get(
+    edge::OptiEdge, 
+    attr::MOI.ListOfConstraintIndices{F,S}
+) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
+    con_inds = MOI.ConstraintIndex{F,S}[]
+    for con in graph_backend(edge).element_constraints[edge]
+        if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
+            push!(con_inds, con)
+        end
+    end
+    return con_inds
 end

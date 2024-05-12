@@ -49,3 +49,5 @@ end
 
 const OptiElement = Union{OptiNode,OptiEdge}
 
+const OptiObject = Union{OptiNode, OptiEdge, OptiGraph}
+

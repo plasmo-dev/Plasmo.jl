@@ -63,25 +63,30 @@ function Base.getindex(g2element_map::GraphToElementMap, idx::MOI.ConstraintInde
     return g2element_map.con_map[idx]
 end
 
-# acts as an intermediate optimization layer. It uses references to underlying nodes in the graph
-# NOTE: OptiGraph does not support modes yet. Eventually we will support more than CachingOptimizer
-# try to support Direct, Manual, and Automatic modes on an optigraph.
+"""
+    GraphMOIBackend
+
+Acts as an intermediate optimization layer. It uses references to underlying nodes in the graph
+It does not support modes yet. Eventually we will support more than CachingOptimizer
+try to support Direct, Manual, and Automatic modes here.
+"""
 mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     optigraph::OptiGraph
     moi_backend::MOI.AbstractOptimizer
     
+    # maintain two-way between graph and element indices
     element_to_graph_map::ElementToGraphMap
     graph_to_element_map::GraphToElementMap
 
-    # map of variables and constraints on nodes and edges to graph backend indices
+    # map of nodes and edges to variables and constraints.
     node_variables::OrderedDict{OptiNode,Vector{MOI.VariableIndex}}
     element_constraints::OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}
 end
 
 """
-    GraphMOIBackend()
+    GraphMOIBackend(graph::OptiGraph)
 
-Initialize an empty optigraph backend that uses MOI. 
+Initialize an empty backend given an optigraph.
 By default we use a `CachingOptimizer` to store the underlying optimizer just like JuMP.
 """
 function GraphMOIBackend(graph::OptiGraph)
@@ -114,13 +119,13 @@ function _add_edge(gb::GraphMOIBackend, edge::OptiEdge)
     return
 end
 
-# JuMP Extension
+# JuMP Methods
 
 function JuMP.backend(gb::GraphMOIBackend)
     return gb.moi_backend
 end
 
-# MOI Interface
+# MOI Methods
 
 function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute)
     return MOI.get(gb.moi_backend, attr)
@@ -134,6 +139,16 @@ end
 function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::NodeVariableRef)
     graph_index = gb.element_to_graph_map[ref]
     return MOI.get(gb.moi_backend, attr, graph_index)
+end
+
+function MOI.get(gb::GraphMOIBackend, attr::MOI.NumberOfVariables, node::OptiNode)
+    return length(gb.node_variables[node])
+end
+
+function MOI.get(gb::GraphMOIBackend, attr::MOI.NumberOfConstraints{F,S}, node::OptiNode) where{F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    cons = MOI.get(gb.moi_backend, MOI.ListOfConstraintIndices{F,S}())
+    refs = [gb.graph_to_element_map[con] for con in cons]
+    return length(filter((cref) -> cref.model == node, refs))
 end
 
 function MOI.set(gb::GraphMOIBackend, attr::MOI.AnyAttribute, args...)

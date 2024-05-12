@@ -1,3 +1,7 @@
+# this file contains the necessary JuMP methods to work with JuMP expressions.
+
+
+
 ### directly copied functions from JuMP
 # copied from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/constraints.jl
 function _moi_add_constraint(
@@ -16,6 +20,26 @@ function _moi_add_constraint(
         )
     end
     return MOI.add_constraint(model, f, s)
+end
+
+### Variables
+
+JuMP.variable_ref_type(::Type{T} where T <: OptiObject) = NodeVariableRef
+
+JuMP.jump_function(::OptiObject, x::Number) = convert(Float64, x)
+
+function JuMP.jump_function_type(
+    ::OptiObject,
+    ::Type{MOI.VariableIndex},
+)
+    return NodeVariableRef
+end
+
+function JuMP.jump_function(obj::OptiObject, vidx::MOI.VariableIndex)
+    gb = graph_backend(obj)
+    node_var = gb.graph_to_element_map[vidx]
+    node = node_var.node
+    return NodeVariableRef(node, node_var.index)
 end
 
 ### Affine Expressions
@@ -46,13 +70,18 @@ function MOI.ScalarAffineFunction(
     return MOI.ScalarAffineFunction(terms, a.constant)
 end
 
-# OptiNode
+function JuMP.jump_function_type(
+    obj::OptiObject,
+    ::Type{MOI.ScalarAffineFunction{C}},
+) where {C}
+    return JuMP.GenericAffExpr{C,NodeVariableRef}
+end
 
 function JuMP.jump_function(
-    node::OptiNode,
+    obj::OptiObject,
     f::MOI.ScalarAffineFunction{C},
 ) where {C}
-    return JuMP.GenericAffExpr{C,NodeVariableRef}(node, f)
+    return JuMP.GenericAffExpr{C,NodeVariableRef}(obj, f)
 end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
@@ -69,14 +98,6 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
         )
     end
     return aff
-end
-
-# OptiEdge
-function JuMP.jump_function(
-    edge::OptiEdge,
-    f::MOI.ScalarAffineFunction{C},
-) where {C}
-    return JuMP.GenericAffExpr{C,NodeVariableRef}(edge, f)
 end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
@@ -96,14 +117,6 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
         )
     end
     return aff
-end
-
-# OptiGraph
-function JuMP.jump_function(
-    graph::OptiGraph,
-    f::MOI.ScalarAffineFunction{C},
-) where {C}
-    return JuMP.GenericAffExpr{C,NodeVariableRef}(graph, f)
 end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
@@ -156,12 +169,18 @@ function MOI.ScalarQuadraticFunction(
     return MOI.ScalarQuadraticFunction(qterms, moi_aff.terms, moi_aff.constant)
 end
 
-# OptiNode
+function JuMP.jump_function_type(
+    obj::OptiObject,
+    ::Type{MOI.ScalarQuadraticFunction{C}},
+) where {C}
+    return JuMP.GenericQuadExpr{C,NodeVariableRef}
+end
+
 function JuMP.jump_function(
-    node::OptiNode,
+    obj::OptiObject,
     f::MOI.ScalarQuadraticFunction{C},
 ) where {C}
-    return JuMP.GenericQuadExpr{C,NodeVariableRef}(node, f)
+    return JuMP.GenericQuadExpr{C,NodeVariableRef}(obj, f)
 end
 
 function JuMP.GenericQuadExpr{C,NodeVariableRef}(
@@ -191,19 +210,10 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
     return quad
 end
 
-# OptiEdge
-function JuMP.jump_function(
-    edge::OptiEdge,
-    f::MOI.ScalarQuadraticFunction{C},
-) where {C}
-    return JuMP.GenericQuadExpr{C,NodeVariableRef}(edge, f)
-end
-
 function JuMP.GenericQuadExpr{C,NodeVariableRef}(
     edge::OptiEdge,
     f::MOI.ScalarQuadraticFunction,
 ) where {C}
-    
     # affine terms
     quad = JuMP.GenericQuadExpr{C,NodeVariableRef}(
         JuMP.GenericAffExpr{C,NodeVariableRef}(
@@ -211,7 +221,6 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
             MOI.ScalarAffineFunction(f.affine_terms, f.constant),
         ),
     )
-
     # quadratic terms
     for t in f.quadratic_terms
         # node variable indices
@@ -241,14 +250,6 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
         )
     end
     return quad
-end
-
-# OptiGraph
-function JuMP.jump_function(
-    graph::OptiGraph,
-    f::MOI.ScalarQuadraticFunction{C},
-) where {C}
-    return JuMP.GenericQuadExpr{C,NodeVariableRef}(graph, f)
 end
 
 function JuMP.GenericQuadExpr{C,NodeVariableRef}(
@@ -297,15 +298,12 @@ end
 ### Nonlinear Expressions
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/nlp_expr.jl
 
-# OptiNode
-JuMP.variable_ref_type(::Type{OptiNode}) = NodeVariableRef
-
-JuMP.jump_function(::OptiNode, x::Number) = convert(Float64, x)
-
-function JuMP.jump_function(node::OptiNode, vidx::MOI.VariableIndex)
-    gb = graph_backend(node)
-    node_var = gb.graph_to_element_map[vidx]
-    return NodeVariableRef(node, node_var.index)
+function JuMP.jump_function_type(
+    obj::OptiObject,
+    ::Type{MOI.ScalarNonlinearFunction},
+)
+    V = JuMP.variable_ref_type(typeof(obj))
+    return JuMP.GenericNonlinearExpr{V}
 end
 
 function JuMP.jump_function(node::OptiNode, f::MOI.ScalarNonlinearFunction)
@@ -330,18 +328,6 @@ function JuMP.jump_function(node::OptiNode, f::MOI.ScalarNonlinearFunction)
     return ret
 end
 
-# OptiEdge
-JuMP.variable_ref_type(::Type{OptiEdge}) = NodeVariableRef
-
-JuMP.jump_function(::OptiEdge, x::Number) = convert(Float64, x)
-
-function JuMP.jump_function(edge::OptiEdge, vidx::MOI.VariableIndex)
-    node_var = graph_backend(edge).graph_to_element_map[vidx]
-    node = node_var.node
-    node_idx = node_var.index
-    return NodeVariableRef(node, node_idx)
-end
-
 function JuMP.jump_function(edge::OptiEdge, f::MOI.ScalarNonlinearFunction)
     V = JuMP.variable_ref_type(typeof(edge))
     ret = JuMP.GenericNonlinearExpr{V}(f.head, Any[])
@@ -362,18 +348,6 @@ function JuMP.jump_function(edge::OptiEdge, f::MOI.ScalarNonlinearFunction)
         end
     end
     return ret
-end
-
-# OptiGraph
-JuMP.variable_ref_type(::Type{OptiGraph{OptiNode,OptiEdge}}) = NodeVariableRef
-
-JuMP.jump_function(::OptiGraph, x::Number) = convert(Float64, x)
-
-function JuMP.jump_function(graph::OptiGraph, vidx::MOI.VariableIndex)
-    node_var = graph_backend(graph).graph_to_element_map[vidx]
-    node = node_var.node
-    node_idx = node_var.index
-    return NodeVariableRef(node, node_idx)
 end
 
 function JuMP.jump_function(graph::OptiGraph, f::MOI.ScalarNonlinearFunction)

@@ -32,8 +32,6 @@ include("core_types.jl")
 
 include("node_variables.jl")
 
-include("node_constraints.jl")
-
 include("optigraph.jl")
 
 include("optinode.jl")
@@ -47,6 +45,8 @@ include("aggregate.jl")
 include("optimizer_interface.jl")
 
 include("jump_interop.jl")
+
+include("jump_methods.jl")
 
 include("macros.jl")
 
