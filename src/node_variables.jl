@@ -30,7 +30,7 @@ function MOI.get(
     attr::MOI.AbstractVariableAttribute,
     nvref::NodeVariableRef
 )
-    return MOI.get(graph_backend(node), attr, graph_index)
+    return MOI.get(graph_backend(node), attr, nvref)
 end
 
 function MOI.set(
@@ -41,8 +41,7 @@ function MOI.set(
 )
     for graph in containing_optigraphs(node)
         gb = graph_backend(graph)
-        graph_index = gb.element_to_graph_map[nvref]
-        MOI.set(gb, attr, graph_index, args...)
+        MOI.set(gb, attr, nvref, args...)
     end
     return
 end
@@ -179,7 +178,7 @@ end
 ### node variable bounds
 
 function JuMP.has_lower_bound(nvref::NodeVariableRef)
-    return _moi_nv_has_lower_bound(graph_backend(nvref), nvref)
+    return _moi_nv_has_lower_bound(nvref)
 end
 
 function JuMP.set_lower_bound(nvref::NodeVariableRef, lower::Number)

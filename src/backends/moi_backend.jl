@@ -81,6 +81,8 @@ mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     # map of nodes and edges to variables and constraints.
     node_variables::OrderedDict{OptiNode,Vector{MOI.VariableIndex}}
     element_constraints::OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}
+    element_attributes::OrderedDict{Tuple{OptiElement,MOI.AbstractModelAttribute},Any}
+    operator_map::OrderedDict{Tuple{OptiElement,Symbol},Symbol}
 end
 
 """
@@ -98,8 +100,18 @@ function GraphMOIBackend(graph::OptiGraph)
         ElementToGraphMap(),
         GraphToElementMap(),
         OrderedDict{OptiNode,Vector{MOI.VariableIndex}}(),
-        OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}()
+        OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}(),
+        OrderedDict{Tuple{OptiElement,MOI.AbstractModelAttribute},Any}(),
+        OrderedDict{Tuple{OptiElement,Symbol},Symbol}()
     )
+end
+
+function graph_index(gb::GraphMOIBackend, nvref::NodeVariableRef)
+    return gb.element_to_graph_map[nvref]
+end
+
+function graph_operator(gb::GraphMOIBackend, element::OptiElement, name::Symbol)
+    return gb.operator_map[(element,name)]
 end
 
 function _add_node(gb::GraphMOIBackend, node::OptiNode)
@@ -125,36 +137,103 @@ function JuMP.backend(gb::GraphMOIBackend)
     return gb.moi_backend
 end
 
-# MOI Methods
+### MOI Methods
 
-function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute)
+# graph attributes
+
+function MOI.get(gb::GraphMOIBackend, attr::AT) where 
+    AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
     return MOI.get(gb.moi_backend, attr)
 end
 
-function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::ConstraintRef)
-    graph_index = gb.element_to_graph_map[ref]
-    return MOI.get(gb.moi_backend, attr, graph_index)
+function MOI.set(gb::GraphMOIBackend, attr::AT, args...) where
+    AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
+    MOI.set(gb.moi_backend, attr, args...)
+    return
 end
 
-function MOI.get(gb::GraphMOIBackend, attr::MOI.AnyAttribute, ref::NodeVariableRef)
-    graph_index = gb.element_to_graph_map[ref]
-    return MOI.get(gb.moi_backend, attr, graph_index)
+# element attributes
+
+# function MOI.get(gb::GraphMOIBackend, attr::AT, element::OptiElement) where
+#     AT <: MOI.AbstractModelAttribute
+#     return gb.element_attributes[(element,attr)]
+# end
+
+# function MOI.set(gb::GraphMOIBackend, attr::AT, element::OptiElement, args...) where
+#     AT <: MOI.AbstractModelAttribute
+#     MOI.set(gb.moi_backend, attr, args...)
+#     gb.element_attributes[(element,attr)] = tuple(args...)
+#     return
+# end
+function MOI.set(
+    gb::GraphMOIBackend,
+    attr::MOI.UserDefinedFunction,
+    node::OptiNode,
+    args...
+)
+    registered_name = Symbol(node.label, ".", attr.name)
+    MOI.set(
+        gb.moi_backend, 
+        MOI.UserDefinedFunction(registered_name, attr.arity),
+        args...
+    )
+    gb.element_attributes[(node,attr)] = tuple(args...)
+    gb.operator_map[(node,attr.name)] = registered_name
 end
 
 function MOI.get(gb::GraphMOIBackend, attr::MOI.NumberOfVariables, node::OptiNode)
     return length(gb.node_variables[node])
 end
 
-function MOI.get(gb::GraphMOIBackend, attr::MOI.NumberOfConstraints{F,S}, node::OptiNode) where{F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    cons = MOI.get(gb.moi_backend, MOI.ListOfConstraintIndices{F,S}())
-    refs = [gb.graph_to_element_map[con] for con in cons]
-    return length(filter((cref) -> cref.model == node, refs))
+function MOI.get(
+    gb::GraphMOIBackend, 
+    attr::MOI.ListOfConstraintTypesPresent, 
+    element::OptiElement
+)
+    cons = gb.element_constraints[element]
+    con_types = unique(typeof.(cons))
+    type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
+    return type_tuple
 end
 
-function MOI.set(gb::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
-    MOI.set(gb.moi_backend, attr, args...)
+function MOI.get(
+    gb::GraphMOIBackend, 
+    attr::MOI.NumberOfConstraints{F,S}, 
+    element::OptiElement
+) where{F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    return length(gb.element_constraints[element])
+end
+
+# variable attributes
+
+function MOI.get(gb::GraphMOIBackend, attr::AT, nvref::NodeVariableRef) where 
+    AT <: MOI.AbstractVariableAttribute
+    graph_index = gb.element_to_graph_map[nvref]
+    return MOI.get(gb.moi_backend, attr, graph_index)
+end
+
+function MOI.set(gb::GraphMOIBackend, attr::AT, nvref::NodeVariableRef, args...) where 
+    AT <: MOI.AbstractVariableAttribute
+    graph_index = gb.element_to_graph_map[nvref]
+    MOI.set(gb.moi_backend, attr, graph_index, args...)
     return
 end
+
+# constraint attributes
+
+function MOI.get(gb::GraphMOIBackend, attr::AT, cref::ConstraintRef) where
+    AT <: MOI.AbstractConstraintAttribute
+    graph_index = gb.element_to_graph_map[cref]
+    return MOI.get(gb.moi_backend, attr, graph_index)
+end
+
+function MOI.set(gb::GraphMOIBackend, attr::AT, cref::ConstraintRef, args...) where 
+    AT <: MOI.AbstractConstraintAttribute
+    graph_index = gb.element_to_graph_map[nvref]
+    MOI.set(gb.moi_backend, attr, graph_index, args...)
+end
+
+# delete
 
 function MOI.delete(gb::GraphMOIBackend, nvref::NodeVariableRef)
     MOI.delete(gb.moi_backend, gb.element_to_graph_map[nvref])
@@ -170,6 +249,8 @@ function MOI.delete(gb::GraphMOIBackend, cref::ConstraintRef)
     return
 end
 
+# is_valid
+
 function MOI.is_valid(gb::GraphMOIBackend, vi::MOI.VariableIndex)
     return MOI.is_valid(gb.moi_backend, vi)
 end
@@ -178,16 +259,14 @@ function MOI.is_valid(gb::GraphMOIBackend, ci::MOI.ConstraintIndex)
     return MOI.is_valid(gb.moi_backend, ci)
 end
 
+# optimize!
+
 function MOI.optimize!(gb::GraphMOIBackend)
     MOI.optimize!(gb.moi_backend)
     return
 end
 
 ### Variables and Constraints
-
-function graph_index(gb::GraphMOIBackend, nvref::NodeVariableRef)
-    return gb.element_to_graph_map[nvref]
-end
 
 function _add_variable_to_backend(
     graph_backend::GraphMOIBackend,

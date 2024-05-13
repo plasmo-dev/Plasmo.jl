@@ -15,35 +15,6 @@ function Base.getindex(node::OptiNode, name::Symbol)
     return source_graph(node).node_obj_dict[t]
 end
 
-function JuMP.num_variables(node::OptiNode)
-    return MOI.get(graph_backend(node), MOI.NumberOfVariables(), node)
-    #return length(graph_backend(node).node_variables[node])
-end
-
-function JuMP.all_variables(node::OptiNode)
-    gb = graph_backend(node)
-    graph_indices = gb.node_variables[node]
-    return getindex.(Ref(gb.graph_to_element_map), graph_indices)
-end
-
-"""
-    next_variable_index(node::OptiNode)
-
-Return the next variable index that would be created on this node.
-"""
-function next_variable_index(node::OptiNode)
-    return MOI.VariableIndex(JuMP.num_variables(node) + 1)
-end
-
-"""
-    graph_backend(node::OptiNode)
-
-Return the `GraphMOIBackend` that holds the associated node model attributes
-"""
-function graph_backend(node::OptiNode)
-    return graph_backend(source_graph(node))
-end
-
 """
     source_graph(node::OptiNode)
 
@@ -68,6 +39,26 @@ function containing_backends(node::OptiNode)
 end
 
 """
+    next_variable_index(node::OptiNode)
+
+Return the next variable index that would be created on this node.
+"""
+function next_variable_index(node::OptiNode)
+    return MOI.VariableIndex(JuMP.num_variables(node) + 1)
+end
+
+"""
+    graph_backend(node::OptiNode)
+
+Return the `GraphMOIBackend` that holds the associated node model attributes
+"""
+function graph_backend(node::OptiNode)
+    return graph_backend(source_graph(node))
+end
+
+
+
+"""
     Filter the object dictionary for values that belong to node. Keep in mind that 
 this function is slow for optigraphs with many nodes.
 """
@@ -87,6 +78,17 @@ function next_constraint_index(
 end
 
 ### JuMP Methods
+
+function JuMP.num_variables(node::OptiNode)
+    return MOI.get(graph_backend(node), MOI.NumberOfVariables(), node)
+    #return length(graph_backend(node).node_variables[node])
+end
+
+function JuMP.all_variables(node::OptiNode)
+    gb = graph_backend(node)
+    graph_indices = gb.node_variables[node]
+    return getindex.(Ref(gb.graph_to_element_map), graph_indices)
+end
 
 function JuMP.delete(node::OptiNode, cref::ConstraintRef)
     if node !== JuMP.owner_model(cref)
@@ -150,9 +152,12 @@ function JuMP.add_nonlinear_operator(
             "hesssian provided)",
         )
     end
-    name = Symbol(node.label, ".", name)
-    MOI.set(graph_backend(node), MOI.UserDefinedFunction(name, dim), tuple(f, args...))
-    return JuMP.NonlinearOperator(f, name)
+    #registered_name = Symbol(node.label, ".", name)
+    #MOI.set(node, MOI.UserDefinedFunction(registered_name, dim), tuple(f, args...))
+    #return JuMP.NonlinearOperator(f, registered_name)
+    MOI.set(node, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
+    registered_name = graph_operator(graph_backend(node), node, name)
+    return JuMP.NonlinearOperator(f, registered_name)
 end
 
 function _set_dirty(node::OptiNode)
@@ -212,47 +217,19 @@ end
 
 # TODO: store objective functions on nodes and query as node attributes
 
-function MOI.get(node::OptiNode, attr::MOI.AnyAttribute)
-    return MOI.get(graph_backend(node), attr)
-end
-
 # function MOI.get(node::OptiNode, attr::MOI.UserDefinedFunction)
 #     return MOI.get(graph_backend(node), attr)
 # end
 
-# TODO: consider caching constraint types in graph backend versus using unique to filter
-function MOI.get(node::OptiNode, attr::MOI.ListOfConstraintTypesPresent)
-    cons = graph_backend(node).element_constraints[node]
-    con_types = unique(typeof.(cons))
-    type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
-    return type_tuple
+function MOI.get(node::OptiNode, attr::MOI.AnyAttribute)
+    return MOI.get(graph_backend(node), attr, node)
 end
 
-function MOI.get(
-    node::OptiNode, 
-    attr::MOI.ListOfConstraintIndices{F,S}
-) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
-    con_inds = MOI.ConstraintIndex{F,S}[]
-    for con in graph_backend(node).element_constraints[node]
-        if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
-            push!(con_inds, con)
-        end
+function MOI.set(node::OptiNode, attr::MOI.AnyAttribute, args...)
+    for graph in containing_optigraphs(node)
+        MOI.set(graph_backend(node), attr, node, args...)
     end
-    return con_inds
 end
-
-# function MOI.get(
-#     node::OptiNode, 
-#     attr::MOI.ListOfConstraintIndices{F,S}
-# ) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
-#     con_inds = MOI.ConstraintIndex{F,S}[]
-#     for con in graph_backend(node).element_constraints[node]
-#         if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
-#             push!(con_inds, con)
-#         end
-#     end
-#     return con_inds
-# end
 
 function MOI.get(
     node::OptiNode, 
@@ -270,7 +247,6 @@ function MOI.set(
 )
     for graph in containing_optigraphs(JuMP.owner_model(cref))
         gb = graph_backend(graph)
-        graph_index = gb.element_to_graph_map[cref]
         MOI.set(gb, attr, graph_index, args...)
     end
     return

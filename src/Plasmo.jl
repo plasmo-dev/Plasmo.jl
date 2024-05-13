@@ -38,7 +38,7 @@ include("optinode.jl")
 
 include("optiedge.jl")
 
-include("moi_backend.jl")
+include("backends/moi_backend.jl")
 
 include("aggregate.jl")
 
