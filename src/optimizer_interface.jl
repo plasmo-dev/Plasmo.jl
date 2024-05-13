@@ -4,19 +4,16 @@ function JuMP.get_attribute(graph::OptiGraph, attr::MOI.AbstractModelAttribute)
     return MOI.get(graph, attr)
 end
 
+function JuMP.get_attribute(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute)
+    return MOI.get(graph, attr)
+end
+
 # NOTE: ConstraintRef covered by JuMP
 function JuMP.get_attribute(
     nvref::NodeVariableRef,
     attr::MOI.AbstractVariableAttribute,
 )
-    return MOI.get(JuMP.owner_model(nvref), attr, nvref)
-end
-
-function JuMP.get_attribute(
-    graph::OptiGraph,
-    attr::MOI.AbstractOptimizerAttribute,
-)
-    return MOI.get(graph, attr)
+    return MOI.get(nvref.node, attr, nvref)
 end
 
 function JuMP.get_attribute(
@@ -37,7 +34,7 @@ end
 function JuMP.set_attribute(
     graph::OptiGraph,
     attr::MOI.AbstractModelAttribute,
-    value,
+    value::Any
 )
     MOI.set(graph, attr, value)
     return
@@ -47,16 +44,16 @@ end
 function JuMP.set_attribute(
     nvref::NodeVariableRef,
     attr::MOI.AbstractVariableAttribute,
-    value,
+    value::Any
 )
-    MOI.set(JuMP.owner_model(nvref), attr, nvref, value)
+    MOI.set(nvref.node, attr, nvref, value)
     return
 end
 
 function JuMP.set_attribute(
     graph::OptiGraph,
     attr::MOI.AbstractOptimizerAttribute,
-    value,
+    value::Any
 )
     MOI.set(graph, attr, value)
     return
@@ -115,6 +112,7 @@ function JuMP.set_optimizer(
     if add_bridges
         optimizer = MOI.instantiate(optimizer_constructor)#; with_bridge_type = T)
         for BT in graph.bridge_types
+            # TODO: do not use private method
             JuMP._moi_call_bridge_function(MOI.Bridges.add_bridge, optimizer, BT)
         end
     else
@@ -133,24 +131,6 @@ function JuMP.optimize!(
     _differentiation_backend::MOI.Nonlinear.AbstractAutomaticDifferentiation = MOI.Nonlinear.SparseReverseMode(),
     kwargs...,
 )
-	# NOTE: we do not plan to support legacy nlp model
-    # nlp = nonlinear_model(model)
-    # if nlp !== nothing
-    #     if _uses_new_nonlinear_interface(model)
-    #         error(
-    #             "Cannot optimize a model which contains the features from " *
-    #             "both the legacy (macros beginning with `@NL`) and new " *
-    #             "(`NonlinearExpr`) nonlinear interfaces. You must use one or " *
-    #             "the other.",
-    #         )
-    #     end
-    #     evaluator = MOI.Nonlinear.Evaluator(
-    #         nlp,
-    #         _differentiation_backend,
-    #         index.(all_variables(model)),
-    #     )
-    #     MOI.set(model, MOI.NLPBlock(), MOI.NLPBlockData(evaluator))
-    # end
 
     # TODO: optimize hooks for optigraphs
     # If the user or an extension has provided an optimize hook, call

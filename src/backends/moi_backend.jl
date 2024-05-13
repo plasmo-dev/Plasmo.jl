@@ -110,6 +110,12 @@ function graph_index(gb::GraphMOIBackend, nvref::NodeVariableRef)
     return gb.element_to_graph_map[nvref]
 end
 
+"""
+    graph_operator(gb::GraphMOIBackend, element::OptiElement, name::Symbol)
+
+Return the name of the registered nonlinear operator in the graph backend 
+corresponding to the name in the element. 
+"""
 function graph_operator(gb::GraphMOIBackend, element::OptiElement, name::Symbol)
     return gb.operator_map[(element,name)]
 end
@@ -135,6 +141,10 @@ end
 
 function JuMP.backend(gb::GraphMOIBackend)
     return gb.moi_backend
+end
+
+function JuMP.constraint_ref_with_index(gb::GraphMOIBackend, idx::MOI.Index)
+    return gb.graph_to_element_map[idx]
 end
 
 ### MOI Methods
@@ -165,22 +175,6 @@ end
 #     gb.element_attributes[(element,attr)] = tuple(args...)
 #     return
 # end
-
-function MOI.set(
-    gb::GraphMOIBackend,
-    attr::MOI.UserDefinedFunction,
-    node::OptiNode,
-    args...
-)
-    registered_name = Symbol(node.label, ".", attr.name)
-    MOI.set(
-        gb.moi_backend, 
-        MOI.UserDefinedFunction(registered_name, attr.arity),
-        args...
-    )
-    gb.element_attributes[(node,attr)] = tuple(args...)
-    gb.operator_map[(node,attr.name)] = registered_name
-end
 
 function MOI.get(gb::GraphMOIBackend, attr::MOI.NumberOfVariables, node::OptiNode)
     return length(gb.node_variables[node])
@@ -217,6 +211,22 @@ function MOI.get(
     element::OptiElement
 ) where{F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     return length(gb.element_constraints[element])
+end
+
+function MOI.set(
+    gb::GraphMOIBackend,
+    attr::MOI.UserDefinedFunction,
+    node::OptiNode,
+    args...
+)
+    registered_name = Symbol(node.label, ".", attr.name)
+    MOI.set(
+        gb.moi_backend, 
+        MOI.UserDefinedFunction(registered_name, attr.arity),
+        args...
+    )
+    gb.element_attributes[(node,attr)] = tuple(args...)
+    gb.operator_map[(node,attr.name)] = registered_name
 end
 
 # variable attributes
