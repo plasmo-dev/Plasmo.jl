@@ -165,6 +165,7 @@ end
 #     gb.element_attributes[(element,attr)] = tuple(args...)
 #     return
 # end
+
 function MOI.set(
     gb::GraphMOIBackend,
     attr::MOI.UserDefinedFunction,
@@ -194,6 +195,20 @@ function MOI.get(
     con_types = unique(typeof.(cons))
     type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
     return type_tuple
+end
+
+function MOI.get(
+    gb::GraphMOIBackend, 
+    attr::MOI.ListOfConstraintIndices{F,S}, 
+    element::OptiElement
+) where{F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    con_inds = MOI.ConstraintIndex{F,S}[]
+    for con in gb.element_constraints[element]
+        if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
+            push!(con_inds, con)
+        end
+    end
+    return con_inds
 end
 
 function MOI.get(
@@ -229,7 +244,7 @@ end
 
 function MOI.set(gb::GraphMOIBackend, attr::AT, cref::ConstraintRef, args...) where 
     AT <: MOI.AbstractConstraintAttribute
-    graph_index = gb.element_to_graph_map[nvref]
+    graph_index = gb.element_to_graph_map[cref]
     MOI.set(gb.moi_backend, attr, graph_index, args...)
 end
 

@@ -233,9 +233,9 @@ end
 
 function MOI.get(
     node::OptiNode, 
-    attr::MOI.AbstractConstraintAttribute,
+    attr::AT,
     cref::ConstraintRef
-)
+) where AT <: MOI.AbstractConstraintAttribute
     return MOI.get(graph_backend(node), attr, cref)
 end
 
@@ -244,10 +244,10 @@ function MOI.set(
     attr::MOI.AbstractConstraintAttribute,
     cref::ConstraintRef,
     args...
-)
+) where AT <: MOI.AbstractConstraintAttribute
     for graph in containing_optigraphs(JuMP.owner_model(cref))
         gb = graph_backend(graph)
-        MOI.set(gb, attr, graph_index, args...)
+        MOI.set(gb, attr, cref, args...)
     end
     return
 end
