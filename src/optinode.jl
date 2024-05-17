@@ -56,8 +56,6 @@ function graph_backend(node::OptiNode)
     return graph_backend(source_graph(node))
 end
 
-
-
 """
     Filter the object dictionary for values that belong to node. Keep in mind that 
 this function is slow for optigraphs with many nodes.
@@ -241,7 +239,7 @@ end
 
 function MOI.set(
     node::OptiNode,
-    attr::MOI.AbstractConstraintAttribute,
+    attr::AT,
     cref::ConstraintRef,
     args...
 ) where AT <: MOI.AbstractConstraintAttribute

@@ -72,7 +72,6 @@ end
     @nodevariables(iterable, expr...)
 
 Call the JuMP.@variable macro for each optinode in a given container
-
 """
 macro nodevariables(nodes, args...)
     macro_code = quote

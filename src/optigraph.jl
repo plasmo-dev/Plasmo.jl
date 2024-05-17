@@ -195,8 +195,6 @@ function JuMP.all_variables(graph::OptiGraph)
     return vcat(JuMP.all_variables.(all_nodes(graph))...)
 end
 
-
-
 ### OptiEdges
 
 function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
@@ -251,6 +249,9 @@ function all_edges(graph::OptiGraph)
     return edges
 end
 
+function all_elements(graph::OptiGraph)
+    return [all_nodes(graph); all_edges(graph)]
+end
 
 ### MOI Methods
 
