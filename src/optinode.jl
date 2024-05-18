@@ -241,3 +241,11 @@ function MOI.delete(node::OptiNode, cref::ConstraintRef)
     end
     return
 end
+
+### JuMP Interop
+
+# TODO
+function set_model(node::OptiNode, model::JuMP.Model)
+    # assert node is empty
+    # copy JuMP model to optinode
+end

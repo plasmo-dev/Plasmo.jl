@@ -1,29 +1,29 @@
 using Plasmo
-using LightGraphs
+using Graphs
 
-function create_optigraph()
-    graph = OptiGraph()
+function create_optigraph(name)
+    graph = OptiGraph(;name=name)
     @optinode(graph, nodes[1:3])
 
-    #node 1
+    # node 1
     @variable(nodes[1], 0 <= x <= 2)
     @variable(nodes[1], 0 <= y <= 3)
     @constraint(nodes[1], x + y <= 4)
     @objective(nodes[1], Min, x)
 
-    #node 2
+    # node 2
     @variable(nodes[2], x >= 1)
     @variable(nodes[2], 0 <= y <= 5)
     @constraint(nodes[2], x + y <= 7)
     @objective(nodes[2], Min, x)
 
-    #node 3
+    # node 3
     @variable(nodes[3], x >= 0)
     @variable(nodes[3], y >= 0)
     @constraint(nodes[3], x + y == 2)
     @objective(nodes[3], Max, x)
 
-    #Link constraints take the same expressions as the JuMP @constraint macro
+    # link constraints
     @linkconstraint(graph, nodes[1][:x] == nodes[2][:x])
     @linkconstraint(graph, nodes[2][:y] == nodes[3][:x])
     @linkconstraint(graph, nodes[3][:x] == nodes[1][:x])
@@ -32,11 +32,11 @@ function create_optigraph()
     return graph
 end
 
-graph = OptiGraph()
+graph = OptiGraph(;name=:graph)
 
-graph1 = create_optigraph()
-graph2 = create_optigraph()
-graph3 = create_optigraph()
+graph1 = create_optigraph(:sg1)
+graph2 = create_optigraph(:sg2)
+graph3 = create_optigraph(:sg3)
 
 add_subgraph!(graph, graph1)
 add_subgraph!(graph, graph2)

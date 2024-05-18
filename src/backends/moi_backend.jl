@@ -287,6 +287,8 @@ end
 # optimize!
 
 function MOI.optimize!(gb::GraphMOIBackend)
+    # If there are subgraphs, we need to copy their backend data to this graph
+    _copy_subgraph_backends!(gb.optigraph)
     MOI.optimize!(gb.moi_backend)
     return
 end

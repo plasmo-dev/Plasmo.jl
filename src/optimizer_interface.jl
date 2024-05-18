@@ -5,10 +5,6 @@ function JuMP.get_attribute(graph::OptiGraph, attr::AT) where
     return MOI.get(graph, attr)
 end
 
-# function JuMP.get_attribute(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute)
-#     return MOI.get(graph, attr)
-# end
-
 function JuMP.get_attribute(
     nvref::NodeVariableRef,
     attr::AT,
@@ -127,8 +123,7 @@ end
 # mostly copied from: https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
 function JuMP.optimize!(
     graph::OptiGraph;
-    #ignore_optimize_hook = (graph.optimize_hook === nothing), TODO
-    _differentiation_backend::MOI.Nonlinear.AbstractAutomaticDifferentiation = MOI.Nonlinear.SparseReverseMode(),
+    #ignore_optimize_hook = (graph.optimize_hook === nothing),
     kwargs...,
 )
 
@@ -147,12 +142,9 @@ function JuMP.optimize!(
     if JuMP.mode(graph) != DIRECT && MOIU.state(JuMP.backend(graph)) == MOIU.NO_OPTIMIZER
         throw(JuMP.NoOptimizer())
     end
-
-    # If there are subgraphs, we need to copy their backend data to this graph
-    _copy_subgraph_backends!(graph)
-
+    
     try
-        MOI.optimize!(JuMP.backend(graph))
+        MOI.optimize!(graph_backend(graph))
     catch err
         if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
             error(
@@ -165,4 +157,10 @@ function JuMP.optimize!(
     end
     graph.is_model_dirty = false
     return
+end
+
+function JuMP.set_optimizer(node::OptiNode; kwargs...)
+    error("Optinodes currently no support setting an optimizer. Optimization is now 
+        handled through the optigraph. If you wish to optimize a single optinode, 
+        you can create a new optigraph using `assemble_optigraph(node)`.")
 end

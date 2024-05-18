@@ -135,6 +135,8 @@ function add_subgraph(graph::OptiGraph, subgraph::OptiGraph)
     return subgraph
 end
 
+@deprecate add_subgraph! add_subgraph
+
 function traverse_parents(graph::OptiGraph)
     parents = OptiGraph[]
     if graph.parent_graph != nothing
@@ -180,6 +182,18 @@ Retrieve the optinodes defined within the optigraph `graph`.
 """
 function get_nodes(graph::OptiGraph)
     return graph.optinodes
+end
+
+function num_nodes(graph::OptiGraph)
+    return length(graph.optinodes)
+end
+
+function num_all_nodes(graph::OptiGraph)
+    n_nodes = num_nodes(graph)
+    for subgraph in graph.subgraphs
+        n_nodes += num_all_nodes(subgraph)
+    end
+    return n_nodes
 end
 
 """
