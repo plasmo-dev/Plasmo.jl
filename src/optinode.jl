@@ -114,17 +114,6 @@ function JuMP.add_constraint(
     return cref
 end
 
-# function JuMP.num_constraints(
-#     node::OptiNode,
-#     function_type::Type{
-#         <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-#     },
-#     set_type::Type{<:MOI.AbstractSet},
-# )::Int64
-#     F = JuMP.moi_function_type(function_type)
-#     return MOI.get(graph_backend(node), MOI.NumberOfConstraints{F,set_type}(), node)
-# end
-
 function JuMP.object_dictionary(node::OptiNode)
     d = source_graph(node).node_obj_dict
     return d
@@ -214,10 +203,6 @@ end
 ### MOI Methods
 
 # TODO: store objective functions on nodes and query as node attributes
-
-# function MOI.get(node::OptiNode, attr::MOI.UserDefinedFunction)
-#     return MOI.get(graph_backend(node), attr)
-# end
 
 function MOI.get(node::OptiNode, attr::MOI.AnyAttribute)
     return MOI.get(graph_backend(node), attr, node)

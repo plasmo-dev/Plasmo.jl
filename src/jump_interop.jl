@@ -1,7 +1,5 @@
 # this file contains the necessary JuMP methods to work with JuMP expressions.
 
-
-
 ### directly copied functions from JuMP
 # copied from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/constraints.jl
 function _moi_add_constraint(

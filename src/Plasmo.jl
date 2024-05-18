@@ -38,6 +38,8 @@ include("optinode.jl")
 
 include("optiedge.jl")
 
+include("optielement.jl")
+
 include("backends/moi_backend.jl")
 
 include("aggregate.jl")
@@ -45,8 +47,6 @@ include("aggregate.jl")
 include("optimizer_interface.jl")
 
 include("jump_interop.jl")
-
-include("jump_methods.jl")
 
 include("macros.jl")
 

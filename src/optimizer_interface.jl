@@ -1,18 +1,18 @@
 ### get/set attributes
 
-function JuMP.get_attribute(graph::OptiGraph, attr::MOI.AbstractModelAttribute)
+function JuMP.get_attribute(graph::OptiGraph, attr::AT) where 
+    AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
     return MOI.get(graph, attr)
 end
 
-function JuMP.get_attribute(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute)
-    return MOI.get(graph, attr)
-end
+# function JuMP.get_attribute(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute)
+#     return MOI.get(graph, attr)
+# end
 
-# NOTE: ConstraintRef covered by JuMP
 function JuMP.get_attribute(
     nvref::NodeVariableRef,
-    attr::MOI.AbstractVariableAttribute,
-)
+    attr::AT,
+) where AT <: MOI.AbstractVariableAttribute
     return MOI.get(nvref.node, attr, nvref)
 end
 

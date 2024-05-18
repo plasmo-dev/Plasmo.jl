@@ -29,8 +29,12 @@ end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 
-# TODO: numerical precision like JuMP Models do
+# TODO: parameterize on numerical precision like JuMP Models do
 # JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
+
+#
+# Optigraph methods
+#
 
 """
     graph_backend(graph::OptiGraph)
@@ -43,7 +47,7 @@ function graph_backend(graph::OptiGraph)
     return graph.backend
 end
 
-### Graph Index
+### Graph index
 
 function graph_index(vref::NodeVariableRef)
     return graph_backend(vref.node).element_to_graph_map[vref]
@@ -101,7 +105,7 @@ function is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     return isempty(setdiff(edge_nodes, nodes)) ? true : false
 end
 
-### Subgraphs
+### Manage subgraphs
 
 """
     add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
@@ -149,7 +153,7 @@ function get_subgraphs(optigraph::OptiGraph)
     return optigraph.subgraphs
 end
 
-### OptiNodes
+### Manage optiNodes
 
 function add_node(
     graph::OptiGraph; 
@@ -191,11 +195,7 @@ function all_nodes(graph::OptiGraph)
     return nodes
 end
 
-function JuMP.all_variables(graph::OptiGraph)
-    return vcat(JuMP.all_variables.(all_nodes(graph))...)
-end
-
-### OptiEdges
+### Manage optiEdges
 
 function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
     return graph.optiedge_map[nodes]
@@ -253,17 +253,55 @@ function all_elements(graph::OptiGraph)
     return [all_nodes(graph); all_edges(graph)]
 end
 
-### MOI Methods
+#
+# JuMP Methods
+#
 
-function MOI.get(graph::OptiGraph, attr::MOI.AnyAttribute)
-    MOI.get(graph_backend(graph), attr)
+function JuMP.all_variables(graph::OptiGraph)
+    return vcat(JuMP.all_variables.(all_nodes(graph))...)
 end
 
-function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...)
-    MOI.set(graph_backend(graph), attr, args...)
+function JuMP.list_of_constraint_types(graph::OptiGraph)::Vector{Tuple{Type,Type}}
+    all_constraint_types = JuMP.list_of_constraint_types.(all_elements(graph))
+    return unique(vcat(all_constraint_types...))
 end
 
-### JuMP Methods
+"""
+    JuMP.all_constraints(
+        graph::OptiGraph,
+        func_type::Type{
+            <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+        },
+        set_type::Type{<:MOI.AbstractSet}
+    )
+
+Return all of the constraints in the optigraph `graph` with `func_type` and `set_type`.
+"""
+function JuMP.all_constraints(
+    graph::OptiGraph,
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    all_graph_constraints = JuMP.all_constraints.(
+        all_elements(graph), 
+        Ref(func_type),
+        Ref(set_type)
+    )
+    return vcat(all_graph_constraints...)
+end
+
+function JuMP.all_constraints(graph::OptiGraph)
+    constraints = ConstraintRef[]
+    con_types = JuMP.list_of_constraint_types(graph)
+    for con_type in con_types
+        F = con_type[1]
+        S = con_type[2]
+        append!(constraints, JuMP.all_constraints(graph, F, S))
+    end
+    return constraints
+end
 
 function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
     gb = graph_backend(graph)
@@ -281,6 +319,8 @@ end
 function JuMP.object_dictionary(graph::OptiGraph)
     return graph.obj_dict
 end
+
+### Nonlinear operators
 
 function JuMP.add_nonlinear_operator(
     graph::OptiGraph,
@@ -302,7 +342,7 @@ function JuMP.add_nonlinear_operator(
     return JuMP.NonlinearOperator(f, name)
 end
 
-### Link Constraints
+### Link constraints
 
 function JuMP.add_constraint(
     graph::OptiGraph, con::JuMP.AbstractConstraint, name::String=""
@@ -316,7 +356,7 @@ function JuMP.add_constraint(
     return cref
 end
 
-### Objective Function
+### Objective function
 
 function JuMP.objective_function(
     graph::OptiGraph,
@@ -337,6 +377,15 @@ end
 
 function JuMP.objective_sense(graph::OptiGraph)
     return MOI.get(JuMP.backend(graph), MOI.ObjectiveSense())
+end
+
+"""
+    JuMP.objective_value(graph::OptiGraph)
+
+Retrieve the current objective value on optigraph `graph`.
+"""
+function JuMP.objective_value(graph::OptiGraph)
+    return MOI.get(JuMP.backend(graph), MOI.ObjectiveValue())
 end
 
 function JuMP.set_objective(
@@ -374,6 +423,18 @@ function JuMP.set_objective_function(
 )
     _moi_set_objective_function(graph, expr)
     return
+end
+
+#
+# MOI Interface
+#
+
+function MOI.get(graph::OptiGraph, attr::MOI.AnyAttribute)
+    MOI.get(graph_backend(graph), attr)
+end
+
+function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...)
+    MOI.set(graph_backend(graph), attr, args...)
 end
 
 function _moi_set_objective_function(
@@ -435,13 +496,3 @@ function _moi_set_objective_function(
     )
     return
 end
-
-"""
-    JuMP.objective_value(graph::OptiGraph)
-
-Retrieve the current objective value on optigraph `graph`.
-"""
-function JuMP.objective_value(graph::OptiGraph)
-    return MOI.get(JuMP.backend(graph), MOI.ObjectiveValue())
-end
-
