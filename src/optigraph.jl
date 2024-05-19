@@ -29,6 +29,10 @@ end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 
+function Base.getindex(graph::OptiGraph, idx::Int)
+    return graph.optinodes[idx]
+end
+
 # TODO: parameterize on numerical precision like JuMP Models do
 # JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
 

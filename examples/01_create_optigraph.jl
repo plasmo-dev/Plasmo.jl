@@ -3,7 +3,7 @@ using Ipopt
 
 graph = OptiGraph(;name=:graph)
 
-#Add nodes to a OptiGraph
+# add nodes to a OptiGraph
 n1 = add_node(graph)
 @variable(n1, 0 <= x <= 2)
 @variable(n1, 0 <= y <= 3)
@@ -26,7 +26,7 @@ n4 = add_node(graph)
 @constraint(n4, sum(x[i] for i in 1:2) >= 10)
 @constraint(n4, ref, exp(x[2]) >= 4)
 
-# Add link constsraints
+# add link constsraints
 @linkconstraint(graph, link1, n1[:x] == n2[:x])
 @linkconstraint(graph, link2, n2[:x] == n3[:x][3])
 @linkconstraint(graph, link3, n3[:x][1] == n4[:x][1])

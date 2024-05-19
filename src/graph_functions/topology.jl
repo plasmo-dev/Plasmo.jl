@@ -34,8 +34,9 @@ Retrieve incident edges to a single optinode.
 """
 function incident_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
     hypernodes = Base.getindex.(Ref(hyper), nodes)
-    edges = GOI.incident_edges(hyper.projected_graph, hypernodes)
-    return get_mapped_elements(hyper, edges) #getindex.(Ref(hyper), incidentedges))
+    #hypernodes = get_mapped_elements(hyper, nodes)
+    inc_edges = GOI.incident_edges(hyper.projected_graph, hypernodes)
+    return get_mapped_elements(hyper, inc_edges) #getindex.(Ref(hyper), incidentedges))
 end
 
 function incident_edges(hyper::HyperGraphProjection, node::OptiNode)
@@ -60,7 +61,7 @@ end
 Identify induced edges and edge separators from a vector of optinode partitions.
 
 # Arguments
-- `hyper::HyperGraphProjection`: A `HyperGraphProjection` obtained from `build_hypergraph`.
+- `hyper::HyperGraphProjection`: A `HyperGraphProjection` obtained from `hyper_projection`.
 - `node_vectors::Vector{Vector{OptiNode}}`: A vector of vectors that contain `OptiNode`s.
 
 # Returns
