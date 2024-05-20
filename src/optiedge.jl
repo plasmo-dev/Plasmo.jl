@@ -67,22 +67,23 @@ end
 
 ### Edge Constraints
 
-function JuMP.num_constraints(
-    edge::OptiEdge,
-    ::Type{F}, 
-    ::Type{S}
-)::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    cons = MOI.get(edge, MOI.ListOfConstraintIndices{F,S}())
-    return length(cons)
-end
-
 function next_constraint_index(
     edge::OptiEdge, 
     ::Type{F}, 
     ::Type{S}
 )::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    index = num_constraints(edge, F, S)
+    index = _num_moi_constraints(edge, F, S)
     return MOI.ConstraintIndex{F,S}(index + 1)
+end
+
+function _num_moi_constraints(
+    edge::OptiEdge,
+    ::Type{F}, 
+    ::Type{S}
+)::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    # cons = MOI.get(edge, MOI.ListOfConstraintIndices{F,S}())
+    # return length(cons)
+    return MOI.get(edge, MOI.NumberOfConstraints{F,S}())
 end
 
 function JuMP.add_constraint(
@@ -131,6 +132,8 @@ end
 
 ### OptiEdge MOI Extension
 
+# TODO; make general to graph backend
+
 function MOI.get(edge::OptiEdge, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
     return MOI.get(graph_backend(edge), attr, ref)
 end
@@ -140,6 +143,19 @@ function MOI.get(edge::OptiEdge, attr::MOI.ListOfConstraintTypesPresent)
     con_types = unique(typeof.(cons))
     type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
     return type_tuple
+end
+
+function MOI.get(
+    edge::OptiEdge, 
+    attr::MOI.NumberOfConstraints{F,S}
+) where {F <: MOI.AbstractFunction, S <: MOI.AbstractSet}
+    num_cons = 0
+    for con in graph_backend(edge).element_constraints[edge]
+        if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
+            num_cons += 1
+        end
+    end
+    return num_cons
 end
 
 function MOI.get(

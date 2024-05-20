@@ -1,20 +1,20 @@
 module TestOptiGraph
 
-using Plasmo, JuMP
-using Ipopt, GLPK
+using Plasmo
+using Ipopt, HiGHS
 using Test
 
-function _create_optigraph()
+function _create_test_optigraph()
     graph = OptiGraph()
 
-    @optinode(graph, n1)
-    @optinode(graph, n2)
-    @optinode(graph, n3)
-    @optinode(graph, n4)
+    n1 = add_node(graph)
+    n2 = add_node(graph)
+    n3 = add_node(graph)
+    n4 = add_node(graph)
 
     @variable(n1, 0 <= x <= 2, start = 1)
     @variable(n1, 0 <= y <= 3)
-    @NLconstraint(n1, x^3 + y <= 4)
+    @constraint(n1, x^3 + y <= 4)
 
     vals = collect(1:5)
     grid = 1:3
@@ -22,7 +22,7 @@ function _create_optigraph()
     @variable(n2, 0 <= y <= 5)
     @variable(n2, z[1:5] >= 0)
     @variable(n2, a[vals, grid] >= 0)
-    @NLconstraint(n2, exp(x) + y <= 7)
+    @constraint(n2, exp(x) + y <= 7)
 
     @variable(n3, x[1:5])
     @variable(n4, x >= 1)
@@ -33,32 +33,34 @@ function _create_optigraph()
     @linkconstraint(graph, [j = 1:5, i = 1:3], n2[:a][j, i] == n4[:x])
     @linkconstraint(graph, [i = 1:3], n1[:x] + n2[:z][i] + n3[:x][i] + n4[:x] >= 0)
 
-    @objective(graph, Min, n1[:x] + n2[:x])
+    @objective(graph, Min, n1[:x] + n2[:x] + n3[:x][1] + n4[:x])
     return graph
 end
 
 function test_optigraph1()
-    graph = OptiGraph()
-    @optinode(graph, n1)
-    @optinode(graph, nodes1[1:5])
-    @optinode(graph, nodes2[1:3, 1:3])
+    # graph = OptiGraph()
+    # @optinode(graph, n1)
+    # @optinode(graph, nodes1[1:5])
+    # @optinode(graph, nodes2[1:3, 1:3])
 
-    for node in all_nodes(graph)
-        @variable(node, x >= 0)
-        @variable(node, y >= 2)
-        @constraint(node, x + y == 3)
-        @objective(node, Min, y)
-    end
+    # for node in all_nodes(graph)
+    #     @variable(node, x >= 0)
+    #     @variable(node, y >= 2)
+    #     @constraint(node, x + y == 3)
+    #     # @objective(node, Min, y)
+    # end
 
-    @linkconstraint(graph, n1[:x] == nodes1[1][:x])
-    @linkconstraint(graph, sum(nodes1[i][:x] for i in 1:5) == 5)
-    @linkconstraint(graph, nodes2[2][:y] == nodes2[3][:y], attach = nodes2[2])
+    # @linkconstraint(graph, n1[:x] == nodes1[1][:x])
+    # @linkconstraint(graph, sum(nodes1[i][:x] for i in 1:5) == 5)
+    # @linkconstraint(graph, nodes2[2][:y] == nodes2[3][:y], attach = nodes2[2])
 
-    @test num_nodes(graph) == 15
-    @test num_edges(graph) == 3
+    graph = _create_optigraph()
+
+    @test num_nodes(graph) == 4
+    @test num_edges(graph) == 5
     @test num_linkconstraints(graph) == 3
     @test num_variables(graph) == 30
-    @test has_node_objective(graph) == true
+    # @test has_node_objective(graph) == true
 
     JuMP.set_optimizer(graph, GLPK.Optimizer)
     optimize!(graph)
@@ -108,7 +110,7 @@ function test_set_model_with_graph()
 
     m2 = JuMP.Model()
     JuMP.@variable(m2, x)
-    JuMP.@NLconstraint(m2, ref, exp(x) >= 2)
+    JuMP.@constraint(m2, ref, exp(x) >= 2)
 
     #Set models on nodes and edges
     set_model(n1, m1)     #set m1 to node 1.  Updates reference on m1
@@ -200,7 +202,7 @@ function test_subgraph()
     @test length(var_greater) == 10
 end
 
-function test_optigraph_reference()
+function test_assemble_optigraph()
     graph = _create_optigraph()
     optigraph_ref = optigraph_reference(graph)
 
@@ -234,7 +236,7 @@ function test_multiple_solves()
     @test graph.moi_backend.optimizer.model.variable_primal_start[1] == 20
 end
 
-function test_fix_variable()
+function test_variables()
     graph = _create_optigraph()
     n1 = optinode(graph, 1)
     fix(n1[:x], 1; force=true)
@@ -251,18 +253,18 @@ function test_fix_variable()
     @test value(n1[:x]) == 0
 end
 
-function test_set_optimizer_attributes()
+function test_optimizer_attributes()
     graph = _create_optigraph()
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     JuMP.set_optimizer_attribute(graph, "max_cpu_time", 1e2)
     @test JuMP.get_optimizer_attribute(graph, "max_cpu_time") == 100.0
 end
 
-function test_nlp_exceptions()
-    graph = _create_optigraph()
-    @test_throws Exception JuMP._init_NLP(graph)
-    @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
-end
+# function test_nlp_exceptions()
+#     graph = _create_optigraph()
+#     @test_throws Exception JuMP._init_NLP(graph)
+#     @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
+# end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

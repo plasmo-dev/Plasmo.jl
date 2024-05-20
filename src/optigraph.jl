@@ -109,6 +109,127 @@ function is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     return isempty(setdiff(edge_nodes, nodes)) ? true : false
 end
 
+### Manage OptiNodes
+
+function add_node(
+    graph::OptiGraph; 
+    label=Symbol(graph.label,Symbol(".n"),length(graph.optinodes)+1)
+)
+    node_index = NodeIndex(gensym()) #NodeIndex(length(graph.optinodes)+1)
+    node = OptiNode(Ref(graph), node_index, label)
+    push!(graph.optinodes, node)
+    _add_node(graph_backend(graph), node)
+    return node
+end
+
+function add_node(graph::OptiGraph, node::OptiNode)
+    node in all_nodes(graph) && error("Cannot add the same node to a graph multiple times")
+    push!(graph.optinodes, node)
+    _append_node_to_backend!(graph, node)
+    return
+end
+
+function get_node(graph::OptiGraph, idx::Int)
+    return graph.optinodes[idx]
+end
+
+"""
+    local_nodes(graph::OptiGraph)::Vector{OptiNode}
+
+Retrieve the optinodes defined within the optigraph `graph`. This does 
+not return nodes that exist in subgraphs.
+"""
+function local_nodes(graph::OptiGraph)
+    return graph.optinodes
+end
+
+function num_local_nodes(graph::OptiGraph)
+    return length(graph.optinodes)
+end
+
+"""
+    all_nodes(graph::OptiGraph)::Vector{OptiNode}
+
+Recursively collect all optinodes in `graph` by traversing each of its subgraphs.
+"""
+function all_nodes(graph::OptiGraph)
+    nodes = collect(graph.optinodes)
+    for subgraph in graph.subgraphs
+        nodes = [nodes; all_nodes(subgraph)]
+    end
+    return nodes
+end
+
+function num_nodes(graph::OptiGraph)
+    n_nodes = num_nodes(graph)
+    for subgraph in graph.subgraphs
+        n_nodes += num_all_nodes(subgraph)
+    end
+    return n_nodes
+end
+
+### Manage optiEdges
+
+function add_edge(
+    graph::OptiGraph,
+    nodes::OptiNode...;
+    label=Symbol(graph.label, Symbol(".e"), length(graph.optiedges)+1)
+)
+    if has_edge(graph, Set(nodes))
+        edge = get_edge(graph, Set(nodes))
+    else
+        edge = OptiEdge(Ref(graph), label, OrderedSet(collect(nodes)))
+        push!(graph.optiedges, edge)
+        graph.optiedge_map[Set(collect(nodes))] = edge
+        _add_edge(graph_backend(graph), edge)
+    end
+    return edge
+end
+
+function add_edge(graph::OptiGraph, edge::OptiEdge)
+    edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
+    push!(graph.optiedges, edge)
+    _append_edge_to_backend!(graph, edge)
+    return
+end
+
+function has_edge(graph::OptiGraph, nodes::Set{OptiNode})
+    if haskey(graph.optiedge_map, nodes)
+        return true
+    else
+        return false
+    end
+end
+
+function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
+    return graph.optiedge_map[nodes]
+end
+
+function local_edges(graph::OptiGraph)
+    return graph.optiedges
+end
+
+"""
+    all_edges(graph::OptiGraph)::Vector{OptiNode}
+
+Recursively collect all optiedges in `graph` by traversing each of its subgraphs.
+"""
+function all_edges(graph::OptiGraph)
+    edges = collect(graph.optiedges)
+    for subgraph in graph.subgraphs
+        edges = [edges; collect(all_edges(subgraph))]
+    end
+    return edges
+end
+
+function local_elements(graph::OptiGraph)
+    return [graph.optinodes; graph.optiedges]
+end
+
+function all_elements(graph::OptiGraph)
+    return [all_nodes(graph); all_edges(graph)]
+end
+
 ### Manage subgraphs
 
 """
@@ -155,121 +276,27 @@ end
 
 Retrieve the local subgraphs of `graph`.
 """
-function get_subgraphs(optigraph::OptiGraph)
+function local_subgraphs(optigraph::OptiGraph)
     return optigraph.subgraphs
 end
 
-### Manage optiNodes
-
-function add_node(
-    graph::OptiGraph; 
-    label=Symbol(graph.label,Symbol(".n"),length(graph.optinodes)+1)
-)
-    node_index = NodeIndex(gensym()) #NodeIndex(length(graph.optinodes)+1)
-    node = OptiNode(Ref(graph), node_index, label)
-    push!(graph.optinodes, node)
-    _add_node(graph_backend(graph), node)
-    return node
-end
-
-function add_node(graph::OptiGraph, node::OptiNode)
-    node in all_nodes(graph) && error("Cannot add the same node to a graph multiple times")
-    push!(graph.optinodes, node)
-    _append_node_to_backend!(graph, node)
-    return
-end
-
-"""
-    get_nodes(graph::OptiGraph)::Vector{OptiNode}
-
-Retrieve the optinodes defined within the optigraph `graph`.
-"""
-function get_nodes(graph::OptiGraph)
-    return graph.optinodes
-end
-
-function num_nodes(graph::OptiGraph)
-    return length(graph.optinodes)
-end
-
-function num_all_nodes(graph::OptiGraph)
-    n_nodes = num_nodes(graph)
+function all_subgraphs(graph::OptiGraph)
+    subs = collect(graph.subgraphs)
     for subgraph in graph.subgraphs
-        n_nodes += num_all_nodes(subgraph)
+        subs = [subs; all_subgraphs(subgraph)]
     end
-    return n_nodes
+    return subs
 end
 
-"""
-    all_nodes(graph::OptiGraph)::Vector{OptiNode}
+### Link Constraints
 
-Recursively collect all optinodes in `graph` by traversing each of its subgraphs.
-"""
-function all_nodes(graph::OptiGraph)
-    nodes = collect(graph.optinodes)
-    for subgraph in graph.subgraphs
-        nodes = [nodes; collect(all_nodes(subgraph))]
-    end
-    return nodes
+function all_link_constraints(graph::OptiGraph)
+    return all_constraints.(all_edges(graph))
 end
 
-### Manage optiEdges
-
-function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
-    return graph.optiedge_map[nodes]
-end
-
-function get_edges(graph::OptiGraph)
-    return graph.optiedges
-end
-
-function has_edge(graph::OptiGraph, nodes::Set{OptiNode})
-    if haskey(graph.optiedge_map, nodes)
-        return true
-    else
-        return false
-    end
-end
-
-function add_edge(
-    graph::OptiGraph,
-    nodes::OptiNode...;
-    label=Symbol(graph.label, Symbol(".e"), length(graph.optiedges)+1)
-)
-    if has_edge(graph, Set(nodes))
-        edge = get_edge(graph, Set(nodes))
-    else
-        edge = OptiEdge(Ref(graph), label, OrderedSet(collect(nodes)))
-        push!(graph.optiedges, edge)
-        graph.optiedge_map[Set(collect(nodes))] = edge
-        _add_edge(graph_backend(graph), edge)
-    end
-    return edge
-end
-
-function add_edge(graph::OptiGraph, edge::OptiEdge)
-    edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
-    push!(graph.optiedges, edge)
-    _append_edge_to_backend!(graph, edge)
-    return
-end
-
-"""
-    all_edges(graph::OptiGraph)::Vector{OptiNode}
-
-Recursively collect all optiedges in `graph` by traversing each of its subgraphs.
-"""
-function all_edges(graph::OptiGraph)
-    edges = collect(graph.optiedges)
-    for subgraph in graph.subgraphs
-        edges = [edges; collect(all_edges(subgraph))]
-    end
-    return edges
-end
-
-function all_elements(graph::OptiGraph)
-    return [all_nodes(graph); all_edges(graph)]
-end
+# function num_link_constraints(graph::OptiGraph)
+#     return num_constraints()
+# end
 
 #
 # JuMP Methods
@@ -320,6 +347,29 @@ function JuMP.all_constraints(graph::OptiGraph)
     end
     return constraints
 end
+
+function JuMP.num_constraints(
+    graph::OptiGraph, 
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    return sum(
+        JuMP.num_constraints.(all_elements(graph), Ref(func_type), Ref(set_type))
+    )
+end
+
+function JuMP.num_constraints(graph::OptiGraph)
+    num_cons = 0
+    for con_type in con_types
+        F = con_type[1]
+        S = con_type[2]
+        num_cons += JuMP.num_constraints(graph, F, S)
+    end
+    return num_cons
+end
+
 
 function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
     gb = graph_backend(graph)
