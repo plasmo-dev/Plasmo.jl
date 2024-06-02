@@ -202,10 +202,14 @@ function edge_hyper_projection(optigraph::OptiGraph)
     for node in all_nodes(optigraph)
         hyperedges = incident_edges(primal_map, node)
         dual_nodes = Base.getindex.(projection, hyperedges)
-        @assert length(dual_nodes) >= 2
-        hyperedge = Graphs.add_edge!(hypergraph, dual_nodes...)
-        projection[hyperedge] = node
-        projection[node] = hyperedge
+        # NOTE: a hypergraph may not always have a valid edge projection; we only
+        # add the hyperedge if it is possible.
+        if length(dual_nodes) >= 2
+        #@assert length(dual_nodes) >= 2
+            hyperedge = Graphs.add_edge!(hypergraph, dual_nodes...)
+            projection[hyperedge] = node
+            projection[node] = hyperedge
+        end
     end
     return projection
 end

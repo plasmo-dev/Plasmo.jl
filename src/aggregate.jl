@@ -274,8 +274,8 @@ function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
 
     #now copy nodes and edges going back up the tree
     for graph in reverse(all_parents)
-        nodes = get_nodes(graph)
-        edges = get_edges(graph)
+        nodes = local_nodes(graph)
+        edges = local_edges(graph)
         new_graph = subgraph_dict[graph]
 
         # copy optinodes

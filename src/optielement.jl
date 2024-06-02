@@ -1,4 +1,46 @@
-# JuMP methods that dispatch on both optinodes and optiedges
+# JuMP & MOI methods that dispatch on both optinodes and optiedges
+
+### MOI Methods
+
+function MOI.get(element::OptiElement, attr::MOI.AnyAttribute)
+    return MOI.get(graph_backend(element), attr, element)
+end
+
+function MOI.set(element::OptiElement, attr::MOI.AnyAttribute, args...)
+    for graph in containing_optigraphs(element)
+        MOI.set(graph_backend(element), attr, element, args...)
+    end
+end
+
+function MOI.get(
+    element::OptiElement,
+    attr::AT,
+    cref::ConstraintRef
+) where AT <: MOI.AbstractConstraintAttribute
+    return MOI.get(graph_backend(element), attr, cref)
+end
+
+function MOI.set(
+    element::OptiElement,
+    attr::AT,
+    cref::ConstraintRef,
+    args...
+) where AT <: MOI.AbstractConstraintAttribute
+    for graph in containing_optigraphs(element)
+        gb = graph_backend(graph)
+        MOI.set(gb, attr, cref, args...)
+    end
+    return
+end
+
+function MOI.delete(element::OptiElement, cref::ConstraintRef)
+    for graph in containing_optigraphs(element)
+        MOI.delete(graph_backend(graph), cref)
+    end
+    return
+end
+
+### JuMP Methods
 
 """
     JuMP.constraint_ref_with_index(
@@ -74,3 +116,6 @@ function JuMP.all_constraints(
     end
     return result
 end
+
+
+

@@ -122,6 +122,15 @@ function Partition(projection::GraphProjection, membership_vector::Vector{Int64}
     return partition
 end
 
+# function Partition(membership_vector::Vector{Int64}, ref_map::ProjectionMap; kwargs...)
+#     optigraph = ref_map.optigraph
+#     partition_vectors = Plasmo._partition_list(membership_vector)
+#     induced = Plasmo.induced_elements(ref_map.projected_graph, partition_vectors; kwargs...)
+#     partition_elements = Plasmo._identify_partitions(induced, ref_map)  #could be optinode_vectors, optiedge_vectors, or subgraphs
+#     partition = Partition(optigraph, partition_elements)
+#     return partition
+# end
+
 # Partition utilities
 
 function _check_valid_partition(
@@ -223,8 +232,8 @@ function _identify_partitions(projection::GraphProjection, induced_elements::Vec
         @assert !isempty(vcat(optiedge_parts...)) && !isempty(vcat(optinode_parts...))
         subgraphs = OptiGraph[]
         for i in 1:n_parts
-            # BUG: this is not usually a valid optigraph
-            subgraph = assemble_optigraph(optinode_parts[i], optiedge_parts[i])
+            # NOTE: we do not enforce a valid optigraph here
+            subgraph = _assemble_optigraph(optinode_parts[i], optiedge_parts[i])
             push!(subgraphs, subgraph)
         end
         return subgraphs

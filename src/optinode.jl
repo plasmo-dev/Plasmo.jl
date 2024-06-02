@@ -139,9 +139,6 @@ function JuMP.add_nonlinear_operator(
             "hesssian provided)",
         )
     end
-    #registered_name = Symbol(node.label, ".", name)
-    #MOI.set(node, MOI.UserDefinedFunction(registered_name, dim), tuple(f, args...))
-    #return JuMP.NonlinearOperator(f, registered_name)
     MOI.set(node, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
     registered_name = graph_operator(graph_backend(node), node, name)
     return JuMP.NonlinearOperator(f, registered_name)
@@ -204,47 +201,10 @@ end
 
 # TODO: store objective functions on nodes and query as node attributes
 
-function MOI.get(node::OptiNode, attr::MOI.AnyAttribute)
-    return MOI.get(graph_backend(node), attr, node)
-end
-
-function MOI.set(node::OptiNode, attr::MOI.AnyAttribute, args...)
-    for graph in containing_optigraphs(node)
-        MOI.set(graph_backend(node), attr, node, args...)
-    end
-end
-
-function MOI.get(
-    node::OptiNode, 
-    attr::AT,
-    cref::ConstraintRef
-) where AT <: MOI.AbstractConstraintAttribute
-    return MOI.get(graph_backend(node), attr, cref)
-end
-
-function MOI.set(
-    node::OptiNode,
-    attr::AT,
-    cref::ConstraintRef,
-    args...
-) where AT <: MOI.AbstractConstraintAttribute
-    for graph in containing_optigraphs(JuMP.owner_model(cref))
-        gb = graph_backend(graph)
-        MOI.set(gb, attr, cref, args...)
-    end
-    return
-end
-
-function MOI.delete(node::OptiNode, cref::ConstraintRef)
-    for graph in containing_optigraphs(node)
-        MOI.delete(graph_backend(graph), cref)
-    end
-    return
-end
 
 ### JuMP Interop
 
-# TODO
+# TODO copy model
 function set_model(node::OptiNode, model::JuMP.Model)
     # assert node is empty
     # copy JuMP model to optinode

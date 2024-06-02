@@ -143,6 +143,13 @@ function local_nodes(graph::OptiGraph)
     return graph.optinodes
 end
 
+@deprecate get_nodes local_nodes
+
+"""
+    num_local_nodes(graph::OptiGraph)::Int
+
+Return the number of local nodes in the optigraph `graph`.
+"""
 function num_local_nodes(graph::OptiGraph)
     return length(graph.optinodes)
 end
@@ -160,10 +167,15 @@ function all_nodes(graph::OptiGraph)
     return nodes
 end
 
+"""
+    num_nodes(graph::OptiGraph)::Int
+
+Return the total number of nodes in `graph` by recursively checking subgraphs.
+"""
 function num_nodes(graph::OptiGraph)
-    n_nodes = num_nodes(graph)
+    n_nodes = num_local_nodes(graph)
     for subgraph in graph.subgraphs
-        n_nodes += num_all_nodes(subgraph)
+        n_nodes += num_nodes(subgraph)
     end
     return n_nodes
 end
@@ -209,6 +221,17 @@ function local_edges(graph::OptiGraph)
     return graph.optiedges
 end
 
+@deprecate get_edges local_edges
+
+"""
+    num_local_edges(graph::OptiGraph)::Int
+
+Return the number of local edges in the optigraph `graph`.
+"""
+function num_local_edges(graph::OptiGraph)
+    return length(graph.optiedges)
+end
+
 """
     all_edges(graph::OptiGraph)::Vector{OptiNode}
 
@@ -220,6 +243,19 @@ function all_edges(graph::OptiGraph)
         edges = [edges; collect(all_edges(subgraph))]
     end
     return edges
+end
+
+"""
+    num_edges(graph::OptiGraph)::Int
+
+Return the total number of nodes in `graph` by recursively checking subgraphs.
+"""
+function num_edges(graph::OptiGraph)
+    n_edges = num_local_edges(graph)
+    for subgraph in graph.subgraphs
+        n_edges += num_edges(subgraph)
+    end
+    return n_edges
 end
 
 function local_elements(graph::OptiGraph)
@@ -276,9 +312,20 @@ end
 
 Retrieve the local subgraphs of `graph`.
 """
-function local_subgraphs(optigraph::OptiGraph)
-    return optigraph.subgraphs
+function local_subgraphs(graph::OptiGraph)
+    return graph.subgraphs
 end
+
+"""
+    num_local_subgraphs(graph::OptiGraph)::Int
+
+Retrieve the number of local subgraphs in `graph`.
+"""
+function num_local_subgraphs(graph::OptiGraph)
+    return length(graph.subgraphs)
+end
+
+@deprecate get_subgraphs local_subgraphs
 
 function all_subgraphs(graph::OptiGraph)
     subs = collect(graph.subgraphs)
@@ -294,6 +341,7 @@ function all_link_constraints(graph::OptiGraph)
     return all_constraints.(all_edges(graph))
 end
 
+# TODO
 # function num_link_constraints(graph::OptiGraph)
 #     return num_constraints()
 # end

@@ -53,7 +53,6 @@ n3 = graph3[1]
 # link subgraphs
 @linkconstraint(graph, n1[:x] + n2[:x] + n3[:x] == 5)
 
-
 ### query topology
 
 # create a hypergraph projection from the top-level graph
