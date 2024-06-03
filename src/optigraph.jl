@@ -258,6 +258,9 @@ function num_edges(graph::OptiGraph)
     return n_edges
 end
 
+
+
+
 function local_elements(graph::OptiGraph)
     return [graph.optinodes; graph.optiedges]
 end
@@ -354,6 +357,10 @@ function JuMP.all_variables(graph::OptiGraph)
     return vcat(JuMP.all_variables.(all_nodes(graph))...)
 end
 
+function JuMP.num_variables(graph::OptiGraph)
+    return sum(JuMP.num_variables.(all_nodes(graph)))
+end
+
 function JuMP.list_of_constraint_types(graph::OptiGraph)::Vector{Tuple{Type,Type}}
     all_constraint_types = JuMP.list_of_constraint_types.(all_elements(graph))
     return unique(vcat(all_constraint_types...))
@@ -408,8 +415,9 @@ function JuMP.num_constraints(
     )
 end
 
-function JuMP.num_constraints(graph::OptiGraph)
+function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraints=true)
     num_cons = 0
+    con_types = JuMP.list_of_constraint_types(graph)
     for con_type in con_types
         F = con_type[1]
         S = con_type[2]
@@ -418,6 +426,23 @@ function JuMP.num_constraints(graph::OptiGraph)
     return num_cons
 end
 
+function num_link_constraints(
+    graph::OptiGraph, 
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    return sum(
+        JuMP.num_constraints.(all_edges(graph), Ref(func_type), Ref(set_type))
+    )
+end
+
+function num_link_constraints(graph::OptiGraph)
+    return sum(
+        JuMP.num_constraints.(all_edges(graph))
+    )
+end
 
 function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
     gb = graph_backend(graph)

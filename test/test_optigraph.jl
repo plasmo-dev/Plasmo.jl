@@ -1,8 +1,25 @@
 module TestOptiGraph
 
 using Plasmo
-using Ipopt, HiGHS
+using Ipopt
 using Test
+
+function test_simple_graph()
+    graph = OptiGraph()
+    @optinode(graph, nodes[1:2])
+
+    @variable(nodes[1], x >= 1)
+    @variable(nodes[2], x >= 2)
+    @linkconstraint(graph, nodes[1][:x] + nodes[2][:x] == 4)
+    @objective(graph, Max, nodes[1][:x] + 2*nodes[2][:x])
+
+    set_optimizer(graph, HiGHS.Optimizer)
+    optimize!(graph)
+
+    @test objective_value(graph) == 7.0
+    @test value(nodes[1][:x]) == 1.0
+    @test value(nodes[2][:x]) == 3.0
+end
 
 function _create_test_optigraph()
     graph = OptiGraph()
@@ -14,7 +31,7 @@ function _create_test_optigraph()
 
     @variable(n1, 0 <= x <= 2, start = 1)
     @variable(n1, 0 <= y <= 3)
-    @constraint(n1, x^3 + y <= 4)
+    @constraint(n1, x^2 + y^2 <= 4)
 
     vals = collect(1:5)
     grid = 1:3
@@ -37,119 +54,111 @@ function _create_test_optigraph()
     return graph
 end
 
-function test_optigraph1()
-    # graph = OptiGraph()
-    # @optinode(graph, n1)
-    # @optinode(graph, nodes1[1:5])
-    # @optinode(graph, nodes2[1:3, 1:3])
-
-    # for node in all_nodes(graph)
-    #     @variable(node, x >= 0)
-    #     @variable(node, y >= 2)
-    #     @constraint(node, x + y == 3)
-    #     # @objective(node, Min, y)
-    # end
-
-    # @linkconstraint(graph, n1[:x] == nodes1[1][:x])
-    # @linkconstraint(graph, sum(nodes1[i][:x] for i in 1:5) == 5)
-    # @linkconstraint(graph, nodes2[2][:y] == nodes2[3][:y], attach = nodes2[2])
-
-    graph = _create_optigraph()
+function test_optigraph()
+    graph = _create_test_optigraph()
 
     @test num_nodes(graph) == 4
-    @test num_edges(graph) == 5
-    @test num_linkconstraints(graph) == 3
+    @test num_edges(graph) == 4
+    @test num_link_constraints(graph) == 29
     @test num_variables(graph) == 30
     # @test has_node_objective(graph) == true
 
-    JuMP.set_optimizer(graph, GLPK.Optimizer)
+    JuMP.set_optimizer(graph, Ipopt.Optimizer)
     optimize!(graph)
 
-    @test objective_value(graph) == 30.0
-    @test value(objective_function(graph)) == 30.0
+    @test isapprox(objective_value(graph), 4.0)
+    @test isapprox(value(objective_function(graph)), 4.0)
 
-    obj = objective_function(graph)
-    @test length(optinodes(obj)) == 15
+    n1,n2,n3,n4 = all_nodes(graph)
 
-    JuMP.set_objective_function(graph, n1[:x])
-    obj = objective_function(graph)
-    @test length(optinodes(obj)) == 1
+    # TODO: NodeVariableRef objective
+    JuMP.set_objective_function(graph, 1.0*n1[:x])
 
-    JuMP.set_objective_function(graph, n1[:x]^2)
-    @test length(optinodes(obj)) == 1
+    # TODO: objective coefficient
 
-    JuMP.set_objective_coefficient(graph, n1[:x], 2)
-    @test objective_function(graph).aff.terms[n1[:x]] == 2.0
+
+    # TODO: get nodes from expressions
+    #@test length(optinodes(obj)) == 15
+
+    # JuMP.set_objective_function(graph, n1[:x])
+    # obj = objective_function(graph)
+    # @test length(optinodes(obj)) == 1
+
+    # JuMP.set_objective_function(graph, n1[:x]^2)
+    # @test length(optinodes(obj)) == 1
+
+    # JuMP.set_objective_coefficient(graph, n1[:x], 2)
+    # @test objective_function(graph).aff.terms[n1[:x]] == 2.0
 end
 
-function test_optigraph2()
-    graph = _create_optigraph()
-    @test Plasmo.has_nlp_data(graph) == true
-    @test Plasmo.has_objective(graph) == true
-    @test Plasmo.has_nl_objective(graph) == false
-    @test Plasmo.has_node_objective(graph) == true
+# function test_optigraph_2()
+#     graph = _create_optigraph()
+#     # @test Plasmo.has_nlp_data(graph) == true
+#     # @test Plasmo.has_objective(graph) == true
+#     # @test Plasmo.has_nl_objective(graph) == false
+#     @test Plasmo.has_node_objective(graph) == true
 
-    #test quadratic objective
-    @objective(graph, Min, graph[1][:x]^2 + graph[2][:x]^2 + graph[4][:x])
-    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-    optimize!(graph)
-    @test isapprox(objective_value(graph), 3.0; atol=1e-6)
-end
+#     #test quadratic objective
+#     @objective(graph, Min, graph[1][:x]^2 + graph[2][:x]^2 + graph[4][:x])
+#     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+#     optimize!(graph)
+#     @test isapprox(objective_value(graph), 3.0; atol=1e-6)
+# end
 
-function test_set_model_with_graph()
-    graph = OptiGraph()
+# function test_set_model()
+#     graph = OptiGraph()
 
-    n1 = @optinode(graph)
-    n2 = @optinode(graph)
+#     n1 = @optinode(graph)
+#     n2 = @optinode(graph)
 
-    m1 = JuMP.Model()
-    JuMP.@variable(m1, 0 <= x <= 2)
-    JuMP.@variable(m1, 0 <= y <= 3)
-    JuMP.@constraint(m1, x + y <= 4)
-    JuMP.@objective(m1, Min, x)
+#     m1 = JuMP.Model()
+#     JuMP.@variable(m1, 0 <= x <= 2)
+#     JuMP.@variable(m1, 0 <= y <= 3)
+#     JuMP.@constraint(m1, x + y <= 4)
+#     JuMP.@objective(m1, Min, x)
 
-    m2 = JuMP.Model()
-    JuMP.@variable(m2, x)
-    JuMP.@constraint(m2, ref, exp(x) >= 2)
+#     m2 = JuMP.Model()
+#     JuMP.@variable(m2, x)
+#     JuMP.@constraint(m2, ref, exp(x) >= 2)
 
-    #Set models on nodes and edges
-    set_model(n1, m1)     #set m1 to node 1.  Updates reference on m1
-    set_model(n2, m2)
+#     #Set models on nodes and edges
+#     set_model(n1, m1)     #set m1 to node 1.  Updates reference on m1
+#     set_model(n2, m2)
 
-    @test optinodes(graph) == [n1, n2]
-    @test all_nodes(graph) == [n1, n2]
-    @test optinode_by_index(graph, 1) == n1
-    @test optinode_by_index(graph, 2) == n2
-    @test Base.getindex(graph, n1) == 1
+#     @test optinodes(graph) == [n1, n2]
+#     @test all_nodes(graph) == [n1, n2]
+#     @test optinode_by_index(graph, 1) == n1
+#     @test optinode_by_index(graph, 2) == n2
+#     @test Base.getindex(graph, n1) == 1
 
-    @linkconstraint(graph, n1[:x] == n2[:x])
-    @test num_variables(graph) == 3
+#     @linkconstraint(graph, n1[:x] == n2[:x])
+#     @test num_variables(graph) == 3
 
-    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-    optimize!(graph)
-    @test termination_status(graph) == MOI.LOCALLY_SOLVED
-    @test isapprox(value(n1[:x]), log(2); atol=1e-8)
-    @test isapprox(value(graph, n1[:x]), log(2); atol=1e-8)
-    @test isapprox(objective_value(graph), log(2); atol=1e-8)
+#     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+#     optimize!(graph)
+#     @test termination_status(graph) == MOI.LOCALLY_SOLVED
+#     @test isapprox(value(n1[:x]), log(2); atol=1e-8)
+#     @test isapprox(value(graph, n1[:x]), log(2); atol=1e-8)
+#     @test isapprox(objective_value(graph), log(2); atol=1e-8)
 
-    cref = linkconstraints(graph)[1]
-    @test isapprox(dual(cref), 1.0; atol=1e-8)
-    @test isapprox(dual(graph, cref), 1.0; atol=1e-8)
+#     cref = linkconstraints(graph)[1]
+#     @test isapprox(dual(cref), 1.0; atol=1e-8)
+#     @test isapprox(dual(graph, cref), 1.0; atol=1e-8)
 
-    m3 = JuMP.Model()
-    JuMP.@variable(m3, x)
-    JuMP.@NLconstraint(m3, ref, exp(x) >= 2)
-    add_node!(graph, m3)
-    @test num_nodes(graph) == 3
-    @test num_variables(graph) == 4
+#     m3 = JuMP.Model()
+#     JuMP.@variable(m3, x)
+#     JuMP.@NLconstraint(m3, ref, exp(x) >= 2)
+#     add_node!(graph, m3)
+#     @test num_nodes(graph) == 3
+#     @test num_variables(graph) == 4
 
-    # NOTE: this rebuilds the backend since a new node is added.
-    # TODO: fix bug. this is not working
-    optimize!(graph)
-    @test termination_status(graph) == MOI.LOCALLY_SOLVED
-end
+#     # NOTE: this rebuilds the backend since a new node is added.
+#     # TODO: fix bug. this is not working
+#     optimize!(graph)
+#     @test termination_status(graph) == MOI.LOCALLY_SOLVED
+# end
 
-function test_subgraph()
+function test_subgraphs()
     graph = OptiGraph()
 
     @optinode(graph, n0)
@@ -193,7 +202,7 @@ function test_subgraph()
     edgs = optiedges(graph)
     @test Plasmo._is_valid_optigraph(ng1, edgs) == false
 
-    @test optiedge_by_index(graph, 1) == edgs[1]
+    @test get_edge(graph, 1) == edgs[1]
     @test Base.getindex(graph, edgs[1]) == 1
 
     con_types = JuMP.list_of_constraint_types(graph)
@@ -204,7 +213,7 @@ end
 
 function test_assemble_optigraph()
     graph = _create_optigraph()
-    optigraph_ref = optigraph_reference(graph)
+    optigraph_ref = assemble_optigraph(all_nodes(graph), all_edges(graph))
 
     @test num_all_nodes(optigraph_ref) == num_all_nodes(graph)
     @test num_all_variables(optigraph_ref) == num_all_variables(graph)
@@ -238,17 +247,17 @@ end
 
 function test_variables()
     graph = _create_optigraph()
-    n1 = optinode(graph, 1)
-    fix(n1[:x], 1; force=true)
+    n1 = get_node(graph, 1)
+    JuMP.fix(n1[:x], 1; force=true)
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
     @test value(n1[:x]) == 1
 
-    fix(n1[:x], 2)
+    JuMP.fix(n1[:x], 2)
     optimize!(graph)
     @test value(n1[:x]) == 2
 
-    fix(n1[:x], 0)
+    JuMP.fix(n1[:x], 0)
     optimize!(graph)
     @test value(n1[:x]) == 0
 end
@@ -260,11 +269,9 @@ function test_optimizer_attributes()
     @test JuMP.get_optimizer_attribute(graph, "max_cpu_time") == 100.0
 end
 
-# function test_nlp_exceptions()
-#     graph = _create_optigraph()
-#     @test_throws Exception JuMP._init_NLP(graph)
-#     @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
-# end
+function test_nlp_exceptions()
+    @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
+end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

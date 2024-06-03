@@ -92,6 +92,20 @@ function JuMP.num_constraints(
     return MOI.get(element, MOI.NumberOfConstraints{F,set_type}())
 end
 
+function JuMP.num_constraints(
+    element::OptiElement,
+)::Int64
+    num_cons = 0
+    con_types = JuMP.list_of_constraint_types(element)
+    for con_type in con_types
+        function_type = con_type[1]
+        set_type = con_type[2]
+        F = JuMP.moi_function_type(function_type)
+        num_cons += MOI.get(element, MOI.NumberOfConstraints{F,set_type}())
+    end
+    return num_cons
+end
+
 function JuMP.all_constraints(
     element::OptiElement,
     func_type::Type{

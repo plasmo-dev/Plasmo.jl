@@ -79,7 +79,6 @@ end
 
 function JuMP.num_variables(node::OptiNode)
     return MOI.get(graph_backend(node), MOI.NumberOfVariables(), node)
-    #return length(graph_backend(node).node_variables[node])
 end
 
 function JuMP.all_variables(node::OptiNode)
