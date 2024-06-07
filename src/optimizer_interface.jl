@@ -166,9 +166,11 @@ function JuMP.set_optimizer(node::OptiNode; kwargs...)
         you can create a new optigraph using `assemble_optigraph(node)`.")
 end
 
-### status results
+#
+# status results
+#
 
-# termination status
+### termination status
 
 function JuMP.termination_status(graph::OptiGraph)
     return MOI.get(graph, MOI.TerminationStatus())::MOI.TerminationStatusCode
@@ -181,59 +183,38 @@ function MOI.get(graph::OptiGraph, attr::MOI.TerminationStatus)
     return MOI.get(graph_backend(graph), attr)
 end
 
+### result_count
 
-# function result_count(model::GenericModel)::Int
-#     if termination_status(model) == MOI.OPTIMIZE_NOT_CALLED
-#         return 0
-#     end
-#     return MOI.get(model, MOI.ResultCount())
-# end
+function JuMP.result_count(graph::OptiGraph)::Int
+    if JuMP.termination_status(graph) == MOI.OPTIMIZE_NOT_CALLED
+        return 0
+    end
+    return MOI.get(graph, MOI.ResultCount())
+end
 
-# """
-#     raw_status(model::GenericModel)
+### raw status
 
-# Return the reason why the solver stopped in its own words (that is, the
-# MathOptInterface model attribute `RawStatusString`).
-# """
-# function raw_status(model::GenericModel)
-#     if MOI.get(model, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
-#         return "optimize not called"
-#     end
-#     return MOI.get(model, MOI.RawStatusString())
-# end
+function JuMP.raw_status(graph::OptiGraph)
+    if MOI.get(graph, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+        return "optimize not called"
+    end
+    return MOI.get(graph, MOI.RawStatusString())
+end
 
-# function MOI.get(
-#     model::GenericModel,
-#     attr::Union{MOI.PrimalStatus,MOI.DualStatus},
-# )
-#     if model.is_model_dirty && mode(model) != DIRECT
-#         return MOI.NO_SOLUTION
-#     end
-#     return MOI.get(backend(model), attr)
-# end
+function MOI.get(
+    graph::OptiGraph,
+    attr::Union{MOI.PrimalStatus,MOI.DualStatus},
+)
+    if graph.is_model_dirty && JuMP.mode(graph) != DIRECT
+        return MOI.NO_SOLUTION
+    end
+    return MOI.get(graph_backend(graph), attr)
+end
 
-# """
-#     primal_status(model::GenericModel; result::Int = 1)
+function JuMP.primal_status(graph::OptiGraph; result::Int = 1)
+    return MOI.get(graph, MOI.PrimalStatus(result))::MOI.ResultStatusCode
+end
 
-# Return a [`MOI.ResultStatusCode`](@ref) describing the status of the most recent
-# primal solution of the solver (that is, the [`MOI.PrimalStatus`](@ref) attribute)
-# associated with the result index `result`.
-
-# See also: [`result_count`](@ref).
-# """
-# function primal_status(model::GenericModel; result::Int = 1)
-#     return MOI.get(model, MOI.PrimalStatus(result))::MOI.ResultStatusCode
-# end
-
-# """
-#     dual_status(model::GenericModel; result::Int = 1)
-
-# Return a [`MOI.ResultStatusCode`](@ref) describing the status of the most recent
-# dual solution of the solver (that is, the [`MOI.DualStatus`](@ref) attribute)
-# associated with the result index `result`.
-
-# See also: [`result_count`](@ref).
-# """
-# function dual_status(model::GenericModel; result::Int = 1)
-#     return MOI.get(model, MOI.DualStatus(result))::MOI.ResultStatusCode
-# end
+function JuMP.dual_status(graph::OptiGraph; result::Int = 1)
+    return MOI.get(graph, MOI.DualStatus(result))::MOI.ResultStatusCode
+end

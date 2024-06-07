@@ -511,7 +511,9 @@ function JuMP.add_nonlinear_operator(
     return JuMP.NonlinearOperator(f, name)
 end
 
-### Objective function
+#
+# Objective function
+#
 
 function JuMP.objective_function(
     graph::OptiGraph,
@@ -607,7 +609,7 @@ function _moi_set_objective_function(
     return
 end
 
-# objective coefficient - linear
+### objective coefficient - linear
 
 function JuMP.set_objective_coefficient(
     graph::OptiGraph,
@@ -654,7 +656,7 @@ function _set_objective_coefficient(
     return
 end
 
-# objective coefficient - linear - vector
+### objective coefficient - linear - vector
 
 function JuMP.set_objective_coefficient(
     graph::OptiGraph,
@@ -677,7 +679,7 @@ function _set_objective_coefficient(
     variables::AbstractVector{<:NodeVariableRef},
     coeffs::AbstractVector{<:Real},
     ::Type{NodeVariableRef},
-) where {T}
+)
     new_objective = LinearAlgebra.dot(coeffs, variables)
     current_obj = objective_function(model)::NodeVariableRef
     if !(current_obj in variables)
@@ -702,70 +704,113 @@ function _set_objective_coefficient(
     return
 end
 
-# objective coefficient - quadratic
+### objective coefficient - quadratic
 
-# function JuMP.set_objective_coefficient(
-#     graph::OptiGraph,
-#     variables_1::AbstractVector{<:NodeVariableRef},
-#     variables_2::AbstractVector{<:NodeVariableRef},
-#     coeffs::AbstractVector{<:Real},
-# ) where {T}
+function JuMP.set_objective_coefficient(
+    graph::OptiGraph,
+    variable_1::NodeVariableRef,
+    variable_2::NodeVariableRef,
+    coeff::Real,
+)
+    coeff_t = convert(Float64, coeff)::Float64
+    F = JuMP.moi_function_type(JuMP.objective_function_type(graph))
+    _set_objective_coefficient(graph, variable_1, variable_2, coeff_t, F)
+    graph.is_model_dirty = true
+    return
+end
 
-#     n1, n2, m = length(variables_1), length(variables_2), length(coeffs)
-    
-#     if !(n1 == n2 == m)
-#         msg = "The number of variables ($n1, $n2) and coefficients ($m) must match"
-#         throw(DimensionMismatch(msg))
-#     end
+# if existing objective is not quadratic
+function _set_objective_coefficient(
+    graph::OptiGraph,
+    variable_1::NodeVariableRef,
+    variable_2::NodeVariableRef,
+    coeff::Float64,
+    ::Type{F},
+) where {F}
+    current_obj = JuMP.objective_function(graph)
+    new_obj = JuMP.add_to_expression!(coeff * variable_1 * variable_2, current_obj)
+    JuMP.set_objective_function(graph, new_obj)
+    return
+end
 
-#     coeffs_t = convert.(Float64, coeffs)
+# if existing objective is quadratic
+function _set_objective_coefficient(
+    graph::OptiGraph,
+    variable_1::NodeVariableRef,
+    variable_2::NodeVariableRef,
+    coeff::Float64,
+    ::Type{MOI.ScalarQuadraticFunction{Float64}},
+)
+    if variable_1 == variable_2
+        coeff *= Float64(2)
+    end
+    MOI.modify(
+        graph_backend(graph),
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+        variable_1,
+        variable_2,
+        coeff
+    )
+    return
+end
 
-#     F = JuMP.moi_function_type(JuMP.objective_function_type(graph))
+### objective coefficient - quadratic - vector
 
-#     # TODO
-#     _set_objective_coefficient(graph, variables_1, variables_2, coeffs_t, F)
-    
-#     graph.is_model_dirty = true
-#     return
-# end
+function JuMP.set_objective_coefficient(
+    graph::OptiGraph,
+    variables_1::AbstractVector{<:NodeVariableRef},
+    variables_2::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Real},
+)
+    n1, n2, m = length(variables_1), length(variables_2), length(coeffs)
+    if !(n1 == n2 == m)
+        msg = "The number of variables ($n1, $n2) and coefficients ($m) must match"
+        throw(DimensionMismatch(msg))
+    end
+    coeffs_t = convert.(Float64, coeffs)
+    F = JuMP.moi_function_type(JuMP.objective_function_type(graph))
+    _set_objective_coefficient(graph, variables_1, variables_2, coeffs_t, F)
+    graph.is_model_dirty = true
+    return
+end
 
-# function _set_objective_coefficient(
-#     graph::OptiGraph,
-#     variables_1::AbstractVector{<:V},
-#     variables_2::AbstractVector{<:V},
-#     coeffs::AbstractVector{<:T},
-#     ::Type{F},
-# ) where {T,F,V<:NodeVariableRef}
-#     new_obj = GenericQuadExpr{T,V}()
-#     add_to_expression!(new_obj, objective_function(model))
-#     for (c, x, y) in zip(coeffs, variables_1, variables_2)
-#         add_to_expression!(new_obj, c, x, y)
-#     end
-#     set_objective_function(model, new_obj)
-#     return
-# end
+# if existing objective is not quadratic
+function _set_objective_coefficient(
+    graph::OptiGraph,
+    variables_1::AbstractVector{<:NodeVariableRef},
+    variables_2::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Float64},
+    ::Type{F},
+) where {F}
+    new_obj = JuMP.GenericQuadExpr{Float64,NodeVariableRef}()
+    JuMP.add_to_expression!(new_obj, JuMP.objective_function(graph))
+    for (c, x, y) in zip(coeffs, variables_1, variables_2)
+        JuMP.add_to_expression!(new_obj, c, x, y)
+    end
+    JuMP.set_objective_function(graph, new_obj)
+    return
+end
 
-# function _set_objective_coefficient(
-#     model::GenericModel{T},
-#     variables_1::AbstractVector{<:GenericVariableRef{T}},
-#     variables_2::AbstractVector{<:GenericVariableRef{T}},
-#     coeffs::AbstractVector{<:T},
-#     ::Type{MOI.ScalarQuadraticFunction{T}},
-# ) where {T}
-#     for (i, x, y) in zip(eachindex(coeffs), variables_1, variables_2)
-#         if x == y
-#             coeffs[i] *= T(2)
-#         end
-#     end
-#     MOI.modify(
-#         backend(model),
-#         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}}(),
-#         MOI.ScalarQuadraticCoefficientChange.(
-#             index.(variables_1),
-#             index.(variables_2),
-#             coeffs,
-#         ),
-#     )
-#     return
-# end
+# if existing objective is quadratic
+function _set_objective_coefficient(
+    graph::OptiGraph,
+    variables_1::AbstractVector{<:NodeVariableRef},
+    variables_2::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Float64},
+    ::Type{MOI.ScalarQuadraticFunction{Float64}},
+)
+    for (i, x, y) in zip(eachindex(coeffs), variables_1, variables_2)
+        if x == y
+            coeffs[i] *= Float64(2)
+        end
+    end
+    MOI.modify(
+        graph_backend(graph),
+        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
+        variables_1,
+        variables_2,
+        coeffs
+    )
+    return
+end
 

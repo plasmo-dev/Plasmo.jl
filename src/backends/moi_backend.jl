@@ -252,7 +252,7 @@ end
 
 function MOI.modify(
     gb::GraphMOIBackend, 
-    attr::MOI.ObjectiveFunction, 
+    attr::MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}, 
     variable::NodeVariableRef,
     coeff::Float64
 )
@@ -265,14 +265,50 @@ end
 
 function MOI.modify(
     gb::GraphMOIBackend, 
-    attr::MOI.ObjectiveFunction, 
+    attr::MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}, 
     variables::AbstractVector{<:NodeVariableRef},
-    coeffs::AbstractVector{<:Real},
+    coeffs::AbstractVector{<:Float64},
 )
     MOI.modify(
         gb.moi_backend, 
         attr,
         MOI.ScalarCoefficientChange.(graph_index.(Ref(gb),variables), coeffs)
+    )
+end
+
+function MOI.modify(
+    gb::GraphMOIBackend, 
+    attr::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}, 
+    variable_1::NodeVariableRef,
+    variable_2::NodeVariableRef,
+    coeff::Float64
+)
+    MOI.modify(
+        gb.moi_backend, 
+        attr, 
+        MOI.ScalarQuadraticCoefficientChange(
+            graph_index(gb,variable_1),
+            graph_index(gb,variable_2),
+            coeff
+        )
+    )
+end
+
+function MOI.modify(
+    gb::GraphMOIBackend, 
+    attr::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}, 
+    variables_1::AbstractVector{<:NodeVariableRef},
+    variables_2::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Float64},
+)
+    MOI.modify(
+        gb.moi_backend, 
+        attr,
+        MOI.ScalarQuadraticCoefficientChange.(
+            graph_index.(gb,variables_1),
+            graph_index.(gb,variables_2),
+            coeffs
+        )
     )
 end
 
