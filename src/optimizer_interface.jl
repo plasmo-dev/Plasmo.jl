@@ -222,3 +222,12 @@ end
 function JuMP.dual_status(graph::OptiGraph; result::Int = 1)
     return MOI.get(graph, MOI.DualStatus(result))::MOI.ResultStatusCode
 end
+
+#
+# Optinode Interface
+#
+
+function JuMP.set_optimizer(node::OptiNode)
+
+    # return the new graph
+end
