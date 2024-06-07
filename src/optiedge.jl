@@ -65,7 +65,9 @@ function JuMP.all_variables(edge::OptiEdge)
     return unique(vars)
 end
 
-### Edge Constraints
+#
+# Edge Constraints
+#
 
 function next_constraint_index(
     edge::OptiEdge, 
@@ -130,9 +132,9 @@ function _moi_add_edge_constraint(
     return cref
 end
 
-### OptiEdge MOI Extension
-
-# TODO; make general to graph backend
+#
+# OptiEdge MOI Extension
+#
 
 function MOI.get(edge::OptiEdge, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)
     return MOI.get(graph_backend(edge), attr, ref)

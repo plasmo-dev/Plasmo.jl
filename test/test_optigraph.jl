@@ -2,6 +2,7 @@ module TestOptiGraph
 
 using Plasmo
 using Ipopt
+using HiGHS
 using Test
 
 function test_simple_graph()

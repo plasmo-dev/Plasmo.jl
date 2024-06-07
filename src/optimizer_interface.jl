@@ -1,4 +1,6 @@
-### get/set attributes
+#
+# get/set attributes
+#
 
 function JuMP.get_attribute(graph::OptiGraph, attr::AT) where 
     AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
@@ -86,7 +88,9 @@ function JuMP.set_attributes(
     return
 end
 
-### set optimizer
+#
+# set optimizer
+#
 
 # TODO: call to backend
 function JuMP.mode(graph::OptiGraph)

@@ -1,7 +1,7 @@
 module TestGraphRepresentations
 
 using Plasmo
-using LightGraphs
+using Graphs
 using SparseArrays
 using Test
 

@@ -813,4 +813,3 @@ function _set_objective_coefficient(
     )
     return
 end
-

@@ -1,7 +1,7 @@
 module TestGraphFunctions
 
 using Plasmo
-using LightGraphs: LightGraphs
+using Graphs
 using Test
 
 # function _create_test_optigraph()
