@@ -53,20 +53,14 @@ end
 
 ### Graph index
 
-function graph_index(vref::NodeVariableRef)
-    return graph_backend(vref.node).element_to_graph_map[vref]
+function graph_index(ref::RT) where
+    RT <: Union{NodeVariableRef,ConstraintRef}
+    return graph_index(graph_backend(JuMP.owner_model(ref)), ref)
 end
 
-function graph_index(graph::OptiGraph, vref::NodeVariableRef)
-    return graph_backend(graph).element_to_graph_map[vref]
-end
-
-function graph_index(cref::ConstraintRef)
-    return graph_backend(cref.model).element_to_graph_map[cref]
-end
-
-function graph_index(graph::OptiGraph, cref::ConstraintRef)
-    return graph_backend(graph).element_to_graph_map[cref]
+function graph_index(graph::OptiGraph, ref::RT) where
+    RT <: Union{NodeVariableRef,ConstraintRef}
+    return graph_index(graph_backend(graph), ref)
 end
 
 ### Assemble OptiGraph
@@ -134,6 +128,19 @@ function get_node(graph::OptiGraph, idx::Int)
 end
 
 """
+    collect_nodes(jump_func::T where T <: JuMP.AbstractJuMPScalar)
+
+Retrieve the optinodes contained in a JuMP expression.
+"""
+function collect_nodes(
+    jump_func::T where T <: JuMP.AbstractJuMPScalar
+)
+    vars = _extract_variables(jump_func)
+    nodes = JuMP.owner_model.(vars)
+    return collect(nodes)
+end
+
+"""
     local_nodes(graph::OptiGraph)::Vector{OptiNode}
 
 Retrieve the optinodes defined within the optigraph `graph`. This does 
@@ -180,7 +187,7 @@ function num_nodes(graph::OptiGraph)
     return n_nodes
 end
 
-### Manage optiEdges
+### Manage OptiEdges
 
 function add_edge(
     graph::OptiGraph,
@@ -257,9 +264,6 @@ function num_edges(graph::OptiGraph)
     end
     return n_edges
 end
-
-
-
 
 function local_elements(graph::OptiGraph)
     return [graph.optinodes; graph.optiedges]
@@ -344,14 +348,39 @@ function all_link_constraints(graph::OptiGraph)
     return all_constraints.(all_edges(graph))
 end
 
-# TODO
-# function num_link_constraints(graph::OptiGraph)
-#     return num_constraints()
-# end
+function num_link_constraints(
+    graph::OptiGraph, 
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    return sum(
+        JuMP.num_constraints.(all_edges(graph), Ref(func_type), Ref(set_type))
+    )
+end
 
-#
-# JuMP Methods
-#
+function num_link_constraints(graph::OptiGraph)
+    return sum(
+        JuMP.num_constraints.(all_edges(graph))
+    )
+end
+
+### MOI Methods
+
+function MOI.get(graph::OptiGraph, attr::AT) where
+    AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
+    return MOI.get(graph_backend(graph), attr)
+end
+
+function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...) where
+    AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
+    MOI.set(graph_backend(graph), attr, args...)
+end
+
+### JuMP Methods
+
+# variables
 
 function JuMP.all_variables(graph::OptiGraph)
     return vcat(JuMP.all_variables.(all_nodes(graph))...)
@@ -359,6 +388,29 @@ end
 
 function JuMP.num_variables(graph::OptiGraph)
     return sum(JuMP.num_variables.(all_nodes(graph)))
+end
+
+function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
+    gb = graph_backend(graph)
+    return gb.element_to_graph_map[vref]
+end
+
+function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int = 1)
+    return MOI.get(graph_backend(graph), MOI.VariablePrimal(result), nvref)
+end
+
+# constraints
+
+function JuMP.add_constraint(
+    graph::OptiGraph, con::JuMP.AbstractConstraint, name::String=""
+)
+    nodes = collect_nodes(JuMP.jump_function(con))
+    @assert length(nodes) > 0
+    length(nodes) > 1 || error("Cannot create a linking constraint on a single node")
+    edge = add_edge(graph, nodes...)
+    con = JuMP.model_convert(edge, con)
+    cref = _moi_add_edge_constraint(edge, con)
+    return cref
 end
 
 function JuMP.list_of_constraint_types(graph::OptiGraph)::Vector{Tuple{Type,Type}}
@@ -426,34 +478,10 @@ function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraint
     return num_cons
 end
 
-function num_link_constraints(
-    graph::OptiGraph, 
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
-)
-    return sum(
-        JuMP.num_constraints.(all_edges(graph), Ref(func_type), Ref(set_type))
-    )
-end
-
-function num_link_constraints(graph::OptiGraph)
-    return sum(
-        JuMP.num_constraints.(all_edges(graph))
-    )
-end
-
-function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
-    gb = graph_backend(graph)
-    return gb.element_to_graph_map[vref]
-end
-
-function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int = 1)
-    return MOI.get(graph_backend(graph), MOI.VariablePrimal(result), nvref)
-end
+# other functions
 
 function JuMP.backend(graph::OptiGraph)
+    # TODO: make this just graph backend
     return graph_backend(graph).moi_backend
 end
 
@@ -461,7 +489,7 @@ function JuMP.object_dictionary(graph::OptiGraph)
     return graph.obj_dict
 end
 
-### Nonlinear operators
+# nonlinear operators
 
 function JuMP.add_nonlinear_operator(
     graph::OptiGraph,
@@ -483,20 +511,6 @@ function JuMP.add_nonlinear_operator(
     return JuMP.NonlinearOperator(f, name)
 end
 
-### Link constraints
-
-function JuMP.add_constraint(
-    graph::OptiGraph, con::JuMP.AbstractConstraint, name::String=""
-)
-    nodes = _collect_nodes(JuMP.jump_function(con))
-    @assert length(nodes) > 0
-    length(nodes) > 1 || error("Cannot create a linking constraint on a single node")
-    edge = add_edge(graph, nodes...)
-    con = JuMP.model_convert(edge, con)
-    cref = _moi_add_edge_constraint(edge, con)
-    return cref
-end
-
 ### Objective function
 
 function JuMP.objective_function(
@@ -512,12 +526,19 @@ function JuMP.objective_function(graph::OptiGraph, ::Type{T}) where {T}
 end
 
 function JuMP.objective_function(graph::OptiGraph)
-    F = MOI.get(JuMP.backend(graph), MOI.ObjectiveFunctionType())
+    F = MOI.get(graph, MOI.ObjectiveFunctionType())
     return JuMP.objective_function(graph, F)
 end
 
 function JuMP.objective_sense(graph::OptiGraph)
-    return MOI.get(JuMP.backend(graph), MOI.ObjectiveSense())
+    return MOI.get(graph, MOI.ObjectiveSense())
+end
+
+function JuMP.objective_function_type(graph::OptiGraph)
+    return JuMP.jump_function_type(
+        graph,
+        MOI.get(graph, MOI.ObjectiveFunctionType()),
+    )
 end
 
 """
@@ -526,7 +547,22 @@ end
 Retrieve the current objective value on optigraph `graph`.
 """
 function JuMP.objective_value(graph::OptiGraph)
-    return MOI.get(JuMP.backend(graph), MOI.ObjectiveValue())
+    return MOI.get(graph_backend(graph), MOI.ObjectiveValue())
+end
+
+function JuMP.dual_objective_value(
+    graph::OptiGraph;
+    result::Int = 1,
+)
+    return MOI.get(graph_backend(graph), MOI.DualObjectiveValue(result))
+end
+
+function JuMP.relative_gap(graph::OptiGraph)
+    return MOI.get(graph, MOI.RelativeGap())
+end
+
+function JuMP.objective_bound(graph::OptiGraph)
+    return MOI.get(graph, MOI.ObjectiveBound())
 end
 
 function JuMP.set_objective(
@@ -544,44 +580,16 @@ end
 
 function JuMP.set_objective_function(
     graph::OptiGraph, 
-    expr::JuMP.GenericAffExpr{C,NodeVariableRef}
-) where C <: Real
-    _moi_set_objective_function(graph, expr)
-    return
-end
-
-function JuMP.set_objective_function(
-    graph::OptiGraph, 
-    expr::JuMP.GenericQuadExpr{C,NodeVariableRef}
-) where C <: Real
-    _moi_set_objective_function(graph, expr)
-    return
-end
-
-function JuMP.set_objective_function(
-    graph::OptiGraph, 
-    expr::JuMP.GenericNonlinearExpr{NodeVariableRef}
+    expr::JuMP.AbstractJuMPScalar
 )
     _moi_set_objective_function(graph, expr)
     return
 end
 
-#
-# MOI Interface
-#
-
-function MOI.get(graph::OptiGraph, attr::MOI.AnyAttribute)
-    MOI.get(graph_backend(graph), attr)
-end
-
-function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...)
-    MOI.set(graph_backend(graph), attr, args...)
-end
-
 function _moi_set_objective_function(
     graph::OptiGraph, 
-    expr::JuMP.GenericAffExpr{C,NodeVariableRef}
-) where C <: Real
+    expr::JuMP.AbstractJuMPScalar
+)
     # get the moi function made from local node variable indices
     moi_func = JuMP.moi_function(expr)
     
@@ -590,50 +598,174 @@ function _moi_set_objective_function(
 
     # update the moi function using true graph variable indices
     graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
+    func_type = typeof(graph_moi_func)
     MOI.set(
         graph_backend(graph),
-        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{C}}(),
+        MOI.ObjectiveFunction{func_type}(),
         graph_moi_func,
     )
     return
 end
 
-function _moi_set_objective_function(
-    graph::OptiGraph, 
-    expr::JuMP.GenericQuadExpr{C,NodeVariableRef}
-) where C <: Real
-    # get the moi function made from local node variable indices
-    moi_func = JuMP.moi_function(expr)
+# objective coefficient - linear
 
-    # add variables to backend if using subgraphs
-    _add_backend_variables(graph_backend(graph), expr)
-
-    # update the moi function using true graph variable indices
-    graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
-    MOI.set(
-        graph_backend(graph),
-        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{C}}(),
-        graph_moi_func,
-    )
-    return
-end
-
-function _moi_set_objective_function(
-    graph::OptiGraph, 
-    expr::JuMP.GenericNonlinearExpr{NodeVariableRef}
+function JuMP.set_objective_coefficient(
+    graph::OptiGraph,
+    variable::NodeVariableRef,
+    coeff::Real,
 )
-    moi_func = JuMP.moi_function(expr)
-    
-    # add variables to backend if using subgraphs
-    _add_backend_variables(graph_backend(graph), expr)
+    coeff_t = convert(Float64, coeff)
+    F = JuMP.objective_function_type(graph)
+    _set_objective_coefficient(graph, variable, coeff_t, F)
+    graph.is_model_dirty = true
+    return
+end
 
-    # update the moi function variable indices
-    graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
+function _set_objective_coefficient(
+    graph::OptiGraph,
+    variable::NodeVariableRef,
+    coeff::Float64,
+    ::Type{NodeVariableRef},
+)
+    current_obj = JuMP.objective_function(graph)
+    if graph_index(graph, current_obj) == graph_index(graph, variable)
+        JuMP.set_objective_function(graph, coeff * variable)
+    else
+        JuMP.set_objective_function(
+            graph,
+            JuMP.add_to_expression!(coeff * variable, current_obj),
+        )
+    end
+    return
+end
 
-    MOI.set(
+function _set_objective_coefficient(
+    graph::OptiGraph,
+    variable::NodeVariableRef,
+    coeff::Float64,
+    ::Type{F},
+) where {F}
+    MOI.modify(
         graph_backend(graph),
-        MOI.ObjectiveFunction{MOI.ScalarNonlinearFunction}(),
-        graph_moi_func,
+        MOI.ObjectiveFunction{JuMP.moi_function_type(F)}(),
+        variable,
+        coeff
     )
     return
 end
+
+# objective coefficient - linear - vector
+
+function JuMP.set_objective_coefficient(
+    graph::OptiGraph,
+    variables::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Real},
+)
+    n, m = length(variables), length(coeffs)
+    if !(n == m)
+        msg = "The number of variables ($n) and coefficients ($m) must match"
+        throw(DimensionMismatch(msg))
+    end
+    F = objective_function_type(graph)
+    _set_objective_coefficient(graph, variables, convert.(Float64, coeffs), F)
+    graph.is_model_dirty = true
+    return
+end
+
+function _set_objective_coefficient(
+    graph::OptiGraph,
+    variables::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Real},
+    ::Type{NodeVariableRef},
+) where {T}
+    new_objective = LinearAlgebra.dot(coeffs, variables)
+    current_obj = objective_function(model)::NodeVariableRef
+    if !(current_obj in variables)
+        JuMP.add_to_expression!(new_objective, current_obj)
+    end
+    JuMP.set_objective_function(model, new_objective)
+    return
+end
+
+function _set_objective_coefficient(
+    graph::OptiGraph,
+    variables::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Real},
+    ::Type{F},
+) where {F}
+    MOI.modify(
+        graph_backend(graph),
+        MOI.ObjectiveFunction{JuMP.moi_function_type(F)}(),
+        variables,
+        coeffs
+    )
+    return
+end
+
+# objective coefficient - quadratic
+
+# function JuMP.set_objective_coefficient(
+#     graph::OptiGraph,
+#     variables_1::AbstractVector{<:NodeVariableRef},
+#     variables_2::AbstractVector{<:NodeVariableRef},
+#     coeffs::AbstractVector{<:Real},
+# ) where {T}
+
+#     n1, n2, m = length(variables_1), length(variables_2), length(coeffs)
+    
+#     if !(n1 == n2 == m)
+#         msg = "The number of variables ($n1, $n2) and coefficients ($m) must match"
+#         throw(DimensionMismatch(msg))
+#     end
+
+#     coeffs_t = convert.(Float64, coeffs)
+
+#     F = JuMP.moi_function_type(JuMP.objective_function_type(graph))
+
+#     # TODO
+#     _set_objective_coefficient(graph, variables_1, variables_2, coeffs_t, F)
+    
+#     graph.is_model_dirty = true
+#     return
+# end
+
+# function _set_objective_coefficient(
+#     graph::OptiGraph,
+#     variables_1::AbstractVector{<:V},
+#     variables_2::AbstractVector{<:V},
+#     coeffs::AbstractVector{<:T},
+#     ::Type{F},
+# ) where {T,F,V<:NodeVariableRef}
+#     new_obj = GenericQuadExpr{T,V}()
+#     add_to_expression!(new_obj, objective_function(model))
+#     for (c, x, y) in zip(coeffs, variables_1, variables_2)
+#         add_to_expression!(new_obj, c, x, y)
+#     end
+#     set_objective_function(model, new_obj)
+#     return
+# end
+
+# function _set_objective_coefficient(
+#     model::GenericModel{T},
+#     variables_1::AbstractVector{<:GenericVariableRef{T}},
+#     variables_2::AbstractVector{<:GenericVariableRef{T}},
+#     coeffs::AbstractVector{<:T},
+#     ::Type{MOI.ScalarQuadraticFunction{T}},
+# ) where {T}
+#     for (i, x, y) in zip(eachindex(coeffs), variables_1, variables_2)
+#         if x == y
+#             coeffs[i] *= T(2)
+#         end
+#     end
+#     MOI.modify(
+#         backend(model),
+#         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{T}}(),
+#         MOI.ScalarQuadraticCoefficientChange.(
+#             index.(variables_1),
+#             index.(variables_2),
+#             coeffs,
+#         ),
+#     )
+#     return
+# end
+

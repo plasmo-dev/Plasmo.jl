@@ -106,9 +106,11 @@ function GraphMOIBackend(graph::OptiGraph)
     )
 end
 
-function graph_index(gb::GraphMOIBackend, nvref::NodeVariableRef)
-    return gb.element_to_graph_map[nvref]
+function graph_index(gb::GraphMOIBackend, ref::RT) where
+    RT <: Union{NodeVariableRef,ConstraintRef}
+    return gb.element_to_graph_map[ref]
 end
+
 
 """
     graph_operator(gb::GraphMOIBackend, element::OptiElement, name::Symbol)
@@ -163,18 +165,6 @@ function MOI.set(gb::GraphMOIBackend, attr::AT, args...) where
 end
 
 # element attributes
-
-# function MOI.get(gb::GraphMOIBackend, attr::AT, element::OptiElement) where
-#     AT <: MOI.AbstractModelAttribute
-#     return gb.element_attributes[(element,attr)]
-# end
-
-# function MOI.set(gb::GraphMOIBackend, attr::AT, element::OptiElement, args...) where
-#     AT <: MOI.AbstractModelAttribute
-#     MOI.set(gb.moi_backend, attr, args...)
-#     gb.element_attributes[(element,attr)] = tuple(args...)
-#     return
-# end
 
 function MOI.get(gb::GraphMOIBackend, attr::MOI.NumberOfVariables, node::OptiNode)
     return length(gb.node_variables[node])
@@ -258,6 +248,34 @@ function MOI.set(gb::GraphMOIBackend, attr::AT, cref::ConstraintRef, args...) wh
     MOI.set(gb.moi_backend, attr, graph_index, args...)
 end
 
+# modify
+
+function MOI.modify(
+    gb::GraphMOIBackend, 
+    attr::MOI.ObjectiveFunction, 
+    variable::NodeVariableRef,
+    coeff::Float64
+)
+    MOI.modify(
+        gb.moi_backend, 
+        attr, 
+        MOI.ScalarCoefficientChange(graph_index(gb,variable), coeff)
+    )
+end
+
+function MOI.modify(
+    gb::GraphMOIBackend, 
+    attr::MOI.ObjectiveFunction, 
+    variables::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Real},
+)
+    MOI.modify(
+        gb.moi_backend, 
+        attr,
+        MOI.ScalarCoefficientChange.(graph_index.(Ref(gb),variables), coeffs)
+    )
+end
+
 # delete
 
 function MOI.delete(gb::GraphMOIBackend, nvref::NodeVariableRef)
@@ -337,27 +355,40 @@ end
 # map them to the underlying optigraph backend indices. This way, nodes and edges
 # can be mapped to multiple possible optigraph backends.
 
-### _create_graph_moi_func
-# Create an MOI function with true variable indices from a backend graph. This utility 
-# function swaps out the `moi_func` terms (which are local to optinodes) using the node 
-# variables in `jump_func` that map to graph variable indices in the graph backend.
-
+function _create_graph_moi_func end
 """
     _create_graph_moi_func(
         backend::GraphMOIBackend,
         moi_func::MOI.VariableIndex,
         jump_func::NodeVariableRef
     )
+    _create_graph_moi_func(
+        backend::GraphMOIBackend,
+        moi_func::MOI.ScalarAffineFunction,
+        jump_func::JuMP.GenericAffExpr
+    )
+    _create_graph_moi_func(
+        backend::GraphMOIBackend,
+        moi_func::MOI.ScalarQuadraticFunction,
+        jump_func::JuMP.GenericQuadExpr
+    )
+    _create_graph_moi_func(
+        backend::GraphMOIBackend,
+        moi_func::MOI.ScalarNonlinearFunction,
+        jump_func::JuMP.GenericNonlinearExpr
+    )
 
-Create a valid MOI function from a `NodeVariableRef`. This maps to the underlying 
-MOI.VariableIndex in the graph.
+Create an MOI function with true variable indices from a backend graph. This utility 
+function swaps out the `moi_func` terms (which are local to optinodes) using the node 
+variables in `jump_func` that map to graph variable indices in the graph backend.
 
 Parameters
 ----------
-backend::GraphMOIBackend, the backend model for an optigraph.
-moi_func::MOI.ScalarAffineFunction, an MOI function defined over node variable indices.
-jump_func::NodeVariableRef, a NodeVariableRef.
+backend: the backend model for an optigraph.
+moi_func: an MOI function defined over node variable indices.
+jump_func: a JuMP expression defined with `NodeVariableRef`s.
 """
+
 function _create_graph_moi_func(
     backend::GraphMOIBackend,
     moi_func::MOI.VariableIndex,
@@ -366,19 +397,6 @@ function _create_graph_moi_func(
     return backend.element_to_graph_map[jump_func]
 end
 
-"""
-    _create_graph_moi_func(
-        backend::GraphMOIBackend,
-        moi_func::MOI.ScalarAffineFunction,
-        jump_func::JuMP.GenericAffExpr
-    )
-
-Parameters
-----------
-backend::GraphMOIBackend, the backend model for an optigraph.
-moi_func::MOI.ScalarAffineFunction, an MOI function defined over node variable indices.
-jump_func::JuMP.GenericAffExpr, a JuMP expression defined over node variables.
-"""
 function _create_graph_moi_func(
     backend::GraphMOIBackend,
     moi_func::MOI.ScalarAffineFunction,
@@ -456,6 +474,15 @@ function _create_graph_moi_func(
 end
 
 ### _add_backend_variables
+
+function _add_backend_variables(
+    backend::GraphMOIBackend,
+    var::NodeVariableRef
+)
+    vars = [var]
+    _add_backend_variables(backend, vars)
+    return
+end
 
 function _add_backend_variables(
     backend::GraphMOIBackend,

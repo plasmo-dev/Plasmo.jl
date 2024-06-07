@@ -63,7 +63,6 @@ this function is slow for optigraphs with many nodes.
 function node_object_dictionary(node::OptiNode)
     d = JuMP.object_dictionary(node::OptiNode)
     return filter(p -> p.first[1] == node, d)
-    return d
 end
 
 function next_constraint_index(
@@ -199,12 +198,14 @@ end
 ### MOI Methods
 
 # TODO: store objective functions on nodes and query as node attributes
+function JuMP.set_objective(node::OptiNode, obj)
+end
 
 
 ### JuMP Interop
 
-# TODO copy model
+# TODO set_model
 function set_model(node::OptiNode, model::JuMP.Model)
     # assert node is empty
-    # copy JuMP model to optinode
+    # copy JuMP model to optinode backend
 end

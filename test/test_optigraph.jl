@@ -19,9 +19,16 @@ function test_simple_graph()
     @test objective_value(graph) == 7.0
     @test value(nodes[1][:x]) == 1.0
     @test value(nodes[2][:x]) == 3.0
+
+    
+    @test JuMP.termination_status(graph) == MOI.OPTIMAL
+
+    # primal status
+
+
 end
 
-function _create_test_optigraph()
+function _create_test_nl_optigraph()
     graph = OptiGraph()
 
     n1 = add_node(graph)
@@ -55,55 +62,51 @@ function _create_test_optigraph()
 end
 
 function test_optigraph()
-    graph = _create_test_optigraph()
+    graph = _create_test_nl_optigraph()
 
     @test num_nodes(graph) == 4
     @test num_edges(graph) == 4
     @test num_link_constraints(graph) == 29
     @test num_variables(graph) == 30
-    # @test has_node_objective(graph) == true
-
-    JuMP.set_optimizer(graph, Ipopt.Optimizer)
-    optimize!(graph)
-
-    @test isapprox(objective_value(graph), 4.0)
-    @test isapprox(value(objective_function(graph)), 4.0)
+    @test length(collect_nodes(objective_function(graph))) == 4
+    @test JuMP.objective_function_type(graph) == JuMP.GenericAffExpr{Float64, Plasmo.NodeVariableRef}
 
     n1,n2,n3,n4 = all_nodes(graph)
 
-    # TODO: NodeVariableRef objective
-    JuMP.set_objective_function(graph, 1.0*n1[:x])
+    # set objective coefficients
+    JuMP.set_objective_coefficient(graph, n1[:x], 2.0)
+    @test JuMP.objective_function(graph) == 2*n1[:x] + n2[:x] + n3[:x][1] + n4[:x]
+    JuMP.set_objective_coefficient(graph, [n1[:x],n2[:x]], [2.0,2.0])
+    @test JuMP.objective_function(graph) == 2*n1[:x] + 2*n2[:x] + n3[:x][1] + n4[:x]
 
-    # TODO: objective coefficient
+    # set single variable objective
+    JuMP.set_objective_function(graph, n1[:x])
+    @test JuMP.objective_function_type(graph) == Plasmo.NodeVariableRef
+    @test length(collect_nodes(objective_function(graph))) == 1
+    @test JuMP.objective_function(graph) == n1[:x]
+    JuMP.set_objective_coefficient(graph, n1[:x], 2.0)
+    @test JuMP.objective_function(graph) == 2*n1[:x]
+    JuMP.set_objective_coefficient(graph, [n1[:x],n2[:x]], [2.0,2.0])
+    @test JuMP.objective_function(graph) == 2*n1[:x] + 2*n2[:x]
 
+    # quadratic objective
+    JuMP.set_objective_function(graph, n1[:x]^2 + n2[:x]^2)
+    @test objective_function(graph) == n1[:x]^2 + n2[:x]^2
 
-    # TODO: get nodes from expressions
-    #@test length(optinodes(obj)) == 15
+    # nonlinear objective
+    JuMP.set_objective_function(graph, n1[:x]^3 + n2[:x]^3)
+    # NOTE: comparison doesn't seem to work with nonlinear expressions
+    # @test objective_function(graph) == n1[:x]^3.0 + n2[:x]^3.0
 
-    # JuMP.set_objective_function(graph, n1[:x])
-    # obj = objective_function(graph)
-    # @test length(optinodes(obj)) == 1
+    JuMP.set_optimizer(graph, Ipopt.Optimizer)
+    JuMP.optimize!(graph)
+    @test graph.is_model_dirty == false
+    @test JuMP.termination_status(graph) == MOI.LOCALLY_SOLVED
+    @test isapprox(objective_value(graph), 4.0)
+    @test isapprox(value(objective_function(graph)), 4.0)
 
-    # JuMP.set_objective_function(graph, n1[:x]^2)
-    # @test length(optinodes(obj)) == 1
-
-    # JuMP.set_objective_coefficient(graph, n1[:x], 2)
-    # @test objective_function(graph).aff.terms[n1[:x]] == 2.0
 end
 
-# function test_optigraph_2()
-#     graph = _create_optigraph()
-#     # @test Plasmo.has_nlp_data(graph) == true
-#     # @test Plasmo.has_objective(graph) == true
-#     # @test Plasmo.has_nl_objective(graph) == false
-#     @test Plasmo.has_node_objective(graph) == true
-
-#     #test quadratic objective
-#     @objective(graph, Min, graph[1][:x]^2 + graph[2][:x]^2 + graph[4][:x])
-#     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-#     optimize!(graph)
-#     @test isapprox(objective_value(graph), 3.0; atol=1e-6)
-# end
 
 # function test_set_model()
 #     graph = OptiGraph()

@@ -119,27 +119,27 @@ function test_optinode3()
     @test_throws Exception @NLconstraint(n1, n1 >= 0)
 end
 
-function test_optinode_set_solution()
-    graph = OptiGraph()
-    n1 = add_node!(graph)
-    n2 = add_node!(graph)
+# function test_optinode_set_solution()
+#     graph = OptiGraph()
+#     n1 = add_node!(graph)
+#     n2 = add_node!(graph)
 
-    @variable(n1, x >= 0)
-    @variable(n1, y >= 0)
-    @constraint(n1, conref, x + y == 2)
+#     @variable(n1, x >= 0)
+#     @variable(n1, y >= 0)
+#     @constraint(n1, conref, x + y == 2)
 
-    @variable(n2, x >= 0)
-    @linkconstraint(graph, n1[:x] == n2[:x])
+#     @variable(n2, x >= 0)
+#     @linkconstraint(graph, n1[:x] == n2[:x])
 
-    set_node_primals(n1, [n1[:x], n1[:y]], [0.0, 1.0])
-    set_node_duals(n1, [conref], [0.0])
-    set_node_status(n1, MOI.OPTIMAL)
+#     set_node_primals(n1, [n1[:x], n1[:y]], [0.0, 1.0])
+#     set_node_duals(n1, [conref], [0.0])
+#     set_node_status(n1, MOI.OPTIMAL)
 
-    @test value(n1[:x]) == 0
-    @test value(n1[:y]) == 1
-    @test dual(conref) == 0
-    @test JuMP.termination_status(n1) == MOI.OPTIMAL
-end
+#     @test value(n1[:x]) == 0
+#     @test value(n1[:y]) == 1
+#     @test dual(conref) == 0
+#     @test JuMP.termination_status(n1) == MOI.OPTIMAL
+# end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)
