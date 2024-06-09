@@ -200,7 +200,14 @@ function MOI.get(
     attr::MOI.NumberOfConstraints{F,S}, 
     element::OptiElement
 ) where{F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    return length(backend.element_constraints[element])
+    # filter F and S
+    n_cons = 0
+    for con in backend.element_constraints[element]
+        if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
+            n_cons += 1
+        end
+    end
+    return n_cons
 end
 
 function MOI.set(

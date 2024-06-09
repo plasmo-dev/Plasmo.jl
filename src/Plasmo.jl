@@ -16,13 +16,17 @@ const GOI = GraphOptInterface
 using Reexport
 @reexport using JuMP
 
-export OptiGraph, graph_backend, graph_index,
+export OptiGraph, NodeVariableRef,
+
+graph_backend, graph_index,
 
 add_node, add_edge, add_subgraph,
 
 collect_nodes, all_nodes, all_edges, get_subgraphs, local_nodes, local_edges, 
 
-local_subgraphs, num_nodes, num_local_nodes, num_edges, num_local_edges, num_subgraphs, 
+local_subgraphs, num_nodes, num_local_nodes, num_edges, num_local_edges, num_subgraphs,
+
+local_elements, all_elements,
 
 num_local_subgraphs,  num_link_constraints, set_node_objectives,
 

@@ -64,14 +64,47 @@ end
 function test_optigraph()
     graph = _create_test_nl_optigraph()
 
+    # basic queries
+
+    @test graph_backend(graph).optigraph == graph
     @test num_nodes(graph) == 4
     @test num_edges(graph) == 4
-    @test num_link_constraints(graph) == 29
-    @test num_variables(graph) == 30
-    @test length(collect_nodes(objective_function(graph))) == 4
-    @test JuMP.objective_function_type(graph) == JuMP.GenericAffExpr{Float64, Plasmo.NodeVariableRef}
+    @test num_subgraphs(graph) == 0
 
     n1,n2,n3,n4 = all_nodes(graph)
+    e1,e2,e3,e4 = all_edges(graph)
+
+    @test has_edge(graph, Set(n2,n4)) == true
+    @test get_edge(graph, Set(n2,n4)) == e2
+    @test all_nodes(e2) == [n4,n2]
+    @test all_elements(graph) == [n1,n2,n3,n4,e1,e2,e3,e4]
+
+
+    # variables
+    n1_vars = all_variables(n1)
+    @test num_variables(n1) == 2
+    @test num_variables(graph) == 30
+    @test index(graph, n1[:x]) == MOI.VariableIndex(1)
+    @test index(graph, n2[:x]) == MOI.VariableIndex(3)
+
+
+    # constraints
+    @test num_constraints(n1) == 5
+    @test num_constraints(e1) == 1
+    @test num_constraints(graph) == 59
+    @test num_constraints(graph; count_variable_in_set_constraints=false) == 31
+    
+    con_types = list_of_constraint_types(graph)
+    F,S = con_types[3]
+    @test length(con_types) == 6
+    @test num_constraints(graph, F, S) == 1
+    @test num_link_constraints(graph) == 29
+    @test num_link_constraints(graph, F, S) == 0
+
+    # test objective function
+
+    @test length(collect_nodes(objective_function(graph))) == 4
+    @test JuMP.objective_function_type(graph) == JuMP.GenericAffExpr{Float64, Plasmo.NodeVariableRef}
 
     # linear objective
     JuMP.set_objective_coefficient(graph, n1[:x], 2.0)
@@ -105,14 +138,22 @@ function test_optigraph()
     JuMP.set_objective_coefficient(graph, [n1[:x], n2[:x]], [n4[:x],n4[:x]], [1.0, 3.0])
     @test objective_function(graph) == 3*n1[:x]^2 + n2[:x]^2 + n1[:x]*n2[:x] + n1[:x]*n4[:x] + 3*n2[:x]*n4[:x]
 
-
     # nonlinear objective
     JuMP.set_objective_function(graph, n1[:x]^3 + n2[:x]^3)
     # NOTE: comparison doesn't seem to work with nonlinear expressions
     # @test objective_function(graph) == n1[:x]^3.0 + n2[:x]^3.0
 
-    #TODO: check constraint functions
+    # node objectives
+    @objective(n1, Min, n1[:x])
+    @objective(n2, Max, n2[:x])
+    @objective(n3, Min, n3[:x][1]^2 + n3[:x][2]^2)
+    @objective(n4, Min, n4[:x]^2)
 
+    set_node_objectives(graph)
+    @test objective_function(graph) == n1[:x] - n2[:x] + n3[:x][1]^2 + n3[:x][2]^2 + n4[:x]^2
+    @objective(n4, Min, n4[:x]^3)
+    set_node_objectives(graph)
+    @test typeof(objective_function(graph)) == GenericNonlinearExpr{NodeVariableRef}
 
     JuMP.set_optimizer(graph, Ipopt.Optimizer)
     JuMP.optimize!(graph)
@@ -121,126 +162,68 @@ function test_optigraph()
 end
 
 
-# function test_set_model()
-#     graph = OptiGraph()
+function test_subgraphs()
+    graph = OptiGraph(;name=:root)
 
-#     n1 = @optinode(graph)
-#     n2 = @optinode(graph)
+    @optinode(graph, n0)
+    @variable(n0, x)
 
-#     m1 = JuMP.Model()
-#     JuMP.@variable(m1, 0 <= x <= 2)
-#     JuMP.@variable(m1, 0 <= y <= 3)
-#     JuMP.@constraint(m1, x + y <= 4)
-#     JuMP.@objective(m1, Min, x)
+    sg1 = _create_test_nl_optigraph()
+    sg2 = _create_test_nl_optigraph()
+    add_subgraph!(graph, sg1)
+    add_subgraph!(graph, sg2)
 
-#     m2 = JuMP.Model()
-#     JuMP.@variable(m2, x)
-#     JuMP.@constraint(m2, ref, exp(x) >= 2)
+    n11,n12,n13,n14 = all_nodes(sg1)
+    n21,n22,n23,n24 = all_nodes(sg1)
 
-#     #Set models on nodes and edges
-#     set_model(n1, m1)     #set m1 to node 1.  Updates reference on m1
-#     set_model(n2, m2)
+    # link constraints
+    @linkconstraint(graph, n0[:x] + n11[:x] + n21[:x] <= 10)
+    @linkconstraint(graph, n12[:x] == n24[:x]) 
 
-#     @test optinodes(graph) == [n1, n2]
-#     @test all_nodes(graph) == [n1, n2]
-#     @test optinode_by_index(graph, 1) == n1
-#     @test optinode_by_index(graph, 2) == n2
-#     @test Base.getindex(graph, n1) == 1
 
-#     @linkconstraint(graph, n1[:x] == n2[:x])
-#     @test num_variables(graph) == 3
+    @test num_local_nodes(graph) == 1
+    @test num_nodes(graph) == 9
+    @test num_local_edges(graph) == 2
+    @test num_edges(graph) == 4
 
-#     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-#     optimize!(graph)
-#     @test termination_status(graph) == MOI.LOCALLY_SOLVED
-#     @test isapprox(value(n1[:x]), log(2); atol=1e-8)
-#     @test isapprox(value(graph, n1[:x]), log(2); atol=1e-8)
-#     @test isapprox(objective_value(graph), log(2); atol=1e-8)
 
-#     cref = linkconstraints(graph)[1]
-#     @test isapprox(dual(cref), 1.0; atol=1e-8)
-#     @test isapprox(dual(graph, cref), 1.0; atol=1e-8)
+    @test num_subgraphs(graph) == 2
+    @test length(subgraphs(graph)) == 2
 
-#     m3 = JuMP.Model()
-#     JuMP.@variable(m3, x)
-#     JuMP.@NLconstraint(m3, ref, exp(x) >= 2)
-#     add_node!(graph, m3)
-#     @test num_nodes(graph) == 3
-#     @test num_variables(graph) == 4
+    @test num_linkconstraints(graph) == 4
+    @test num_constraints(graph) == 0
+    @test num_all_constraints(graph) == 0
 
-#     # NOTE: this rebuilds the backend since a new node is added.
-#     # TODO: fix bug. this is not working
-#     optimize!(graph)
-#     @test termination_status(graph) == MOI.LOCALLY_SOLVED
-# end
+    # set objective
 
-# function test_subgraphs()
-#     graph = OptiGraph()
 
-#     @optinode(graph, n0)
-#     @variable(n0, x)
+    # optimize root
 
-#     sg1 = OptiGraph()
-#     sg2 = OptiGraph()
-#     add_subgraph!(graph, sg1)
-#     add_subgraph!(graph, sg2)
 
-#     @optinode(sg1, ng1[1:5])
-#     @optinode(sg2, ng2[1:5])
+    # optimize subgraphs
+end
 
-#     for node in optinodes(sg1)
-#         @variable(node, 0 <= x <= 2)
-#     end
+function test_variables()
+    graph = OptiGraph()
+    @optinode(graph, nodes[1:2])
 
-#     for node in optinodes(sg2)
-#         @variable(node, x >= 2)
-#     end
+    n1,n2 = all_nodes(graph)
 
-#     @linkconstraint(sg1, sum(ng1[i][:x] for i in 1:5) <= 4)
-#     @linkconstraint(sg2, sum(ng2[i][:x] for i in 1:5) >= 4)
+    @variable(n1, x >= 1)
+    @variable(n2, x >= 2)
 
-#     @linkconstraint(graph, n0[:x] == ng1[1][:x])
-#     @linkconstraint(graph, n0[:x] == ng2[1][:x])
+    JuMP.fix(n1[:x], 1; force=true)
+    optimize!(graph)
+    @test value(n1[:x]) == 1
 
-#     @test num_nodes(graph) == 1
-#     @test num_all_nodes(graph) == 11
-#     @test num_edges(graph) == 2
-#     @test num_all_edges(graph) == 4
-#     @test num_subgraphs(graph) == 2
-#     @test length(subgraphs(graph)) == 2
-#     @test num_all_subgraphs(graph) == 2
-#     @test num_all_linkconstraints(graph) == 4
-#     @test num_constraints(graph) == 0
-#     @test num_all_constraints(graph) == 0
+    JuMP.fix(n1[:x], 2)
+    optimize!(graph)
+    @test value(n1[:x]) == 2
 
-#     edgs = optiedges(graph)
-#     @test Plasmo._is_valid_optigraph(ng1, edgs) == false
-
-#     @test get_edge(graph, 1) == edgs[1]
-#     @test Base.getindex(graph, edgs[1]) == 1
-
-#     con_types = JuMP.list_of_constraint_types(graph)
-#     @test length(con_types) == 2
-#     var_greater = JuMP.all_constraints(graph, JuMP.VariableRef, MOI.GreaterThan{Float64})
-#     @test length(var_greater) == 10
-# end
-
-# function test_variables()
-#     graph = _create_optigraph()
-#     n1 = get_node(graph, 1)
-#     JuMP.fix(n1[:x], 1; force=true)
-#     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-#     optimize!(graph)
-#     @test value(n1[:x]) == 1
-
-#     JuMP.fix(n1[:x], 2)
-#     optimize!(graph)
-#     @test value(n1[:x]) == 2
-
-#     JuMP.fix(n1[:x], 0)
-#     optimize!(graph)
-#     @test value(n1[:x]) == 0
-# end
+    JuMP.fix(n1[:x], 0)
+    optimize!(graph)
+    @test value(n1[:x]) == 0
+end
 
 # function test_assemble_optigraph()
 #     graph = _create_optigraph()
@@ -275,8 +258,6 @@ end
 #     @test start_value(graph, n1[:x]) == 20
 #     @test graph.moi_backend.optimizer.model.variable_primal_start[1] == 20
 # end
-
-
 
 # function test_optimizer_attributes()
 #     graph = _create_optigraph()

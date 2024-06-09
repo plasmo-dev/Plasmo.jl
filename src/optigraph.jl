@@ -350,6 +350,14 @@ function all_subgraphs(graph::OptiGraph)
     return subs
 end
 
+function num_subgraphs(graph::OptiGraph)
+    n_subs = num_local_subgraphs(graph)
+    for subgraph in graph.subgraphs
+        n_subs += num_local_subgraphs(subgraph)
+    end
+    return n_subs
+end
+
 ### Link Constraints
 
 function all_link_constraints(graph::OptiGraph)
@@ -381,7 +389,7 @@ function MOI.get(graph::OptiGraph, attr::AT) where
     return MOI.get(graph_backend(graph), attr)
 end
 
-function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...) where
+function MOI.set(graph::OptiGraph, attr::AT, args...) where
     AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
     MOI.set(graph_backend(graph), attr, args...)
 end
@@ -401,8 +409,7 @@ function JuMP.num_variables(graph::OptiGraph)
 end
 
 function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
-    gb = graph_backend(graph)
-    return gb.element_to_graph_map[vref]
+    return graph_index(graph, vref)    
 end
 
 function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int = 1)
@@ -483,6 +490,9 @@ function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraint
     for con_type in con_types
         F = con_type[1]
         S = con_type[2]
+        if F == NodeVariableRef && count_variable_in_set_constraints==false
+            continue
+        end
         num_cons += JuMP.num_constraints(graph, F, S)
     end
     return num_cons
