@@ -111,7 +111,7 @@ function test_optigraph()
     # NOTE: comparison doesn't seem to work with nonlinear expressions
     # @test objective_function(graph) == n1[:x]^3.0 + n2[:x]^3.0
 
-    # check constraint types
+    #TODO: check constraint functions
 
 
     JuMP.set_optimizer(graph, Ipopt.Optimizer)

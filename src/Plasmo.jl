@@ -24,7 +24,7 @@ collect_nodes, all_nodes, all_edges, get_subgraphs, local_nodes, local_edges,
 
 local_subgraphs, num_nodes, num_local_nodes, num_edges, num_local_edges, num_subgraphs, 
 
-num_local_subgraphs,  num_link_constraints,
+num_local_subgraphs,  num_link_constraints, set_node_objectives,
 
 containing_optigraphs, source_graph, assemble_optigraph,
 

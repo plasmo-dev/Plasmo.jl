@@ -10,6 +10,7 @@ function OptiGraph(;
         nothing,
         OrderedDict{OptiNode,Vector{OptiGraph}}(),
         OrderedDict{OptiEdge,Vector{OptiGraph}}(),
+        OrderedDict{OptiNode,OptiGraph}(),
         nothing,
         OrderedDict{Tuple{OptiNode,Symbol},Any}(),
         OrderedDict{Tuple{OptiEdge,Symbol},Any}(),
@@ -18,7 +19,8 @@ function OptiGraph(;
         Set{Any}(),
         false
     )
-    #graph.optimizer_graph = graph
+
+    # default is MOI backend
     graph.backend = GraphMOIBackend(graph)
     return graph
 end
@@ -51,7 +53,7 @@ function graph_backend(graph::OptiGraph)
     return graph.backend
 end
 
-### Graph index
+### Graph Index
 
 function graph_index(ref::RT) where
     RT <: Union{NodeVariableRef,ConstraintRef}
@@ -90,6 +92,12 @@ function assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
     return graph
 end
 
+function assemble_optigraph(node::OptiNode)
+    graph = OptiGraph()
+    add_node(graph, node)
+    return graph
+end
+
 """
     is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
 
@@ -119,7 +127,7 @@ end
 function add_node(graph::OptiGraph, node::OptiNode)
     node in all_nodes(graph) && error("Cannot add the same node to a graph multiple times")
     push!(graph.optinodes, node)
-    _append_node_to_backend!(graph, node)
+    _append_node_to_backend!(graph_backend(graph), node)
     return
 end
 
@@ -208,7 +216,7 @@ end
 function add_edge(graph::OptiGraph, edge::OptiEdge)
     edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
     push!(graph.optiedges, edge)
-    _append_edge_to_backend!(graph, edge)
+    _append_edge_to_backend!(graph_backend(graph), edge)
     return
 end
 
@@ -378,9 +386,11 @@ function MOI.set(graph::OptiGraph, attr::MOI.AnyAttribute, args...) where
     MOI.set(graph_backend(graph), attr, args...)
 end
 
-### JuMP Methods
+#
+# JuMP Methods
+#
 
-# variables
+### Variables
 
 function JuMP.all_variables(graph::OptiGraph)
     return vcat(JuMP.all_variables.(all_nodes(graph))...)
@@ -399,7 +409,7 @@ function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int = 1)
     return MOI.get(graph_backend(graph), MOI.VariablePrimal(result), nvref)
 end
 
-# constraints
+### Constraints
 
 function JuMP.add_constraint(
     graph::OptiGraph, con::JuMP.AbstractConstraint, name::String=""
@@ -478,7 +488,7 @@ function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraint
     return num_cons
 end
 
-# other functions
+### Other Methods
 
 function JuMP.backend(graph::OptiGraph)
     # TODO: make this just graph backend
@@ -489,7 +499,7 @@ function JuMP.object_dictionary(graph::OptiGraph)
     return graph.obj_dict
 end
 
-# nonlinear operators
+### Nonlinear Operators
 
 function JuMP.add_nonlinear_operator(
     graph::OptiGraph,
@@ -514,6 +524,20 @@ end
 #
 # Objective function
 #
+
+function set_node_objectives(graph::OptiGraph)
+    obj = 0
+    for node in all_nodes(graph)
+        if has_objective(node)
+            sense = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
+            obj += sense*JuMP.objective_function(node)
+        end
+    end
+    if obj != 0
+        @objective(graph, Min, obj)
+    end
+    return
+end
 
 function JuMP.objective_function(
     graph::OptiGraph,

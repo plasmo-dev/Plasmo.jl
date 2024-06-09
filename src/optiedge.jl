@@ -15,9 +15,6 @@ function Base.getindex(edge::OptiEdge, name::Symbol)
     return edge.source_graph.edge_obj_dict[t]
 end
 
-function all_nodes(edge::OptiEdge)
-    return collect(edge.nodes)
-end
 
 """
     graph_backend(edge::OptiEdge)
@@ -47,13 +44,17 @@ function containing_optigraphs(edge::OptiEdge)
     return graphs
 end
 
+function all_nodes(edge::OptiEdge)
+    return collect(edge.nodes)
+end
+
 function JuMP.object_dictionary(edge::OptiEdge)
     d = source_graph(edge).edge_obj_dict
     return filter(p -> p.first[1] == edge, d)
 end
 
 function JuMP.backend(edge::OptiEdge)
-    return JuMP.backend(graph_backend(edge))
+    return graph_backend(edge)
 end
 
 ### Edge Variables
@@ -65,9 +66,9 @@ function JuMP.all_variables(edge::OptiEdge)
     return unique(vars)
 end
 
-#
-# Edge Constraints
-#
+
+### Edge Constraints
+
 
 function next_constraint_index(
     edge::OptiEdge, 
@@ -133,7 +134,7 @@ function _moi_add_edge_constraint(
 end
 
 #
-# OptiEdge MOI Extension
+# MOI Methods
 #
 
 function MOI.get(edge::OptiEdge, attr::MOI.AbstractConstraintAttribute, ref::ConstraintRef)

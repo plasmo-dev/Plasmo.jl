@@ -106,88 +106,88 @@ function GraphMOIBackend(graph::OptiGraph)
     )
 end
 
-function graph_index(gb::GraphMOIBackend, ref::RT) where
+function graph_index(backend::GraphMOIBackend, ref::RT) where
     RT <: Union{NodeVariableRef,ConstraintRef}
-    return gb.element_to_graph_map[ref]
+    return backend.element_to_graph_map[ref]
 end
 
 
 """
-    graph_operator(gb::GraphMOIBackend, element::OptiElement, name::Symbol)
+    graph_operator(backend::GraphMOIBackend, element::OptiElement, name::Symbol)
 
 Return the name of the registered nonlinear operator in the graph backend 
 corresponding to the name in the element. 
 """
-function graph_operator(gb::GraphMOIBackend, element::OptiElement, name::Symbol)
-    return gb.operator_map[(element,name)]
+function graph_operator(backend::GraphMOIBackend, element::OptiElement, name::Symbol)
+    return backend.operator_map[(element,name)]
 end
 
-function _add_node(gb::GraphMOIBackend, node::OptiNode)
-    if !haskey(gb.node_variables, node)
-        gb.node_variables[node] = MOI.VariableIndex[]
+function _add_node(backend::GraphMOIBackend, node::OptiNode)
+    if !haskey(backend.node_variables, node)
+        backend.node_variables[node] = MOI.VariableIndex[]
     end
-    if !haskey(gb.element_constraints, node)
-        gb.element_constraints[node] = MOI.ConstraintIndex[]
+    if !haskey(backend.element_constraints, node)
+        backend.element_constraints[node] = MOI.ConstraintIndex[]
     end
     return
 end
 
-function _add_edge(gb::GraphMOIBackend, edge::OptiEdge)
-    if !haskey(gb.element_constraints, edge)
-        gb.element_constraints[edge] = MOI.ConstraintIndex[]
+function _add_edge(backend::GraphMOIBackend, edge::OptiEdge)
+    if !haskey(backend.element_constraints, edge)
+        backend.element_constraints[edge] = MOI.ConstraintIndex[]
     end
     return
 end
 
 # JuMP Methods
 
-function JuMP.backend(gb::GraphMOIBackend)
-    return gb.moi_backend
+function JuMP.backend(backend::GraphMOIBackend)
+    return backend.moi_backend
 end
 
-function JuMP.constraint_ref_with_index(gb::GraphMOIBackend, idx::MOI.Index)
-    return gb.graph_to_element_map[idx]
+function JuMP.constraint_ref_with_index(backend::GraphMOIBackend, idx::MOI.Index)
+    return backend.graph_to_element_map[idx]
 end
 
 ### MOI Methods
 
 # graph attributes
 
-function MOI.get(gb::GraphMOIBackend, attr::AT) where 
+function MOI.get(backend::GraphMOIBackend, attr::AT) where 
     AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
-    return MOI.get(gb.moi_backend, attr)
+    return MOI.get(backend.moi_backend, attr)
 end
 
-function MOI.set(gb::GraphMOIBackend, attr::AT, args...) where
+function MOI.set(backend::GraphMOIBackend, attr::AT, args...) where
     AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
-    MOI.set(gb.moi_backend, attr, args...)
+    MOI.set(backend.moi_backend, attr, args...)
     return
 end
 
 # element attributes
 
-function MOI.get(gb::GraphMOIBackend, attr::MOI.NumberOfVariables, node::OptiNode)
-    return length(gb.node_variables[node])
+function MOI.get(backend::GraphMOIBackend, attr::MOI.NumberOfVariables, node::OptiNode)
+    return length(backend.node_variables[node])
 end
 
 function MOI.get(
-    gb::GraphMOIBackend, 
+    backend::GraphMOIBackend, 
     attr::MOI.ListOfConstraintTypesPresent, 
     element::OptiElement
 )
-    cons = gb.element_constraints[element]
+    cons = backend.element_constraints[element]
     con_types = unique(typeof.(cons))
     type_tuple = [(type.parameters[1],type.parameters[2]) for type in con_types]  
     return type_tuple
 end
 
 function MOI.get(
-    gb::GraphMOIBackend, 
+    backend::GraphMOIBackend, 
     attr::MOI.ListOfConstraintIndices{F,S}, 
     element::OptiElement
 ) where{F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     con_inds = MOI.ConstraintIndex{F,S}[]
-    for con in gb.element_constraints[element]
+    for con in backend.element_constraints[element]
         if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
             push!(con_inds, con)
         end
@@ -196,117 +196,117 @@ function MOI.get(
 end
 
 function MOI.get(
-    gb::GraphMOIBackend, 
+    backend::GraphMOIBackend, 
     attr::MOI.NumberOfConstraints{F,S}, 
     element::OptiElement
 ) where{F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    return length(gb.element_constraints[element])
+    return length(backend.element_constraints[element])
 end
 
 function MOI.set(
-    gb::GraphMOIBackend,
+    backend::GraphMOIBackend,
     attr::MOI.UserDefinedFunction,
     node::OptiNode,
     args...
 )
     registered_name = Symbol(node.label, ".", attr.name)
     MOI.set(
-        gb.moi_backend, 
+        backend.moi_backend, 
         MOI.UserDefinedFunction(registered_name, attr.arity),
         args...
     )
-    gb.element_attributes[(node,attr)] = tuple(args...)
-    gb.operator_map[(node,attr.name)] = registered_name
+    backend.element_attributes[(node,attr)] = tuple(args...)
+    backend.operator_map[(node,attr.name)] = registered_name
 end
 
 # variable attributes
 
-function MOI.get(gb::GraphMOIBackend, attr::AT, nvref::NodeVariableRef) where 
+function MOI.get(backend::GraphMOIBackend, attr::AT, nvref::NodeVariableRef) where 
     AT <: MOI.AbstractVariableAttribute
-    graph_index = gb.element_to_graph_map[nvref]
-    return MOI.get(gb.moi_backend, attr, graph_index)
+    graph_index = backend.element_to_graph_map[nvref]
+    return MOI.get(backend.moi_backend, attr, graph_index)
 end
 
-function MOI.set(gb::GraphMOIBackend, attr::AT, nvref::NodeVariableRef, args...) where 
+function MOI.set(backend::GraphMOIBackend, attr::AT, nvref::NodeVariableRef, args...) where 
     AT <: MOI.AbstractVariableAttribute
-    graph_index = gb.element_to_graph_map[nvref]
-    MOI.set(gb.moi_backend, attr, graph_index, args...)
+    graph_index = backend.element_to_graph_map[nvref]
+    MOI.set(backend.moi_backend, attr, graph_index, args...)
     return
 end
 
 # constraint attributes
 
-function MOI.get(gb::GraphMOIBackend, attr::AT, cref::ConstraintRef) where
+function MOI.get(backend::GraphMOIBackend, attr::AT, cref::ConstraintRef) where
     AT <: MOI.AbstractConstraintAttribute
-    graph_index = gb.element_to_graph_map[cref]
-    return MOI.get(gb.moi_backend, attr, graph_index)
+    graph_index = backend.element_to_graph_map[cref]
+    return MOI.get(backend.moi_backend, attr, graph_index)
 end
 
-function MOI.set(gb::GraphMOIBackend, attr::AT, cref::ConstraintRef, args...) where 
+function MOI.set(backend::GraphMOIBackend, attr::AT, cref::ConstraintRef, args...) where 
     AT <: MOI.AbstractConstraintAttribute
-    graph_index = gb.element_to_graph_map[cref]
-    MOI.set(gb.moi_backend, attr, graph_index, args...)
+    graph_index = backend.element_to_graph_map[cref]
+    MOI.set(backend.moi_backend, attr, graph_index, args...)
 end
 
 # modify
 
 function MOI.modify(
-    gb::GraphMOIBackend, 
+    backend::GraphMOIBackend, 
     attr::MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}, 
     variable::NodeVariableRef,
     coeff::Float64
 )
     MOI.modify(
-        gb.moi_backend, 
+        backend.moi_backend, 
         attr, 
-        MOI.ScalarCoefficientChange(graph_index(gb,variable), coeff)
+        MOI.ScalarCoefficientChange(graph_index(backend,variable), coeff)
     )
 end
 
 function MOI.modify(
-    gb::GraphMOIBackend, 
+    backend::GraphMOIBackend, 
     attr::MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}, 
     variables::AbstractVector{<:NodeVariableRef},
     coeffs::AbstractVector{<:Float64},
 )
     MOI.modify(
-        gb.moi_backend, 
+        backend.moi_backend, 
         attr,
-        MOI.ScalarCoefficientChange.(graph_index.(Ref(gb),variables), coeffs)
+        MOI.ScalarCoefficientChange.(graph_index.(Ref(backend),variables), coeffs)
     )
 end
 
 function MOI.modify(
-    gb::GraphMOIBackend, 
+    backend::GraphMOIBackend, 
     attr::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}, 
     variable_1::NodeVariableRef,
     variable_2::NodeVariableRef,
     coeff::Float64
 )
     MOI.modify(
-        gb.moi_backend, 
+        backend.moi_backend, 
         attr, 
         MOI.ScalarQuadraticCoefficientChange(
-            graph_index(gb,variable_1),
-            graph_index(gb,variable_2),
+            graph_index(backend,variable_1),
+            graph_index(backend,variable_2),
             coeff
         )
     )
 end
 
 function MOI.modify(
-    gb::GraphMOIBackend, 
+    backend::GraphMOIBackend, 
     attr::MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}, 
     variables_1::AbstractVector{<:NodeVariableRef},
     variables_2::AbstractVector{<:NodeVariableRef},
     coeffs::AbstractVector{<:Float64},
 )
     MOI.modify(
-        gb.moi_backend, 
+        backend.moi_backend, 
         attr,
         MOI.ScalarQuadraticCoefficientChange.(
-            graph_index.(gb,variables_1),
-            graph_index.(gb,variables_2),
+            graph_index.(backend,variables_1),
+            graph_index.(backend,variables_2),
             coeffs
         )
     )
@@ -314,36 +314,36 @@ end
 
 # delete
 
-function MOI.delete(gb::GraphMOIBackend, nvref::NodeVariableRef)
-    MOI.delete(gb.moi_backend, gb.element_to_graph_map[nvref])
-    delete!(gb.graph_to_element_map.var_map, gb.element_to_graph_map[nvref])
-    delete!(gb.element_to_graph_map.var_map, nvref)
+function MOI.delete(backend::GraphMOIBackend, nvref::NodeVariableRef)
+    MOI.delete(backend.moi_backend, backend.element_to_graph_map[nvref])
+    delete!(backend.graph_to_element_map.var_map, backend.element_to_graph_map[nvref])
+    delete!(backend.element_to_graph_map.var_map, nvref)
     return
 end
 
-function MOI.delete(gb::GraphMOIBackend, cref::ConstraintRef)
-    MOI.delete(gb.moi_backend, gb.element_to_graph_map[cref])
-    delete!(gb.graph_to_element_map.con_map, gb.element_to_graph_map[cref])
-    delete!(gb.element_to_graph_map.con_map, cref)
+function MOI.delete(backend::GraphMOIBackend, cref::ConstraintRef)
+    MOI.delete(backend.moi_backend, backend.element_to_graph_map[cref])
+    delete!(backend.graph_to_element_map.con_map, backend.element_to_graph_map[cref])
+    delete!(backend.element_to_graph_map.con_map, cref)
     return
 end
 
 # is_valid
 
-function MOI.is_valid(gb::GraphMOIBackend, vi::MOI.VariableIndex)
-    return MOI.is_valid(gb.moi_backend, vi)
+function MOI.is_valid(backend::GraphMOIBackend, vi::MOI.VariableIndex)
+    return MOI.is_valid(backend.moi_backend, vi)
 end
 
-function MOI.is_valid(gb::GraphMOIBackend, ci::MOI.ConstraintIndex)
-    return MOI.is_valid(gb.moi_backend, ci)
+function MOI.is_valid(backend::GraphMOIBackend, ci::MOI.ConstraintIndex)
+    return MOI.is_valid(backend.moi_backend, ci)
 end
 
 # optimize!
 
-function MOI.optimize!(gb::GraphMOIBackend)
+function MOI.optimize!(backend::GraphMOIBackend)
     # If there are subgraphs, we need to copy their backend data to this graph
-    _copy_subgraph_backends!(gb.optigraph)
-    MOI.optimize!(gb.moi_backend)
+    _copy_subgraph_backends!(backend)
+    MOI.optimize!(backend.moi_backend)
     return
 end
 
@@ -576,34 +576,42 @@ end
 
 Aggregate the moi backends from each subgraph within `graph` to create a single backend.
 """
-function _copy_subgraph_backends!(graph::OptiGraph)
+# function _copy_subgraph_backends!(graph::OptiGraph)
+function _copy_subgraph_backends!(backend::GraphMOIBackend)
+    graph = backend.optigraph
     for subgraph in get_subgraphs(graph)
-        _copy_subgraph_nodes!(graph, subgraph)
-        _copy_subgraph_edges!(graph, subgraph)
+        _copy_subgraph_nodes!(backend, subgraph)
+        _copy_subgraph_edges!(backend, subgraph)
         # TODO: pass non-objective graph attributes (use an MOI Filter?)
     end
 end
 
-function _copy_subgraph_nodes!(graph::OptiGraph, subgraph::OptiGraph)
+#function _copy_subgraph_nodes!(graph::OptiGraph, subgraph::OptiGraph)
+function _copy_subgraph_nodes!(backend::GraphMOIBackend, subgraph::OptiGraph)
+    graph = backend.optigraph
     for node in all_nodes(subgraph) # NOTE: hits ALL NODES in the subgraph.
         # check to make sure we are not copying again
         if !(graph in containing_optigraphs(node))
-            _append_node_to_backend!(graph, node)
+            _append_node_to_backend!(backend, node)
         end
     end
 end
 
-function _copy_subgraph_edges!(graph::OptiGraph, subgraph::OptiGraph)
+# function _copy_subgraph_edges!(graph::OptiGraph, subgraph::OptiGraph)
+function _copy_subgraph_edges!(backend::GraphMOIBackend, subgraph::OptiGraph)
+    graph = backend.optigraph
     for edge in all_edges(subgraph)
         # check to make sure we are not copying again
         if !(graph in containing_optigraphs(edge))
-            _append_edge_to_backend!(graph, edge)
+            _append_edge_to_backend!(backend, edge)
         end
     end
 end
 
-function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
-    _add_node(graph_backend(graph), node)
+# function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
+function _append_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
+    graph =  backend.optigraph
+    _add_node(backend, node)
     source = source_graph(node)
 
     # TODO: This code may need to go somewhere else.
@@ -615,7 +623,7 @@ function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
     end
 
     # src = graph_backend(node)
-    dest = graph_backend(graph)
+    dest = backend #graph_backend(graph)
     index_map = MOIU.IndexMap()
 
     # copy node variables and variable attributes
@@ -649,8 +657,9 @@ function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
     return
 end
 
-function _append_edge_to_backend!(graph::OptiGraph, edge::OptiEdge)
-    _add_edge(graph_backend(graph), edge)
+function _append_edge_to_backend!(backend::GraphMOIBackend, edge::OptiEdge)
+    graph = backend.optigraph
+    _add_edge(backend, edge)
     source = source_graph(edge)
     if haskey(source.edge_to_graphs, edge)
         push!(source.edge_to_graphs[edge], graph)
@@ -659,7 +668,7 @@ function _append_edge_to_backend!(graph::OptiGraph, edge::OptiEdge)
     end
     
     src = graph_backend(edge)
-    dest = graph_backend(graph)
+    dest = backend
 
     # add variables in cases edge connects across subgraphs
     _add_backend_variables(dest, all_variables(edge))

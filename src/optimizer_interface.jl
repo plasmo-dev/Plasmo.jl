@@ -227,7 +227,23 @@ end
 # Optinode Interface
 #
 
-function JuMP.set_optimizer(node::OptiNode)
+function JuMP.set_optimizer(
+        node::OptiNode,
+        JuMP.@nospecialize(optimizer_constructor);
+        add_bridges::Bool = true
+    )
+    if !haskey(source_graph(node).node_graphs, node)
+        node_graph = assemble_optigraph(node)
+        source_graph(node).node_graphs[node] = node_graph
+    else
+        node_graph = source_graph(node).node_graphs[node]
+    end
+    JuMP.set_optimizer(node_graph, optimizer_constructor; add_bridges=add_bridges)
+    return
+end
 
-    # return the new graph
+function JuMP.optimize!(node::OptiNode; kwargs...)
+    node_graph = source_graph(node).node_graphs[node]
+    JuMP.optimize!(node_graph; kwargs...)
+    return
 end

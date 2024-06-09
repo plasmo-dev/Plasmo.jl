@@ -19,11 +19,14 @@ mutable struct OptiGraph{NT <: AbstractNode, ET <: AbstractEdge} <: AbstractOpti
     node_to_graphs::OrderedDict{NT,Vector{OptiGraph}}
     edge_to_graphs::OrderedDict{ET,Vector{OptiGraph}}
 
-    # intermediate moi backend that maps graph elements to an MOI model
+    # special case where nodes are optimized directly
+    node_graphs::OrderedDict{NT,OptiGraph}
+
+    # intermediate backend that maps graph elements to the actual model
     backend::Union{Nothing,MOI.ModelLike}
 
-    node_obj_dict::OrderedDict{Tuple{NT,Symbol},Any} # object dictionary for nodes
-    edge_obj_dict::OrderedDict{Tuple{ET,Symbol},Any} # object dictionary for edges
+    node_obj_dict::OrderedDict{Tuple{NT,Symbol},Any}
+    edge_obj_dict::OrderedDict{Tuple{ET,Symbol},Any}
     obj_dict::Dict{Symbol,Any}
     ext::Dict{Symbol,Any}
 

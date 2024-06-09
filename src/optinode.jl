@@ -74,7 +74,20 @@ function next_constraint_index(
     return MOI.ConstraintIndex{F,S}(index + 1)
 end
 
-### JuMP Methods
+#
+# JuMP Methods
+#
+
+function JuMP.object_dictionary(node::OptiNode)
+    d = source_graph(node).node_obj_dict
+    return d
+end
+
+function JuMP.backend(node::OptiNode)
+    return JuMP.backend(graph_backend(node))
+end
+
+### Variables
 
 function JuMP.num_variables(node::OptiNode)
     return MOI.get(graph_backend(node), MOI.NumberOfVariables(), node)
@@ -98,6 +111,8 @@ function JuMP.delete(node::OptiNode, cref::ConstraintRef)
     return
 end
 
+### Constraints
+
 """
     JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, name::String="")
 
@@ -110,15 +125,6 @@ function JuMP.add_constraint(
     con = JuMP.model_convert(node, con)
     cref = _moi_add_node_constraint(node, con)
     return cref
-end
-
-function JuMP.object_dictionary(node::OptiNode)
-    d = source_graph(node).node_obj_dict
-    return d
-end
-
-function JuMP.backend(node::OptiNode)
-    return JuMP.backend(graph_backend(node))
 end
 
 function JuMP.add_nonlinear_operator(
@@ -195,17 +201,90 @@ function _check_node_variables(
     return isempty(setdiff(_extract_variables(jump_func), JuMP.all_variables(node)))
 end
 
-### MOI Methods
+### Objective
 
-# TODO: store objective functions on nodes and query as node attributes
-function JuMP.set_objective(node::OptiNode, obj)
+function JuMP.set_objective(
+    node::OptiNode, 
+    sense::MOI.OptimizationSense, 
+    func::JuMP.AbstractJuMPScalar
+)
+    # check that all func terms are for this node
+    unique(collect_nodes(func)) == [node] || error("Optinode does not own all variables.")
+    d = JuMP.object_dictionary(node)
+    d[(node,:objective_sense)] = sense
+    d[(node,:objective_function)] = func
+    return
 end
 
+function JuMP.objective_function(node::OptiNode)
+    return JuMP.object_dictionary(node)[(node,:objective_function)]
+end
 
-### JuMP Interop
+function JuMP.objective_sense(node::OptiNode)
+    return JuMP.object_dictionary(node)[(node,:objective_sense)]
+end
 
-# TODO set_model
+function has_objective(node::OptiNode)
+    return haskey(JuMP.object_dictionary(node),(node,:objective_function))
+end
+
+### Set JuMP Model
+
 function set_model(node::OptiNode, model::JuMP.Model)
-    # assert node is empty
-    # copy JuMP model to optinode backend
+    error("Setting a JuMP Model to an optinode is not currently supported. It 
+        is recommended to use nodes to model your problem  if you want to use 
+        Plasmo.jl. Setting models will be supported in a future release, but it will 
+        only copy the JuMP model data to the node. The JuMP model itself will not be 
+        connected to the node."
+    )
+    #_copy_model_to!(node, model)
 end
+# @deprecate set_model copy_model_to
+
+# TODO
+# function _copy_model_to!(node::OptiNode, model::JuMP.Model)
+#     if !(num_variables(node) == 0 && num_constraints(node) == 0)
+#         error("An optinode must be empty to set a JuMP Model.")
+#     end
+
+#     src = JuMP.backend(model)
+#     dest = graph_backend(node)
+#     index_map = MOIU.IndexMap()
+
+#     # create new variable references
+#     source_variables = all_variables(model)
+#     new_vars = NodeVariableRef[]
+#     for vref in source_variables
+#         new_variable_index = next_variable_index(node)
+#         new_vref = NodeVariableRef(node, new_variable_index)
+#         _add_variable_to_backend(dest, new_vref)
+#         index_map[JuMP.index(vref)] = graph_index(new_vref)
+#     end
+
+#     # pass variable attributes
+#     vis_src = JuMP.index.(source_variables)
+#     MOIU.pass_attributes(dest.moi_backend, src, index_map, vis_src)
+
+#     # copy constraints
+#     constraint_types = MOI.get(src, MOI.ListOfConstraintTypesPresent())
+#     for (F, S) in constraint_types
+#         cis_src = MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
+#         for ci in cis_src
+#             func = MOI.get(model, MOI.ConstraintFunction(), ci)
+#             set = MOI.get(model, MOI.ConstraintSet(), ci)
+#             con = JuMP.constraint_object(JuMP.constraint_ref_with_index(ci))
+#             constraint_index = next_constraint_index(node, F, S)
+
+#             # new optinode cref
+#             cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
+
+#             dest_index = _add_element_constraint_to_backend(
+#                 dest,
+#                 cref,
+#                 MOIU.map_indices(index_map, func), 
+#                 set
+#             )
+#             index_map_FS[ci] = dest_index
+#         end
+#     end
+# end
