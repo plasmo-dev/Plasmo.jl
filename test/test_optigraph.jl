@@ -65,7 +65,6 @@ function test_optigraph()
     graph = _create_test_nl_optigraph()
 
     # basic queries
-
     @test graph_backend(graph).optigraph == graph
     @test num_nodes(graph) == 4
     @test num_edges(graph) == 4
@@ -74,11 +73,10 @@ function test_optigraph()
     n1,n2,n3,n4 = all_nodes(graph)
     e1,e2,e3,e4 = all_edges(graph)
 
-    @test has_edge(graph, Set(n2,n4)) == true
-    @test get_edge(graph, Set(n2,n4)) == e2
+    @test has_edge(graph, Set([n2,n4])) == true
+    @test get_edge(graph, Set([n2,n4])) == e2
     @test all_nodes(e2) == [n4,n2]
     @test all_elements(graph) == [n1,n2,n3,n4,e1,e2,e3,e4]
-
 
     # variables
     n1_vars = all_variables(n1)
@@ -86,7 +84,6 @@ function test_optigraph()
     @test num_variables(graph) == 30
     @test index(graph, n1[:x]) == MOI.VariableIndex(1)
     @test index(graph, n2[:x]) == MOI.VariableIndex(3)
-
 
     # constraints
     @test num_constraints(n1) == 5
@@ -180,19 +177,43 @@ function test_subgraphs()
     @linkconstraint(graph, n0[:x] + n11[:x] + n21[:x] <= 10)
     @linkconstraint(graph, n12[:x] == n24[:x]) 
 
+    con_types = list_of_constraint_types(graph)
+    F,S = con_types[6]
 
     @test num_local_nodes(graph) == 1
     @test num_nodes(graph) == 9
     @test num_local_edges(graph) == 2
-    @test num_edges(graph) == 4
-
-
+    @test num_edges(graph) == 10
     @test num_subgraphs(graph) == 2
-    @test length(subgraphs(graph)) == 2
 
-    @test num_linkconstraints(graph) == 4
-    @test num_constraints(graph) == 0
-    @test num_all_constraints(graph) == 0
+    # constraints
+    @test num_constraints(graph) == 120
+    @test length(all_constraints(graph)) == 120
+
+    # TODO: local constraints
+    @test num_local_constraints(graph) == 2
+    @test length(local_constraints(graph)) == 2
+
+    # link constraints
+    @test num_local_link_constraints(graph, F, S) == 1
+    @test num_link_constraints(graph, F, S) == 53
+    @test num_local_link_constraints(graph) == 2
+    @test num_link_constraints(graph) == 60
+
+    @test length(local_link_constraints(graph, F, S)) == 1
+    @test length(all_link_constraints(graph, F, S)) == 53
+    @test length(local_link_constraints(graph)) == 2
+    @test length(all_link_constraints(graph)) == 60
+
+
+
+
+
+
+    
+
+
+
 
     # set objective
 

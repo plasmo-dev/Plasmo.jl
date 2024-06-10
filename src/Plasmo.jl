@@ -22,13 +22,21 @@ graph_backend, graph_index,
 
 add_node, add_edge, add_subgraph,
 
-collect_nodes, all_nodes, all_edges, get_subgraphs, local_nodes, local_edges, 
+has_edge, get_edge,
 
-local_subgraphs, num_nodes, num_local_nodes, num_edges, num_local_edges, num_subgraphs,
+collect_nodes, local_nodes, all_nodes, local_edges, all_edges,  
 
-local_elements, all_elements,
+get_subgraphs, local_subgraphs, num_local_nodes, num_nodes, num_local_edges, num_edges,  
 
-num_local_subgraphs,  num_link_constraints, set_node_objectives,
+num_local_subgraphs, num_subgraphs, local_elements, all_elements,  
+
+num_local_constraints, local_constraints,
+
+num_local_link_constraints, num_link_constraints,  
+
+local_link_constraints, all_link_constraints,  
+
+set_node_objectives,
 
 containing_optigraphs, source_graph, assemble_optigraph,
 

@@ -100,8 +100,7 @@ function JuMP.num_constraints(
     for con_type in con_types
         function_type = con_type[1]
         set_type = con_type[2]
-        F = JuMP.moi_function_type(function_type)
-        num_cons += MOI.get(element, MOI.NumberOfConstraints{F,set_type}())
+        num_cons += JuMP.num_constraints(element, function_type, set_type)
     end
     return num_cons
 end
@@ -129,6 +128,19 @@ function JuMP.all_constraints(
         push!(result, JuMP.constraint_ref_with_index(element, idx))
     end
     return result
+end
+
+function JuMP.all_constraints(
+    element::OptiElement,
+)
+    constraints = ConstraintRef[]
+    con_types = JuMP.list_of_constraint_types(element)
+    for con_type in con_types
+        function_type = con_type[1]
+        set_type = con_type[2]
+        append!(constraints, JuMP.all_constraints(element, function_type, set_type))
+    end
+    return constraints
 end
 
 

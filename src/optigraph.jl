@@ -155,7 +155,7 @@ Retrieve the optinodes defined within the optigraph `graph`. This does
 not return nodes that exist in subgraphs.
 """
 function local_nodes(graph::OptiGraph)
-    return graph.optinodes
+    return collect(graph.optinodes)
 end
 
 @deprecate get_nodes local_nodes
@@ -233,7 +233,7 @@ function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
 end
 
 function local_edges(graph::OptiGraph)
-    return graph.optiedges
+    return collect(graph.optiedges)
 end
 
 @deprecate get_edges local_edges
@@ -274,7 +274,7 @@ function num_edges(graph::OptiGraph)
 end
 
 function local_elements(graph::OptiGraph)
-    return [graph.optinodes; graph.optiedges]
+    return [local_nodes(graph); local_edges(graph)]
 end
 
 function all_elements(graph::OptiGraph)
@@ -360,8 +360,22 @@ end
 
 ### Link Constraints
 
-function all_link_constraints(graph::OptiGraph)
-    return all_constraints.(all_edges(graph))
+function num_local_link_constraints(
+    graph::OptiGraph,
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    return sum(
+        JuMP.num_constraints.(local_edges(graph), Ref(func_type), Ref(set_type))
+    )
+end
+
+function num_local_link_constraints(graph::OptiGraph)
+    return sum(
+        JuMP.num_constraints.(local_edges(graph))
+    )
 end
 
 function num_link_constraints(
@@ -380,6 +394,69 @@ function num_link_constraints(graph::OptiGraph)
     return sum(
         JuMP.num_constraints.(all_edges(graph))
     )
+end
+
+function local_link_constraints(
+    graph::OptiGraph, 
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    return vcat(all_constraints.(local_edges(graph), Ref(func_type), Ref(set_type))...)
+end
+
+function local_link_constraints(graph::OptiGraph)
+    return vcat(all_constraints.(local_edges(graph))...)
+end
+
+function all_link_constraints(
+    graph::OptiGraph, 
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    all_cons = all_constraints.(all_edges(graph), Ref(func_type), Ref(set_type))
+    return vcat(all_cons...)
+end
+
+function all_link_constraints(graph::OptiGraph)
+    return vcat(all_constraints.(all_edges(graph))...)
+end
+
+### Local Constraints
+
+function num_local_constraints(
+    graph::OptiGraph,
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    return sum(
+        JuMP.num_constraints.(local_elements(graph), Ref(func_type), Ref(set_type))
+    )
+end
+
+function num_local_constraints(graph::OptiGraph)
+    return sum(
+        JuMP.num_constraints.(local_elements(graph))
+    )
+end
+
+function local_constraints(
+    graph::OptiGraph, 
+    func_type::Type{
+        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
+    },
+    set_type::Type{<:MOI.AbstractSet}
+)
+    return vcat(all_constraints.(local_elements(graph), Ref(func_type), Ref(set_type))...)
+end
+
+function local_constraints(graph::OptiGraph)
+    return vcat(all_constraints.(local_elements(graph))...)
 end
 
 ### MOI Methods
