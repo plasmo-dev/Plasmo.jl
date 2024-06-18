@@ -28,7 +28,7 @@ function test_simple_graph()
     @test JuMP.raw_status(graph) == "kHighsModelStatusOptimal"
 end
 
-function _create_test_nl_optigraph()
+function _create_test_nonlinear_optigraph()
     graph = OptiGraph()
 
     n1 = add_node(graph)
@@ -62,7 +62,7 @@ function _create_test_nl_optigraph()
 end
 
 function test_optigraph()
-    graph = _create_test_nl_optigraph()
+    graph = _create_test_nonlinear_optigraph()
 
     # basic queries
     @test graph_backend(graph).optigraph == graph
@@ -165,13 +165,13 @@ function test_subgraphs()
     @optinode(graph, n0)
     @variable(n0, x)
 
-    sg1 = _create_test_nl_optigraph()
-    sg2 = _create_test_nl_optigraph()
+    sg1 = _create_test_nonlinear_optigraph()
+    sg2 = _create_test_nonlinear_optigraph()
     add_subgraph!(graph, sg1)
     add_subgraph!(graph, sg2)
 
     n11,n12,n13,n14 = all_nodes(sg1)
-    n21,n22,n23,n24 = all_nodes(sg1)
+    n21,n22,n23,n24 = all_nodes(sg2)
 
     # link constraints
     @linkconstraint(graph, n0[:x] + n11[:x] + n21[:x] <= 10)
@@ -187,52 +187,54 @@ function test_subgraphs()
     @test num_subgraphs(graph) == 2
 
     # constraints
-    @test num_constraints(graph) == 120
-    @test length(all_constraints(graph)) == 120
-
-    # TODO: local constraints
     @test num_local_constraints(graph) == 2
     @test length(local_constraints(graph)) == 2
+    @test num_constraints(graph) == 120
+    @test length(all_constraints(graph)) == 120
 
     # link constraints
     @test num_local_link_constraints(graph, F, S) == 1
     @test num_link_constraints(graph, F, S) == 53
     @test num_local_link_constraints(graph) == 2
     @test num_link_constraints(graph) == 60
-
     @test length(local_link_constraints(graph, F, S)) == 1
     @test length(all_link_constraints(graph, F, S)) == 53
     @test length(local_link_constraints(graph)) == 2
     @test length(all_link_constraints(graph)) == 60
 
-
-
-
-
-
-    
-
-
-
-
     # set objective
-
-
-    # optimize root
-
+    @objective(sg1, Min, n11[:x] + n12[:x] + n13[:x][1] + n14[:x])
+    @objective(sg2, Min, n21[:x] + n22[:x] + n23[:x][1] + n24[:x])
 
     # optimize subgraphs
+    set_optimizer(sg1, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(sg1)
+    @test JuMP.termination_status(sg1) == MOI.LOCALLY_SOLVED
+
+    set_optimizer(sg2, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(sg2)
+    @test JuMP.termination_status(sg2) == MOI.LOCALLY_SOLVED
+
+    # optimize root graph
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(graph)
+    @test JuMP.termination_status(graph) == MOI.LOCALLY_SOLVED
+
+    # check that node solution matches source graph solution
+    @test value(n11[:x]) == value(sg1, n11[:x])
 end
 
 function test_variables()
     graph = OptiGraph()
+    set_optimizer(graph, HiGHS.Optimizer)
+
     @optinode(graph, nodes[1:2])
-
     n1,n2 = all_nodes(graph)
-
+    
     @variable(n1, x >= 1)
     @variable(n2, x >= 2)
 
+    # fix variables
     JuMP.fix(n1[:x], 1; force=true)
     optimize!(graph)
     @test value(n1[:x]) == 1
@@ -244,6 +246,10 @@ function test_variables()
     JuMP.fix(n1[:x], 0)
     optimize!(graph)
     @test value(n1[:x]) == 0
+
+    # set start value
+
+    # integer and binary
 end
 
 # function test_assemble_optigraph()

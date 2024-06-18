@@ -133,6 +133,11 @@ function _moi_add_edge_constraint(
     return cref
 end
 
+function JuMP.is_valid(edge::OptiEdge, cref::ConstraintRef)
+    return edge === JuMP.owner_model(cref) &&
+           MOI.is_valid(graph_backend(edge), cref)
+end
+
 #
 # MOI Methods
 #
