@@ -166,6 +166,11 @@ end
 
 # element attributes
 
+# By default, just try to get the attribute from the graph MOI backend
+function MOI.get(backend::GraphMOIBackend, attr::MOI.AnyAttribute, element::OptiElement)
+    return MOI.get(backend.moi_backend, attr)
+end
+
 function MOI.get(backend::GraphMOIBackend, attr::MOI.NumberOfVariables, node::OptiNode)
     return length(backend.node_variables[node])
 end

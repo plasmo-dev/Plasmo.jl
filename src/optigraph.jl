@@ -612,7 +612,7 @@ end
 # Objective function
 #
 
-function set_node_objectives(graph::OptiGraph)
+function set_to_node_objectives(graph::OptiGraph)
     obj = 0
     for node in all_nodes(graph)
         if has_objective(node)

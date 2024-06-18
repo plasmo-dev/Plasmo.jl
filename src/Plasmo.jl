@@ -36,7 +36,7 @@ num_local_link_constraints, num_link_constraints,
 
 local_link_constraints, all_link_constraints,  
 
-set_node_objectives,
+set_to_node_objectives,
 
 containing_optigraphs, source_graph, assemble_optigraph,
 

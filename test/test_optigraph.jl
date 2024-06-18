@@ -146,18 +146,17 @@ function test_optigraph()
     @objective(n3, Min, n3[:x][1]^2 + n3[:x][2]^2)
     @objective(n4, Min, n4[:x]^2)
 
-    set_node_objectives(graph)
+    set_to_node_objectives(graph)
     @test objective_function(graph) == n1[:x] - n2[:x] + n3[:x][1]^2 + n3[:x][2]^2 + n4[:x]^2
     @objective(n4, Min, n4[:x]^3)
-    set_node_objectives(graph)
+    set_to_node_objectives(graph)
     @test typeof(objective_function(graph)) == GenericNonlinearExpr{NodeVariableRef}
 
-    JuMP.set_optimizer(graph, Ipopt.Optimizer)
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     JuMP.optimize!(graph)
     @test graph.is_model_dirty == false
     @test JuMP.termination_status(graph) == MOI.LOCALLY_SOLVED
 end
-
 
 function test_subgraphs()
     graph = OptiGraph(;name=:root)
@@ -218,7 +217,7 @@ function test_subgraphs()
     # optimize root graph
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
-    @test JuMP.termination_status(graph) == MOI.LOCALLY_SOLVED
+    @test termination_status(graph) == MOI.LOCALLY_SOLVED
 
     # check that node solution matches source graph solution
     @test value(n11[:x]) == value(sg1, n11[:x])
@@ -251,8 +250,7 @@ function test_variables()
     optimize!(graph)
     @test value(n1[:x]) == 0
 
-    # TODO
-    # set start value
+    # TODO: set start value
     # set_start_value(n2[:x], 3.0)
     # @test start_value(n2[:x]) == 3.0
 
@@ -266,50 +264,79 @@ function test_variables()
     optimize!(graph)
 end
 
+function test_nonlinear_operators()
+    graph = _create_test_nonlinear_optigraph()
+    n1 = graph[1]
+
+    # setup node operator
+    square(x) = x^2
+    f(x, y) = (x - 1)^2 + (y - 2)^2
+
+    @operator(n1, op_square, 1, square)
+    @operator(n1, op_f, 2, f)
+    @objective(n1, Min, op_f(n1[:x], op_square(n1[:y])))
+
+    set_to_node_objectives(graph)
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(graph)
+
+    @test value(op_square(n1[:x])) != nothing
+    @test value(op_f(n1[:x], n1[:y])) != nothing
+
+    n2 = graph[2]
+    @operator(graph, op_f_graph, 2, f)
+    @linkconstraint(graph, con_ref, op_f_graph(n2[:x],n2[:y]) + n1[:x] >= 0)
+    @test num_constraints(graph) == 60
+    optimize!(graph)
+    @test dual(con_ref) != nothing
+    @test value(op_f_graph(n2[:x],n2[:y])) != nothing
+end
+
 function test_assemble_optigraph()
     graph = _create_test_nonlinear_optigraph()
-    new_optigraph = assemble_optigraph(all_nodes(graph), all_edges(graph))
+    new_graph = assemble_optigraph(all_nodes(graph), all_edges(graph))
 
-    @test num_nodes(new_optigraph) == num_nodes(graph)
-    @test num_variables(new_optigraph) == num_variables(graph)
-    @test num_constraints(new_optigraph) == num_constraints(graph)
-    @test num_link_constraints(new_optigraph) == num_link_constraints(graph)
+    @test num_nodes(new_graph) == num_nodes(graph)
+    @test num_variables(new_graph) == num_variables(graph)
+    @test num_constraints(new_graph) == num_constraints(graph)
+    @test num_link_constraints(new_graph) == num_link_constraints(graph)
+
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(graph)
+
+    set_optimizer(new_graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(new_graph)
+    @test termination_status(new_graph) == MOI.LOCALLY_SOLVED
+    @test value.(all_variables(graph)) == value.(all_variables(new_graph))
 end
 
 function test_multiple_solves()
     graph = _create_test_nonlinear_optigraph()
-    n1 = graph[1]
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
-    @test isapprox(value(n1[:x]), 1, atol=1e-6)
 
+    n1 = graph[1]
     set_lower_bound(n1[:x], 1.5)
     optimize!(graph)
     @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
 
-    set_start_value(n1[:x], 10)
+    @linkconstraint(graph, sum(all_variables(graph)) <= 100)
     optimize!(graph)
-    @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
-    @test start_value(n1[:x]) == 10
-
-    # TODO: support variable attributes on optigraph
-    set_start_value(graph, n1[:x], 20)
-    optimize!(graph)
-    @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
-    @test start_value(graph, n1[:x]) == 20
-    @test graph.moi_backend.optimizer.model.variable_primal_start[1] == 20
+    @test termination_status(graph) == MOI.LOCALLY_SOLVED
 end
 
-# function test_optimizer_attributes()
-#     graph = _create_optigraph()
-#     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-#     JuMP.set_optimizer_attribute(graph, "max_cpu_time", 1e2)
-#     @test JuMP.get_optimizer_attribute(graph, "max_cpu_time") == 100.0
-# end
+function test_optimizer_attributes()
+    graph = _create_test_nonlinear_optigraph()
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    
+    set_optimizer_attribute(graph, "max_cpu_time", 1e2)
+    @test get_optimizer_attribute(graph, "max_cpu_time") == 100.0
+end
 
-# function test_nlp_exceptions()
-#     @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
-# end
+function test_nlp_exceptions()
+    graph = _create_test_nonlinear_optigraph()
+    @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
+end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

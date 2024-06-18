@@ -2,14 +2,15 @@ module TestPartition
 
 using Plasmo
 using KaHyPar
+using Ipopt
 using Suppressor
 using Test
 
 kahypar_config = (@__DIR__) * "/cut_kKaHyPar_sea20.ini"
 
-function _create_optigraph()
-    optigraph = OptiGraph()
-    @optinode(optigraph, nodes[1:4])
+function _create_simple_optigraph()
+    graph = OptiGraph()
+    @optinode(graph, nodes[1:4])
 
     #node 1
     @variable(nodes[1], 0 <= x <= 2)
@@ -20,7 +21,7 @@ function _create_optigraph()
     #node 2
     @variable(nodes[2], x >= 1)
     @variable(nodes[2], 0 <= y <= 5)
-    @NLconstraint(nodes[2], exp(x) + y <= 7)
+    @constraint(nodes[2], exp(x) + y <= 7)
     @objective(nodes[2], Min, x)
 
     #node 3
@@ -35,12 +36,11 @@ function _create_optigraph()
     @constraint(nodes[4], x + y <= 3)
     @objective(nodes[4], Max, y)
 
-    #Link constraints take the same expressions as the JuMP @constraint macro
-    @linkconstraint(optigraph, nodes[1][:x] == nodes[2][:x])
-    @linkconstraint(optigraph, nodes[2][:y] == nodes[3][:x])
-    @linkconstraint(optigraph, nodes[3][:x] == nodes[4][:x])
+    @linkconstraint(graph, nodes[1][:x] == nodes[2][:x])
+    @linkconstraint(graph, nodes[2][:y] == nodes[3][:x])
+    @linkconstraint(graph, nodes[3][:x] == nodes[4][:x])
 
-    return optigraph
+    return graph
 end
 
 function _create_chain_optigraph()
@@ -55,31 +55,31 @@ function _create_chain_optigraph()
     return graph
 end
 
-# function test_partition_manual()
-#     graph = OptiGraph()
-#     @optinode(graph, nodes[1:100])
-#     for node in nodes
-#         @variable(node, x >= 0)
-#     end
-#     for j in 1:99
-#         @linkconstraint(graph, nodes[j][:x] == nodes[j + 1][:x])
-#     end
-#     A = reshape(nodes, 20, 5)
-#     node_vectors = [A[c, :] for c in 1:size(A, 1)]
-#     partition = Partition(graph, node_vectors)
-#     @test length(partition.subpartitions) == 20
-#     @test num_nodes(graph) == 100
-#     apply_partition!(graph, partition)
-#     @test num_nodes(graph) == 0
-#     @test num_all_nodes(graph) == 100
+function test_partition_manual()
+    graph = _create_chain_optigraph()
+    
+    @objective(graph, Min, sum(all_variables(graph)))
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(graph)
 
-#     @test Plasmo.n_subpartitions(partition) == 20
-#     @test optinodes(partition) == OptiNode[]
-#     @test optiedges(partition) == optiedges(graph)
-#     @test length(Plasmo.all_subpartitions(partition)) == 20
-#     @test Base.string(partition) == "OptiGraph Partition w/ 20 subpartitions"
-#     @test Plasmo.graph_depth(graph) == 1
-# end
+    obj_val = objective_value(graph)
+
+    nodes = all_nodes(graph)
+    A = reshape(nodes, 20, 5)
+    node_vectors = [A[c, :] for c in 1:size(A, 1)]
+    partition = Partition(graph, node_vectors)
+    @test length(partition.subpartitions) == 20
+    @test num_nodes(graph) == 100
+    apply_partition!(graph, partition)
+    @test num_local_nodes(graph) == 0
+    @test num_nodes(graph) == 100
+
+    @objective(graph, Min, sum(all_variables(graph)))
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(graph)
+
+    @test objective_value(graph) == obj_val
+end
 
 # function test_node_vector_partition()
 #     graph = _create_optigraph()
