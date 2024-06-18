@@ -1,4 +1,7 @@
 # TODO: parameterize on precision
+# TODO: move low-level methods to graph backend
+# TODO: start values
+
 struct NodeVariableRef <: JuMP.AbstractVariableRef
     node::OptiNode
     index::MOI.VariableIndex
@@ -245,7 +248,7 @@ function _moi_nv_set_lower_bound(
 end
 
 function JuMP.has_upper_bound(nvref::NodeVariableRef)
-    return _moi_nv_has_upper_bound(graph_backend(nvref), nvref)
+    return _moi_nv_has_upper_bound(nvref)
 end
 
 function JuMP.set_upper_bound(nvref::NodeVariableRef, upper::Number)

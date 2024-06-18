@@ -345,13 +345,13 @@ function MOI.is_valid(backend::GraphMOIBackend, cref::ConstraintRef)
     return MOI.is_valid(backend.moi_backend, graph_index(cref))
 end
 
-# function MOI.is_valid(backend::GraphMOIBackend, vi::MOI.VariableIndex)
-#     return MOI.is_valid(backend.moi_backend, vi)
-# end
+function MOI.is_valid(backend::GraphMOIBackend, vi::MOI.VariableIndex)
+    return MOI.is_valid(backend.moi_backend, vi)
+end
 
-# function MOI.is_valid(backend::GraphMOIBackend, ci::MOI.ConstraintIndex)
-#     return MOI.is_valid(backend.moi_backend, ci)
-# end
+function MOI.is_valid(backend::GraphMOIBackend, ci::MOI.ConstraintIndex)
+    return MOI.is_valid(backend.moi_backend, ci)
+end
 
 # optimize!
 

@@ -230,9 +230,13 @@ function test_variables()
 
     @optinode(graph, nodes[1:2])
     n1,n2 = all_nodes(graph)
-    
+
     @variable(n1, x >= 1)
     @variable(n2, x >= 2)
+
+    @test has_lower_bound(n1[:x]) == true
+    @test has_upper_bound(n1[:x]) == false
+    @test lower_bound(n1[:x]) == 1
 
     # fix variables
     JuMP.fix(n1[:x], 1; force=true)
@@ -247,44 +251,54 @@ function test_variables()
     optimize!(graph)
     @test value(n1[:x]) == 0
 
+    # TODO
     # set start value
+    # set_start_value(n2[:x], 3.0)
+    # @test start_value(n2[:x]) == 3.0
 
     # integer and binary
+    set_binary(n1[:x])
+    @test is_binary(n1[:x]) == true
+    optimize!(graph)
+
+    set_integer(n2[:x])
+    @test is_integer(n2[:x]) == true
+    optimize!(graph)
 end
 
-# function test_assemble_optigraph()
-#     graph = _create_optigraph()
-#     new_optigraph = assemble_optigraph(all_nodes(graph), all_edges(graph))
+function test_assemble_optigraph()
+    graph = _create_test_nonlinear_optigraph()
+    new_optigraph = assemble_optigraph(all_nodes(graph), all_edges(graph))
 
-#     @test num_all_nodes(optigraph_ref) == num_all_nodes(graph)
-#     @test num_all_variables(optigraph_ref) == num_all_variables(graph)
-#     @test num_constraints(optigraph_ref) == num_constraints(graph)
-#     @test num_all_linkconstraints(optigraph_ref) == num_all_linkconstraints(graph)
-# end
+    @test num_nodes(new_optigraph) == num_nodes(graph)
+    @test num_variables(new_optigraph) == num_variables(graph)
+    @test num_constraints(new_optigraph) == num_constraints(graph)
+    @test num_link_constraints(new_optigraph) == num_link_constraints(graph)
+end
 
-# function test_multiple_solves()
-#     graph = _create_optigraph()
-#     n1 = optinode(graph, 1)
-#     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-#     optimize!(graph)
-#     @test isapprox(value(n1[:x]), 1, atol=1e-6)
+function test_multiple_solves()
+    graph = _create_test_nonlinear_optigraph()
+    n1 = graph[1]
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(graph)
+    @test isapprox(value(n1[:x]), 1, atol=1e-6)
 
-#     set_lower_bound(n1[:x], 1.5)
-#     optimize!(graph)
-#     @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
+    set_lower_bound(n1[:x], 1.5)
+    optimize!(graph)
+    @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
 
-#     set_start_value(n1[:x], 10)
-#     optimize!(graph)
-#     @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
-#     @test start_value(n1[:x]) == 10
+    set_start_value(n1[:x], 10)
+    optimize!(graph)
+    @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
+    @test start_value(n1[:x]) == 10
 
-#     # TODO: support variable attributes on optigraph
-#     set_start_value(graph, n1[:x], 20)
-#     optimize!(graph)
-#     @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
-#     @test start_value(graph, n1[:x]) == 20
-#     @test graph.moi_backend.optimizer.model.variable_primal_start[1] == 20
-# end
+    # TODO: support variable attributes on optigraph
+    set_start_value(graph, n1[:x], 20)
+    optimize!(graph)
+    @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
+    @test start_value(graph, n1[:x]) == 20
+    @test graph.moi_backend.optimizer.model.variable_primal_start[1] == 20
+end
 
 # function test_optimizer_attributes()
 #     graph = _create_optigraph()
