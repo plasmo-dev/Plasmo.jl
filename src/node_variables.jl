@@ -67,7 +67,7 @@ function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::Strin
     if !isempty(name) && MOI.supports(JuMP.backend(node), MOI.VariableName(), MOI.VariableIndex)
         JuMP.set_name(vref, "$(node.label).$(name)")
     end
-    return  vref
+    return vref
 end
 
 function _moi_add_node_variable(
@@ -83,7 +83,7 @@ function _moi_add_node_variable(
         _add_variable_to_backend(graph_backend(graph), vref)
     end
 
-    # constrain node variable (hits all backends)
+    # constrain node variable (hits all graph backends)
     _moi_constrain_node_variable(
         vref,
         v.info, 
@@ -118,6 +118,7 @@ function _moi_constrain_node_variable(
         _moi_add_node_constraint(nvref.node, con)
     end
     if info.has_start && info.start !== nothing
+        # MOI.set hits all backends
         MOI.set(
             nvref.node,
             MOI.VariablePrimalStart(),
@@ -168,7 +169,7 @@ function JuMP.index(vref::NodeVariableRef)
     return vref.index
 end
 
-# variable values
+### variable values
 
 function JuMP.value(nvref::NodeVariableRef; result::Int=1)
     return MOI.get(graph_backend(nvref.node), MOI.VariablePrimal(result), nvref)
@@ -176,6 +177,23 @@ end
 
 function JuMP.value(var_value::Function, vref::NodeVariableRef)
     return var_value(vref)
+end
+
+### variable start values
+
+function JuMP.start_value(nvref::NodeVariableRef)
+    return MOI.get(graph_backend(nvref.node), MOI.VariablePrimalStart(), nvref)
+end
+
+_convert_if_something(::Type{T}, x) where {T} = convert(T, x)
+_convert_if_something(::Type, ::Nothing) = nothing
+function JuMP.set_start_value(nvref::NodeVariableRef, value::Union{Nothing,Real})
+    MOI.set(
+        graph_backend(nvref.node),
+        MOI.VariablePrimalStart(),
+        nvref,
+        _convert_if_something(Float64, value),
+    )
 end
 
 ### node variable bounds

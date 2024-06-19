@@ -97,8 +97,11 @@ function test_optigraph()
     @test num_constraints(graph, F, S) == 1
     @test num_link_constraints(graph) == 29
     @test num_link_constraints(graph, F, S) == 0
+end
 
-    # test objective function
+function test_objective_functions()
+    graph = _create_test_nonlinear_optigraph()
+    n1,n2,n3,n4 = all_nodes(graph)
 
     @test length(collect_nodes(objective_function(graph))) == 4
     @test JuMP.objective_function_type(graph) == JuMP.GenericAffExpr{Float64, Plasmo.NodeVariableRef}
@@ -120,7 +123,6 @@ function test_optigraph()
 
     JuMP.set_objective_coefficient(graph, [n1[:x],n2[:x]], [2.0,2.0])
     @test JuMP.objective_function(graph) == 2*n1[:x] + 2*n2[:x]
-
 
     # quadratic objective
     JuMP.set_objective_function(graph, n1[:x]^2 + n2[:x]^2)
@@ -223,7 +225,34 @@ function test_subgraphs()
     @test value(n11[:x]) == value(sg1, n11[:x])
 end
 
-function test_variables()
+function test_assemble_optigraph()
+    graph = _create_test_nonlinear_optigraph()
+    new_graph = assemble_optigraph(all_nodes(graph), all_edges(graph))
+
+    # test graphs have same elements
+    @test num_nodes(new_graph) == num_nodes(graph)
+    @test num_variables(new_graph) == num_variables(graph)
+    @test num_constraints(new_graph) == num_constraints(graph)
+    @test num_link_constraints(new_graph) == num_link_constraints(graph)
+
+    # test they produce the same solution
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(graph)
+    set_optimizer(new_graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    optimize!(new_graph)
+    @test termination_status(new_graph) == MOI.LOCALLY_SOLVED
+    @test value.(all_variables(graph)) == value.(all_variables(new_graph))
+
+    # test start values
+    n1 = graph[1]
+    set_start_value(new_graph, n1[:x], 3.0)
+    @test start_value(new_graph, n1[:x]) == 3.0
+    @test start_value(n1[:x]) == 1.0
+    set_start_value(n1[:x], 3.0)
+    @test start_value(n1[:x]) == 3.0
+end
+
+function test_variable_constraints()
     graph = OptiGraph()
     set_optimizer(graph, HiGHS.Optimizer)
 
@@ -233,6 +262,11 @@ function test_variables()
     @variable(n1, x >= 1)
     @variable(n2, x >= 2)
 
+    # start value
+    set_start_value(n2[:x], 3.0)
+    @test start_value(n2[:x]) == 3.0
+
+    # bounds
     @test has_lower_bound(n1[:x]) == true
     @test has_upper_bound(n1[:x]) == false
     @test lower_bound(n1[:x]) == 1
@@ -249,10 +283,6 @@ function test_variables()
     JuMP.fix(n1[:x], 0)
     optimize!(graph)
     @test value(n1[:x]) == 0
-
-    # TODO: set start value
-    # set_start_value(n2[:x], 3.0)
-    # @test start_value(n2[:x]) == 3.0
 
     # integer and binary
     set_binary(n1[:x])
@@ -292,24 +322,6 @@ function test_nonlinear_operators()
     @test value(op_f_graph(n2[:x],n2[:y])) != nothing
 end
 
-function test_assemble_optigraph()
-    graph = _create_test_nonlinear_optigraph()
-    new_graph = assemble_optigraph(all_nodes(graph), all_edges(graph))
-
-    @test num_nodes(new_graph) == num_nodes(graph)
-    @test num_variables(new_graph) == num_variables(graph)
-    @test num_constraints(new_graph) == num_constraints(graph)
-    @test num_link_constraints(new_graph) == num_link_constraints(graph)
-
-    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-    optimize!(graph)
-
-    set_optimizer(new_graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-    optimize!(new_graph)
-    @test termination_status(new_graph) == MOI.LOCALLY_SOLVED
-    @test value.(all_variables(graph)) == value.(all_variables(new_graph))
-end
-
 function test_multiple_solves()
     graph = _create_test_nonlinear_optigraph()
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
@@ -328,9 +340,9 @@ end
 function test_optimizer_attributes()
     graph = _create_test_nonlinear_optigraph()
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-    
     set_optimizer_attribute(graph, "max_cpu_time", 1e2)
     @test get_optimizer_attribute(graph, "max_cpu_time") == 100.0
+    optimize!(graph)
 end
 
 function test_nlp_exceptions()

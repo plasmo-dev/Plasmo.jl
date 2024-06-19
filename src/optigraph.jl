@@ -36,7 +36,7 @@ function Base.getindex(graph::OptiGraph, idx::Int)
 end
 
 # TODO: parameterize on numerical precision like JuMP Models do
-# JuMP.value_type(::Type{OptiGraph{T}}) where {T} = T
+JuMP.value_type(::Type{OptiGraph})  = Float64
 
 #
 # Optigraph methods
@@ -487,6 +487,20 @@ end
 
 function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
     return graph_index(graph, vref)    
+end
+
+function JuMP.start_value(graph::OptiGraph, nvref::NodeVariableRef)
+    return MOI.get(graph_backend(graph), MOI.VariablePrimalStart(), nvref)
+end
+
+function JuMP.set_start_value(graph::OptiGraph, nvref::NodeVariableRef, value::Union{Nothing,Real})
+    MOI.set(
+        graph_backend(graph),
+        MOI.VariablePrimalStart(),
+        nvref,
+        _convert_if_something(Float64, value),
+    )
+    return
 end
 
 function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int = 1)

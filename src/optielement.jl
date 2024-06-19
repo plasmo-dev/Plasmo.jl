@@ -27,8 +27,7 @@ function MOI.set(
     args...
 ) where AT <: MOI.AbstractConstraintAttribute
     for graph in containing_optigraphs(element)
-        gb = graph_backend(graph)
-        MOI.set(gb, attr, cref, args...)
+        MOI.set(graph_backend(element), attr, cref, args...)
     end
     return
 end
