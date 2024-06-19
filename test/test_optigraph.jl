@@ -61,7 +61,7 @@ function _create_test_nonlinear_optigraph()
     return graph
 end
 
-function test_optigraph()
+function test_optigraph_build()
     graph = _create_test_nonlinear_optigraph()
 
     # basic queries
@@ -97,19 +97,19 @@ function test_optigraph()
     @test num_constraints(graph, F, S) == 1
     @test num_link_constraints(graph) == 29
     @test num_link_constraints(graph, F, S) == 0
+
+    @test length(collect_nodes(objective_function(graph))) == 4
+    @test JuMP.objective_function_type(graph) == JuMP.GenericAffExpr{Float64, Plasmo.NodeVariableRef}
 end
 
 function test_objective_functions()
     graph = _create_test_nonlinear_optigraph()
     n1,n2,n3,n4 = all_nodes(graph)
 
-    @test length(collect_nodes(objective_function(graph))) == 4
-    @test JuMP.objective_function_type(graph) == JuMP.GenericAffExpr{Float64, Plasmo.NodeVariableRef}
-
     # linear objective
     JuMP.set_objective_coefficient(graph, n1[:x], 2.0)
     @test JuMP.objective_function(graph) == 2*n1[:x] + n2[:x] + n3[:x][1] + n4[:x]
-
+    
     JuMP.set_objective_coefficient(graph, [n1[:x],n2[:x]], [2.0,2.0])
     @test JuMP.objective_function(graph) == 2*n1[:x] + 2*n2[:x] + n3[:x][1] + n4[:x]
 
@@ -150,10 +150,12 @@ function test_objective_functions()
 
     set_to_node_objectives(graph)
     @test objective_function(graph) == n1[:x] - n2[:x] + n3[:x][1]^2 + n3[:x][2]^2 + n4[:x]^2
+    
     @objective(n4, Min, n4[:x]^3)
     set_to_node_objectives(graph)
     @test typeof(objective_function(graph)) == GenericNonlinearExpr{NodeVariableRef}
 
+    # test solve
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     JuMP.optimize!(graph)
     @test graph.is_model_dirty == false
@@ -235,7 +237,7 @@ function test_assemble_optigraph()
     @test num_constraints(new_graph) == num_constraints(graph)
     @test num_link_constraints(new_graph) == num_link_constraints(graph)
 
-    # test they produce the same solution
+    # test graphs produce the same solution
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
     set_optimizer(new_graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
@@ -334,6 +336,7 @@ function test_multiple_solves()
 
     @linkconstraint(graph, sum(all_variables(graph)) <= 100)
     optimize!(graph)
+    @test value(sum(all_variables(graph))) <= 100
     @test termination_status(graph) == MOI.LOCALLY_SOLVED
 end
 

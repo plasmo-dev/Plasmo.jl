@@ -239,7 +239,6 @@ function set_model(node::OptiNode, model::JuMP.Model)
     )
     #_copy_model_to!(node, model)
 end
-# @deprecate set_model copy_model_to
 
 # TODO
 # function _copy_model_to!(node::OptiNode, model::JuMP.Model)

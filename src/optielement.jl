@@ -1,6 +1,8 @@
 # JuMP & MOI methods that dispatch on both optinodes and optiedges
 
-### MOI Methods
+#
+# MOI Methods
+#
 
 function MOI.get(element::OptiElement, attr::MOI.AnyAttribute)
     return MOI.get(graph_backend(element), attr, element)
@@ -39,7 +41,9 @@ function MOI.delete(element::OptiElement, cref::ConstraintRef)
     return
 end
 
-### JuMP Methods
+#
+# JuMP Methods
+#
 
 """
     JuMP.constraint_ref_with_index(

@@ -25,7 +25,9 @@ end
 @deprecate getpartitionlist get_partition_list
 @deprecate partition_list get_partition_list
 
-### Partition constructors
+#
+# Partition constructors
+#
 
 """
     Partition(graph::OptiGraph, node_membership_vector::Vector{Int64})
@@ -122,16 +124,9 @@ function Partition(projection::GraphProjection, membership_vector::Vector{Int64}
     return partition
 end
 
-# function Partition(membership_vector::Vector{Int64}, ref_map::ProjectionMap; kwargs...)
-#     optigraph = ref_map.optigraph
-#     partition_vectors = Plasmo._partition_list(membership_vector)
-#     induced = Plasmo.induced_elements(ref_map.projected_graph, partition_vectors; kwargs...)
-#     partition_elements = Plasmo._identify_partitions(induced, ref_map)  #could be optinode_vectors, optiedge_vectors, or subgraphs
-#     partition = Partition(optigraph, partition_elements)
-#     return partition
-# end
-
-# Partition utilities
+#
+# partition utilities
+#
 
 function _check_valid_partition(
     graph::OptiGraph, optinode_vectors::Vector{Vector{OptiNode}}
@@ -282,7 +277,9 @@ function _build_partition_list(membership_vector::Vector)
     return partitions
 end
 
-### Partition methods
+#
+# partition methods
+#
 
 function all_subpartitions(partition::Partition)
     subparts = partition.subpartitions
@@ -308,8 +305,6 @@ function all_nodes(partition::Partition)
     end
     return nodes
 end
-
-### Create and modify optigraphs with partitions
 
 """
     Assemble a new optigraph from a given `Partition`.

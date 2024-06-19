@@ -20,9 +20,7 @@ export OptiGraph, NodeVariableRef,
 
 graph_backend, graph_index,
 
-add_node, add_edge, add_subgraph,
-
-has_edge, get_edge,
+add_node, add_edge, add_subgraph, has_edge, get_edge,
 
 collect_nodes, local_nodes, all_nodes, local_edges, all_edges,  
 
@@ -40,15 +38,27 @@ set_to_node_objectives,
 
 containing_optigraphs, source_graph, assemble_optigraph,
 
-Partition, apply_partition!, aggregate, aggregate!, aggregate_to_depth,
+# partition
+
+Partition, apply_partition, apply_partition!, n_subpartitions, all_subpartitions, 
+
+# aggregate
+
+aggregate, aggregate!, aggregate_to_depth,
+
+# projections
 
 hyper_projection, edge_hyper_projection, clique_projection,
 
 edge_clique_projection, bipartite_projection,
 
+# topoology
+
 incident_edges, induced_edges, identify_nodes, identify_edges,
 
 neighborhood, expand,
+
+# macros
 
 @optinode, @nodevariables, @linkconstraint
 

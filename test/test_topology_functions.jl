@@ -4,18 +4,17 @@ using Plasmo
 using Graphs
 using Test
 
-# function _create_test_optigraph()
-#     graph = OptiGraph()
-#     @optinode(graph, nodes[1:100])
-#     for node in nodes
-#         @variable(node, 0 <= x <= 2)
-#         @variable(node, 0 <= y <= 3)
-#         @NLconstraint(node, x^3 + y <= 4)
-#     end
-#     @linkconstraint(graph, links[i=1:99], nodes[i][:x] == nodes[i + 1][:x])
-#     @objective(graph, Min, sum(node[:y] for node in nodes))
-#     return graph
-# end
+function _create_chain_optigraph()
+    graph = OptiGraph()
+    @optinode(graph, nodes[1:100])
+    for node in nodes
+        @variable(node, x >= 0)
+    end
+    for j in 1:99
+        @linkconstraint(graph, nodes[j][:x] == nodes[j + 1][:x])
+    end
+    return graph
+end
 
 # function _create_test_optigraph_w_subgraphs()
 #     graph = _create_test_optigraph()
@@ -31,24 +30,6 @@ using Test
 #     return graph
 # end
 
-# function test_hypergraph_backend()
-#     graph = _create_test_optigraph()
-
-#     Plasmo.set_graph_backend(graph)
-#     @test isa(Plasmo.graph_backend(graph), Plasmo.HyperGraphBackend)
-
-#     hgraph, proj_map = Plasmo.graph_backend_data(graph)
-#     @test LightGraphs.nv(hgraph) == 100
-
-#     #this should not reset the graph backend
-#     @test Plasmo._init_graph_backend(graph) == false
-
-#     graph = _create_test_optigraph()
-#     #this will reset because it is empty
-#     @test Plasmo.graph_backend(graph) == nothing
-#     @test Plasmo._init_graph_backend(graph) == true
-#     @test isa(Plasmo.graph_backend(graph), Plasmo.HyperGraphBackend)
-# end
 
 # function test_hypergraph_functions()
 #     graph = _create_test_optigraph()

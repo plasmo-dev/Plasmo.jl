@@ -39,7 +39,7 @@ function _create_simple_optigraph()
     @linkconstraint(graph, nodes[1][:x] == nodes[2][:x])
     @linkconstraint(graph, nodes[2][:y] == nodes[3][:x])
     @linkconstraint(graph, nodes[3][:x] == nodes[4][:x])
-
+    set_to_node_objectives(graph)
     return graph
 end
 
@@ -57,19 +57,26 @@ end
 
 function test_partition_manual()
     graph = _create_chain_optigraph()
+    nodes = all_nodes(graph)
     
     @objective(graph, Min, sum(all_variables(graph)))
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
-
     obj_val = objective_value(graph)
 
-    nodes = all_nodes(graph)
     A = reshape(nodes, 20, 5)
     node_vectors = [A[c, :] for c in 1:size(A, 1)]
     partition = Partition(graph, node_vectors)
-    @test length(partition.subpartitions) == 20
-    @test num_nodes(graph) == 100
+    @test n_subpartitions(partition) == 20
+    @test length(all_subpartitions(partition)) == 20
+    @test length(all_nodes(partition)) == 100
+
+    # test `assemble_optigraph`
+    new_graph = assemble_optigraph(partition)
+    @test num_nodes(new_graph) == 100
+    @test num_local_nodes(new_graph) == 0
+
+    # test `apply_partition!` and modify original graph
     apply_partition!(graph, partition)
     @test num_local_nodes(graph) == 0
     @test num_nodes(graph) == 100
@@ -81,25 +88,24 @@ function test_partition_manual()
     @test objective_value(graph) == obj_val
 end
 
-# function test_node_vector_partition()
-#     graph = _create_optigraph()
-#     node_membership_vector = [0, 0, 1, 1]
-#     part1 = Partition(graph, node_membership_vector)
+function test_node_vector_partition()
+    graph = _create_simple_optigraph()
+    node_membership_vector = [0, 0, 1, 1]
+    partition = Partition(graph, node_membership_vector)
+    new_graph = assemble_optigraph(partition)
+    @test num_nodes(new_graph) == 4
+end
 
-#     hgraph, hmap = hyper_graph(graph)
-#     return part2 = Partition(node_membership_vector, hmap)
-# end
-
-# #Hypergraph
-# function test_partition_hypergraph()
-#     optigraph = _create_optigraph()
-#     hg, hyper_map = Plasmo.hyper_graph(optigraph)
-#     partition_vector = @suppress KaHyPar.partition(hg, 2; configuration=kahypar_config)
-#     partition_hyper = Partition(partition_vector, hyper_map)
-#     return apply_partition!(optigraph, partition_hyper)
-
-#     #@test graph_structure(optigraph) ==  Plasmo.RECURSIVE_GRAPH
-# end
+# hypergraph
+function test_partition_hypergraph()
+    graph = _create_simple_optigraph()
+    projection = hyper_projection(graph)
+    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition = Partition(projection, partition_vector)
+    new_graph = assemble_optigraph(partition)
+    @test num_nodes(new_graph) == 4
+    @test num_subgraphs(new_graph) == 2
+end
 
 # #Edge-HyperGraph
 # function test_partition_edge_hypergraph()
