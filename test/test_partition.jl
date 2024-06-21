@@ -71,7 +71,7 @@ function test_partition_manual()
     @test length(all_subpartitions(partition)) == 20
     @test length(all_nodes(partition)) == 100
 
-    # test `assemble_optigraph`
+    # test `assemble_optigraph` from partition
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 100
     @test num_local_nodes(new_graph) == 0
@@ -81,6 +81,7 @@ function test_partition_manual()
     @test num_local_nodes(graph) == 0
     @test num_nodes(graph) == 100
 
+    # check that objective values are the same
     @objective(graph, Min, sum(all_variables(graph)))
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
@@ -88,15 +89,39 @@ function test_partition_manual()
     @test objective_value(graph) == obj_val
 end
 
-function test_node_vector_partition()
+function test_partition_node_membership_vector()
     graph = _create_simple_optigraph()
+    n1,n2,n3,n4 = all_nodes(graph)
     node_membership_vector = [0, 0, 1, 1]
     partition = Partition(graph, node_membership_vector)
+    @test n_subpartitions(partition) == 2
+    @test partition.subpartitions[1].optinodes == [n1,n2]
+    @test partition.subpartitions[2].optinodes == [n3,n4]
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 4
+    @test num_edges(new_graph) == 3
+    @test num_subgraphs(new_graph) == 2
+    @test num_local_nodes(new_graph) == 0
+    @test num_local_edges(new_graph) == 1
 end
 
-# hypergraph
+
+function test_partition_node_vectors()
+    graph = _create_simple_optigraph()
+    n1,n2,n3,n4 = all_nodes(graph)
+    node_vectors = [[n1,n2],[n3,n4]]
+    partition = Partition(graph, node_vectors)
+    @test n_subpartitions(partition) == 2
+    @test partition.subpartitions[1].optinodes == [n1,n2]
+    @test partition.subpartitions[2].optinodes == [n3,n4]
+    new_graph = assemble_optigraph(partition)
+    @test num_nodes(new_graph) == 4
+    @test num_edges(new_graph) == 3
+    @test num_subgraphs(new_graph) == 2
+    @test num_local_nodes(new_graph) == 0
+    @test num_local_edges(new_graph) == 1
+end
+
 function test_partition_hypergraph()
     graph = _create_simple_optigraph()
     projection = hyper_projection(graph)
@@ -104,71 +129,70 @@ function test_partition_hypergraph()
     partition = Partition(projection, partition_vector)
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 4
+    @test num_edges(new_graph) == 3
     @test num_subgraphs(new_graph) == 2
+    @test num_local_nodes(new_graph) == 0
+    @test num_local_edges(new_graph) == 1
 end
 
-# #Edge-HyperGraph
-# function test_partition_edge_hypergraph()
-#     optigraph = _create_optigraph()
-#     edge_hg, ref_map = edge_hyper_graph(optigraph)
-#     partition_vector = @suppress KaHyPar.partition(edge_hg, 2; configuration=kahypar_config)
-#     partition = Partition(partition_vector, ref_map)
-#     return apply_partition!(optigraph, partition)
+function test_partition_clique()
+    graph = _create_simple_optigraph()
+    projection = clique_projection(graph)
+    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition = Partition(projection, partition_vector)
+    new_graph = assemble_optigraph(partition)
+    @test num_nodes(new_graph) == 4
+    @test num_edges(new_graph) == 3
+    @test num_subgraphs(new_graph) == 2
+    @test num_local_nodes(new_graph) == 0
+    @test num_local_edges(new_graph) == 1
+end
 
-#     #TODO: new test for hierarchical
-#     #@test graph_structure(optigraph) == Plasmo.RECURSIVE_TREE
-# end
+function test_partition_edge_clique()
+    graph = _create_simple_optigraph()
+    projection = edge_clique_projection(graph)
+    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition = Partition(projection, partition_vector)
+    @test n_subpartitions(partition) == 2
+    new_graph = assemble_optigraph(partition)
+    @test num_nodes(new_graph) == 4
+    @test num_edges(new_graph) == 3
+    @test num_subgraphs(new_graph) == 2
+    @test num_local_nodes(new_graph) == 1
+    @test num_local_edges(new_graph) == 2
+end
 
-# #Bipartite Graph
-# function test_bipartite_1()
-#     optigraph = _create_optigraph()
-#     bg, b_map = Plasmo.bipartite_graph(optigraph)
-#     partition_vector = @suppress KaHyPar.partition(bg, 2; configuration=kahypar_config)
-#     partition_bipartite = Partition(partition_vector, b_map)
-#     return apply_partition!(optigraph, partition_bipartite)
+function test_partition_edge_hypergraph()
+    graph = _create_simple_optigraph()
+    projection = edge_hyper_projection(graph)
+    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition = Partition(projection, partition_vector)
+    @test n_subpartitions(partition) == 2
+    new_graph = assemble_optigraph(partition)
+    @test num_nodes(new_graph) == 4
+    @test num_edges(new_graph) == 3
+    @test num_subgraphs(new_graph) == 2
+    @test num_local_nodes(new_graph) == 1
+    @test num_local_edges(new_graph) == 2
+end
 
-#     #TODO new test
-#     #@test graph_structure(optigraph) in [Plasmo.RECURSIVE_TREE,Plasmo.RECURSIVE_GRAPH,Plasmo.RECURSIVE_LINKED_TREE]
+function test_bipartite_1()
+    graph = _create_simple_optigraph()
+    projection = bipartite_projection(graph)
+    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    @test length(partition_vector) == 7
+    partition = Partition(projection, partition_vector; cut_selector = :vertex)
+    new_graph = assemble_optigraph(partition)
+    @test num_nodes(new_graph) == 4
+    @test num_edges(new_graph) == 3
+    @test num_subgraphs(new_graph) == 2
+    @test num_local_nodes(new_graph) == 1
+    @test num_local_edges(new_graph) == 2
 
-#     #TODO
-#     #partition_bipartite = Partition(bg,partition_vector,b_map;cut_selector = :vertex)
-#     #partition_bipartite = Partition(bg,partition_vector,b_map;cut_selector = :edge)
-# end
+    #TODO
+    #partition = Partition(bg,partition_vector,b_map; cut_selector = :edge)
+end
 
-# #Clique Graph
-# function test_clique_graph()
-#     optigraph = _create_optigraph()
-#     cgraph, ref_map = clique_graph(optigraph)
-#     partition_vector = @suppress KaHyPar.partition(cgraph, 2; configuration=kahypar_config)
-#     partition = Partition(partition_vector, ref_map)
-#     return apply_partition!(optigraph, partition)
-#     #@test graph_structure(optigraph) == Plasmo.RECURSIVE_GRAPH
-# end
-
-# #Edge-CliqueGraph
-# function test_edge_clique_graph()
-#     optigraph = _create_optigraph()
-#     edgegraph, ref_map = edge_graph(optigraph)
-#     part_vector = @suppress KaHyPar.partition(edgegraph, 2; configuration=kahypar_config)
-#     partition = Partition(part_vector, ref_map)
-#     return apply_partition!(optigraph, partition)
-#     #@test graph_structure(optigraph) == Plasmo.RECURSIVE_TREE
-#     #TODO: new test. should be has_hierarhical_edges
-# end
-
-# #Specialized partition functions
-# function test_partition_to()
-#     graph = _create_chain_optigraph()
-#     pfunc = KaHyPar.partition
-
-#     @suppress Plasmo.partition_to_subgraphs!(graph, pfunc, 8; configuration=kahypar_config)
-
-#     @suppress Plasmo.partition_to_tree!(graph, pfunc, 8; configuration=kahypar_config)
-
-#     @suppress Plasmo.partition_to_subgraph_tree!(
-#         graph, pfunc, 8; configuration=kahypar_config
-#     )
-# end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

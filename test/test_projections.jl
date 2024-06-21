@@ -42,70 +42,34 @@ end
 function test_projection_hypergraph()
     graph = _create_simple_optigraph()
     projection = hyper_projection(graph)
-
+    @test true
     # TODO: get mapped elements
 end
 
 function test_projection_clique()
     graph = _create_simple_optigraph()
     projection = clique_projection(graph)
+    @test true
+end
+
+function test_projection_edge_clique()
+    graph = _create_simple_optigraph()
+    projection = edge_clique_projection(graph)
+    @test true
+end
+
+function test_projection_edge_hypergraph()
+    graph = _create_simple_optigraph()
+    projection = edge_hyper_projection(graph)
+    @test true
 end
 
 function test_projection_bipartite()
     graph = _create_simple_optigraph()
     projection = bipartite_projection(graph)
+    @test true
 end
 
-# function test_bipartite_graph()
-#     graph = Plasmo.BipartiteGraph()
-
-#     #optinodes => vertices
-#     add_vertex!(graph; bipartite=1)
-#     add_vertex!(graph; bipartite=1)
-#     add_vertex!(graph; bipartite=1)
-#     @test nv(graph) == 3
-
-#     add_vertex!(graph; bipartite=2)
-#     add_vertex!(graph; bipartite=2)
-#     @test nv(graph) == 5
-#     @test LightGraphs.vertices(graph) == Base.OneTo(5)
-
-#     @test_throws Exception add_edge!(graph, 1, 2)
-#     add_edge!(graph, 1, 4)
-#     add_edge!(graph, 2, 4)
-#     add_edge!(graph, 2, 5)
-#     add_edge!(graph, 3, 5)
-#     @test ne(graph) == 4
-
-#     @test length(LightGraphs.edges(graph)) == 4
-#     @test LightGraphs.edgetype(graph) == LightGraphs.SimpleGraphs.SimpleEdge{Int64}
-#     @test LightGraphs.has_edge(graph, 1, 4) == true
-#     @test LightGraphs.has_edge(graph, 1, 2) == false
-#     @test LightGraphs.is_directed(graph) == false
-
-#     A = LightGraphs.adjacency_matrix(graph)
-#     @test length(A) == 6
-#     @test SparseArrays.nnz(A) == 4
-
-#     #nodes [1 and 2 and edge 4], [node 3 and edge 5]
-#     part_vector = [[1, 2, 4], [3, 5]]
-#     p, cross = Plasmo._identify_separators(
-#         graph, part_vector; cut_selector=LightGraphs.degree
-#     )
-#     @test p == [[1, 4], [3, 5]]
-#     @test cross == [2]
-
-#     part = Plasmo.induced_elements(graph, part_vector; cut_selector=LightGraphs.degree)
-#     @test part == p
-
-#     p, cross = Plasmo._identify_separators(graph, part_vector; cut_selector=:vertex)
-#     @test p == [[1, 4], [3, 5]]
-#     @test cross == [2]
-
-#     p, cross = Plasmo._identify_separators(graph, part_vector; cut_selector=:edge)
-#     @test p == [[1, 2, 4], [3]]
-#     @test cross == [5]
-# end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)
