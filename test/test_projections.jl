@@ -43,7 +43,7 @@ function test_projection_hypergraph()
     graph = _create_simple_optigraph()
     projection = hyper_projection(graph)
     @test true
-    # TODO: get mapped elements
+    # TODO: test get_mapped_elements
 end
 
 function test_projection_clique()

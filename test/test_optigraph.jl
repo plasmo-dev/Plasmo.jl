@@ -262,7 +262,7 @@ function test_variable_constraints()
     n1,n2 = all_nodes(graph)
 
     @variable(n1, x >= 1)
-    @variable(n2, x >= 2)
+    @variable(n2, 0 <= x <= 2)
 
     # start value
     set_start_value(n2[:x], 3.0)
@@ -272,6 +272,13 @@ function test_variable_constraints()
     @test has_lower_bound(n1[:x]) == true
     @test has_upper_bound(n1[:x]) == false
     @test lower_bound(n1[:x]) == 1
+    @test upper_bound(n2[:x]) == 2
+
+    set_lower_bound(n1[:x], 0)
+    @test lower_bound(n1[:x]) == 0
+    set_upper_bound(n2[:x], 3)
+    @test upper_bound(n2[:x]) == 3
+
 
     # fix variables
     JuMP.fix(n1[:x], 1; force=true)

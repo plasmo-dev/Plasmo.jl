@@ -43,8 +43,7 @@ function MOI.set(
     args...
 )
     for graph in containing_optigraphs(node)
-        gb = graph_backend(graph)
-        MOI.set(gb, attr, nvref, args...)
+        MOI.set(graph_backend(graph), attr, nvref, args...)
     end
     return
 end
@@ -188,8 +187,9 @@ end
 _convert_if_something(::Type{T}, x) where {T} = convert(T, x)
 _convert_if_something(::Type, ::Nothing) = nothing
 function JuMP.set_start_value(nvref::NodeVariableRef, value::Union{Nothing,Real})
+    # NOTE: sets the start value in all backends
     MOI.set(
-        graph_backend(nvref.node),
+        nvref.node, # graph_backend(nvref.node),
         MOI.VariablePrimalStart(),
         nvref,
         _convert_if_something(Float64, value),
@@ -232,19 +232,19 @@ function JuMP.LowerBoundRef(nvref::NodeVariableRef)
 end
 
 function _moi_nv_has_lower_bound(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    return MOI.is_valid(graph_backend(nvref.node), ci)
+    return MOI.is_valid(backend, ci)
 end
 
 function _nv_lower_bound_ref(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.GreaterThan{Float64}}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    cref = gb.graph_to_element_map[ci]
+    cref = JuMP.constraint_ref_with_index(backend, ci)
     return cref
 end
 
@@ -281,6 +281,11 @@ function JuMP.set_upper_bound(nvref::NodeVariableRef, upper::Number)
     return
 end
 
+function JuMP.upper_bound(nvref::NodeVariableRef)
+    set = MOI.get(JuMP.owner_model(nvref), MOI.ConstraintSet(), JuMP.UpperBoundRef(nvref))
+    return set.upper
+end
+
 function JuMP.delete_upper_bound(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.LowerBoundRef(nvref))
     return
@@ -294,19 +299,19 @@ function JuMP.UpperBoundRef(nvref::NodeVariableRef)
 end
 
 function _moi_nv_has_upper_bound(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.LessThan{Float64}}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    return MOI.is_valid(graph_backend(nvref.node), ci)
+    return MOI.is_valid(backend, ci)
 end
 
 function _nv_upper_bound_ref(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.LessThan{Float64}}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    cref = gb.graph_to_element_map[ci]
+    cref = JuMP.constraint_ref_with_index(backend, ci)
     return cref
 end
 
@@ -337,11 +342,11 @@ function JuMP.FixRef(nvref::NodeVariableRef)
 end
 
 function _nv_fix_ref(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.EqualTo{Float64}}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    cref = gb.graph_to_element_map[ci]
+    cref = JuMP.constraint_ref_with_index(backend, ci)
     return cref
 end
 
@@ -396,11 +401,11 @@ function JuMP.is_fixed(nvref::NodeVariableRef)
 end
 
 function _moi_nv_is_fixed(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.EqualTo{Float64}}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    return MOI.is_valid(gb, ci)
+    return MOI.is_valid(backend, ci)
 end
 
 function JuMP.fix_value(nvref::NodeVariableRef)
@@ -423,11 +428,11 @@ function JuMP.IntegerRef(nvref::NodeVariableRef)
 end
 
 function _nv_integer_ref(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Integer}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    cref = gb.graph_to_element_map[ci]
+    cref = JuMP.constraint_ref_with_index(backend, ci)
     return cref
 end
 
@@ -436,11 +441,11 @@ function JuMP.is_integer(nvref::NodeVariableRef)
 end
 
 function _moi_nv_is_integer(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.Integer}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    return MOI.is_valid(gb, ci)
+    return MOI.is_valid(backend, ci)
 end
 
 function JuMP.set_integer(nvref::NodeVariableRef)
@@ -480,11 +485,11 @@ function JuMP.BinaryRef(nvref::NodeVariableRef)
 end
 
 function _nv_binary_ref(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.ZeroOne}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    cref = gb.graph_to_element_map[ci]
+    cref = JuMP.constraint_ref_with_index(backend, ci)
     return cref
 end
 
@@ -493,11 +498,11 @@ function JuMP.is_binary(nvref::NodeVariableRef)
 end
 
 function _moi_nv_is_binary(nvref::NodeVariableRef)
-    gb = graph_backend(nvref.node)
+    backend = graph_backend(nvref.node)
     ci = MOI.ConstraintIndex{MOI.VariableIndex,MOI.ZeroOne}(
-        gb.element_to_graph_map[nvref].value
+        graph_index(backend, nvref).value
     )
-    return MOI.is_valid(gb, ci)
+    return MOI.is_valid(backend, ci)
 end
 
 function JuMP.set_binary(nvref::NodeVariableRef)

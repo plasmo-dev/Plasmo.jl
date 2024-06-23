@@ -111,6 +111,9 @@ function graph_index(backend::GraphMOIBackend, ref::RT) where
     return backend.element_to_graph_map[ref]
 end
 
+function JuMP.constraint_ref_with_index(backend::GraphMOIBackend, idx::MOI.Index)
+    return backend.graph_to_element_map[idx]
+end
 
 """
     graph_operator(backend::GraphMOIBackend, element::OptiElement, name::Symbol)
@@ -145,9 +148,7 @@ function JuMP.backend(backend::GraphMOIBackend)
     return backend.moi_backend
 end
 
-function JuMP.constraint_ref_with_index(backend::GraphMOIBackend, idx::MOI.Index)
-    return backend.graph_to_element_map[idx]
-end
+
 
 ### MOI Methods
 
