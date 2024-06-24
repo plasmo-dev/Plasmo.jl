@@ -182,7 +182,7 @@ function _moi_add_node_constraint(
         _add_element_constraint_to_backend(
             graph_backend(graph), 
             cref, 
-            moi_func_graph, 
+            moi_func_graph,
             moi_set
         )
     end
@@ -240,7 +240,7 @@ function set_model(node::OptiNode, model::JuMP.Model)
     #_copy_model_to!(node, model)
 end
 
-# TODO
+# TODO: copy JuMP models to optinodes
 # function _copy_model_to!(node::OptiNode, model::JuMP.Model)
 #     if !(num_variables(node) == 0 && num_constraints(node) == 0)
 #         error("An optinode must be empty to set a JuMP Model.")

@@ -146,6 +146,11 @@ function JuMP.is_valid(node::OptiNode, nvref::NodeVariableRef)
            MOI.is_valid(graph_backend(node), nvref)
 end
 
+function JuMP.is_valid(node::OptiNode, cref::ConstraintRef)
+    return node === JuMP.owner_model(cref) &&
+           MOI.is_valid(graph_backend(node), cref)
+end
+
 function JuMP.owner_model(nvref::NodeVariableRef)
     return nvref.node
 end

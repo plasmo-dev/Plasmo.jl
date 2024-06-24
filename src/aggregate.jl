@@ -6,10 +6,8 @@ The reference of the combined model can be obtained by indexing the map with the
 reference of the corresponding original optinode.
 """
 struct GraphReferenceMap
-    #map variables in original optigraph to optinode
+    #map variables and from original optigraph to new aggregate node or graph
     var_map::OrderedDict{NodeVariableRef,NodeVariableRef}
-
-    #map constraints in original optigraph to optinode
     con_map::OrderedDict{JuMP.ConstraintRef,JuMP.ConstraintRef}  
 end
 
@@ -61,14 +59,33 @@ end
 Aggregate an optigraph into a graph containing a single optinode.
 """
 function aggregate(graph::OptiGraph)
-    # aggregate into a graph containing a single node.
+    # aggregate into a graph containing a single optinode
     new_graph = OptiGraph()
     new_node, ref_map = _copy_graph_elements_to!(new_graph, graph)
-
-    # pass model attributes
-    # copy other model attributes (including objective function)
+    # copy other model attributes (such as the objective function)
     # setup index_map from the ref_map
     _copy_attributes_to!(new_graph, graph, ref_map)
+    return new_node, ref_map
+end
+
+"""
+    Aggregate `source_graph` into an optinode within new graph. Return new node and mapping.
+"""
+function _copy_graph_elements_to!(new_graph::OptiGraph, source_graph::OptiGraph)
+    new_node = add_node(
+        new_graph; 
+        label=Symbol(new_graph.label, Symbol(".n"),length(new_graph.optinodes)+1)
+    )
+    ref_map = GraphReferenceMap()
+
+    for node in all_nodes(source_graph)
+        _copy_node_to!(new_node, node, ref_map)
+    end
+
+    for edge in all_edges(source_graph)
+        _copy_edge_to!(new_node, edge, ref_map)
+    end
+
     return new_node, ref_map
 end
 
@@ -88,6 +105,7 @@ function _copy_attributes_to!(
     # the variables or constraints. we just want to pass the attributes that would be 
     # exposed such as the objective function.
     for (source_vref, dest_vref) in ref_map.var_map
+        # TODO: use outer method here; don't access data members directly 
         if source_vref in keys(src.element_to_graph_map.var_map)
             index_map[graph_index(source_graph, source_vref)] = graph_index(dest_vref)
         end
@@ -103,28 +121,10 @@ end
 
 
 """
-    Aggregate `source_graph` into an optinode within new graph. Return new node and mapping.
-"""
-function _copy_graph_elements_to!(new_graph::OptiGraph, source_graph::OptiGraph)
-    new_node = add_node(new_graph)
-    ref_map = GraphReferenceMap()
-
-    for node in all_nodes(source_graph)
-        _copy_node_to!(new_node, node, ref_map)
-    end
-
-    for edge in all_edges(source_graph)
-        _copy_edge_to!(new_node, edge, ref_map)
-    end
-
-    return new_node, ref_map
-end
-
-"""
-    Aggregate an optinode `source_node` into new optinode `new_node`.
+    Copy (append) the `source_node` backend model into `new_node`.
 """
 function _copy_node_to!(
-    new_node::OptiNode, 
+    new_node::OptiNode,
     source_node::OptiNode, 
     ref_map::GraphReferenceMap
 )
@@ -132,36 +132,136 @@ function _copy_node_to!(
     dest = graph_backend(new_node)
     index_map = MOIU.IndexMap()
 
-    # create new variable references
+    _copy_variables!(new_node, source_node, ref_map, index_map)
+
+    _copy_constraints!(new_node, source_node, ref_map, index_map)
+
+    # update reference map
+    for (source_index, dest_index) in index_map.con_map
+        source_cref = src.graph_to_element_map.con_map[source_index]
+        dest_cref = dest.graph_to_element_map.con_map[dest_index]
+        ref_map[source_cref] = dest_cref
+    end
+end
+
+"""
+    Copy an optinode to a new optigraph
+"""
+function _copy_node_to!(new_graph::OptiGraph, source_node::OptiNode)
+    ref_map = GraphReferenceMap()
+    new_node = add_node(new_graph)
+    _copy_node_to!(new_node, source_node, ref_map)
+    return new_node, ref_map
+end
+
+function _copy_variables!(
+    new_node::OptiNode, 
+    source_node::OptiNode, 
+    ref_map::GraphReferenceMap,
+    index_map::MOIU.IndexMap
+)
+    src = graph_backend(source_node)
+    dest = graph_backend(new_node)
+    
+    # create new variables
     source_variables = all_variables(source_node)
-    new_vars = NodeVariableRef[]
-    for vref in source_variables
+    for nvref in source_variables
         new_variable_index = next_variable_index(new_node)
         new_vref = NodeVariableRef(new_node, new_variable_index)
         _add_variable_to_backend(dest, new_vref)
-        index_map[graph_index(vref)] = graph_index(new_vref)
-        ref_map[vref] = new_vref
+        index_map[graph_index(nvref)] = graph_index(new_vref)
+        ref_map[nvref] = new_vref
     end
 
     # pass variable attributes
     vis_src = graph_index.(source_variables)
     MOIU.pass_attributes(dest.moi_backend, src.moi_backend, index_map, vis_src)
 
-    # copy constraints
-    constraint_types = MOI.get(source_node, MOI.ListOfConstraintTypesPresent())
-    _copy_element_constraints(
-        dest,
-        source_node,
-        index_map,
-        constraint_types
-    )
+    # TODO: set new variable names (otherwise they can be confusing)
+    # if set_new_names
+    #     for nvref in all_variables(new_node)
+    #         JuMP.set_name(nvref, "$(new_node.label)")
+    #     end
+    # end
 
-    # update aggregation map
+end
+
+function _copy_constraints!(
+    new_node::OptiNode, 
+    source_element::OptiElement, 
+    ref_map::GraphReferenceMap,
+    index_map::MOIU.IndexMap
+)
+    src = graph_backend(source_element)
+    dest = graph_backend(new_node)
+    constraint_types = MOI.get(src.moi_backend, MOI.ListOfConstraintTypesPresent())
+    for (F, S) in constraint_types
+        cis_src = MOI.get(source_element, MOI.ListOfConstraintIndices{F,S}())
+        index_map_FS = index_map[F,S]
+        for ci in cis_src
+            src_func = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
+            src_set = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
+
+            # get source cref to lookup constraint shape
+            src_cref = JuMP.constraint_ref_with_index(src, ci)
+            new_shape = src_cref.shape
+
+            # create new ConstraintRef
+            new_constraint_index = Plasmo.next_constraint_index(
+                new_node, 
+                typeof(src_func), 
+                typeof(src_set)
+            )::MOI.ConstraintIndex{typeof(src_func),typeof(src_set)}
+            new_cref = ConstraintRef(new_node, new_constraint_index, new_shape);
+
+            # create new MOI function
+            new_func = MOIU.map_indices(index_map, src_func)
+            dest_index = Plasmo._add_element_constraint_to_backend(
+                dest,
+                new_cref,
+                new_func,
+                src_set
+            )
+            index_map_FS[ci] = dest_index
+            ref_map[src_cref] = new_cref
+        end
+    end
+end
+
+"""
+    Aggregate an optiedge `source_edge` into new optinode `new_node`.
+"""
+function _copy_edge_to!(
+    new_graph::OptiGraph, 
+    source_edge::OptiEdge,
+    ref_map::GraphReferenceMap
+)
+    src = graph_backend(source_edge)
+    dest = graph_backend(new_graph)
+    index_map = MOIU.IndexMap()
+
+    # populate index_map
+    index_map = MOIU.IndexMap()
+    vars = all_variables(source_edge)
+    for var in vars
+        source_index = graph_index(src, var)
+        dest_index = graph_index(dest, ref_map[var])
+        #source_index = src.element_to_graph_map[var]
+        #dest_index = dest.element_to_graph_map.var_map[ref_map[var]]
+        index_map[source_index] = dest_index
+    end
+
+    # copy constraints
+    _copy_constraints!(new_node, source_edge, ref_map, index_map)
+
+    # update ref_map constraints
     for (source_index, dest_index) in index_map.con_map
         source_cref = src.graph_to_element_map.con_map[source_index]
         dest_cref = dest.graph_to_element_map.con_map[dest_index]
         ref_map[source_cref] = dest_cref
     end
+
+    return 
 end
 
 """
@@ -173,56 +273,6 @@ function _copy_edge_to!(
     ref_map::GraphReferenceMap
 )
     _copy_edge_to!(source_graph(new_node), source_edge, ref_map) 
-end
-
-"""
-    Copy an optinode to a new optigraph
-"""
-function _copy_node_to!(new_graph::OptiGraph, source_node::OptiNode)
-    ref_map = GraphReferenceMap()
-    new_node = add_node(new_graph)
-    _add_to_aggregate_node!(new_node, source_node)
-    return new_node, ref_map
-end
-
-"""
-    Aggregate an optiedge `source_edge` into new optinode `new_node`.
-"""
-function _copy_edge_to!(
-    graph::OptiGraph, 
-    source_edge::OptiEdge,
-    ref_map::GraphReferenceMap
-)
-    src = graph_backend(source_edge)
-    dest = graph_backend(graph)
-    index_map = MOIU.IndexMap()
-
-    # populate edge index_map
-    index_map = MOIU.IndexMap()
-    vars = all_variables(source_edge)
-    for var in vars
-        source_index = src.element_to_graph_map[var]
-        dest_index = dest.element_to_graph_map.var_map[ref_map[var]]
-        index_map[source_index] = dest_index
-    end
-
-    # copy constraints
-    constraint_types = MOI.get(source_edge, MOI.ListOfConstraintTypesPresent())
-    _copy_element_constraints(
-        dest,
-        source_edge,
-        index_map,
-        constraint_types
-    )
-
-    # update ref_map constraints
-    for (source_index, dest_index) in index_map.con_map
-        source_cref = src.graph_to_element_map.con_map[source_index]
-        dest_cref = dest.graph_to_element_map.con_map[dest_index]
-        ref_map[source_cref] = dest_cref
-    end
-
-    return 
 end
 
 function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)

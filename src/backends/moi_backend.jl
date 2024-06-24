@@ -591,6 +591,8 @@ function _add_backend_variables(
 end
 
 ### Aggregate MOI backends
+# Note that these methods do not create copies of nodes or edges; they create model 
+# data for new backends. The nodes and edges will then reference data for multiple backends. 
 
 """
     _copy_subgraph_backends!(graph::OptiGraph)
@@ -788,15 +790,17 @@ function _copy_element_constraints(
 )
     src = graph_backend(element)
     for ci in cis_src
-        f = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
-        s = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
+        func = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
+        set = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
         cref = src.graph_to_element_map[ci]
+
+        # avoid creating duplicate constraints if destination has this reference already.
         cref in keys(dest.element_to_graph_map.con_map) && return
         dest_index = _add_element_constraint_to_backend(
             dest,
             cref,
-            MOIU.map_indices(index_map, f), 
-            s
+            MOIU.map_indices(index_map, func),
+            set
         )
         index_map_FS[ci] = dest_index
     end
