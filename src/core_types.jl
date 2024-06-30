@@ -38,6 +38,9 @@ struct NodeIndex
     value::Symbol
 end
 
+# NOTE: a node or edge could technically have their `source_graph` 
+# changed using `apply_partition!`. that is why we use a RefValue here.
+
 struct OptiNode <: AbstractNode
     source_graph::Base.RefValue{<:OptiGraph}
     idx::NodeIndex

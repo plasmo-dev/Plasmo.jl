@@ -164,12 +164,6 @@ function JuMP.optimize!(
     return
 end
 
-function JuMP.set_optimizer(node::OptiNode; kwargs...)
-    error("Optinodes currently do not support setting an optimizer. Optimization is now 
-        handled through the optigraph. If you wish to optimize a single optinode, 
-        you can create a new optigraph using `assemble_optigraph(node)`.")
-end
-
 #
 # status results
 #
@@ -224,7 +218,7 @@ function JuMP.dual_status(graph::OptiGraph; result::Int = 1)
 end
 
 #
-# Optinode Interface
+# Optinode optimizer
 #
 
 function JuMP.set_optimizer(
@@ -238,8 +232,11 @@ function JuMP.set_optimizer(
     else
         node_graph = source_graph(node).node_graphs[node]
     end
+
+    # set objective on node graph
+    JuMP.set_objective(node_graph, objective_sense(node), objective_function(node))
     JuMP.set_optimizer(node_graph, optimizer_constructor; add_bridges=add_bridges)
-    return
+    return node_graph
 end
 
 function JuMP.optimize!(node::OptiNode; kwargs...)

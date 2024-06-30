@@ -35,6 +35,8 @@ function Base.getindex(graph::OptiGraph, idx::Int)
     return graph.optinodes[idx]
 end
 
+Base.broadcastable(graph::OptiGraph) = Ref(graph)
+
 # TODO: parameterize on numerical precision like JuMP Models do
 JuMP.value_type(::Type{OptiGraph})  = Float64
 
@@ -506,6 +508,36 @@ end
 function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int = 1)
     return MOI.get(graph_backend(graph), MOI.VariablePrimal(result), nvref)
 end
+
+function JuMP.value(graph::OptiGraph, expr::JuMP.GenericAffExpr; result::Int = 1)
+    return JuMP.value(expr) do x
+        return JuMP.value(graph, x; result = result)
+    end
+end
+
+function JuMP.value(graph::OptiGraph, expr::JuMP.GenericQuadExpr; result::Int = 1)
+    return JuMP.value(expr) do x
+        return JuMP.value(graph, x; result = result)
+    end
+end
+
+function JuMP.value(graph::OptiGraph, expr::GenericNonlinearExpr; result::Int = 1)
+    return value(expr) do x
+        return value(graph, x; result = result)
+    end
+end
+
+### Expression values
+
+# function JuMP.value(var_value::Function, ex::GenericAffExpr{T,V}) where {T,V}
+#     S = Base.promote_op(var_value, V)
+#     U = Base.promote_op(*, T, S)
+#     ret = convert(U, ex.constant)
+#     for (var, coef) in ex.terms
+#         ret += coef * var_value(var)
+#     end
+#     return ret
+# end
 
 ### Constraints
 

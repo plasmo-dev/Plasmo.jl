@@ -149,7 +149,6 @@ function JuMP.backend(backend::GraphMOIBackend)
 end
 
 
-
 ### MOI Methods
 
 # graph attributes

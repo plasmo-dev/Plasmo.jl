@@ -1,7 +1,8 @@
 module TestAggregatation
 
 using Plasmo
-using HiGHS
+using Ipopt
+using JuMP
 using Test
 
 function _create_test_optigraph()
@@ -19,44 +20,49 @@ function _create_test_optigraph()
     return graph
 end
 
+function _create_test_model()
+    model = Model()
+    @variable(model, x[1:10] >= 0)
+    @variable(model, y[1:5] >= 2)
+    @constraint(model, [j=1:5], x[j] + y[j] <= 10)
+    @constraint(model, sum(x) <= y[1]^4)
+    @objective(model, Min, sum(x) + sum(y)^3)
+    return model
+end
+
 function test_aggregate_solution()
     graph = _create_test_optigraph()
     agg_node, ref_map = aggregate(graph)
 
-    set_optimizer(graph, HiGHS.Optimizer)
+    set_optimizer(graph, Ipopt.Optimizer)
     optimize!(graph)
 
-    set_optimizer(agg_node, HiGHS.Optimizer)
-    optimize!(agg_node)
+    agg_graph = set_optimizer(agg_node, Ipopt.Optimizer)
+    optimize!(agg_graph)
 
+    @test objective_value(agg_graph) == objective_value(graph)
+    @test value.(agg_graph, all_variables(agg_graph)) == value.(graph, all_variables(graph))
 end
 
+function test_set_model()
+    m = _create_test_model()
 
-# function test_nonlinear_aggregate()
-#     graph = OptiGraph()
-#     @optinode(graph, n1)
-#     @variable(n1, x[1:2] <= 2)
-#     set_start_value(x[1], 2)
-#     set_start_value(x[2], 1)
-#     @NLobjective(n1, Max, x[1]^2 + x[2]^2)
+    graph = OptiGraph()
+    n1 = add_node(graph)
+    set_jump_model(n1, m)
 
-#     @optinode(graph, n2)
-#     @variable(n2, x[1:2] >= 0)
-#     set_start_value(x[1], 2)
-#     set_start_value(x[2], 2)
-#     @NLobjective(n2, Min, x[1]^3 + x[2]^2)
+    set_optimizer(m, Ipopt.Optimizer)
+    optimize!(m)
 
-#     new_node, ref = aggregate(graph)
+    set_optimizer(n1, Ipopt.Optimizer)
+    optimize!(n1)
 
-#     @test num_variables(graph) == 4
-#     @test num_variables(graph) == num_variables(new_node)
+    @test objective_value(m) == objective_value(graph, n1)
+    @test value.(all_variables(m)) == value.(graph, all_variables(n1))
+end
 
-#     #test start values
-#     all_vars = all_variables(new_node)
-#     @test all(start_value.(all_vars) .== [2, 1, 2, 2])
-# end
-
-# function test_aggregate_to_subgraphs()
+# TODO
+# function test_aggregate_to_depth()
 #     graph = _create_test_optigraph_w_subgraphs()
 #     new_graph, ref = aggregate(graph, 0)
 #     @test num_all_nodes(new_graph) == 5
@@ -72,16 +78,6 @@ end
 #     @test num_all_subgraphs(new_graph) == 5
 # end
 
-# function test_copy_node()
-#     graph = OptiGraph()
-#     @optinode(graph, n1)
-#     @variable(n1, x[1:2] <= 2)
-#     set_start_value(x[1], 2)
-#     set_start_value(x[2], 1)
-#     @NLobjective(n1, Max, x[1]^2 + x[2]^2)
-
-#     return copied_node, ref = Plasmo._copy_node(n1)
-# end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

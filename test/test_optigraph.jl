@@ -20,6 +20,9 @@ function test_simple_graph()
     @test objective_value(graph) == 7.0
     @test value(nodes[1][:x]) == 1.0
     @test value(nodes[2][:x]) == 3.0
+    @test value(nodes[1][:x] + nodes[2][:x]) == value(graph, nodes[1][:x] + nodes[2][:x])
+    @test value(nodes[1][:x]^2 + nodes[2][:x]^2) == value(graph, nodes[1][:x]^2 + nodes[2][:x]^2)
+    @test value(nodes[1][:x]^3 + nodes[2][:x]^3) == value(graph, nodes[1][:x]^3 + nodes[2][:x]^3)
 
     @test JuMP.termination_status(graph) == MOI.OPTIMAL
     @test JuMP.primal_status(graph) == MOI.FEASIBLE_POINT

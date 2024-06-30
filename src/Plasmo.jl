@@ -60,7 +60,11 @@ neighborhood, expand,
 
 # macros
 
-@optinode, @nodevariables, @linkconstraint
+@optinode, @nodevariables, @linkconstraint,
+
+# other functions
+
+set_jump_model
 
 include("core_types.jl")
 

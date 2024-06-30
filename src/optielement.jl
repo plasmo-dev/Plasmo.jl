@@ -4,7 +4,7 @@
 # MOI Methods
 #
 
-function MOI.get(element::OptiElement, attr::MOI.AnyAttribute)
+function MOI.get(element::OptiElement, attr::MOI.AnyAttribute, args...)
     return MOI.get(graph_backend(element), attr, element)
 end
 
@@ -145,6 +145,3 @@ function JuMP.all_constraints(
     end
     return constraints
 end
-
-
-

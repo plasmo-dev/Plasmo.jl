@@ -224,66 +224,76 @@ function JuMP.objective_sense(node::OptiNode)
     return JuMP.object_dictionary(node)[(node,:objective_sense)]
 end
 
+function JuMP.objective_value(graph::OptiGraph, node::OptiNode)
+    return value(graph, objective_function(node))
+end
+
 function has_objective(node::OptiNode)
     return haskey(JuMP.object_dictionary(node),(node,:objective_function))
 end
 
-### Set JuMP Model
+#
+# Set a JuMP.Model to an OptiNode
+#
 
-function set_model(node::OptiNode, model::JuMP.Model)
-    error("Setting a JuMP Model to an optinode is not currently supported. It 
-        is recommended to use nodes to model your problem  if you want to use 
-        Plasmo.jl. Setting models will be supported in a future release, but it will 
-        only copy the JuMP model data to the node. The JuMP model itself will not be 
-        connected to the node."
-    )
-    #_copy_model_to!(node, model)
+function set_jump_model(node::OptiNode, model::JuMP.Model)
+    _copy_model_to!(node, model)
 end
 
-# TODO: copy JuMP models to optinodes
-# function _copy_model_to!(node::OptiNode, model::JuMP.Model)
-#     if !(num_variables(node) == 0 && num_constraints(node) == 0)
-#         error("An optinode must be empty to set a JuMP Model.")
-#     end
+function _copy_model_to!(node::OptiNode, model::JuMP.Model)
+    if !(num_variables(node) == 0 && num_constraints(node) == 0)
+        error("An optinode must be empty to set a JuMP Model.")
+    end
+    # get backends
+    src = JuMP.backend(model)
+    dest = graph_backend(node)
+    index_map = MOIU.IndexMap()
 
-#     src = JuMP.backend(model)
-#     dest = graph_backend(node)
-#     index_map = MOIU.IndexMap()
+    # copy variables
+    source_variables = all_variables(model)
+    new_vars = NodeVariableRef[]
+    for vref in source_variables
+        new_variable_index = next_variable_index(node)
+        new_vref = NodeVariableRef(node, new_variable_index)
+        _add_variable_to_backend(dest, new_vref)
+        index_map[JuMP.index(vref)] = graph_index(new_vref)
+    end
 
-#     # create new variable references
-#     source_variables = all_variables(model)
-#     new_vars = NodeVariableRef[]
-#     for vref in source_variables
-#         new_variable_index = next_variable_index(node)
-#         new_vref = NodeVariableRef(node, new_variable_index)
-#         _add_variable_to_backend(dest, new_vref)
-#         index_map[JuMP.index(vref)] = graph_index(new_vref)
-#     end
+    # pass variable attributes
+    vis_src = JuMP.index.(source_variables)
+    MOIU.pass_attributes(dest.moi_backend, src, index_map, vis_src)
 
-#     # pass variable attributes
-#     vis_src = JuMP.index.(source_variables)
-#     MOIU.pass_attributes(dest.moi_backend, src, index_map, vis_src)
+    # copy constraints
+    constraint_types = MOI.get(src, MOI.ListOfConstraintTypesPresent())
+    for (F, S) in constraint_types
+        cis_src = MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
+        index_map_FS = index_map[F,S]
+        for ci in cis_src
+            src_func = MOI.get(JuMP.backend(model), MOI.ConstraintFunction(), ci)
+            src_set = MOI.get(JuMP.backend(model), MOI.ConstraintSet(), ci)
+            con = JuMP.constraint_object(JuMP.constraint_ref_with_index(model, ci))
+            constraint_index = next_constraint_index(node, F, S)
 
-#     # copy constraints
-#     constraint_types = MOI.get(src, MOI.ListOfConstraintTypesPresent())
-#     for (F, S) in constraint_types
-#         cis_src = MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
-#         for ci in cis_src
-#             func = MOI.get(model, MOI.ConstraintFunction(), ci)
-#             set = MOI.get(model, MOI.ConstraintSet(), ci)
-#             con = JuMP.constraint_object(JuMP.constraint_ref_with_index(ci))
-#             constraint_index = next_constraint_index(node, F, S)
+            # new optinode cref
+            new_cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
+            new_func = MOIU.map_indices(index_map, src_func)
+            dest_index = _add_element_constraint_to_backend(
+                dest,
+                new_cref,
+                new_func, 
+                src_set
+            )
+            index_map_FS[ci] = dest_index
+        end
+        # pass constraint attributes
+        MOIU.pass_attributes(dest.moi_backend, src, index_map_FS, cis_src)
+    end
 
-#             # new optinode cref
-#             cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
-
-#             dest_index = _add_element_constraint_to_backend(
-#                 dest,
-#                 cref,
-#                 MOIU.map_indices(index_map, func), 
-#                 set
-#             )
-#             index_map_FS[ci] = dest_index
-#         end
-#     end
-# end
+    # copy objective to node
+    F = JuMP.moi_function_type(JuMP.objective_function_type(model))
+    obj_func = MOI.get(JuMP.backend(model), MOI.ObjectiveFunction{F}())
+    new_moi_obj_func = MOIU.map_indices(index_map, obj_func)
+    new_obj_func = JuMP.jump_function(node, new_moi_obj_func)
+    JuMP.set_objective(node, JuMP.objective_sense(model), new_obj_func)
+    return
+end
