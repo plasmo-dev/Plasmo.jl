@@ -42,8 +42,8 @@ end
 
 function GraphReferenceMap()
     return GraphReferenceMap(
-        Dict{NodeVariableRef,NodeVariableRef}(),
-        Dict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),
+        OrderedDict{NodeVariableRef,NodeVariableRef}(),
+        OrderedDict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),
     )
 end
 function Base.merge!(ref_map1::GraphReferenceMap, ref_map2::GraphReferenceMap)

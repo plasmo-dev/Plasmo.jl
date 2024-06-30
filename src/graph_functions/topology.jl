@@ -36,7 +36,7 @@ function incident_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
     hypernodes = Base.getindex.(Ref(hyper), nodes)
     #hypernodes = get_mapped_elements(hyper, nodes)
     inc_edges = GOI.incident_edges(hyper.projected_graph, hypernodes)
-    return get_mapped_elements(hyper, inc_edges) #getindex.(Ref(hyper), incidentedges))
+    return get_mapped_elements(hyper, inc_edges)
 end
 
 function incident_edges(hyper::HyperGraphProjection, node::OptiNode)
@@ -51,7 +51,7 @@ Retrieve induced edges to a set of optinodes.
 function induced_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
     hypernodes = get_mapped_elements(hyper, nodes)
     induced = GOI.induced_edges(hyper.projected_graph, hypernodes)
-    optiedges = get_mapped_elements(hyper, induced)
+    optiedges = convert(Vector{OptiEdge}, get_mapped_elements(hyper, induced))
     return optiedges
 end
 
@@ -104,7 +104,7 @@ end
 
 Return the optinodes within `distance` of the given `nodes` in the optigraph `graph`.
 """
-function neighborhood(hyper::HyperGraphProjection, nodes::Vector{OptiNode}, distance::Int64)
+function Graphs.neighborhood(hyper::HyperGraphProjection, nodes::Vector{OptiNode}, distance::Int64)
     vertices = get_mapped_elements(hyper, nodes)
     new_nodes = GOI.neighborhood(hyper.projected_graph, vertices, distance)
     return get_mapped_elements(hyper, new_nodes) #getindex.(Ref(hyper), new_nodes)
@@ -118,7 +118,11 @@ The returned subgraph contains the expanded neighborhood within `distance` of th
 """
 function expand(hyper::HyperGraphProjection, subgraph::OptiGraph, distance::Int64)
     nodes = all_nodes(subgraph)
-    new_optinodes = neighborhood(hyper, nodes, distance)
+    return expand(hyper, nodes, distance)
+end
+
+function expand(hyper::HyperGraphProjection, nodes::Vector{OptiNode}, distance::Int64)
+    new_optinodes = Graphs.neighborhood(hyper, nodes, distance)
     new_optiedges = induced_edges(hyper, new_optinodes)
     expanded_subgraph = assemble_optigraph(new_optinodes, new_optiedges)
     return expanded_subgraph

@@ -32,7 +32,7 @@ Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
 
 function Base.getindex(graph::OptiGraph, idx::Int)
-    return graph.optinodes[idx]
+    return collect(graph.optinodes)[idx]
 end
 
 Base.broadcastable(graph::OptiGraph) = Ref(graph)
@@ -134,7 +134,7 @@ function add_node(graph::OptiGraph, node::OptiNode)
 end
 
 function get_node(graph::OptiGraph, idx::Int)
-    return graph.optinodes[idx]
+    return collect(graph.optinodes)[idx]
 end
 
 """
@@ -232,6 +232,14 @@ end
 
 function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
     return graph.optiedge_map[nodes]
+end
+
+function get_edge(graph::OptiGraph, nodes::OptiNode...)
+    return get_edge(graph, Set(nodes))
+end
+
+function get_edge_by_index(graph::OptiGraph, idx::Int64)
+    return collect(graph.optiedges)[idx]
 end
 
 function local_edges(graph::OptiGraph)
@@ -526,18 +534,6 @@ function JuMP.value(graph::OptiGraph, expr::GenericNonlinearExpr; result::Int = 
         return value(graph, x; result = result)
     end
 end
-
-### Expression values
-
-# function JuMP.value(var_value::Function, ex::GenericAffExpr{T,V}) where {T,V}
-#     S = Base.promote_op(var_value, V)
-#     U = Base.promote_op(*, T, S)
-#     ret = convert(U, ex.constant)
-#     for (var, coef) in ex.terms
-#         ret += coef * var_value(var)
-#     end
-#     return ret
-# end
 
 ### Constraints
 

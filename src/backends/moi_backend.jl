@@ -601,14 +601,13 @@ Aggregate the moi backends from each subgraph within `graph` to create a single 
 # function _copy_subgraph_backends!(graph::OptiGraph)
 function _copy_subgraph_backends!(backend::GraphMOIBackend)
     graph = backend.optigraph
-    for subgraph in get_subgraphs(graph)
+    for subgraph in local_subgraphs(graph)
         _copy_subgraph_nodes!(backend, subgraph)
         _copy_subgraph_edges!(backend, subgraph)
-        # TODO: pass non-objective graph attributes (use an MOI Filter?)
+        # TODO: pass non-objective graph attributes we may need (use an MOI Filter?)
     end
 end
 
-#function _copy_subgraph_nodes!(graph::OptiGraph, subgraph::OptiGraph)
 function _copy_subgraph_nodes!(backend::GraphMOIBackend, subgraph::OptiGraph)
     graph = backend.optigraph
     for node in all_nodes(subgraph) # NOTE: hits ALL NODES in the subgraph.
@@ -619,7 +618,6 @@ function _copy_subgraph_nodes!(backend::GraphMOIBackend, subgraph::OptiGraph)
     end
 end
 
-# function _copy_subgraph_edges!(graph::OptiGraph, subgraph::OptiGraph)
 function _copy_subgraph_edges!(backend::GraphMOIBackend, subgraph::OptiGraph)
     graph = backend.optigraph
     for edge in all_edges(subgraph)
@@ -630,7 +628,6 @@ function _copy_subgraph_edges!(backend::GraphMOIBackend, subgraph::OptiGraph)
     end
 end
 
-# function _append_node_to_backend!(graph::OptiGraph, node::OptiNode)
 function _append_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
     graph =  backend.optigraph
     _add_node(backend, node)

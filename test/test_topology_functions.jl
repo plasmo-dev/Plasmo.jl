@@ -4,6 +4,36 @@ using Plasmo
 using Graphs
 using Test
 
+function _create_test_optigraph()
+    graph = OptiGraph()
+    @optinode(graph, nodes[1:4])
+
+    #node 1
+    @variable(nodes[1], 0 <= x <= 2)
+    @variable(nodes[1], 0 <= y <= 3)
+    @constraint(nodes[1], 0 <= x + y <= 4)
+
+    #node 2
+    @variable(nodes[2], x >= 1)
+    @variable(nodes[2], 0 <= y <= 5)
+    @constraint(nodes[2], exp(x) + y <= 7)
+
+    #node 3
+    @variable(nodes[3], x >= 0)
+    @variable(nodes[3], y >= 0)
+    @constraint(nodes[3], x + y == 2)
+
+    #node 4
+    @variable(nodes[4], 0 <= x <= 1)
+    @variable(nodes[4], y >= 0)
+    @constraint(nodes[4], x + y <= 3)
+
+    @linkconstraint(graph, nodes[1][:x] == nodes[2][:x])
+    @linkconstraint(graph, nodes[2][:y] == nodes[3][:x])
+    @linkconstraint(graph, nodes[3][:x] == nodes[4][:x])
+    return graph
+end
+
 function _create_chain_optigraph()
     graph = OptiGraph()
     @optinode(graph, nodes[1:100])
@@ -16,106 +46,82 @@ function _create_chain_optigraph()
     return graph
 end
 
-# function _create_test_optigraph_w_subgraphs()
-#     graph = _create_test_optigraph()
-#     node_vectors = [
-#         graph.optinodes[1:20],
-#         graph.optinodes[21:40],
-#         graph.optinodes[41:60],
-#         graph.optinodes[61:80],
-#         graph.optinodes[81:100],
-#     ]
-#     partition = Partition(graph, node_vectors)
-#     apply_partition!(graph, partition)
-#     return graph
-# end
+function test_hypergraph_functions()
+    graph = _create_test_optigraph()
 
+    n1 = get_node(graph, 1)
+    n2 = get_node(graph, 2)
+    n3 = get_node(graph, 3)
 
-# function test_hypergraph_functions()
-#     graph = _create_test_optigraph()
+    projection = hyper_projection(graph)
 
-#     n1 = optinode(graph, 1)
-#     n2 = optinode(graph, 2)
-#     n3 = optinode(graph, 3)
+    @test Graphs.all_neighbors(projection, n1) == [n2]
+    @test Graphs.all_neighbors(projection, n2) == [n1, n3]
 
-#     @test LightGraphs.all_neighbors(graph, n1) == [n2]
-#     @test LightGraphs.all_neighbors(graph, n2) == [n1, n3]
+    # 3 nodes and 2 edges
+    induced_graph_1 = Graphs.induced_subgraph(projection, [n1, n2, n3])
+    @test num_nodes(induced_graph_1) == 3
+    @test num_edges(induced_graph_1) == 2
 
-#     #3 nodes and 2 edges
-#     induced1 = LightGraphs.induced_subgraph(graph, [n1, n2, n3])
-#     @test num_all_nodes(induced1) == 3
-#     @test num_all_edges(induced1) == 2
+    #2 nodes and no edges
+    induced_graph_2 = Graphs.induced_subgraph(projection, [n1, n3])
+    @test num_nodes(induced_graph_2) == 2
+    @test num_edges(induced_graph_2) == 0
 
-#     #2 nodes and no edges
-#     induced2 = LightGraphs.induced_subgraph(graph, [n1, n3])
-#     @test num_all_nodes(induced2) == 2
-#     @test num_all_edges(induced2) == 0
+    e1 = get_edge_by_index(graph, 1)
+    e2 = get_edge_by_index(graph, 2)
+    incident_edges_1 = incident_edges(projection, n2)
+    @test incident_edges_1 == [e1, e2]
 
-#     e1 = optiedge(graph, 1)
-#     e2 = optiedge(graph, 2)
-#     incident_es1 = incident_edges(graph, n2)
-#     @test incident_es1 == [e1, e2]
+    incident_edges_2 = incident_edges(projection, [n1, n2, n3])
+    n4 = get_node(graph, 4)
+    e3 = get_edge(graph, n3, n4)
+    @test length(incident_edges_2) == 1
+    @test incident_edges_2[1] == e3
 
-#     incident_es2 = incident_edges(graph, [n1, n2, n3])
-#     n4 = optinode(graph, 4)
-#     e3 = optiedge(graph, n3, n4)
-#     @test length(incident_es2) == 1
-#     @test incident_es2[1] == e3
+    induced_edges_1 = induced_edges(projection, [n1, n2, n3])
+    @test induced_edges_1 == [e1, e2]
 
-#     induced_es = induced_edges(graph, [n1, n2, n3])
-#     @test induced_es == [e1, e2]
+    neigh = Graphs.neighborhood(projection, [n2, n3], 1)
+    @test Set(neigh) == Set([n1, n2, n3, n4])
 
-#     neigh = Plasmo.neighborhood(graph, [n2, n3], 1)
-#     @test Set(neigh) == Set([n1, n2, n3, n4])
-# end
+    expanded_graph_1 = expand(projection, [n1,n2], 1)
+    @test all_nodes(expanded_graph_1) == [n1,n2,n3]
 
-# function test_subgraph_functions()
-#     graph = _create_test_optigraph_w_subgraphs()
-#     sub1 = subgraph(graph, 1)
-#     @test num_all_nodes(sub1) == 20
+    expanded_graph_2 = expand(projection, [n1,n2], 2)
+    @test all_nodes(expanded_graph_2) == [n1,n2,n3,n4]
+end
 
-#     ex_sub1 = expand(graph, sub1, 1)
-#     @test num_all_nodes(ex_sub1) == 21
+function test_identify_functions()
+    graph = _create_chain_optigraph()
 
-#     ex_sub2 = expand(graph, sub1, 10)
-#     @test num_all_nodes(ex_sub2) == 30
+    graph_nodes = all_nodes(graph)
 
-#     @test length(Plasmo.cross_edges(graph)) == 4
+    node_vectors = [
+        graph_nodes[1:20],
+        graph_nodes[21:40],
+        graph_nodes[41:60],
+        graph_nodes[61:80],
+        graph_nodes[81:100],
+    ]
+    projection = hyper_projection(graph)
 
-#     main_node = add_node!(graph)
-#     @variable(main_node, z >= 0)
-#     @linkconstraint(graph, main_node[:z] == optinode(sub1, 1)[:x])
+    identified_edges = identify_edges(projection, node_vectors)
+    @test length(identified_edges[1]) == 5 #5 partitions
+    @test length(identified_edges[2]) == 4 #4 linking edges
 
-#     @test length(Plasmo.hierarchical_edges(graph)) == 1
-#     @test length(Plasmo.cross_edges(graph)) == 4
-#     @test num_linkconstraints(graph) == 5
-# end
-
-# function test_partition_functions()
-#     graph = _create_test_optigraph()
-#     node_vectors = [
-#         graph.optinodes[1:20],
-#         graph.optinodes[21:40],
-#         graph.optinodes[41:60],
-#         graph.optinodes[61:80],
-#         graph.optinodes[81:100],
-#     ]
-
-#     identified_edges = Plasmo.identify_edges(graph, node_vectors)
-#     @test length(identified_edges[1]) == 5 #5 partitions
-#     @test length(identified_edges[2]) == 4 #4 linking edges
-
-#     edge_vectors = [
-#         graph.optiedges[1:20],
-#         graph.optiedges[21:40],
-#         graph.optiedges[41:60],
-#         graph.optiedges[61:80],
-#         graph.optiedges[81:99],
-#     ]
-#     identified_nodes = Plasmo.identify_nodes(graph, edge_vectors)
-#     @test length(identified_nodes[1]) == 5
-#     @test length(identified_nodes[2]) == 4
-# end
+    graph_edges = all_edges(graph)
+    edge_vectors = [
+        graph_edges[1:20],
+        graph_edges[21:40],
+        graph_edges[41:60],
+        graph_edges[61:80],
+        graph_edges[81:99],
+    ]
+    identified_nodes = identify_nodes(projection, edge_vectors)
+    @test length(identified_nodes[1]) == 5
+    @test length(identified_nodes[2]) == 4
+end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

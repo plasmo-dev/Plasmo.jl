@@ -34,10 +34,10 @@ function test_aggregate_solution()
     graph = _create_test_optigraph()
     agg_node, ref_map = aggregate(graph)
 
-    set_optimizer(graph, Ipopt.Optimizer)
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
 
-    agg_graph = set_optimizer(agg_node, Ipopt.Optimizer)
+    agg_graph = set_optimizer(agg_node, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(agg_graph)
 
     @test objective_value(agg_graph) == objective_value(graph)
@@ -51,11 +51,12 @@ function test_set_model()
     n1 = add_node(graph)
     set_jump_model(n1, m)
 
-    set_optimizer(m, Ipopt.Optimizer)
+    set_optimizer(m, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(m)
 
-    set_optimizer(n1, Ipopt.Optimizer)
-    optimize!(n1)
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    set_to_node_objectives(graph)
+    optimize!(graph)
 
     @test objective_value(m) == objective_value(graph, n1)
     @test value.(all_variables(m)) == value.(graph, all_variables(n1))

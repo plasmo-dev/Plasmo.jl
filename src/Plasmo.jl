@@ -20,7 +20,7 @@ export OptiGraph, NodeVariableRef,
 
 graph_backend, graph_index,
 
-add_node, add_edge, add_subgraph, has_edge, get_edge,
+add_node, get_node, add_edge, add_subgraph, has_edge, get_edge, get_edge_by_index,
 
 collect_nodes, local_nodes, all_nodes, local_edges, all_edges,  
 

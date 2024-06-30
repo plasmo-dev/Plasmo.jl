@@ -3,6 +3,7 @@ module TestOptiGraph
 using Plasmo
 using Ipopt
 using HiGHS
+using Suppressor
 using Test
 
 function test_simple_graph()
@@ -15,7 +16,7 @@ function test_simple_graph()
     @objective(graph, Max, nodes[1][:x] + 2*nodes[2][:x])
 
     set_optimizer(graph, HiGHS.Optimizer)
-    optimize!(graph)
+    @suppress optimize!(graph)
 
     @test objective_value(graph) == 7.0
     @test value(nodes[1][:x]) == 1.0
@@ -173,8 +174,8 @@ function test_subgraphs()
 
     sg1 = _create_test_nonlinear_optigraph()
     sg2 = _create_test_nonlinear_optigraph()
-    add_subgraph!(graph, sg1)
-    add_subgraph!(graph, sg2)
+    add_subgraph(graph, sg1)
+    add_subgraph(graph, sg2)
 
     n11,n12,n13,n14 = all_nodes(sg1)
     n21,n22,n23,n24 = all_nodes(sg2)
@@ -285,25 +286,25 @@ function test_variable_constraints()
 
     # fix variables
     JuMP.fix(n1[:x], 1; force=true)
-    optimize!(graph)
+    @suppress optimize!(graph)
     @test value(n1[:x]) == 1
 
     JuMP.fix(n1[:x], 2)
-    optimize!(graph)
+    @suppress optimize!(graph)
     @test value(n1[:x]) == 2
 
     JuMP.fix(n1[:x], 0)
-    optimize!(graph)
+    @suppress optimize!(graph)
     @test value(n1[:x]) == 0
 
     # integer and binary
     set_binary(n1[:x])
     @test is_binary(n1[:x]) == true
-    optimize!(graph)
+    @suppress optimize!(graph)
 
     set_integer(n2[:x])
     @test is_integer(n2[:x]) == true
-    optimize!(graph)
+    @suppress optimize!(graph)
 end
 
 function test_nonlinear_operators()
