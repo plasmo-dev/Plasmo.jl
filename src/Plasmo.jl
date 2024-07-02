@@ -116,8 +116,6 @@ include("jump_interop.jl")
 
 include("macros.jl")
 
-include("utils.jl")
-
 include("graph_functions/projections.jl")
 
 include("graph_functions/topology.jl")

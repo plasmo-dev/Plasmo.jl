@@ -77,8 +77,6 @@ end
 function _num_moi_constraints(
     edge::OptiEdge, ::Type{F}, ::Type{S}
 )::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    # cons = MOI.get(edge, MOI.ListOfConstraintIndices{F,S}())
-    # return length(cons)
     return MOI.get(edge, MOI.NumberOfConstraints{F,S}())
 end
 
@@ -101,6 +99,7 @@ function _moi_add_edge_constraint(edge::OptiEdge, con::JuMP.AbstractConstraint)
     cref = ConstraintRef(edge, constraint_index, JuMP.shape(con))
 
     # update graph backends
+    # TODO: disentangle backend interface
     for graph in containing_optigraphs(edge)
         # add backend variables if linking across optigraphs
         _add_backend_variables(graph_backend(graph), jump_func)

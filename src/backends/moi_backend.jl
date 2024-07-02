@@ -175,6 +175,13 @@ function JuMP.backend(backend::GraphMOIBackend)
     return backend.moi_backend
 end
 
+function JuMP.set_optimizer(backend::GraphMOIBackend, optimizer)
+    return backend.moi_backend=MOIU.CachingOptimizer(
+        backend.moi_backend.model_cache, 
+        optimizer
+    )
+end
+
 ### MOI Methods
 
 # graph attributes

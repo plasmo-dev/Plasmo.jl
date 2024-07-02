@@ -10,6 +10,9 @@ end
 
 # NOTE: a node or edge could technically have their `source_graph` 
 # changed using `apply_partition!`. that is why we use a RefValue here.
+# NOTE: We parameterize nodes and edges on the graph type itself. This may instead
+# become a special type that denotes whether we have a standard optigraph, or a 
+# distributed memory optigraph in the future.
 struct OptiNode{GT<:AbstractOptiGraph} <: AbstractNode
     source_graph::Base.RefValue{<:GT}
     idx::NodeIndex

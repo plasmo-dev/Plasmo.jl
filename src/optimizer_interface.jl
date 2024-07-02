@@ -83,7 +83,7 @@ function JuMP.set_optimizer(
     if add_bridges
         optimizer = MOI.instantiate(optimizer_constructor)#; with_bridge_type = T)
         for BT in graph.bridge_types
-            # TODO: do not use private method
+            # TODO: do not use private methods
             JuMP._moi_call_bridge_function(MOI.Bridges.add_bridge, optimizer, BT)
         end
     else
@@ -91,10 +91,11 @@ function JuMP.set_optimizer(
     end
     # Update the backend to create a new, concretely typed CachingOptimizer
     # using the existing `model_cache`.
-    gb = graph_backend(graph)
-    return gb.moi_backend = MOIU.CachingOptimizer(
-        JuMP.backend(graph).model_cache, optimizer
-    )
+    # gb = graph_backend(graph)
+    # return gb.moi_backend = MOIU.CachingOptimizer(
+    #     JuMP.backend(graph).model_cache, optimizer
+    # )
+    return JuMP.set_optimizer(graph_backend(graph), optimizer)
 end
 
 # mostly copied from: https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
