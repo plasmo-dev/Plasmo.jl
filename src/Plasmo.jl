@@ -16,55 +16,83 @@ const GOI = GraphOptInterface
 using Reexport
 @reexport using JuMP
 
-export OptiGraph, NodeVariableRef,
+export OptiGraph,
+    NodeVariableRef,
+    graph_backend,
+    graph_index,
+    add_node,
+    get_node,
+    add_edge,
+    add_subgraph,
+    has_edge,
+    get_edge,
+    get_edge_by_index,
+    collect_nodes,
+    local_nodes,
+    all_nodes,
+    local_edges,
+    all_edges,
+    get_subgraphs,
+    local_subgraphs,
+    num_local_nodes,
+    num_nodes,
+    num_local_edges,
+    num_edges,
+    num_local_subgraphs,
+    num_subgraphs,
+    local_elements,
+    all_elements,
+    num_local_constraints,
+    local_constraints,
+    num_local_link_constraints,
+    num_link_constraints,
+    local_link_constraints,
+    all_link_constraints,
+    set_to_node_objectives,
+    containing_optigraphs,
+    source_graph,
+    assemble_optigraph,
 
-graph_backend, graph_index,
+    # partition
 
-add_node, get_node, add_edge, add_subgraph, has_edge, get_edge, get_edge_by_index,
+    Partition,
+    apply_partition,
+    apply_partition!,
+    n_subpartitions,
+    all_subpartitions,
 
-collect_nodes, local_nodes, all_nodes, local_edges, all_edges,  
+    # aggregate
 
-get_subgraphs, local_subgraphs, num_local_nodes, num_nodes, num_local_edges, num_edges,  
+    aggregate,
+    aggregate!,
+    aggregate_to_depth,
 
-num_local_subgraphs, num_subgraphs, local_elements, all_elements,  
+    # projections
 
-num_local_constraints, local_constraints,
+    hyper_projection,
+    edge_hyper_projection,
+    clique_projection,
+    edge_clique_projection,
+    bipartite_projection,
 
-num_local_link_constraints, num_link_constraints,  
+    # topoology
 
-local_link_constraints, all_link_constraints,  
+    incident_edges,
+    induced_edges,
+    identify_nodes,
+    identify_edges,
+    neighborhood,
+    expand,
 
-set_to_node_objectives,
+    # macros
 
-containing_optigraphs, source_graph, assemble_optigraph,
+    @optinode,
+    @nodevariables,
+    @linkconstraint,
 
-# partition
+    # other functions
 
-Partition, apply_partition, apply_partition!, n_subpartitions, all_subpartitions, 
-
-# aggregate
-
-aggregate, aggregate!, aggregate_to_depth,
-
-# projections
-
-hyper_projection, edge_hyper_projection, clique_projection,
-
-edge_clique_projection, bipartite_projection,
-
-# topoology
-
-incident_edges, induced_edges, identify_nodes, identify_edges,
-
-neighborhood, expand,
-
-# macros
-
-@optinode, @nodevariables, @linkconstraint,
-
-# other functions
-
-set_jump_model
+    set_jump_model
 
 include("core_types.jl")
 

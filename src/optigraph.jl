@@ -1,6 +1,4 @@
-function OptiGraph(;
-    name::Symbol=Symbol(:g,gensym())
-)
+function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
     graph = OptiGraph(
         name,
         OrderedSet{OptiNode}(),
@@ -17,7 +15,7 @@ function OptiGraph(;
         Dict{Symbol,Any}(),
         Dict{Symbol,Any}(),
         Set{Any}(),
-        false
+        false,
     )
 
     # default is MOI backend
@@ -38,7 +36,7 @@ end
 Base.broadcastable(graph::OptiGraph) = Ref(graph)
 
 # TODO: parameterize on numerical precision like JuMP Models do
-JuMP.value_type(::Type{OptiGraph})  = Float64
+JuMP.value_type(::Type{OptiGraph}) = Float64
 
 #
 # Optigraph methods
@@ -57,19 +55,19 @@ end
 
 ### Graph Index
 
-function graph_index(ref::RT) where
-    RT <: Union{NodeVariableRef,ConstraintRef}
+function graph_index(ref::RT) where {RT<:Union{NodeVariableRef,ConstraintRef}}
     return graph_index(graph_backend(JuMP.owner_model(ref)), ref)
 end
 
-function graph_index(graph::OptiGraph, ref::RT) where
-    RT <: Union{NodeVariableRef,ConstraintRef}
+function graph_index(
+    graph::OptiGraph, ref::RT
+) where {RT<:Union{NodeVariableRef,ConstraintRef}}
     return graph_index(graph_backend(graph), ref)
 end
 
 ### Assemble OptiGraph
 
-function _assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+function _assemble_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge})
     graph = OptiGraph()
     for node in nodes
         add_node(graph, node)
@@ -81,15 +79,14 @@ function _assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
 end
 
 """
-    assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+    assemble_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{OptiEdge})
 
 Create a new optigraph from a collection of nodes and edges.
 """
-function assemble_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
-    is_valid_optigraph(nodes, edges) || error(
-        "The provided nodes and edges are not a valid optigraph. 
-        All connected edge nodes must be provided in the node vector."
-    )
+function assemble_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge})
+    is_valid_optigraph(nodes, edges) ||
+        error("The provided nodes and edges are not a valid optigraph. 
+              All connected edge nodes must be provided in the node vector.")
     graph = _assemble_optigraph(nodes, edges)
     return graph
 end
@@ -101,11 +98,11 @@ function assemble_optigraph(node::OptiNode)
 end
 
 """
-    is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+    is_valid_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{OptiEdge})
 
 Check whether the given nodes and edges can create a valid optigraph.
 """
-function is_valid_optigraph(nodes::Vector{OptiNode}, edges::Vector{OptiEdge})
+function is_valid_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge})
     if length(edges) == 0
         return true
     end
@@ -116,8 +113,7 @@ end
 ### Manage OptiNodes
 
 function add_node(
-    graph::OptiGraph; 
-    label=Symbol(graph.label,Symbol(".n"),length(graph.optinodes)+1)
+    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1)
 )
     node_index = NodeIndex(gensym()) #NodeIndex(length(graph.optinodes)+1)
     node = OptiNode(Ref(graph), node_index, label)
@@ -130,7 +126,7 @@ function add_node(graph::OptiGraph, node::OptiNode)
     node in all_nodes(graph) && error("Cannot add the same node to a graph multiple times")
     push!(graph.optinodes, node)
     _append_node_to_backend!(graph_backend(graph), node)
-    return
+    return nothing
 end
 
 function get_node(graph::OptiGraph, idx::Int)
@@ -142,16 +138,14 @@ end
 
 Retrieve the optinodes contained in a JuMP expression.
 """
-function collect_nodes(
-    jump_func::T where T <: JuMP.AbstractJuMPScalar
-)
+function collect_nodes(jump_func::T where {T<:JuMP.AbstractJuMPScalar})
     vars = _extract_variables(jump_func)
     nodes = JuMP.owner_model.(vars)
     return collect(nodes)
 end
 
 """
-    local_nodes(graph::OptiGraph)::Vector{OptiNode}
+    local_nodes(graph::OptiGraph)::Vector{<:OptiNode}
 
 Retrieve the optinodes defined within the optigraph `graph`. This does 
 not return nodes that exist in subgraphs.
@@ -172,7 +166,7 @@ function num_local_nodes(graph::OptiGraph)
 end
 
 """
-    all_nodes(graph::OptiGraph)::Vector{OptiNode}
+    all_nodes(graph::OptiGraph)::Vector{<:OptiNode}
 
 Recursively collect all optinodes in `graph` by traversing each of its subgraphs.
 """
@@ -202,12 +196,12 @@ end
 function add_edge(
     graph::OptiGraph,
     nodes::OptiNode...;
-    label=Symbol(graph.label, Symbol(".e"), length(graph.optiedges)+1)
+    label=Symbol(graph.label, Symbol(".e"), length(graph.optiedges) + 1),
 )
     if has_edge(graph, Set(nodes))
         edge = get_edge(graph, Set(nodes))
     else
-        edge = OptiEdge(Ref(graph), label, OrderedSet(collect(nodes)))
+        edge = OptiEdge{typeof(graph)}(Ref(graph), label, OrderedSet(collect(nodes)))
         push!(graph.optiedges, edge)
         graph.optiedge_map[Set(collect(nodes))] = edge
         _add_edge(graph_backend(graph), edge)
@@ -219,10 +213,10 @@ function add_edge(graph::OptiGraph, edge::OptiEdge)
     edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
     push!(graph.optiedges, edge)
     _append_edge_to_backend!(graph_backend(graph), edge)
-    return
+    return nothing
 end
 
-function has_edge(graph::OptiGraph, nodes::Set{OptiNode})
+function has_edge(graph::OptiGraph, nodes::Set{<:OptiNode})
     if haskey(graph.optiedge_map, nodes)
         return true
     else
@@ -230,7 +224,7 @@ function has_edge(graph::OptiGraph, nodes::Set{OptiNode})
     end
 end
 
-function get_edge(graph::OptiGraph, nodes::Set{OptiNode})
+function get_edge(graph::OptiGraph, nodes::Set{<:OptiNode})
     return graph.optiedge_map[nodes]
 end
 
@@ -258,7 +252,7 @@ function num_local_edges(graph::OptiGraph)
 end
 
 """
-    all_edges(graph::OptiGraph)::Vector{OptiNode}
+    all_edges(graph::OptiGraph)::Vector{<:OptiNode}
 
 Recursively collect all optiedges in `graph` by traversing each of its subgraphs.
 """
@@ -298,12 +292,9 @@ end
 
 Create and add a new subgraph to the optigraph `graph`.
 """
-function add_subgraph(
-    graph::OptiGraph;
-    name::Symbol=Symbol(:sg,gensym())
-)
+function add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, gensym()))
     subgraph = OptiGraph(; name=name)
-    subgraph.parent_graph=graph
+    subgraph.parent_graph = graph
     push!(graph.subgraphs, subgraph)
     return subgraph
 end
@@ -372,46 +363,32 @@ end
 
 function num_local_link_constraints(
     graph::OptiGraph,
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )
-    return sum(
-        JuMP.num_constraints.(local_edges(graph), Ref(func_type), Ref(set_type))
-    )
+    return sum(JuMP.num_constraints.(local_edges(graph), Ref(func_type), Ref(set_type)))
 end
 
 function num_local_link_constraints(graph::OptiGraph)
-    return sum(
-        JuMP.num_constraints.(local_edges(graph))
-    )
+    return sum(JuMP.num_constraints.(local_edges(graph)))
 end
 
 function num_link_constraints(
-    graph::OptiGraph, 
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    graph::OptiGraph,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )
-    return sum(
-        JuMP.num_constraints.(all_edges(graph), Ref(func_type), Ref(set_type))
-    )
+    return sum(JuMP.num_constraints.(all_edges(graph), Ref(func_type), Ref(set_type)))
 end
 
 function num_link_constraints(graph::OptiGraph)
-    return sum(
-        JuMP.num_constraints.(all_edges(graph))
-    )
+    return sum(JuMP.num_constraints.(all_edges(graph)))
 end
 
 function local_link_constraints(
-    graph::OptiGraph, 
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    graph::OptiGraph,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )
     return vcat(all_constraints.(local_edges(graph), Ref(func_type), Ref(set_type))...)
 end
@@ -421,11 +398,9 @@ function local_link_constraints(graph::OptiGraph)
 end
 
 function all_link_constraints(
-    graph::OptiGraph, 
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    graph::OptiGraph,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )
     all_cons = all_constraints.(all_edges(graph), Ref(func_type), Ref(set_type))
     return vcat(all_cons...)
@@ -439,28 +414,20 @@ end
 
 function num_local_constraints(
     graph::OptiGraph,
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )
-    return sum(
-        JuMP.num_constraints.(local_elements(graph), Ref(func_type), Ref(set_type))
-    )
+    return sum(JuMP.num_constraints.(local_elements(graph), Ref(func_type), Ref(set_type)))
 end
 
 function num_local_constraints(graph::OptiGraph)
-    return sum(
-        JuMP.num_constraints.(local_elements(graph))
-    )
+    return sum(JuMP.num_constraints.(local_elements(graph)))
 end
 
 function local_constraints(
-    graph::OptiGraph, 
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    graph::OptiGraph,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )
     return vcat(all_constraints.(local_elements(graph), Ref(func_type), Ref(set_type))...)
 end
@@ -471,14 +438,16 @@ end
 
 ### MOI Methods
 
-function MOI.get(graph::OptiGraph, attr::AT) where
-    AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
+function MOI.get(
+    graph::OptiGraph, attr::AT
+) where {AT<:Union{MOI.AbstractModelAttribute,MOI.AbstractOptimizerAttribute}}
     return MOI.get(graph_backend(graph), attr)
 end
 
-function MOI.set(graph::OptiGraph, attr::AT, args...) where
-    AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
-    MOI.set(graph_backend(graph), attr, args...)
+function MOI.set(
+    graph::OptiGraph, attr::AT, args...
+) where {AT<:Union{MOI.AbstractModelAttribute,MOI.AbstractOptimizerAttribute}}
+    return MOI.set(graph_backend(graph), attr, args...)
 end
 
 #
@@ -496,42 +465,44 @@ function JuMP.num_variables(graph::OptiGraph)
 end
 
 function JuMP.index(graph::OptiGraph, vref::NodeVariableRef)
-    return graph_index(graph, vref)    
+    return graph_index(graph, vref)
 end
 
 function JuMP.start_value(graph::OptiGraph, nvref::NodeVariableRef)
     return MOI.get(graph_backend(graph), MOI.VariablePrimalStart(), nvref)
 end
 
-function JuMP.set_start_value(graph::OptiGraph, nvref::NodeVariableRef, value::Union{Nothing,Real})
+function JuMP.set_start_value(
+    graph::OptiGraph, nvref::NodeVariableRef, value::Union{Nothing,Real}
+)
     MOI.set(
         graph_backend(graph),
         MOI.VariablePrimalStart(),
         nvref,
         _convert_if_something(Float64, value),
     )
-    return
+    return nothing
 end
 
-function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int = 1)
+function JuMP.value(graph::OptiGraph, nvref::NodeVariableRef; result::Int=1)
     return MOI.get(graph_backend(graph), MOI.VariablePrimal(result), nvref)
 end
 
-function JuMP.value(graph::OptiGraph, expr::JuMP.GenericAffExpr; result::Int = 1)
+function JuMP.value(graph::OptiGraph, expr::JuMP.GenericAffExpr; result::Int=1)
     return JuMP.value(expr) do x
-        return JuMP.value(graph, x; result = result)
+        return JuMP.value(graph, x; result=result)
     end
 end
 
-function JuMP.value(graph::OptiGraph, expr::JuMP.GenericQuadExpr; result::Int = 1)
+function JuMP.value(graph::OptiGraph, expr::JuMP.GenericQuadExpr; result::Int=1)
     return JuMP.value(expr) do x
-        return JuMP.value(graph, x; result = result)
+        return JuMP.value(graph, x; result=result)
     end
 end
 
-function JuMP.value(graph::OptiGraph, expr::GenericNonlinearExpr; result::Int = 1)
+function JuMP.value(graph::OptiGraph, expr::GenericNonlinearExpr; result::Int=1)
     return value(expr) do x
-        return value(graph, x; result = result)
+        return value(graph, x; result=result)
     end
 end
 
@@ -567,16 +538,11 @@ Return all of the constraints in the optigraph `graph` with `func_type` and `set
 """
 function JuMP.all_constraints(
     graph::OptiGraph,
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )
-    all_graph_constraints = JuMP.all_constraints.(
-        all_elements(graph), 
-        Ref(func_type),
-        Ref(set_type)
-    )
+    all_graph_constraints =
+        JuMP.all_constraints.(all_elements(graph), Ref(func_type), Ref(set_type))
     return vcat(all_graph_constraints...)
 end
 
@@ -592,15 +558,11 @@ function JuMP.all_constraints(graph::OptiGraph)
 end
 
 function JuMP.num_constraints(
-    graph::OptiGraph, 
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    graph::OptiGraph,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )
-    return sum(
-        JuMP.num_constraints.(all_elements(graph), Ref(func_type), Ref(set_type))
-    )
+    return sum(JuMP.num_constraints.(all_elements(graph), Ref(func_type), Ref(set_type)))
 end
 
 function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraints=true)
@@ -609,7 +571,7 @@ function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraint
     for con_type in con_types
         F = con_type[1]
         S = con_type[2]
-        if F == NodeVariableRef && count_variable_in_set_constraints==false
+        if F == NodeVariableRef && count_variable_in_set_constraints == false
             continue
         end
         num_cons += JuMP.num_constraints(graph, F, S)
@@ -635,7 +597,7 @@ function JuMP.add_nonlinear_operator(
     dim::Int,
     f::Function,
     args::Vararg{Function,N};
-    name::Symbol = Symbol(f),
+    name::Symbol=Symbol(f),
 ) where {N}
     nargs = 1 + N
     if !(1 <= nargs <= 3)
@@ -659,18 +621,17 @@ function set_to_node_objectives(graph::OptiGraph)
     for node in all_nodes(graph)
         if has_objective(node)
             sense = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
-            obj += sense*JuMP.objective_function(node)
+            obj += sense * JuMP.objective_function(node)
         end
     end
     if obj != 0
         @objective(graph, Min, obj)
     end
-    return
+    return nothing
 end
 
 function JuMP.objective_function(
-    graph::OptiGraph,
-    ::Type{F},
+    graph::OptiGraph, ::Type{F}
 ) where {F<:MOI.AbstractFunction}
     func = MOI.get(JuMP.backend(graph), MOI.ObjectiveFunction{F}())::F
     return JuMP.jump_function(graph, func)
@@ -690,10 +651,7 @@ function JuMP.objective_sense(graph::OptiGraph)
 end
 
 function JuMP.objective_function_type(graph::OptiGraph)
-    return JuMP.jump_function_type(
-        graph,
-        MOI.get(graph, MOI.ObjectiveFunctionType()),
-    )
+    return JuMP.jump_function_type(graph, MOI.get(graph, MOI.ObjectiveFunctionType()))
 end
 
 """
@@ -705,10 +663,7 @@ function JuMP.objective_value(graph::OptiGraph)
     return MOI.get(graph_backend(graph), MOI.ObjectiveValue())
 end
 
-function JuMP.dual_objective_value(
-    graph::OptiGraph;
-    result::Int = 1,
-)
+function JuMP.dual_objective_value(graph::OptiGraph; result::Int=1)
     return MOI.get(graph_backend(graph), MOI.DualObjectiveValue(result))
 end
 
@@ -725,88 +680,69 @@ function JuMP.set_objective(
 )
     JuMP.set_objective_sense(graph, sense)
     JuMP.set_objective_function(graph, func)
-    return
+    return nothing
 end
 
 function JuMP.set_objective_sense(graph::OptiGraph, sense::MOI.OptimizationSense)
     MOI.set(graph_backend(graph), MOI.ObjectiveSense(), sense)
-    return
+    return nothing
 end
 
-function JuMP.set_objective_function(
-    graph::OptiGraph, 
-    expr::JuMP.AbstractJuMPScalar
-)
+function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.AbstractJuMPScalar)
     _moi_set_objective_function(graph, expr)
-    return
+    return nothing
 end
 
-function _moi_set_objective_function(
-    graph::OptiGraph, 
-    expr::JuMP.AbstractJuMPScalar
-)
+function _moi_set_objective_function(graph::OptiGraph, expr::JuMP.AbstractJuMPScalar)
     # get the moi function made from local node variable indices
     moi_func = JuMP.moi_function(expr)
-    
+
     # add variables to backend if using subgraphs
     _add_backend_variables(graph_backend(graph), expr)
 
     # update the moi function using true graph variable indices
     graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
     func_type = typeof(graph_moi_func)
-    MOI.set(
-        graph_backend(graph),
-        MOI.ObjectiveFunction{func_type}(),
-        graph_moi_func,
-    )
-    return
+    MOI.set(graph_backend(graph), MOI.ObjectiveFunction{func_type}(), graph_moi_func)
+    return nothing
 end
 
 ### objective coefficient - linear
 
 function JuMP.set_objective_coefficient(
-    graph::OptiGraph,
-    variable::NodeVariableRef,
-    coeff::Real,
+    graph::OptiGraph, variable::NodeVariableRef, coeff::Real
 )
     coeff_t = convert(Float64, coeff)
     F = JuMP.objective_function_type(graph)
     _set_objective_coefficient(graph, variable, coeff_t, F)
     graph.is_model_dirty = true
-    return
+    return nothing
 end
 
 function _set_objective_coefficient(
-    graph::OptiGraph,
-    variable::NodeVariableRef,
-    coeff::Float64,
-    ::Type{NodeVariableRef},
+    graph::OptiGraph, variable::NodeVariableRef, coeff::Float64, ::Type{NodeVariableRef}
 )
     current_obj = JuMP.objective_function(graph)
     if graph_index(graph, current_obj) == graph_index(graph, variable)
         JuMP.set_objective_function(graph, coeff * variable)
     else
         JuMP.set_objective_function(
-            graph,
-            JuMP.add_to_expression!(coeff * variable, current_obj),
+            graph, JuMP.add_to_expression!(coeff * variable, current_obj)
         )
     end
-    return
+    return nothing
 end
 
 function _set_objective_coefficient(
-    graph::OptiGraph,
-    variable::NodeVariableRef,
-    coeff::Float64,
-    ::Type{F},
+    graph::OptiGraph, variable::NodeVariableRef, coeff::Float64, ::Type{F}
 ) where {F}
     MOI.modify(
         graph_backend(graph),
         MOI.ObjectiveFunction{JuMP.moi_function_type(F)}(),
         variable,
-        coeff
+        coeff,
     )
-    return
+    return nothing
 end
 
 ### objective coefficient - linear - vector
@@ -824,7 +760,7 @@ function JuMP.set_objective_coefficient(
     F = objective_function_type(graph)
     _set_objective_coefficient(graph, variables, convert.(Float64, coeffs), F)
     graph.is_model_dirty = true
-    return
+    return nothing
 end
 
 function _set_objective_coefficient(
@@ -839,7 +775,7 @@ function _set_objective_coefficient(
         JuMP.add_to_expression!(new_objective, current_obj)
     end
     JuMP.set_objective_function(model, new_objective)
-    return
+    return nothing
 end
 
 function _set_objective_coefficient(
@@ -852,24 +788,21 @@ function _set_objective_coefficient(
         graph_backend(graph),
         MOI.ObjectiveFunction{JuMP.moi_function_type(F)}(),
         variables,
-        coeffs
+        coeffs,
     )
-    return
+    return nothing
 end
 
 ### objective coefficient - quadratic
 
 function JuMP.set_objective_coefficient(
-    graph::OptiGraph,
-    variable_1::NodeVariableRef,
-    variable_2::NodeVariableRef,
-    coeff::Real,
+    graph::OptiGraph, variable_1::NodeVariableRef, variable_2::NodeVariableRef, coeff::Real
 )
     coeff_t = convert(Float64, coeff)::Float64
     F = JuMP.moi_function_type(JuMP.objective_function_type(graph))
     _set_objective_coefficient(graph, variable_1, variable_2, coeff_t, F)
     graph.is_model_dirty = true
-    return
+    return nothing
 end
 
 # if existing objective is not quadratic
@@ -883,7 +816,7 @@ function _set_objective_coefficient(
     current_obj = JuMP.objective_function(graph)
     new_obj = JuMP.add_to_expression!(coeff * variable_1 * variable_2, current_obj)
     JuMP.set_objective_function(graph, new_obj)
-    return
+    return nothing
 end
 
 # if existing objective is quadratic
@@ -902,9 +835,9 @@ function _set_objective_coefficient(
         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
         variable_1,
         variable_2,
-        coeff
+        coeff,
     )
-    return
+    return nothing
 end
 
 ### objective coefficient - quadratic - vector
@@ -924,7 +857,7 @@ function JuMP.set_objective_coefficient(
     F = JuMP.moi_function_type(JuMP.objective_function_type(graph))
     _set_objective_coefficient(graph, variables_1, variables_2, coeffs_t, F)
     graph.is_model_dirty = true
-    return
+    return nothing
 end
 
 # if existing objective is not quadratic
@@ -941,7 +874,7 @@ function _set_objective_coefficient(
         JuMP.add_to_expression!(new_obj, c, x, y)
     end
     JuMP.set_objective_function(graph, new_obj)
-    return
+    return nothing
 end
 
 # if existing objective is quadratic
@@ -962,7 +895,7 @@ function _set_objective_coefficient(
         MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
         variables_1,
         variables_2,
-        coeffs
+        coeffs,
     )
-    return
+    return nothing
 end

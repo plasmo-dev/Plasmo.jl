@@ -23,26 +23,26 @@ macro optinode(graph, args...)
     #check arguments
     @assert length(args) <= 1
     var = Base.string(_get_name(args[1]))
-    
+
     #get the name passed into the macro expression
     # if typeof(args[1]) == Symbol
     #     macro_code = :(add_node($graph); label=Symbol($var))
     # else
-        macro_code = quote
-            container = JuMP.Containers.@container($(args...), add_node($graph))
-            #set node labels
-            # if isa(container, Plasmo.OptiNode)
-            #     container.label = $var
-            # TODO: decide whether we want node labels to match macro input
-            # else
-            #     axs = axes(container)
-            #     terms = collect(Base.Iterators.product(axs...))[:]
-            #     for (i, node) in enumerate(container)
-            #         node.label = Symbol($var * "[$(string(terms[i]...))]")
-            #     end
-            #end
-            $(graph).obj_dict[Symbol($var)] = container
-        end
+    macro_code = quote
+        container = JuMP.Containers.@container($(args...), add_node($graph))
+        #set node labels
+        # if isa(container, Plasmo.OptiNode)
+        #     container.label = $var
+        # TODO: decide whether we want node labels to match macro input
+        # else
+        #     axs = axes(container)
+        #     terms = collect(Base.Iterators.product(axs...))[:]
+        #     for (i, node) in enumerate(container)
+        #         node.label = Symbol($var * "[$(string(terms[i]...))]")
+        #     end
+        #end
+        $(graph).obj_dict[Symbol($var)] = container
+    end
     # end
     return esc(macro_code)
 end

@@ -9,7 +9,7 @@ A mapping between OptiGraph elements (nodes and edges) and elements in a graph p
 A graph projection can be for example a hypergraph, a bipartite graph
 or a standard graph.
 """
-mutable struct GraphProjection{GT <: Graphs.AbstractGraph, PT <: AbstractProjectionType}
+mutable struct GraphProjection{GT<:Graphs.AbstractGraph,PT<:AbstractProjectionType}
     optigraph::OptiGraph
     projected_graph::GT
     projection_type::PT
@@ -18,16 +18,14 @@ mutable struct GraphProjection{GT <: Graphs.AbstractGraph, PT <: AbstractProject
 end
 
 function GraphProjection(
-	optigraph::OptiGraph, 
-	projected_graph::GT,
-    projection_type::PT
-) where {GT <: Graphs.AbstractGraph, PT <: AbstractProjectionType}
+    optigraph::OptiGraph, projected_graph::GT, projection_type::PT
+) where {GT<:Graphs.AbstractGraph,PT<:AbstractProjectionType}
     return GraphProjection(
-        optigraph, 
-        projected_graph, 
-        projection_type, 
-        Dict{GraphElement,OptiElement}(), 
-        Dict{OptiElement,GraphElement}()
+        optigraph,
+        projected_graph,
+        projection_type,
+        Dict{GraphElement,OptiElement}(),
+        Dict{OptiElement,GraphElement}(),
     )
 end
 
@@ -42,9 +40,7 @@ function Base.getindex(graph_map::GraphProjection, element::GraphElement)
 end
 
 function Base.setindex!(
-    graph_map::GraphProjection, 
-    vertex::Union{Int64,Graphs.AbstractEdge}, 
-    value::OptiElement
+    graph_map::GraphProjection, vertex::Union{Int64,Graphs.AbstractEdge}, value::OptiElement
 )
     return graph_map.proj_to_opti_map[vertex] = value
 end
@@ -54,9 +50,9 @@ function Base.getindex(graph_map::GraphProjection, element::OptiElement)
 end
 
 function Base.setindex!(
-    graph_map::GraphProjection, 
-    element::OptiElement, 
-    value::Union{Int64,Graphs.AbstractEdge}
+    graph_map::GraphProjection,
+    element::OptiElement,
+    value::Union{Int64,Graphs.AbstractEdge},
 )
     return graph_map.opti_to_proj_map[element] = value
 end
@@ -111,7 +107,6 @@ end
 @deprecate gethypergraph build_hyper_graph
 @deprecate hyper_graph build_hyper_graph
 
-
 struct CliqueGraphProjectionType <: AbstractProjectionType end
 
 """
@@ -165,7 +160,7 @@ function edge_clique_projection(optigraph::OptiGraph)
     end
     edge_array = all_edges(optigraph)
     n_edges = length(edge_array)
-    for i in 1:n_edges - 1
+    for i in 1:(n_edges - 1)
         for j in (i + 1):n_edges
             e1 = edge_array[i]
             e2 = edge_array[j]
@@ -177,7 +172,6 @@ function edge_clique_projection(optigraph::OptiGraph)
     return projection
 end
 @deprecate edge_graph build_edge_graph
-
 
 struct EdgeHyperGraphProjectionType <: AbstractProjectionType end
 
@@ -205,7 +199,7 @@ function edge_hyper_projection(optigraph::OptiGraph)
         # NOTE: a hypergraph may not always have a valid edge projection; we only
         # add the hyperedge if it is possible.
         if length(dual_nodes) >= 2
-        #@assert length(dual_nodes) >= 2
+            #@assert length(dual_nodes) >= 2
             hyperedge = Graphs.add_edge!(hypergraph, dual_nodes...)
             projection[hyperedge] = node
             projection[node] = hyperedge

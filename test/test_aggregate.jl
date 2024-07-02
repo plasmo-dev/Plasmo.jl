@@ -24,7 +24,7 @@ function _create_test_model()
     model = Model()
     @variable(model, x[1:10] >= 0)
     @variable(model, y[1:5] >= 2)
-    @constraint(model, [j=1:5], x[j] + y[j] <= 10)
+    @constraint(model, [j = 1:5], x[j] + y[j] <= 10)
     @constraint(model, sum(x) <= y[1]^4)
     @objective(model, Min, sum(x) + sum(y)^3)
     return model
@@ -37,7 +37,9 @@ function test_aggregate_solution()
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
 
-    agg_graph = set_optimizer(agg_node, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    agg_graph = set_optimizer(
+        agg_node, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0)
+    )
     optimize!(agg_graph)
 
     @test objective_value(agg_graph) == objective_value(graph)
@@ -78,7 +80,6 @@ end
 #     new_graph, ref = aggregate(graph, 1)
 #     @test num_all_subgraphs(new_graph) == 5
 # end
-
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

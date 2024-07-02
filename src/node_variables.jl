@@ -1,6 +1,4 @@
 # TODO: parameterize on precision
-# TODO: move low-level methods to graph backend
-# TODO: start values
 
 struct NodeVariableRef <: JuMP.AbstractVariableRef
     node::OptiNode
@@ -28,31 +26,32 @@ function Base.isequal(v1::NodeVariableRef, v2::NodeVariableRef)
     return owner_model(v1) === owner_model(v2) && v1.index == v2.index
 end
 
+"""
+    MOI.get(node::OptiNode, attr::MOI.AbstractVariableAttribute, nvref::NodeVariableRef)
+
+Get the MOI variable attribute given by `attr` for the variable `nvref`. This returns 
+the attribute from model backend corresponding to the `node`.
+"""
 function MOI.get(
-    node::OptiNode, 
-    attr::MOI.AbstractVariableAttribute,
-    nvref::NodeVariableRef
+    node::OptiNode, attr::MOI.AbstractVariableAttribute, nvref::NodeVariableRef
 )
     return MOI.get(graph_backend(node), attr, nvref)
 end
 
 function MOI.set(
-    node::OptiNode,
-    attr::MOI.AbstractVariableAttribute,
-    nvref::NodeVariableRef,  
-    args...
+    node::OptiNode, attr::MOI.AbstractVariableAttribute, nvref::NodeVariableRef, args...
 )
     for graph in containing_optigraphs(node)
         MOI.set(graph_backend(graph), attr, nvref, args...)
     end
-    return
+    return nothing
 end
 
 function MOI.delete(node::OptiNode, vref::NodeVariableRef)
     for graph in containing_optigraphs(node)
         MOI.delete(graph_backend(graph), vref)
     end
-    return
+    return nothing
 end
 
 """
@@ -63,16 +62,14 @@ Optionally add a `base_name` to the variable for printing.
 """
 function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
     vref = _moi_add_node_variable(node, v)
-    if !isempty(name) && MOI.supports(JuMP.backend(node), MOI.VariableName(), MOI.VariableIndex)
+    if !isempty(name) &&
+        MOI.supports(JuMP.backend(node), MOI.VariableName(), MOI.VariableIndex)
         JuMP.set_name(vref, "$(node.label).$(name)")
     end
     return vref
 end
 
-function _moi_add_node_variable(
-    node::OptiNode,
-    v::JuMP.AbstractVariable
-)
+function _moi_add_node_variable(node::OptiNode, v::JuMP.AbstractVariable)
     # get a new variable index and create a reference
     variable_index = next_variable_index(node)
     vref = NodeVariableRef(node, variable_index)
@@ -83,19 +80,11 @@ function _moi_add_node_variable(
     end
 
     # constrain node variable (hits all graph backends)
-    _moi_constrain_node_variable(
-        vref,
-        v.info, 
-        Float64
-    )
+    _moi_constrain_node_variable(vref, v.info, Float64)
     return vref
 end
 
-function _moi_constrain_node_variable(
-    nvref::NodeVariableRef,
-    info,
-    ::Type{T},
-) where {T}
+function _moi_constrain_node_variable(nvref::NodeVariableRef, info, ::Type{T}) where {T}
     if info.has_lb
         con = JuMP.ScalarConstraint(nvref, MOI.GreaterThan{T}(info.lower_bound))
         _moi_add_node_constraint(nvref.node, con)
@@ -118,12 +107,7 @@ function _moi_constrain_node_variable(
     end
     if info.has_start && info.start !== nothing
         # MOI.set hits all backends
-        MOI.set(
-            nvref.node,
-            MOI.VariablePrimalStart(),
-            nvref,
-            convert(T, info.start),
-        )
+        MOI.set(nvref.node, MOI.VariablePrimalStart(), nvref, convert(T, info.start))
     end
 end
 
@@ -138,17 +122,15 @@ function JuMP.delete(node::OptiNode, nvref::NodeVariableRef)
     for graph in containing_optigraphs(node)
         MOI.delete(graph_backend(node), nvref)
     end
-    return
+    return nothing
 end
 
 function JuMP.is_valid(node::OptiNode, nvref::NodeVariableRef)
-    return node === JuMP.owner_model(nvref) &&
-           MOI.is_valid(graph_backend(node), nvref)
+    return node === JuMP.owner_model(nvref) && MOI.is_valid(graph_backend(node), nvref)
 end
 
 function JuMP.is_valid(node::OptiNode, cref::ConstraintRef)
-    return node === JuMP.owner_model(cref) &&
-           MOI.is_valid(graph_backend(node), cref)
+    return node === JuMP.owner_model(cref) && MOI.is_valid(graph_backend(node), cref)
 end
 
 function JuMP.owner_model(nvref::NodeVariableRef)
@@ -157,16 +139,12 @@ end
 
 function JuMP.name(nvref::NodeVariableRef)
     gb = graph_backend(nvref.node)
-    return MOI.get(
-        graph_backend(nvref.node), 
-        MOI.VariableName(), 
-        nvref
-    )
+    return MOI.get(graph_backend(nvref.node), MOI.VariableName(), nvref)
 end
 
 function JuMP.set_name(nvref::NodeVariableRef, s::String)
     MOI.set(JuMP.owner_model(nvref), MOI.VariableName(), nvref, s)
-    return
+    return nothing
 end
 
 function JuMP.index(vref::NodeVariableRef)
@@ -193,7 +171,7 @@ _convert_if_something(::Type{T}, x) where {T} = convert(T, x)
 _convert_if_something(::Type, ::Nothing) = nothing
 function JuMP.set_start_value(nvref::NodeVariableRef, value::Union{Nothing,Real})
     # NOTE: sets the start value in all backends
-    MOI.set(
+    return MOI.set(
         nvref.node, # graph_backend(nvref.node),
         MOI.VariablePrimalStart(),
         nvref,
@@ -216,7 +194,7 @@ function JuMP.set_lower_bound(nvref::NodeVariableRef, lower::Number)
     end
     _set_dirty(nvref.node)
     _moi_nv_set_lower_bound(nvref, lower)
-    return
+    return nothing
 end
 
 function JuMP.lower_bound(nvref::NodeVariableRef)
@@ -226,7 +204,7 @@ end
 
 function JuMP.delete_lower_bound(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.LowerBoundRef(nvref))
-    return
+    return nothing
 end
 
 function JuMP.LowerBoundRef(nvref::NodeVariableRef)
@@ -253,10 +231,7 @@ function _nv_lower_bound_ref(nvref::NodeVariableRef)
     return cref
 end
 
-function _moi_nv_set_lower_bound(
-    nvref::NodeVariableRef,
-    lower::Number,
-)
+function _moi_nv_set_lower_bound(nvref::NodeVariableRef, lower::Number)
     node = JuMP.owner_model(nvref)
     new_set = MOI.GreaterThan(convert(Float64, lower))
     if _moi_nv_has_lower_bound(nvref)
@@ -267,7 +242,7 @@ function _moi_nv_set_lower_bound(
         con = JuMP.ScalarConstraint(nvref, new_set)
         _moi_add_node_constraint(node, con)
     end
-    return
+    return nothing
 end
 
 function JuMP.has_upper_bound(nvref::NodeVariableRef)
@@ -283,7 +258,7 @@ function JuMP.set_upper_bound(nvref::NodeVariableRef, upper::Number)
     end
     _set_dirty(nvref.node)
     _moi_nv_set_upper_bound(nvref, upper)
-    return
+    return nothing
 end
 
 function JuMP.upper_bound(nvref::NodeVariableRef)
@@ -293,7 +268,7 @@ end
 
 function JuMP.delete_upper_bound(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.LowerBoundRef(nvref))
-    return
+    return nothing
 end
 
 function JuMP.UpperBoundRef(nvref::NodeVariableRef)
@@ -320,10 +295,7 @@ function _nv_upper_bound_ref(nvref::NodeVariableRef)
     return cref
 end
 
-function _moi_nv_set_upper_bound(
-    nvref::NodeVariableRef,
-    upper::Number,
-)
+function _moi_nv_set_upper_bound(nvref::NodeVariableRef, upper::Number)
     node = JuMP.owner_model(nvref)
     new_set = MOI.LessThan(convert(Float64, upper))
     if _moi_nv_has_upper_bound(nvref)
@@ -334,7 +306,7 @@ function _moi_nv_set_upper_bound(
         con = JuMP.ScalarConstraint(nvref, new_set)
         _moi_add_node_constraint(node, con)
     end
-    return
+    return nothing
 end
 
 ### fix/unfix variable
@@ -362,24 +334,20 @@ function JuMP.fix(nvref::NodeVariableRef, value::Number; force::Bool=false)
     node = nvref.node
     _set_dirty(node)
     _moi_fix_nv(nvref, value, force, Float64)
-    return
+    return nothing
 end
 
 function _moi_fix_nv(
-    nvref::NodeVariableRef,
-    value::Number,
-    force::Bool,
-    ::Type{T}
+    nvref::NodeVariableRef, value::Number, force::Bool, ::Type{T}
 ) where {T}
     node = JuMP.owner_model(nvref)
     new_set = MOI.EqualTo(convert(T, value))
     if _moi_nv_is_fixed(nvref)
         cref = _nv_fix_ref(nvref)
         MOI.set(node, MOI.ConstraintSet(), cref, new_set)
-    else  
+    else
         # add a new fixing constraint
-        if _moi_nv_has_upper_bound(nvref) ||
-           _moi_nv_has_lower_bound(nvref)
+        if _moi_nv_has_upper_bound(nvref) || _moi_nv_has_lower_bound(nvref)
             if !force
                 error(
                     "Unable to fix $(nvref) to $(value) because it has " *
@@ -398,7 +366,7 @@ function _moi_fix_nv(
         con = JuMP.ScalarConstraint(nvref, new_set)
         _moi_add_node_constraint(node, con)
     end
-    return
+    return nothing
 end
 
 function JuMP.is_fixed(nvref::NodeVariableRef)
@@ -420,7 +388,7 @@ end
 
 function JuMP.unfix(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.FixRef(nvref))
-    return
+    return nothing
 end
 
 ### node variable integer
@@ -457,27 +425,26 @@ function JuMP.set_integer(nvref::NodeVariableRef)
     node = JuMP.owner_model(nvref)
     _set_dirty(node)
     _moi_set_integer_nv(nvref)
-    return
+    return nothing
 end
 
 function _moi_set_integer_nv(nvref::NodeVariableRef)
     node = JuMP.owner_model(nvref)
     if _moi_nv_is_integer(nvref)
-        return
+        return nothing
     elseif _moi_nv_is_binary(nvref)
         error(
-            "Cannot set the variable_ref $(nvref) to integer as it " *
-            "is already binary.",
+            "Cannot set the variable_ref $(nvref) to integer as it " * "is already binary."
         )
     end
     con = JuMP.ScalarConstraint(nvref, MOI.Integer())
     _moi_add_node_constraint(node, con)
-    return
+    return nothing
 end
 
 function JuMP.unset_integer(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.IntegerRef(nvref))
-    return
+    return nothing
 end
 
 ### node variable binary
@@ -514,25 +481,24 @@ function JuMP.set_binary(nvref::NodeVariableRef)
     node = JuMP.owner_model(nvref)
     _set_dirty(node)
     _moi_set_binary_nv(nvref)
-    return
+    return nothing
 end
 
 function _moi_set_binary_nv(nvref::NodeVariableRef)
     node = JuMP.owner_model(nvref)
     if _moi_nv_is_binary(nvref)
-        return
+        return nothing
     elseif _moi_nv_is_integer(nvref)
         error(
-            "Cannot set the variable_ref $(nvref) to binary as it " *
-            "is already integer.",
+            "Cannot set the variable_ref $(nvref) to binary as it " * "is already integer."
         )
     end
     con = JuMP.ScalarConstraint(nvref, MOI.ZeroOne())
     _moi_add_node_constraint(node, con)
-    return
+    return nothing
 end
 
 function JuMP.unset_binary(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.BinaryRef(nvref))
-    return
+    return nothing
 end

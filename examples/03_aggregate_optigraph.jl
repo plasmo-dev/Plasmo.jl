@@ -7,8 +7,8 @@ graph = OptiGraph()
 optimizer = HiGHS.Optimizer
 
 # add nodes using macro
-n1 = @optinode(graph)
-n2 = @optinode(graph)
+@optinode(graph, n1)
+@optinode(graph, n2)
 
 # node 1 model
 @variable(n1, 1 <= x <= 2)

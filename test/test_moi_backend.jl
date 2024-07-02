@@ -8,7 +8,7 @@ using Test
 
 function test_graph_backend()
     graph = OptiGraph()
-    gb = graph_backend(graph)
+    return gb = graph_backend(graph)
 end
 
 function run_tests()

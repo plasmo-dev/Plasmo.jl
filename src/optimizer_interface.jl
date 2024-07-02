@@ -2,90 +2,62 @@
 # get/set attributes
 #
 
-function JuMP.get_attribute(graph::OptiGraph, attr::AT) where 
-    AT <: Union{MOI.AbstractModelAttribute, MOI.AbstractOptimizerAttribute}
+function JuMP.get_attribute(
+    graph::OptiGraph, attr::AT
+) where {AT<:Union{MOI.AbstractModelAttribute,MOI.AbstractOptimizerAttribute}}
     return MOI.get(graph, attr)
 end
 
 function JuMP.get_attribute(
-    nvref::NodeVariableRef,
-    attr::AT,
-) where AT <: MOI.AbstractVariableAttribute
+    nvref::NodeVariableRef, attr::AT
+) where {AT<:MOI.AbstractVariableAttribute}
     return MOI.get(nvref.node, attr, nvref)
 end
 
-function JuMP.get_attribute(
-    graph::OptiGraph,
-    name::String,
-)
+function JuMP.get_attribute(graph::OptiGraph, name::String)
     return JuMP.get_attribute(graph, MOI.RawOptimizerAttribute(name))
 end
 
 # From JuMP: "This method is needed for string types like String15 coming from a DataFrame."
-function JuMP.get_attribute(
-    graph::OptiGraph,
-    name::AbstractString,
-)
+function JuMP.get_attribute(graph::OptiGraph, name::AbstractString)
     return JuMP.get_attribute(graph, String(name))
 end
 
-function JuMP.set_attribute(
-    graph::OptiGraph,
-    attr::MOI.AbstractModelAttribute,
-    value::Any
-)
+function JuMP.set_attribute(graph::OptiGraph, attr::MOI.AbstractModelAttribute, value::Any)
     MOI.set(graph, attr, value)
-    return
+    return nothing
 end
 
 # NOTE: ConstraintRef covered by JuMP
 function JuMP.set_attribute(
-    nvref::NodeVariableRef,
-    attr::MOI.AbstractVariableAttribute,
-    value::Any
+    nvref::NodeVariableRef, attr::MOI.AbstractVariableAttribute, value::Any
 )
     MOI.set(nvref.node, attr, nvref, value)
-    return
+    return nothing
 end
 
 function JuMP.set_attribute(
-    graph::OptiGraph,
-    attr::MOI.AbstractOptimizerAttribute,
-    value::Any
+    graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute, value::Any
 )
     MOI.set(graph, attr, value)
-    return
+    return nothing
 end
 
-function JuMP.set_attribute(
-    graph::OptiGraph,
-    name::String,
-    value,
-)
+function JuMP.set_attribute(graph::OptiGraph, name::String, value)
     JuMP.set_attribute(graph, MOI.RawOptimizerAttribute(name), value)
-    return
+    return nothing
 end
 
-function JuMP.set_attribute(
-    graph::OptiGraph,
-    name::AbstractString,
-    value,
-)
+function JuMP.set_attribute(graph::OptiGraph, name::AbstractString, value)
     JuMP.set_attribute(graph, String(name), value)
-    return
+    return nothing
 end
 
-function JuMP.set_attributes(
-    destination::Union{
-        OptiGraph,
-        NodeVariableRef
-    },
-    pairs::Pair...,
-)
+function JuMP.set_attributes(destination::Union{OptiGraph,NodeVariableRef}, pairs::Pair...)
     for (name, value) in pairs
         JuMP.set_attribute(destination, name, value)
     end
-    return
+    return nothing
 end
 
 #
@@ -101,13 +73,11 @@ function JuMP.error_if_direct_mode(graph::OptiGraph, func::Symbol)
     if JuMP.mode(graph) == DIRECT
         error("The `$func` function is not supported in DIRECT mode.")
     end
-    return
+    return nothing
 end
 
 function JuMP.set_optimizer(
-    graph::OptiGraph,
-    JuMP.@nospecialize(optimizer_constructor);
-    add_bridges::Bool = true    
+    graph::OptiGraph, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
 )
     JuMP.error_if_direct_mode(graph, :set_optimizer)
     if add_bridges
@@ -122,7 +92,9 @@ function JuMP.set_optimizer(
     # Update the backend to create a new, concretely typed CachingOptimizer
     # using the existing `model_cache`.
     gb = graph_backend(graph)
-    gb.moi_backend = MOIU.CachingOptimizer(JuMP.backend(graph).model_cache, optimizer)
+    return gb.moi_backend = MOIU.CachingOptimizer(
+        JuMP.backend(graph).model_cache, optimizer
+    )
 end
 
 # mostly copied from: https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
@@ -140,14 +112,12 @@ function JuMP.optimize!(
     # end
 
     if !isempty(kwargs)
-        error(
-            "Unrecognized keyword arguments: $(join([k[1] for k in kwargs], ", "))",
-        )
+        error("Unrecognized keyword arguments: $(join([k[1] for k in kwargs], ", "))")
     end
     if JuMP.mode(graph) != DIRECT && MOIU.state(JuMP.backend(graph)) == MOIU.NO_OPTIMIZER
         throw(JuMP.NoOptimizer())
     end
-    
+
     try
         MOI.optimize!(graph_backend(graph))
     catch err
@@ -161,7 +131,7 @@ function JuMP.optimize!(
         end
     end
     graph.is_model_dirty = false
-    return
+    return nothing
 end
 
 #
@@ -199,21 +169,18 @@ function JuMP.raw_status(graph::OptiGraph)
     return MOI.get(graph, MOI.RawStatusString())
 end
 
-function MOI.get(
-    graph::OptiGraph,
-    attr::Union{MOI.PrimalStatus,MOI.DualStatus},
-)
+function MOI.get(graph::OptiGraph, attr::Union{MOI.PrimalStatus,MOI.DualStatus})
     if graph.is_model_dirty && JuMP.mode(graph) != DIRECT
         return MOI.NO_SOLUTION
     end
     return MOI.get(graph_backend(graph), attr)
 end
 
-function JuMP.primal_status(graph::OptiGraph; result::Int = 1)
+function JuMP.primal_status(graph::OptiGraph; result::Int=1)
     return MOI.get(graph, MOI.PrimalStatus(result))::MOI.ResultStatusCode
 end
 
-function JuMP.dual_status(graph::OptiGraph; result::Int = 1)
+function JuMP.dual_status(graph::OptiGraph; result::Int=1)
     return MOI.get(graph, MOI.DualStatus(result))::MOI.ResultStatusCode
 end
 
@@ -222,10 +189,8 @@ end
 #
 
 function JuMP.set_optimizer(
-        node::OptiNode,
-        JuMP.@nospecialize(optimizer_constructor);
-        add_bridges::Bool = true
-    )
+    node::OptiNode, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
+)
     if !haskey(source_graph(node).node_graphs, node)
         node_graph = assemble_optigraph(node)
         source_graph(node).node_graphs[node] = node_graph
@@ -242,5 +207,5 @@ end
 function JuMP.optimize!(node::OptiNode; kwargs...)
     node_graph = source_graph(node).node_graphs[node]
     JuMP.optimize!(node_graph; kwargs...)
-    return
+    return nothing
 end

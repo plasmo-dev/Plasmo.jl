@@ -58,7 +58,7 @@ end
 function test_partition_manual()
     graph = _create_chain_optigraph()
     nodes = all_nodes(graph)
-    
+
     @objective(graph, Min, sum(all_variables(graph)))
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
@@ -91,12 +91,12 @@ end
 
 function test_partition_node_membership_vector()
     graph = _create_simple_optigraph()
-    n1,n2,n3,n4 = all_nodes(graph)
+    n1, n2, n3, n4 = all_nodes(graph)
     node_membership_vector = [0, 0, 1, 1]
     partition = Partition(graph, node_membership_vector)
     @test n_subpartitions(partition) == 2
-    @test partition.subpartitions[1].optinodes == [n1,n2]
-    @test partition.subpartitions[2].optinodes == [n3,n4]
+    @test partition.subpartitions[1].optinodes == [n1, n2]
+    @test partition.subpartitions[2].optinodes == [n3, n4]
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 4
     @test num_edges(new_graph) == 3
@@ -105,15 +105,14 @@ function test_partition_node_membership_vector()
     @test num_local_edges(new_graph) == 1
 end
 
-
 function test_partition_node_vectors()
     graph = _create_simple_optigraph()
-    n1,n2,n3,n4 = all_nodes(graph)
-    node_vectors = [[n1,n2],[n3,n4]]
+    n1, n2, n3, n4 = all_nodes(graph)
+    node_vectors = [[n1, n2], [n3, n4]]
     partition = Partition(graph, node_vectors)
     @test n_subpartitions(partition) == 2
-    @test partition.subpartitions[1].optinodes == [n1,n2]
-    @test partition.subpartitions[2].optinodes == [n3,n4]
+    @test partition.subpartitions[1].optinodes == [n1, n2]
+    @test partition.subpartitions[2].optinodes == [n3, n4]
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 4
     @test num_edges(new_graph) == 3
@@ -125,7 +124,9 @@ end
 function test_partition_hypergraph()
     graph = _create_simple_optigraph()
     projection = hyper_projection(graph)
-    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition_vector = @suppress KaHyPar.partition(
+        projection, 2; configuration=kahypar_config
+    )
     partition = Partition(projection, partition_vector)
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 4
@@ -138,7 +139,9 @@ end
 function test_partition_clique()
     graph = _create_simple_optigraph()
     projection = clique_projection(graph)
-    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition_vector = @suppress KaHyPar.partition(
+        projection, 2; configuration=kahypar_config
+    )
     partition = Partition(projection, partition_vector)
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 4
@@ -151,7 +154,9 @@ end
 function test_partition_edge_clique()
     graph = _create_simple_optigraph()
     projection = edge_clique_projection(graph)
-    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition_vector = @suppress KaHyPar.partition(
+        projection, 2; configuration=kahypar_config
+    )
     partition = Partition(projection, partition_vector)
     @test n_subpartitions(partition) == 2
     new_graph = assemble_optigraph(partition)
@@ -165,7 +170,9 @@ end
 function test_partition_edge_hypergraph()
     graph = _create_simple_optigraph()
     projection = edge_hyper_projection(graph)
-    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition_vector = @suppress KaHyPar.partition(
+        projection, 2; configuration=kahypar_config
+    )
     partition = Partition(projection, partition_vector)
     @test n_subpartitions(partition) == 2
     new_graph = assemble_optigraph(partition)
@@ -179,9 +186,11 @@ end
 function test_bipartite_1()
     graph = _create_simple_optigraph()
     projection = bipartite_projection(graph)
-    partition_vector = @suppress KaHyPar.partition(projection, 2; configuration=kahypar_config)
+    partition_vector = @suppress KaHyPar.partition(
+        projection, 2; configuration=kahypar_config
+    )
     @test length(partition_vector) == 7
-    partition = Partition(projection, partition_vector; cut_selector = :vertex)
+    partition = Partition(projection, partition_vector; cut_selector=:vertex)
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 4
     @test num_edges(new_graph) == 3
@@ -192,7 +201,6 @@ function test_bipartite_1()
     #TODO
     #partition = Partition(bg,partition_vector,b_map; cut_selector = :edge)
 end
-
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

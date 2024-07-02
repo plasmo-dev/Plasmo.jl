@@ -13,7 +13,7 @@ function test_simple_graph()
     @variable(nodes[1], x >= 1)
     @variable(nodes[2], x >= 2)
     @linkconstraint(graph, nodes[1][:x] + nodes[2][:x] == 4)
-    @objective(graph, Max, nodes[1][:x] + 2*nodes[2][:x])
+    @objective(graph, Max, nodes[1][:x] + 2 * nodes[2][:x])
 
     set_optimizer(graph, HiGHS.Optimizer)
     @suppress optimize!(graph)
@@ -22,8 +22,10 @@ function test_simple_graph()
     @test value(nodes[1][:x]) == 1.0
     @test value(nodes[2][:x]) == 3.0
     @test value(nodes[1][:x] + nodes[2][:x]) == value(graph, nodes[1][:x] + nodes[2][:x])
-    @test value(nodes[1][:x]^2 + nodes[2][:x]^2) == value(graph, nodes[1][:x]^2 + nodes[2][:x]^2)
-    @test value(nodes[1][:x]^3 + nodes[2][:x]^3) == value(graph, nodes[1][:x]^3 + nodes[2][:x]^3)
+    @test value(nodes[1][:x]^2 + nodes[2][:x]^2) ==
+        value(graph, nodes[1][:x]^2 + nodes[2][:x]^2)
+    @test value(nodes[1][:x]^3 + nodes[2][:x]^3) ==
+        value(graph, nodes[1][:x]^3 + nodes[2][:x]^3)
 
     @test JuMP.termination_status(graph) == MOI.OPTIMAL
     @test JuMP.primal_status(graph) == MOI.FEASIBLE_POINT
@@ -74,13 +76,13 @@ function test_optigraph_build()
     @test num_edges(graph) == 4
     @test num_subgraphs(graph) == 0
 
-    n1,n2,n3,n4 = all_nodes(graph)
-    e1,e2,e3,e4 = all_edges(graph)
+    n1, n2, n3, n4 = all_nodes(graph)
+    e1, e2, e3, e4 = all_edges(graph)
 
-    @test has_edge(graph, Set([n2,n4])) == true
-    @test get_edge(graph, Set([n2,n4])) == e2
-    @test all_nodes(e2) == [n4,n2]
-    @test all_elements(graph) == [n1,n2,n3,n4,e1,e2,e3,e4]
+    @test has_edge(graph, Set([n2, n4])) == true
+    @test get_edge(graph, Set([n2, n4])) == e2
+    @test all_nodes(e2) == [n4, n2]
+    @test all_elements(graph) == [n1, n2, n3, n4, e1, e2, e3, e4]
 
     # variables
     n1_vars = all_variables(n1)
@@ -94,28 +96,29 @@ function test_optigraph_build()
     @test num_constraints(e1) == 1
     @test num_constraints(graph) == 59
     @test num_constraints(graph; count_variable_in_set_constraints=false) == 31
-    
+
     con_types = list_of_constraint_types(graph)
-    F,S = con_types[3]
+    F, S = con_types[3]
     @test length(con_types) == 6
     @test num_constraints(graph, F, S) == 1
     @test num_link_constraints(graph) == 29
     @test num_link_constraints(graph, F, S) == 0
 
     @test length(collect_nodes(objective_function(graph))) == 4
-    @test JuMP.objective_function_type(graph) == JuMP.GenericAffExpr{Float64, Plasmo.NodeVariableRef}
+    @test JuMP.objective_function_type(graph) ==
+        JuMP.GenericAffExpr{Float64,Plasmo.NodeVariableRef}
 end
 
 function test_objective_functions()
     graph = _create_test_nonlinear_optigraph()
-    n1,n2,n3,n4 = all_nodes(graph)
+    n1, n2, n3, n4 = all_nodes(graph)
 
     # linear objective
     JuMP.set_objective_coefficient(graph, n1[:x], 2.0)
-    @test JuMP.objective_function(graph) == 2*n1[:x] + n2[:x] + n3[:x][1] + n4[:x]
-    
-    JuMP.set_objective_coefficient(graph, [n1[:x],n2[:x]], [2.0,2.0])
-    @test JuMP.objective_function(graph) == 2*n1[:x] + 2*n2[:x] + n3[:x][1] + n4[:x]
+    @test JuMP.objective_function(graph) == 2 * n1[:x] + n2[:x] + n3[:x][1] + n4[:x]
+
+    JuMP.set_objective_coefficient(graph, [n1[:x], n2[:x]], [2.0, 2.0])
+    @test JuMP.objective_function(graph) == 2 * n1[:x] + 2 * n2[:x] + n3[:x][1] + n4[:x]
 
     JuMP.set_objective_function(graph, n1[:x])
     @test JuMP.objective_function_type(graph) == Plasmo.NodeVariableRef
@@ -123,23 +126,24 @@ function test_objective_functions()
     @test JuMP.objective_function(graph) == n1[:x]
 
     JuMP.set_objective_coefficient(graph, n1[:x], 2.0)
-    @test JuMP.objective_function(graph) == 2*n1[:x]
+    @test JuMP.objective_function(graph) == 2 * n1[:x]
 
-    JuMP.set_objective_coefficient(graph, [n1[:x],n2[:x]], [2.0,2.0])
-    @test JuMP.objective_function(graph) == 2*n1[:x] + 2*n2[:x]
+    JuMP.set_objective_coefficient(graph, [n1[:x], n2[:x]], [2.0, 2.0])
+    @test JuMP.objective_function(graph) == 2 * n1[:x] + 2 * n2[:x]
 
     # quadratic objective
     JuMP.set_objective_function(graph, n1[:x]^2 + n2[:x]^2)
     @test objective_function(graph) == n1[:x]^2 + n2[:x]^2
 
     JuMP.set_objective_coefficient(graph, n1[:x], n1[:x], 3.0)
-    @test objective_function(graph) == 3*n1[:x]^2 + n2[:x]^2
+    @test objective_function(graph) == 3 * n1[:x]^2 + n2[:x]^2
 
     JuMP.set_objective_coefficient(graph, n1[:x], n2[:x], 1.0)
-    @test objective_function(graph) == 3*n1[:x]^2 + n2[:x]^2 + n1[:x]*n2[:x]
+    @test objective_function(graph) == 3 * n1[:x]^2 + n2[:x]^2 + n1[:x] * n2[:x]
 
-    JuMP.set_objective_coefficient(graph, [n1[:x], n2[:x]], [n4[:x],n4[:x]], [1.0, 3.0])
-    @test objective_function(graph) == 3*n1[:x]^2 + n2[:x]^2 + n1[:x]*n2[:x] + n1[:x]*n4[:x] + 3*n2[:x]*n4[:x]
+    JuMP.set_objective_coefficient(graph, [n1[:x], n2[:x]], [n4[:x], n4[:x]], [1.0, 3.0])
+    @test objective_function(graph) ==
+        3 * n1[:x]^2 + n2[:x]^2 + n1[:x] * n2[:x] + n1[:x] * n4[:x] + 3 * n2[:x] * n4[:x]
 
     # nonlinear objective
     JuMP.set_objective_function(graph, n1[:x]^3 + n2[:x]^3)
@@ -153,8 +157,9 @@ function test_objective_functions()
     @objective(n4, Min, n4[:x]^2)
 
     set_to_node_objectives(graph)
-    @test objective_function(graph) == n1[:x] - n2[:x] + n3[:x][1]^2 + n3[:x][2]^2 + n4[:x]^2
-    
+    @test objective_function(graph) ==
+        n1[:x] - n2[:x] + n3[:x][1]^2 + n3[:x][2]^2 + n4[:x]^2
+
     @objective(n4, Min, n4[:x]^3)
     set_to_node_objectives(graph)
     @test typeof(objective_function(graph)) == GenericNonlinearExpr{NodeVariableRef}
@@ -167,7 +172,7 @@ function test_objective_functions()
 end
 
 function test_subgraphs()
-    graph = OptiGraph(;name=:root)
+    graph = OptiGraph(; name=:root)
 
     @optinode(graph, n0)
     @variable(n0, x)
@@ -177,15 +182,15 @@ function test_subgraphs()
     add_subgraph(graph, sg1)
     add_subgraph(graph, sg2)
 
-    n11,n12,n13,n14 = all_nodes(sg1)
-    n21,n22,n23,n24 = all_nodes(sg2)
+    n11, n12, n13, n14 = all_nodes(sg1)
+    n21, n22, n23, n24 = all_nodes(sg2)
 
     # link constraints
     @linkconstraint(graph, n0[:x] + n11[:x] + n21[:x] <= 10)
-    @linkconstraint(graph, n12[:x] == n24[:x]) 
+    @linkconstraint(graph, n12[:x] == n24[:x])
 
     con_types = list_of_constraint_types(graph)
-    F,S = con_types[6]
+    F, S = con_types[6]
 
     @test num_local_nodes(graph) == 1
     @test num_nodes(graph) == 9
@@ -263,7 +268,7 @@ function test_variable_constraints()
     set_optimizer(graph, HiGHS.Optimizer)
 
     @optinode(graph, nodes[1:2])
-    n1,n2 = all_nodes(graph)
+    n1, n2 = all_nodes(graph)
 
     @variable(n1, x >= 1)
     @variable(n2, 0 <= x <= 2)
@@ -282,7 +287,6 @@ function test_variable_constraints()
     @test lower_bound(n1[:x]) == 0
     set_upper_bound(n2[:x], 3)
     @test upper_bound(n2[:x]) == 3
-
 
     # fix variables
     JuMP.fix(n1[:x], 1; force=true)
@@ -328,11 +332,11 @@ function test_nonlinear_operators()
 
     n2 = graph[2]
     @operator(graph, op_f_graph, 2, f)
-    @linkconstraint(graph, con_ref, op_f_graph(n2[:x],n2[:y]) + n1[:x] >= 0)
+    @linkconstraint(graph, con_ref, op_f_graph(n2[:x], n2[:y]) + n1[:x] >= 0)
     @test num_constraints(graph) == 60
     optimize!(graph)
     @test dual(con_ref) != nothing
-    @test value(op_f_graph(n2[:x],n2[:y])) != nothing
+    @test value(op_f_graph(n2[:x], n2[:y])) != nothing
 end
 
 function test_multiple_solves()
@@ -356,7 +360,7 @@ function test_optimizer_attributes()
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     set_optimizer_attribute(graph, "max_cpu_time", 1e2)
     @test get_optimizer_attribute(graph, "max_cpu_time") == 100.0
-    optimize!(graph)
+    return optimize!(graph)
 end
 
 function test_nlp_exceptions()

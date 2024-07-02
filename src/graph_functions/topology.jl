@@ -17,9 +17,9 @@ end
 
 Create an induced subgraph of optigraph given a vector of optinodes.
 """
-function Graphs.induced_subgraph(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
+function Graphs.induced_subgraph(hyper::HyperGraphProjection, nodes::Vector{<:OptiNode})
     edges = induced_edges(hyper, nodes)
-    induced_graph = assemble_optigraph(nodes, edges) 
+    induced_graph = assemble_optigraph(nodes, edges)
     return induced_graph
 end
 
@@ -32,7 +32,7 @@ Retrieve incident edges to a set of optinodes.
 
 Retrieve incident edges to a single optinode.
 """
-function incident_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
+function incident_edges(hyper::HyperGraphProjection, nodes::Vector{<:OptiNode})
     hypernodes = Base.getindex.(Ref(hyper), nodes)
     #hypernodes = get_mapped_elements(hyper, nodes)
     inc_edges = GOI.incident_edges(hyper.projected_graph, hypernodes)
@@ -40,7 +40,7 @@ function incident_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
 end
 
 function incident_edges(hyper::HyperGraphProjection, node::OptiNode)
-	return incident_edges(hyper, [node])
+    return incident_edges(hyper, [node])
 end
 
 """
@@ -48,7 +48,7 @@ end
 
 Retrieve induced edges to a set of optinodes.
 """
-function induced_edges(hyper::HyperGraphProjection, nodes::Vector{OptiNode})
+function induced_edges(hyper::HyperGraphProjection, nodes::Vector{<:OptiNode})
     hypernodes = get_mapped_elements(hyper, nodes)
     induced = GOI.induced_edges(hyper.projected_graph, hypernodes)
     optiedges = convert(Vector{OptiEdge}, get_mapped_elements(hyper, induced))
@@ -68,11 +68,12 @@ Identify induced edges and edge separators from a vector of optinode partitions.
 - partition_optiedges::Vector{Vector{OptiEdge}}: The `OptiEdge` vectors for each partition.
 - cross_optiedges::Vector{OptiEdge}: A vector of optiedges that cross partitions.
 """
-function identify_edges(hyper::HyperGraphProjection, node_vectors::Vector{Vector{OptiNode}})
+function identify_edges(
+    hyper::HyperGraphProjection, node_vectors::Vector{<:Vector{<:OptiNode}}
+)
     hypernode_vectors = get_mapped_elements.(Ref(hyper), node_vectors)
     partition_edges, cross_edges = GOI.identify_edges(
-        hyper.projected_graph, 
-        hypernode_vectors
+        hyper.projected_graph, hypernode_vectors
     )
     partition_optiedges = get_mapped_elements.(Ref(hyper), partition_edges)
     cross_optiedges = get_mapped_elements(hyper, cross_edges)
@@ -84,11 +85,12 @@ end
 
 Identify induced nodes and node separators from a vector of optiedge partitions.
 """
-function identify_nodes(hyper::HyperGraphProjection, edge_vectors::Vector{Vector{OptiEdge}})
+function identify_nodes(
+    hyper::HyperGraphProjection, edge_vectors::Vector{<:Vector{<:OptiEdge}}
+)
     hyperedge_vectors = get_mapped_elements.(Ref(hyper), edge_vectors)
     partition_nodes, cross_nodes = GOI.identify_nodes(
-        hyper.projected_graph, 
-        hyperedge_vectors
+        hyper.projected_graph, hyperedge_vectors
     )
     partition_optinodes = get_mapped_elements.(Ref(hyper), partition_nodes)
     cross_optinodes = get_mapped_elements(hyper, cross_nodes)
@@ -104,7 +106,9 @@ end
 
 Return the optinodes within `distance` of the given `nodes` in the optigraph `graph`.
 """
-function Graphs.neighborhood(hyper::HyperGraphProjection, nodes::Vector{OptiNode}, distance::Int64)
+function Graphs.neighborhood(
+    hyper::HyperGraphProjection, nodes::Vector{<:OptiNode}, distance::Int64
+)
     vertices = get_mapped_elements(hyper, nodes)
     new_nodes = GOI.neighborhood(hyper.projected_graph, vertices, distance)
     return get_mapped_elements(hyper, new_nodes) #getindex.(Ref(hyper), new_nodes)
@@ -121,7 +125,7 @@ function expand(hyper::HyperGraphProjection, subgraph::OptiGraph, distance::Int6
     return expand(hyper, nodes, distance)
 end
 
-function expand(hyper::HyperGraphProjection, nodes::Vector{OptiNode}, distance::Int64)
+function expand(hyper::HyperGraphProjection, nodes::Vector{<:OptiNode}, distance::Int64)
     new_optinodes = Graphs.neighborhood(hyper, nodes, distance)
     new_optiedges = induced_edges(hyper, new_optinodes)
     expanded_subgraph = assemble_optigraph(new_optinodes, new_optiedges)

@@ -3,9 +3,7 @@
 ### directly copied functions from JuMP
 # copied from: https://github.com/jump-dev/JuMP.jl/blob/0df25a9185ceede762af533bc965c9374c97450c/src/constraints.jl
 function _moi_add_constraint(
-    model::MOI.ModelLike,
-    f::F,
-    s::S,
+    model::MOI.ModelLike, f::F, s::S
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     if !MOI.supports_constraint(model, F, S)
         error(
@@ -22,14 +20,11 @@ end
 
 ### Variables
 
-JuMP.variable_ref_type(::Type{T} where T <: OptiObject) = NodeVariableRef
+JuMP.variable_ref_type(::Type{T} where {T<:OptiObject}) = NodeVariableRef
 
 JuMP.jump_function(::OptiObject, x::Number) = convert(Float64, x)
 
-function JuMP.jump_function_type(
-    ::OptiObject,
-    ::Type{MOI.VariableIndex},
-)
+function JuMP.jump_function_type(::OptiObject, ::Type{MOI.VariableIndex})
     return NodeVariableRef
 end
 
@@ -55,12 +50,10 @@ function _assert_isfinite(a::JuMP.GenericAffExpr)
             "produced by `Inf - Inf`.",
         )
     end
-    return
+    return nothing
 end
 
-function MOI.ScalarAffineFunction(
-    a::GenericAffExpr{C,<:NodeVariableRef},
-) where {C}
+function MOI.ScalarAffineFunction(a::GenericAffExpr{C,<:NodeVariableRef}) where {C}
     _assert_isfinite(a)
     terms = MOI.ScalarAffineTerm{C}[
         MOI.ScalarAffineTerm(t[1], index(t[2])) for t in linear_terms(a)
@@ -69,38 +62,28 @@ function MOI.ScalarAffineFunction(
 end
 
 function JuMP.jump_function_type(
-    obj::OptiObject,
-    ::Type{MOI.ScalarAffineFunction{C}},
+    obj::OptiObject, ::Type{MOI.ScalarAffineFunction{C}}
 ) where {C}
     return JuMP.GenericAffExpr{C,NodeVariableRef}
 end
 
-function JuMP.jump_function(
-    obj::OptiObject,
-    f::MOI.ScalarAffineFunction{C},
-) where {C}
+function JuMP.jump_function(obj::OptiObject, f::MOI.ScalarAffineFunction{C}) where {C}
     return JuMP.GenericAffExpr{C,NodeVariableRef}(obj, f)
 end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
-    node::OptiNode,
-    f::MOI.ScalarAffineFunction,
+    node::OptiNode, f::MOI.ScalarAffineFunction
 ) where {C}
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     for t in f.terms
         node_var_index = graph_backend(node).graph_to_element_map[t.variable].index
-        JuMP.add_to_expression!(
-            aff,
-            t.coefficient,
-            NodeVariableRef(node, node_var_index),
-        )
+        JuMP.add_to_expression!(aff, t.coefficient, NodeVariableRef(node, node_var_index))
     end
     return aff
 end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
-    edge::OptiEdge,
-    f::MOI.ScalarAffineFunction,
+    edge::OptiEdge, f::MOI.ScalarAffineFunction
 ) where {C}
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     # build JuMP Affine Expression over edge variables
@@ -108,18 +91,13 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
         node_var = graph_backend(edge).graph_to_element_map[t.variable]
         node = node_var.node
         node_index = node_var.index
-        JuMP.add_to_expression!(
-            aff,
-            t.coefficient,
-            NodeVariableRef(node, node_index),
-        )
+        JuMP.add_to_expression!(aff, t.coefficient, NodeVariableRef(node, node_index))
     end
     return aff
 end
 
 function JuMP.GenericAffExpr{C,NodeVariableRef}(
-    graph::OptiGraph,
-    f::MOI.ScalarAffineFunction,
+    graph::OptiGraph, f::MOI.ScalarAffineFunction
 ) where {C}
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     # build JuMP Affine Expression over func variables
@@ -128,11 +106,7 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
         node_var = gb.graph_to_element_map[t.variable]
         node = node_var.node
         node_index = node_var.index
-        JuMP.add_to_expression!(
-            aff,
-            t.coefficient,
-            NodeVariableRef(node, node_index),
-        )
+        JuMP.add_to_expression!(aff, t.coefficient, NodeVariableRef(node, node_index))
     end
     return aff
 end
@@ -141,54 +115,39 @@ end
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/quad_expr.jl
 
 function _moi_quadratic_term(t::Tuple)
-    return MOI.ScalarQuadraticTerm(
-        t[2] == t[3] ? 2t[1] : t[1],
-        index(t[2]),
-        index(t[3]),
-    )
+    return MOI.ScalarQuadraticTerm(t[2] == t[3] ? 2t[1] : t[1], index(t[2]), index(t[3]))
 end
 
 function _assert_isfinite(q::GenericQuadExpr)
     _assert_isfinite(q.aff)
     for (coef, var1, var2) in quad_terms(q)
-        isfinite(coef) ||
-            error("Invalid coefficient $coef on quadratic term $var1*$var2.")
+        isfinite(coef) || error("Invalid coefficient $coef on quadratic term $var1*$var2.")
     end
 end
 
-function MOI.ScalarQuadraticFunction(
-    q::GenericQuadExpr{C,NodeVariableRef},
-) where {C}
+function MOI.ScalarQuadraticFunction(q::GenericQuadExpr{C,NodeVariableRef}) where {C}
     _assert_isfinite(q)
-    qterms = MOI.ScalarQuadraticTerm{C}[
-        _moi_quadratic_term(t) for t in quad_terms(q)
-    ]
+    qterms = MOI.ScalarQuadraticTerm{C}[_moi_quadratic_term(t) for t in quad_terms(q)]
     moi_aff = MOI.ScalarAffineFunction(q.aff)
     return MOI.ScalarQuadraticFunction(qterms, moi_aff.terms, moi_aff.constant)
 end
 
 function JuMP.jump_function_type(
-    obj::OptiObject,
-    ::Type{MOI.ScalarQuadraticFunction{C}},
+    obj::OptiObject, ::Type{MOI.ScalarQuadraticFunction{C}}
 ) where {C}
     return JuMP.GenericQuadExpr{C,NodeVariableRef}
 end
 
-function JuMP.jump_function(
-    obj::OptiObject,
-    f::MOI.ScalarQuadraticFunction{C},
-) where {C}
+function JuMP.jump_function(obj::OptiObject, f::MOI.ScalarQuadraticFunction{C}) where {C}
     return JuMP.GenericQuadExpr{C,NodeVariableRef}(obj, f)
 end
 
 function JuMP.GenericQuadExpr{C,NodeVariableRef}(
-    node::OptiNode,
-    f::MOI.ScalarQuadraticFunction,
+    node::OptiNode, f::MOI.ScalarQuadraticFunction
 ) where {C}
     quad = JuMP.GenericQuadExpr{C,NodeVariableRef}(
         JuMP.GenericAffExpr{C,NodeVariableRef}(
-            node,
-            MOI.ScalarAffineFunction(f.affine_terms, f.constant),
+            node, MOI.ScalarAffineFunction(f.affine_terms, f.constant)
         ),
     )
     for t in f.quadratic_terms
@@ -198,25 +157,18 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
         if v1 == v2
             coef /= 2
         end
-        add_to_expression!(
-            quad,
-            coef,
-            NodeVariableRef(node, v1),
-            NodeVariableRef(node, v2),
-        )
+        add_to_expression!(quad, coef, NodeVariableRef(node, v1), NodeVariableRef(node, v2))
     end
     return quad
 end
 
 function JuMP.GenericQuadExpr{C,NodeVariableRef}(
-    edge::OptiEdge,
-    f::MOI.ScalarQuadraticFunction,
+    edge::OptiEdge, f::MOI.ScalarQuadraticFunction
 ) where {C}
     # affine terms
     quad = JuMP.GenericQuadExpr{C,NodeVariableRef}(
         JuMP.GenericAffExpr{C,NodeVariableRef}(
-            edge,
-            MOI.ScalarAffineFunction(f.affine_terms, f.constant),
+            edge, MOI.ScalarAffineFunction(f.affine_terms, f.constant)
         ),
     )
     # quadratic terms
@@ -251,14 +203,12 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
 end
 
 function JuMP.GenericQuadExpr{C,NodeVariableRef}(
-    graph::OptiGraph,
-    f::MOI.ScalarQuadraticFunction,
+    graph::OptiGraph, f::MOI.ScalarQuadraticFunction
 ) where {C}
     # affine terms
     quad = JuMP.GenericQuadExpr{C,NodeVariableRef}(
         JuMP.GenericAffExpr{C,NodeVariableRef}(
-            graph,
-            MOI.ScalarAffineFunction(f.affine_terms, f.constant),
+            graph, MOI.ScalarAffineFunction(f.affine_terms, f.constant)
         ),
     )
     gb = graph_backend(graph)
@@ -296,10 +246,7 @@ end
 ### Nonlinear Expressions
 # adapted from: https://github.com/jump-dev/JuMP.jl/blob/master/src/nlp_expr.jl
 
-function JuMP.jump_function_type(
-    obj::OptiObject,
-    ::Type{MOI.ScalarNonlinearFunction},
-)
+function JuMP.jump_function_type(obj::OptiObject, ::Type{MOI.ScalarNonlinearFunction})
     V = JuMP.variable_ref_type(typeof(obj))
     return JuMP.GenericNonlinearExpr{V}
 end

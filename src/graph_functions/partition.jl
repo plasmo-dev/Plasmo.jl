@@ -4,8 +4,8 @@
 A data structure that describes a (possibly recursive) graph partition.
 """
 mutable struct Partition
-    optinodes::Vector{OptiNode}       
-    optiedges::Vector{OptiEdge}  
+    optinodes::Vector{OptiNode}
+    optiedges::Vector{OptiEdge}
     subpartitions::Vector{Partition}
 end
 
@@ -46,10 +46,7 @@ end
 Manually create a partition using `graph` and a vector of vectors containing sets 
 of optinodes that represent each partition.
 """
-function Partition(
-    graph::OptiGraph, 
-    optinode_vectors::Vector{Vector{OptiNode}}
-)
+function Partition(graph::OptiGraph, optinode_vectors::Vector{<:Vector{<:OptiNode}})
     _check_valid_partition(graph, optinode_vectors)
     hyper = hyper_projection(graph)
     return _build_hypernode_partition(graph, optinode_vectors, hyper)
@@ -61,13 +58,13 @@ end
 Manually create a partition using `graph` and a vector of vectors containing sets 
 of optiedges that represent each partition.
 """
-function Partition(graph::OptiGraph, optiedge_vectors::Vector{Vector{OptiEdge}})
+function Partition(graph::OptiGraph, optiedge_vectors::Vector{<:Vector{<:OptiEdge}})
     _check_valid_partition(graph, optiedge_vectors)
     hyper = hyper_projection(graph)
     optinode_vectors, cross_nodes = identify_nodes(hyper, optiedge_vectors)
     @assert length(optinode_vectors) == length(optiedge_vectors)
     node_incident_edges = incident_edges(hyper, cross_nodes) #incident edges to root partition nodes are also in root
-    
+
     partition = Partition()
     partition.optinodes = cross_nodes
     partition.optiedges = node_incident_edges
@@ -86,7 +83,7 @@ end
 Manually create a partition using `graph` and a vector subgraphs which represent 
 the partitions.
 """
-function Partition(graph::OptiGraph, subgraphs::Vector{OptiGraph})
+function Partition(graph::OptiGraph, subgraphs::Vector{GT}) where {GT<:AbstractOptiGraph}
     _check_valid_partition(graph, subgraphs)
     hyper = hyper_projection(graph)
     n_parts = length(subgraphs)
@@ -119,7 +116,7 @@ function Partition(projection::GraphProjection, membership_vector::Vector{Int64}
     induced = _induced_elements(projection.projected_graph, partition_vectors; kwargs...)
 
     # NOTE: elements could be optinode_vectors, optiedge_vectors, or subgraphs
-    partition_elements = _identify_partitions(projection, induced)  
+    partition_elements = _identify_partitions(projection, induced)
     partition = Partition(optigraph, partition_elements)
     return partition
 end
@@ -129,16 +126,15 @@ end
 #
 
 function _check_valid_partition(
-    graph::OptiGraph, optinode_vectors::Vector{Vector{OptiNode}}
+    graph::OptiGraph, optinode_vectors::Vector{<:Vector{<:OptiNode}}
 )
     all_subnodes = vcat(optinode_vectors...)
     all_graph_nodes = all_nodes(graph)
 
     #nodes can only be in one partition
-    length(all_subnodes) == length(union(all_subnodes)) || error(
-        "An optinode appears in multiple partition vectors. 
-        A partition requires distinct optinode vectors ",
-    )
+    length(all_subnodes) == length(union(all_subnodes)) ||
+        error("An optinode appears in multiple partition vectors. 
+              A partition requires distinct optinode vectors ")
 
     #all nodes must be in the optigraph
     all(node -> node in all_graph_nodes, all_subnodes) ||
@@ -147,7 +143,7 @@ function _check_valid_partition(
 end
 
 function _check_valid_partition(
-    graph::OptiGraph, optiedge_vectors::Vector{Vector{OptiEdge}}
+    graph::OptiGraph, optiedge_vectors::Vector{<:Vector{<:OptiEdge}}
 )
     all_subedges = vcat(optiedge_vectors...)
     all_graph_edges = all_edges(graph)
@@ -159,7 +155,9 @@ function _check_valid_partition(
     return true
 end
 
-function _check_valid_partition(graph::OptiGraph, subgraphs::Vector{OptiGraph})
+function _check_valid_partition(
+    graph::OptiGraph, subgraphs::Vector{GT}
+) where {GT<:AbstractOptiGraph}
     all_subnodes = vcat(all_nodes.(subgraphs)...)
     all_graph_nodes = all_nodes(graph)
 
@@ -180,10 +178,9 @@ function _check_valid_partition(graph::OptiGraph, subgraphs::Vector{OptiGraph})
 end
 
 function _check_valid_partition(graph::OptiGraph, partition::Partition)
-    isempty(setdiff(all_nodes(graph), all_nodes(partition))) || 
-        error(
-            "Invalid partition for graph. All optigraph nodes must be within the partition."
-        )
+    return isempty(setdiff(all_nodes(graph), all_nodes(partition))) || error(
+        "Invalid partition for graph. All optigraph nodes must be within the partition."
+    )
 end
 
 function _induced_elements(graph::GOI.HyperGraph, partitions::Vector)
@@ -222,7 +219,7 @@ function _identify_partitions(projection::GraphProjection, induced_elements::Vec
         return optinode_parts
     elseif isempty(vcat(optinode_parts...))
         return optiedge_parts
-    else 
+    else
         # create subgraphs to represent partition
         @assert !isempty(vcat(optiedge_parts...)) && !isempty(vcat(optinode_parts...))
         subgraphs = OptiGraph[]
@@ -236,10 +233,10 @@ function _identify_partitions(projection::GraphProjection, induced_elements::Vec
 end
 
 function _build_hypernode_partition(
-    graph::OptiGraph, 
-    optinode_vectors::Vector{Vector{OptiNode}},
-    hyper::HyperGraphProjection
-)    
+    graph::OptiGraph,
+    optinode_vectors::Vector{<:Vector{<:OptiNode}},
+    hyper::HyperGraphProjection,
+)
     optiedge_vectors, cross_edges = identify_edges(hyper, optinode_vectors)
     @assert length(optinode_vectors) == length(optiedge_vectors)
 
@@ -323,10 +320,7 @@ end
 
 Generate subgraphs in an optigraph using a partition.
 """
-function apply_partition!(
-    graph::OptiGraph, 
-    partition::Partition
-)
+function apply_partition!(graph::OptiGraph, partition::Partition)
     _check_valid_partition(graph, partition)
 
     graph.optinodes = OrderedSet(partition.optinodes)
@@ -344,7 +338,7 @@ function apply_partition!(
     # TODO: filter nodes and edges that actually need to be transferred
     # it is possible a node or edge source is defined in another graph.
     _transfer_elements!(graph, partition)
-    return
+    return nothing
 end
 
 """
@@ -359,7 +353,7 @@ function _make_subgraphs!(graph::OptiGraph, partition::Partition)
         _transfer_elements!(subgraph, subpartition)
         _make_subgraphs!(subgraph, subpartition)
     end
-    return
+    return nothing
 end
 
 function _transfer_elements!(new_graph::OptiGraph, partition::Partition)
@@ -369,7 +363,7 @@ function _transfer_elements!(new_graph::OptiGraph, partition::Partition)
     for edge in partition.optiedges
         _transfer_element!(new_graph, edge)
     end
-    return
+    return nothing
 end
 
 """
@@ -378,7 +372,7 @@ end
 function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
     # TODO: make sure `new_graph` has a backend to point to
     source = source_graph(node)
-    
+
     # update object dictionary
     # node_dict = JuMP.object_dictionary(node)
     node_dict = node_object_dictionary(node) # NOTE: will be slow for large partitions
@@ -390,7 +384,7 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
 
     # also delete source reference, since it gets created in _make_subgraphs!
     delete!(source.node_to_graphs, node)
-    
+
     # clean up the source graph
     for key in keys(node_dict)
         delete!(source.node_obj_dict, key)
@@ -398,7 +392,7 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
 
     # update the node source reference
     node.source_graph.x = new_graph
-    return
+    return nothing
 end
 
 """
@@ -422,10 +416,8 @@ function _transfer_element!(new_graph::OptiGraph, edge::OptiEdge)
 
     # update the edge source reference
     edge.source_graph.x = new_graph
-    return
+    return nothing
 end
-
-
 
 #IDEA: swap vertex and edge separators in the partition.  Return a new partition.
 #function swap_separators(graph::OptiGraph, partition::Partition)
@@ -448,7 +440,7 @@ function partition_to_subgraphs!(
     membership_vector = partition_func(hyper.projected_graph, args...; kwargs...)
     partition = Partition(projection, membership_vector)
     apply_partition!(graph, partition)
-    return
+    return nothing
 end
 
 """
@@ -456,14 +448,12 @@ end
 
 Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
 """
-function partition_to_tree!(
-    graph::OptiGraph, partition_func::Function, args...; kwargs...
-)
+function partition_to_tree!(graph::OptiGraph, partition_func::Function, args...; kwargs...)
     projection = build_edge_hyper_graph(graph)
     membership_vector = partition_func(projection.projected_graph, args...; kwargs...)
     partition = Partition(projection, membership_vector)
     apply_partition!(graph, partition)
-    return
+    return nothing
 end
 
 """
@@ -479,7 +469,6 @@ function partition_to_subgraph_tree!(
     partition = Partition(projection, membership_vector)
     return apply_partition!(graph, partition)
 end
-
 
 function Base.string(partition::Partition)
     return "OptiGraph Partition w/ $(n_subpartitions(partition)) subpartitions"

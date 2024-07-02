@@ -4,7 +4,7 @@
 Partition an optigraph with KaHyPar by creating a hypergraph projection.
 """
 function KaHyPar.partition(graph::OptiGraph, n_parts::Int64; kwargs...)
-   	projection = hyper_projection(graph)
+    projection = hyper_projection(graph)
     A = GOI.incidence_matrix(projection.projected_graph)
     node_sizes = [num_variables(node) for node in all_nodes(graph)]
     edge_weights = [num_constraints(node) for node in all_nodes(graph)]

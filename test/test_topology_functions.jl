@@ -85,11 +85,11 @@ function test_hypergraph_functions()
     neigh = Graphs.neighborhood(projection, [n2, n3], 1)
     @test Set(neigh) == Set([n1, n2, n3, n4])
 
-    expanded_graph_1 = expand(projection, [n1,n2], 1)
-    @test all_nodes(expanded_graph_1) == [n1,n2,n3]
+    expanded_graph_1 = expand(projection, [n1, n2], 1)
+    @test all_nodes(expanded_graph_1) == [n1, n2, n3]
 
-    expanded_graph_2 = expand(projection, [n1,n2], 2)
-    @test all_nodes(expanded_graph_2) == [n1,n2,n3,n4]
+    expanded_graph_2 = expand(projection, [n1, n2], 2)
+    @test all_nodes(expanded_graph_2) == [n1, n2, n3, n4]
 end
 
 function test_identify_functions()

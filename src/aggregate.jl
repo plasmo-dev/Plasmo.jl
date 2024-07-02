@@ -8,7 +8,7 @@ reference of the corresponding original optinode.
 struct GraphReferenceMap
     # map variables and from original optigraph to new aggregate node or graph
     var_map::OrderedDict{NodeVariableRef,NodeVariableRef}
-    con_map::OrderedDict{JuMP.ConstraintRef,JuMP.ConstraintRef}  
+    con_map::OrderedDict{JuMP.ConstraintRef,JuMP.ConstraintRef}
 end
 
 function Base.getindex(ref_map::GraphReferenceMap, vref::NodeVariableRef)
@@ -60,7 +60,7 @@ Aggregate an optigraph into a graph containing a single optinode.
 """
 function aggregate(graph::OptiGraph; name=gensym())
     # aggregate into a graph containing a single optinode
-    new_graph = OptiGraph(;name=name)
+    new_graph = OptiGraph(; name=name)
     new_node, ref_map = _copy_graph_elements_to!(new_graph, graph)
     # copy other model attributes (such as the objective function)
     # setup index_map from the ref_map
@@ -76,8 +76,8 @@ end
 """
 function _copy_graph_elements_to!(new_graph::OptiGraph, source_graph::OptiGraph)
     new_node = add_node(
-        new_graph; 
-        label=Symbol(new_graph.label, Symbol(".n"),length(new_graph.optinodes)+1)
+        new_graph;
+        label=Symbol(new_graph.label, Symbol(".n"), length(new_graph.optinodes) + 1),
     )
     ref_map = GraphReferenceMap()
 
@@ -98,9 +98,7 @@ end
 These attributes include all model and optimizer attributes
 """
 function _copy_attributes_to!(
-    new_graph::OptiGraph, 
-    source_graph::OptiGraph, 
-    ref_map::GraphReferenceMap
+    new_graph::OptiGraph, source_graph::OptiGraph, ref_map::GraphReferenceMap
 )
     src = graph_backend(source_graph)
     dest = graph_backend(new_graph)
@@ -122,17 +120,14 @@ function _copy_attributes_to!(
     end
     # TODO: avoid using direct reference to moi_backend
     MOIU.pass_attributes(dest.moi_backend, src.moi_backend, index_map)
-    return
+    return nothing
 end
-
 
 """
     Copy (append) the `source_node` backend model into `new_node`.
 """
 function _copy_node_to!(
-    new_node::OptiNode,
-    source_node::OptiNode, 
-    ref_map::GraphReferenceMap
+    new_node::OptiNode, source_node::OptiNode, ref_map::GraphReferenceMap
 )
     src = graph_backend(source_node)
     dest = graph_backend(new_node)
@@ -140,7 +135,7 @@ function _copy_node_to!(
 
     _copy_variables!(new_node, source_node, ref_map, index_map)
 
-    _copy_constraints!(new_node, source_node, ref_map, index_map)
+    return _copy_constraints!(new_node, source_node, ref_map, index_map)
 end
 
 """
@@ -154,15 +149,15 @@ function _copy_node_to!(new_graph::OptiGraph, source_node::OptiNode)
 end
 
 function _copy_variables!(
-    new_node::OptiNode, 
-    source_node::OptiNode, 
+    new_node::OptiNode,
+    source_node::OptiNode,
     ref_map::GraphReferenceMap,
-    index_map::MOIU.IndexMap
+    index_map::MOIU.IndexMap,
 )
     # get relevant backends
     src = graph_backend(source_node)
     dest = graph_backend(new_node)
-    
+
     # create new variables
     source_variables = all_variables(source_node)
     for nvref in source_variables
@@ -180,7 +175,7 @@ function _copy_variables!(
     # set new variable names
     for nvref in all_variables(source_node)
         new_variable = ref_map[nvref]
-        JuMP.set_name(new_variable, "$(new_node.label)"*"."*JuMP.name(nvref))
+        JuMP.set_name(new_variable, "$(new_node.label)" * "." * JuMP.name(nvref))
     end
 end
 
@@ -188,10 +183,10 @@ end
     Copy the constraints from a node or edge into a new node.
 """
 function _copy_constraints!(
-    new_node::OptiNode, 
-    source_element::OptiElement, 
+    new_node::OptiNode,
+    source_element::OptiElement,
     ref_map::GraphReferenceMap,
-    index_map::MOIU.IndexMap
+    index_map::MOIU.IndexMap,
 )
     # get relevant backends
     src = graph_backend(source_element)
@@ -201,7 +196,7 @@ function _copy_constraints!(
     constraint_types = MOI.get(src.moi_backend, MOI.ListOfConstraintTypesPresent())
     for (F, S) in constraint_types
         cis_src = MOI.get(source_element, MOI.ListOfConstraintIndices{F,S}())
-        index_map_FS = index_map[F,S]
+        index_map_FS = index_map[F, S]
         for ci in cis_src
             # TODO: use references to elements instead so we don't have to hardcode backend
             src_func = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
@@ -215,19 +210,14 @@ function _copy_constraints!(
 
             # create a new ConstraintRef
             new_constraint_index = next_constraint_index(
-                new_node, 
-                typeof(src_func), 
-                typeof(src_set)
+                new_node, typeof(src_func), typeof(src_set)
             )::MOI.ConstraintIndex{typeof(src_func),typeof(src_set)}
-            new_cref = ConstraintRef(new_node, new_constraint_index, new_shape);
+            new_cref = ConstraintRef(new_node, new_constraint_index, new_shape)
 
             # create new MOI function
             new_func = MOIU.map_indices(index_map, src_func)
             dest_index = _add_element_constraint_to_backend(
-                dest,
-                new_cref,
-                new_func,
-                src_set
+                dest, new_cref, new_func, src_set
             )
 
             # update index_map and ref_map
@@ -243,13 +233,11 @@ end
     Aggregate an optiedge `source_edge` into new optinode `new_node`.
 """
 function _copy_edge_to!(
-    new_node::OptiNode, 
-    source_edge::OptiEdge,
-    ref_map::GraphReferenceMap
+    new_node::OptiNode, source_edge::OptiEdge, ref_map::GraphReferenceMap
 )
     src = graph_backend(source_edge)
     dest = graph_backend(new_node)
-    
+
     # setup variable index map
     index_map = MOIU.IndexMap()
     vars = all_variables(source_edge)
@@ -261,7 +249,7 @@ function _copy_edge_to!(
 
     # copy constraints
     _copy_constraints!(new_node, source_edge, ref_map, index_map)
-    return 
+    return nothing
 end
 
 # TODO
@@ -269,9 +257,7 @@ end
     Aggregate an optiedge `source_edge` into new optinode `new_node`.
 """
 function _copy_edge_to!(
-    new_graph::OptiGraph, 
-    source_edge::OptiEdge,
-    ref_map::GraphReferenceMap
+    new_graph::OptiGraph, source_edge::OptiEdge, ref_map::GraphReferenceMap
 )
     # create a new edge
 

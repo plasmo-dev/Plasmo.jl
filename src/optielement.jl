@@ -15,30 +15,25 @@ function MOI.set(element::OptiElement, attr::MOI.AnyAttribute, args...)
 end
 
 function MOI.get(
-    element::OptiElement,
-    attr::AT,
-    cref::ConstraintRef
-) where AT <: MOI.AbstractConstraintAttribute
+    element::OptiElement, attr::AT, cref::ConstraintRef
+) where {AT<:MOI.AbstractConstraintAttribute}
     return MOI.get(graph_backend(element), attr, cref)
 end
 
 function MOI.set(
-    element::OptiElement,
-    attr::AT,
-    cref::ConstraintRef,
-    args...
-) where AT <: MOI.AbstractConstraintAttribute
+    element::OptiElement, attr::AT, cref::ConstraintRef, args...
+) where {AT<:MOI.AbstractConstraintAttribute}
     for graph in containing_optigraphs(element)
         MOI.set(graph_backend(element), attr, cref, args...)
     end
-    return
+    return nothing
 end
 
 function MOI.delete(element::OptiElement, cref::ConstraintRef)
     for graph in containing_optigraphs(element)
         MOI.delete(graph_backend(graph), cref)
     end
-    return
+    return nothing
 end
 
 #
@@ -55,8 +50,8 @@ Return a `ConstraintRef` given an optigraph element and `MOI.ConstraintIndex`.
 Note that the index is the index corresponding to the graph backend, not the element index.
 """
 function JuMP.constraint_ref_with_index(
-    element::OptiElement, 
-    idx::MOI.ConstraintIndex{<:MOI.AbstractScalarFunction, <:MOI.AbstractScalarSet}
+    element::OptiElement,
+    idx::MOI.ConstraintIndex{<:MOI.AbstractScalarFunction,<:MOI.AbstractScalarSet},
 )
     return JuMP.constraint_ref_with_index(graph_backend(element), idx)
 end
@@ -86,18 +81,14 @@ Return the total number of constraints on an element.
 """
 function JuMP.num_constraints(
     element::OptiElement,
-    function_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
-    set_type::Type{<:MOI.AbstractSet}
+    function_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
 )::Int64
     F = JuMP.moi_function_type(function_type)
     return MOI.get(element, MOI.NumberOfConstraints{F,set_type}())
 end
 
-function JuMP.num_constraints(
-    element::OptiElement,
-)::Int64
+function JuMP.num_constraints(element::OptiElement)::Int64
     num_cons = 0
     con_types = JuMP.list_of_constraint_types(element)
     for con_type in con_types
@@ -110,21 +101,16 @@ end
 
 function JuMP.all_constraints(
     element::OptiElement,
-    func_type::Type{
-        <:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}},
-    },
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
 )
     F = JuMP.moi_function_type(func_type)
     if set_type <: MOI.AbstractScalarSet
         constraint_ref_type = JuMP.ConstraintRef{
-            typeof(element),
-            MOI.ConstraintIndex{F,set_type},
-            ScalarShape,
+            typeof(element),MOI.ConstraintIndex{F,set_type},ScalarShape
         }
     else
-        constraint_ref_type =
-            ConstraintRef{typeof(element),MOI.ConstraintIndex{F,set_type}}
+        constraint_ref_type = ConstraintRef{typeof(element),MOI.ConstraintIndex{F,set_type}}
     end
     result = constraint_ref_type[]
     for idx in MOI.get(element, MOI.ListOfConstraintIndices{F,set_type}())
@@ -133,9 +119,7 @@ function JuMP.all_constraints(
     return result
 end
 
-function JuMP.all_constraints(
-    element::OptiElement,
-)
+function JuMP.all_constraints(element::OptiElement)
     constraints = ConstraintRef[]
     con_types = JuMP.list_of_constraint_types(element)
     for con_type in con_types

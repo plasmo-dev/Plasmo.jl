@@ -14,17 +14,17 @@ function _extract_variables(func::JuMP.GenericAffExpr)
 end
 
 function _extract_variables(func::JuMP.GenericQuadExpr)
-    quad_vars = vcat([[term[2];term[3]] for term in JuMP.quad_terms(func)]...)
+    quad_vars = vcat([[term[2]; term[3]] for term in JuMP.quad_terms(func)]...)
     aff_vars = _extract_variables(func.aff)
-    return union(quad_vars,aff_vars)
+    return union(quad_vars, aff_vars)
 end
 
 function _extract_variables(func::JuMP.GenericNonlinearExpr)
     vars = NodeVariableRef[]
-    for i = 1:length(func.args)
+    for i in 1:length(func.args)
         func_arg = func.args[i]
         if func_arg isa Number
-        	continue
+            continue
         elseif typeof(func_arg) == NodeVariableRef
             push!(vars, func_arg)
         else
