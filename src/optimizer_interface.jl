@@ -119,7 +119,11 @@ function JuMP.optimize!(
     end
 
     try
+        # make sure subgraph elements are tracked in parent graph after solve
         MOI.optimize!(graph_backend(graph))
+
+        # NOTE: we map after the solve because we need better checks on the backend
+        _map_subgraph_elements!(graph)
     catch err
         if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
             error(
@@ -132,6 +136,19 @@ function JuMP.optimize!(
     end
     graph.is_model_dirty = false
     return nothing
+end
+
+### utilities for tracking nodes and edges in subgraphs when optimizing a parent graph.
+
+function _map_subgraph_elements!(graph::OptiGraph)
+    for subgraph in local_subgraphs(graph)
+        for node in all_nodes(subgraph)
+            _track_node_in_graph(graph, node)
+        end
+        for edge in all_edges(subgraph)
+            _track_edge_in_graph(graph, edge)
+        end
+    end
 end
 
 #

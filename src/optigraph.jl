@@ -118,14 +118,25 @@ function add_node(
     node_index = NodeIndex(gensym()) #NodeIndex(length(graph.optinodes)+1)
     node = OptiNode(Ref(graph), node_index, label)
     push!(graph.optinodes, node)
-    _add_node(graph_backend(graph), node)
+    add_node(graph_backend(graph), node)
     return node
 end
 
 function add_node(graph::OptiGraph, node::OptiNode)
-    node in all_nodes(graph) && error("Cannot add the same node to a graph multiple times")
+    node in all_nodes(graph) && error("Node already exists within graph")
     push!(graph.optinodes, node)
-    _append_node_to_backend!(graph_backend(graph), node)
+    add_node(graph_backend(graph), node)
+    _track_node_in_graph(graph, node)
+    return nothing
+end
+
+function _track_node_in_graph(graph::OptiGraph, node::OptiNode)
+    source = source_graph(node)
+    if haskey(source.node_to_graphs, node)
+        push!(source.node_to_graphs[node], graph)
+    else
+        source.node_to_graphs[node] = [graph]
+    end
     return nothing
 end
 
@@ -204,7 +215,7 @@ function add_edge(
         edge = OptiEdge{typeof(graph)}(Ref(graph), label, OrderedSet(collect(nodes)))
         push!(graph.optiedges, edge)
         graph.optiedge_map[Set(collect(nodes))] = edge
-        _add_edge(graph_backend(graph), edge)
+        add_edge(graph_backend(graph), edge)
     end
     return edge
 end
@@ -212,7 +223,18 @@ end
 function add_edge(graph::OptiGraph, edge::OptiEdge)
     edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
     push!(graph.optiedges, edge)
-    _append_edge_to_backend!(graph_backend(graph), edge)
+    add_edge(graph_backend(graph), edge)
+    _track_edge_in_graph(graph, edge)
+    return nothing
+end
+
+function _track_edge_in_graph(graph::OptiGraph, edge::OptiEdge)
+    source = source_graph(edge)
+    if haskey(source.edge_to_graphs, edge)
+        push!(source.edge_to_graphs[edge], graph)
+    else
+        source.edge_to_graphs[edge] = [graph]
+    end
     return nothing
 end
 

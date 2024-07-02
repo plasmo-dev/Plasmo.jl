@@ -74,9 +74,9 @@ end
 """
     GraphMOIBackend
 
-Acts as an intermediate optimization layer. It uses references to underlying nodes in the graph
-It does not support modes yet. Eventually we will support more than CachingOptimizer
-try to support Direct, Manual, and Automatic modes here.
+Acts as an intermediate optimization layer. It maps graph elements to an MOI optimizer.
+The backend does not yet support more than a CachingOptimizer. We intend to
+support Direct, Manual, and Automatic modes just like JuMP at some point.
 """
 mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     optigraph::OptiGraph
@@ -134,12 +134,30 @@ function graph_operator(backend::GraphMOIBackend, element::OptiElement, name::Sy
     return backend.operator_map[(element, name)]
 end
 
+function add_node(backend::GraphMOIBackend, node::OptiNode)
+    _add_node(backend, node)
+    # if adding an existing node from another graph, we need to copy model attributes
+    if source_graph(node) != backend.optigraph
+        _copy_node_to_backend!(backend, node)
+    end
+    return nothing
+end
+
 function _add_node(backend::GraphMOIBackend, node::OptiNode)
     if !haskey(backend.node_variables, node)
         backend.node_variables[node] = MOI.VariableIndex[]
     end
     if !haskey(backend.element_constraints, node)
         backend.element_constraints[node] = MOI.ConstraintIndex[]
+    end
+    return nothing
+end
+
+function add_edge(backend::GraphMOIBackend, edge::OptiEdge)
+    _add_edge(backend, edge)
+    # if adding an existing edge from another graph, we need to copy model attributes
+    if source_graph(edge) != backend.optigraph
+        _copy_edge_to_backend!(backend, edge)
     end
     return nothing
 end
@@ -587,8 +605,10 @@ function _copy_subgraph_nodes!(backend::GraphMOIBackend, subgraph::OptiGraph)
     graph = backend.optigraph
     for node in all_nodes(subgraph) # NOTE: hits ALL NODES in the subgraph.
         # check to make sure we are not copying again
+        # TODO: check backend, not containing_optigraphs
         if !(graph in containing_optigraphs(node))
-            _append_node_to_backend!(backend, node)
+            _add_node(backend, node)
+            _copy_node_to_backend!(backend, node)
         end
     end
 end
@@ -598,25 +618,16 @@ function _copy_subgraph_edges!(backend::GraphMOIBackend, subgraph::OptiGraph)
     for edge in all_edges(subgraph)
         # check to make sure we are not copying again
         if !(graph in containing_optigraphs(edge))
-            _append_edge_to_backend!(backend, edge)
+            _add_edge(backend, edge)
+            _copy_edge_to_backend!(backend, edge)
         end
     end
 end
 
-function _append_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
-    # TODO: This code may need to go somewhere else.
-    # Add a reference in source graph to the new graph
-    graph = backend.optigraph
-    source = source_graph(node)
-    if haskey(source.node_to_graphs, node)
-        push!(source.node_to_graphs[node], graph)
-    else
-        source.node_to_graphs[node] = [graph]
-    end
-
+function _copy_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
     dest = backend
     index_map = MOIU.IndexMap()
-    _add_node(backend, node)
+
     # copy node variables and variable attributes
     _copy_node_variables(dest, node, index_map)
 
@@ -638,20 +649,10 @@ function _append_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
     return nothing
 end
 
-function _append_edge_to_backend!(backend::GraphMOIBackend, edge::OptiEdge)
-    # TODO: This code may need to go somewhere else.
-    # Add a reference in source graph to the new graph
-    graph = backend.optigraph
-    source = source_graph(edge)
-    if haskey(source.edge_to_graphs, edge)
-        push!(source.edge_to_graphs[edge], graph)
-    else
-        source.edge_to_graphs[edge] = [graph]
-    end
-
+function _copy_edge_to_backend!(backend::GraphMOIBackend, edge::OptiEdge)
     src = graph_backend(edge)
     dest = backend
-    _add_edge(backend, edge)
+
     # add variables in cases edge connects across subgraphs
     _add_backend_variables(dest, all_variables(edge))
 
@@ -743,7 +744,7 @@ function _copy_element_constraints(
         set = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
         cref = src.graph_to_element_map[ci]
 
-        # avoid creating duplicate constraints if destination has this reference already.
+        # avoid creating duplicate constraints if destination already has reference
         cref in keys(dest.element_to_graph_map.con_map) && return nothing
         dest_index = _add_element_constraint_to_backend(
             dest, cref, MOIU.map_indices(index_map, func), set

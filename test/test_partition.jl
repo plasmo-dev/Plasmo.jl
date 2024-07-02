@@ -60,7 +60,7 @@ function test_partition_manual()
     nodes = all_nodes(graph)
 
     @objective(graph, Min, sum(all_variables(graph)))
-    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
+    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 5))
     optimize!(graph)
     obj_val = objective_value(graph)
 
@@ -75,6 +75,10 @@ function test_partition_manual()
     new_graph = assemble_optigraph(partition)
     @test num_nodes(new_graph) == 100
     @test num_local_nodes(new_graph) == 0
+    # check that objective values are the same
+    @objective(new_graph, Min, sum(all_variables(new_graph)))
+    set_optimizer(new_graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 5))
+    optimize!(new_graph)
 
     # test `apply_partition!` and modify original graph
     apply_partition!(graph, partition)
