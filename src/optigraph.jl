@@ -605,7 +605,7 @@ end
 
 function JuMP.backend(graph::OptiGraph)
     # TODO: make this just graph backend
-    return graph_backend(graph).moi_backend
+    return graph_backend(graph)
 end
 
 function JuMP.object_dictionary(graph::OptiGraph)

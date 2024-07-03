@@ -120,6 +120,19 @@ function graph_index(
     return backend.element_to_graph_map[ref]
 end
 
+# JuMP Methods
+
+function JuMP.backend(backend::GraphMOIBackend)
+    return backend.moi_backend
+end
+
+function JuMP.set_optimizer(backend::GraphMOIBackend, optimizer)
+    return backend.moi_backend=MOIU.CachingOptimizer(
+        backend.moi_backend.model_cache, 
+        optimizer
+    )
+end
+
 function JuMP.constraint_ref_with_index(backend::GraphMOIBackend, idx::MOI.Index)
     return backend.graph_to_element_map[idx]
 end
@@ -169,22 +182,11 @@ function _add_edge(backend::GraphMOIBackend, edge::OptiEdge)
     return nothing
 end
 
-# JuMP Methods
+#
+# MOI Methods
+#
 
-function JuMP.backend(backend::GraphMOIBackend)
-    return backend.moi_backend
-end
-
-function JuMP.set_optimizer(backend::GraphMOIBackend, optimizer)
-    return backend.moi_backend=MOIU.CachingOptimizer(
-        backend.moi_backend.model_cache, 
-        optimizer
-    )
-end
-
-### MOI Methods
-
-# graph attributes
+### graph attributes
 
 function MOI.get(
     backend::GraphMOIBackend, attr::AT
@@ -255,7 +257,7 @@ function MOI.set(
     return backend.operator_map[(node, attr.name)] = registered_name
 end
 
-# variable attributes
+### variable attributes
 
 function MOI.get(
     backend::GraphMOIBackend, attr::AT, nvref::NodeVariableRef
@@ -272,7 +274,7 @@ function MOI.set(
     return nothing
 end
 
-# constraint attributes
+### constraint attributes
 
 function MOI.get(
     backend::GraphMOIBackend, attr::AT, cref::ConstraintRef
@@ -348,7 +350,7 @@ function MOI.modify(
     )
 end
 
-# delete
+### delete
 
 function MOI.delete(backend::GraphMOIBackend, nvref::NodeVariableRef)
     MOI.delete(backend.moi_backend, backend.element_to_graph_map[nvref])
@@ -364,7 +366,7 @@ function MOI.delete(backend::GraphMOIBackend, cref::ConstraintRef)
     return nothing
 end
 
-# is_valid
+### is_valid
 
 function MOI.is_valid(backend::GraphMOIBackend, vref::NodeVariableRef)
     return MOI.is_valid(backend.moi_backend, graph_index(vref))
@@ -382,7 +384,7 @@ function MOI.is_valid(backend::GraphMOIBackend, ci::MOI.ConstraintIndex)
     return MOI.is_valid(backend.moi_backend, ci)
 end
 
-# optimize!
+### optimize!
 
 function MOI.optimize!(backend::GraphMOIBackend)
     # If there are subgraphs, we need to copy their backend data to this graph
@@ -391,7 +393,9 @@ function MOI.optimize!(backend::GraphMOIBackend)
     return nothing
 end
 
-### Variables and Constraints
+#
+# MOI cariables and constraints
+#
 
 function MOI.add_variable(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
     # return if variable already exists in backend
@@ -463,8 +467,11 @@ function MOI.add_constraint(
     )
 end
 
-### Graph MOI Utilities
-# These utilities are meant to take model expressions defined over optinodes and 
+#
+# Graph MOI Utilities
+#
+
+# NOTE: These utilities are meant to take model expressions defined over optinodes and 
 # map them to the underlying optigraph backend indices. This way, nodes and edges
 # can be mapped to multiple possible optigraph backends.
 
@@ -598,8 +605,8 @@ function _add_backend_variables(backend::GraphMOIBackend, vars::Vector{NodeVaria
     return nothing
 end
 
-# add variables to a backend for linking across subgraphs
 function _add_backend_variables(backend::GraphMOIBackend, jump_func::JuMP.GenericAffExpr)
+    # add variables to a backend for linking across subgraphs
     vars = [term[2] for term in JuMP.linear_terms(jump_func)]
     _add_backend_variables(backend, vars)
     return nothing
@@ -629,7 +636,10 @@ function _add_backend_variables(
     return nothing
 end
 
-### Aggregate MOI backends
+#
+# Aggregate MOI backends
+#
+
 # Note that these methods do not create copies of nodes or edges; they create model 
 # data for new backends. The nodes and edges will then reference data for multiple backends. 
 
@@ -638,7 +648,6 @@ end
 
 Aggregate the moi backends from each subgraph within `graph` to create a single backend.
 """
-# function _copy_subgraph_backends!(graph::OptiGraph)
 function _copy_subgraph_backends!(backend::GraphMOIBackend)
     graph = backend.optigraph
     for subgraph in local_subgraphs(graph)
@@ -652,7 +661,7 @@ function _copy_subgraph_nodes!(backend::GraphMOIBackend, subgraph::OptiGraph)
     graph = backend.optigraph
     for node in all_nodes(subgraph) # NOTE: hits ALL NODES in the subgraph.
         # check to make sure we are not copying again
-        # TODO: check backend, not containing_optigraphs
+        # TODO: check the backend state, not the containing_optigraphs
         if !(graph in containing_optigraphs(node))
             _add_node(backend, node)
             _copy_node_to_backend!(backend, node)
@@ -716,7 +725,6 @@ function _copy_edge_to_backend!(backend::GraphMOIBackend, edge::OptiEdge)
     return nothing
 end
 
-# TODO: split this function so _copy_node_variables is more minimal.
 function _copy_node_variables(
     dest::GraphMOIBackend, node::OptiNode, index_map::MOIU.IndexMap
 )
@@ -752,6 +760,7 @@ end
 function _copy_element_constraints(
     dest::GraphMOIBackend, element::OptiElement, index_map::MOIU.IndexMap, constraint_types
 )
+    # copy constraints over
     for (F, S) in constraint_types
         cis_src = MOI.get(element, MOI.ListOfConstraintIndices{F,S}())
         _copy_element_constraints(dest, element, index_map, cis_src)
@@ -788,18 +797,18 @@ function _copy_element_constraints(
 )
     src = graph_backend(element)
     for ci in cis_src
+        # avoid creating duplicate constraints if destination already has reference
+        cref = src.graph_to_element_map[ci]
+        cref in keys(dest.element_to_graph_map.con_map) && return nothing
+
+        # add constraint
         func = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
         set = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
-        cref = src.graph_to_element_map[ci]
-
-        # avoid creating duplicate constraints if destination already has reference
-        cref in keys(dest.element_to_graph_map.con_map) && return nothing
-        # dest_index = _add_element_constraint_to_backend(
-        #     dest, cref, MOIU.map_indices(index_map, func), set
-        # )
         dest_index = MOI.add_constraint(
             dest, cref, MOIU.map_indices(index_map, func), set
         )
+
+        # update index_map
         index_map_FS[ci] = dest_index
     end
     return nothing

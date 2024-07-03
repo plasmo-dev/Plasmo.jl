@@ -64,9 +64,16 @@ end
 # set optimizer
 #
 
+# NOTE: _moi_mode copied from JuMP.jl
+# https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/JuMP.jl#L571-L575
+_moi_mode(::MOI.ModelLike) = DIRECT
+function _moi_mode(model::MOIU.CachingOptimizer)
+    return model.mode == MOIU.AUTOMATIC ? AUTOMATIC : MANUAL
+end
+
 # TODO: do not use private methods
 function JuMP.mode(graph::OptiGraph)
-    return JuMP._moi_mode(JuMP.backend(graph))
+    return _moi_mode(JuMP.backend(graph_backend(graph)))
 end
 
 function JuMP.error_if_direct_mode(graph::OptiGraph, func::Symbol)
@@ -83,13 +90,37 @@ function JuMP.set_optimizer(
     if add_bridges
         optimizer = MOI.instantiate(optimizer_constructor)#; with_bridge_type = T)
         for BT in graph.bridge_types
-            # TODO: do not use private methods
-            JuMP._moi_call_bridge_function(MOI.Bridges.add_bridge, optimizer, BT)
+            _moi_call_bridge_function(MOI.Bridges.add_bridge, optimizer, BT)
         end
     else
         optimizer = MOI.instantiate(optimizer_constructor)
     end
     return JuMP.set_optimizer(graph_backend(graph), optimizer)
+end
+
+# NOTE: _moi_call_bridge_function copied from JuMP.jl
+# https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/JuMP.jl#L678C1-L699C4
+function _moi_call_bridge_function(::Function, ::MOI.ModelLike, args...)
+    return error(
+        "Cannot use bridge if `add_bridges` was set to `false` in the `Model` ",
+        "constructor.",
+    )
+end
+
+function _moi_call_bridge_function(
+    f::Function,
+    model::MOI.Bridges.LazyBridgeOptimizer,
+    args...,
+)
+    return f(model, args...)
+end
+
+function _moi_call_bridge_function(
+    f::Function,
+    model::MOI.Utilities.CachingOptimizer,
+    args...,
+)
+    return _moi_call_bridge_function(f, model.optimizer, args...)
 end
 
 # mostly copied from: https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
@@ -98,7 +129,6 @@ function JuMP.optimize!(
     #ignore_optimize_hook = (graph.optimize_hook === nothing),
     kwargs...,
 )
-
     # TODO: optimize hooks for optigraphs
     # If the user or an extension has provided an optimize hook, call
     # that instead of solving the model ourselves
@@ -109,7 +139,7 @@ function JuMP.optimize!(
     if !isempty(kwargs)
         error("Unrecognized keyword arguments: $(join([k[1] for k in kwargs], ", "))")
     end
-    if JuMP.mode(graph) != DIRECT && MOIU.state(JuMP.backend(graph)) == MOIU.NO_OPTIMIZER
+    if JuMP.mode(graph) != DIRECT && MOIU.state(JuMP.backend(graph_backend(graph))) == MOIU.NO_OPTIMIZER
         throw(JuMP.NoOptimizer())
     end
 
@@ -117,13 +147,13 @@ function JuMP.optimize!(
         # make sure subgraph elements are tracked in parent graph after solve
         MOI.optimize!(graph_backend(graph))
 
-        # NOTE: we map after the solve because we need better checks on the backend
+        # NOTE: we map after the solve because we need better checks on the backend 
+        # (i.e. checks that determine whether we need to aggregate the backends)
         _map_subgraph_elements!(graph)
     catch err
         if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
             error(
-                "The solver does not support nonlinear problems " *
-                "(i.e., NLobjective and NLconstraint).",
+                "The solver does not support nonlinear problems"
             )
         else
             rethrow(err)
@@ -203,6 +233,7 @@ end
 function JuMP.set_optimizer(
     node::OptiNode, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
 )
+    # determine the graph to use to optimize the node
     if !haskey(source_graph(node).node_graphs, node)
         node_graph = assemble_optigraph(node)
         source_graph(node).node_graphs[node] = node_graph
