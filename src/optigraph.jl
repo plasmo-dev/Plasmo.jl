@@ -179,6 +179,13 @@ function get_node(graph::OptiGraph, idx::Int)
     return collect(graph.optinodes)[idx]
 end
 
+function add_node!(graph::OptiGraph, m::JuMP.Model, label::String)
+    optinode = add_node!(graph)
+    set_model(optinode, m)
+    optinode.label = label
+    return optinode
+end
+
 """
     collect_nodes(jump_func::T where T <: JuMP.AbstractJuMPScalar)
 
