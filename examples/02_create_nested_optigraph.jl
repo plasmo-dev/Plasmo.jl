@@ -11,7 +11,7 @@ function add_model(graph::OptiGraph)
 end
 
 # the top-level graph
-graph = OptiGraph(;name=:graph)
+graph = OptiGraph(;name=:my_graph)
 
 # subgraph 1
 subgraph1 = OptiGraph(;name=:sg1)

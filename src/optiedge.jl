@@ -101,11 +101,7 @@ function _moi_add_edge_constraint(edge::OptiEdge, con::JuMP.AbstractConstraint)
     # add to each containing optigraph
     for graph in containing_optigraphs(edge)
         MOI.add_constraint(
-            graph_backend(graph), 
-            cref, 
-            jump_func, 
-            moi_set;
-            add_variables=true
+            graph_backend(graph), cref, jump_func, moi_set; add_variables=true
         )
     end
     return cref

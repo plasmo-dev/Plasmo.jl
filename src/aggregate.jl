@@ -216,9 +216,7 @@ function _copy_constraints!(
 
             # create new MOI function
             new_func = MOIU.map_indices(index_map, src_func)
-            dest_index = MOI.add_constraint(
-                dest, new_cref, new_func, src_set
-            )
+            dest_index = MOI.add_constraint(dest, new_cref, new_func, src_set)
 
             # update index_map and ref_map
             index_map_FS[ci] = dest_index

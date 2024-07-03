@@ -24,7 +24,37 @@ function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
 end
 
 function Base.string(graph::OptiGraph)
-    return "OptiGraph" * " " * Base.string(graph.label)
+    return @sprintf(
+        """
+        An OptiGraph: %9s
+        %16s %10s %16s
+        --------------------------------------------------
+        %16s %9s %16s
+        %16s %9s %16s
+        %16s %9s %16s
+        %16s %9s %16s
+        %16s %9s %16s
+        """,
+        "$(name(graph))",
+        "",
+        "#local elements",
+        "#total elements",
+        "Nodes:",
+        num_local_nodes(graph),
+        num_nodes(graph),
+        "Edges:",
+        num_local_edges(graph),
+        num_edges(graph),
+        "Subgraphs:",
+        num_local_subgraphs(graph),
+        num_subgraphs(graph),
+        "Variables:",
+        num_local_variables(graph),
+        num_variables(graph),
+        "Constraints:",
+        num_local_constraints(graph),
+        num_constraints(graph)
+    )
 end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
 Base.show(io::IO, graph::OptiGraph) = Base.print(io, graph)
@@ -83,11 +113,16 @@ end
 
 Create a new optigraph from a collection of nodes and edges.
 """
-function assemble_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge})
+function assemble_optigraph(
+    nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge}; name=nothing
+)
     is_valid_optigraph(nodes, edges) ||
         error("The provided nodes and edges are not a valid optigraph. 
               All connected edge nodes must be provided in the node vector.")
     graph = _assemble_optigraph(nodes, edges)
+    if name != nothing
+        JuMP.set_name(graph, name)
+    end
     return graph
 end
 
@@ -299,6 +334,14 @@ function num_edges(graph::OptiGraph)
     return n_edges
 end
 
+function num_local_elements(graph::OptiGraph)
+    return num_local_nodes(graph) + num_local_edges(graph)
+end
+
+function num_elements(graph::OptiGraph)
+    return num_nodes(graph) + num_edges(graph)
+end
+
 function local_elements(graph::OptiGraph)
     return [local_nodes(graph); local_edges(graph)]
 end
@@ -439,11 +482,21 @@ function num_local_constraints(
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
 )
-    return sum(JuMP.num_constraints.(local_elements(graph), Ref(func_type), Ref(set_type)))
+    if num_local_elements(graph) == 0
+        return 0
+    else
+        return sum(
+            JuMP.num_constraints.(local_elements(graph), Ref(func_type), Ref(set_type))
+        )
+    end
 end
 
 function num_local_constraints(graph::OptiGraph)
-    return sum(JuMP.num_constraints.(local_elements(graph)))
+    if num_local_elements(graph) == 0
+        return 0
+    else
+        return sum(JuMP.num_constraints.(local_elements(graph)))
+    end
 end
 
 function local_constraints(
@@ -476,10 +529,23 @@ end
 # JuMP Methods
 #
 
+function JuMP.name(graph::OptiGraph)
+    return Base.string(graph.label)
+end
+
+function JuMP.set_name(graph::OptiGraph, name::Symbol)
+    graph.label = name
+    return nothing
+end
+
 ### Variables
 
 function JuMP.all_variables(graph::OptiGraph)
     return vcat(JuMP.all_variables.(all_nodes(graph))...)
+end
+
+function num_local_variables(graph::OptiGraph)
+    return sum(JuMP.num_variables.(local_nodes(graph)))
 end
 
 function JuMP.num_variables(graph::OptiGraph)

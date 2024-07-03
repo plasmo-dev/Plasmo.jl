@@ -306,11 +306,14 @@ end
 """
     Assemble a new optigraph from a given `Partition`.
 """
-function assemble_optigraph(partition::Partition)
+function assemble_optigraph(partition::Partition; name=nothing)
     new_graph = _assemble_optigraph(partition.optinodes, partition.optiedges)
     for subpartition in partition.subpartitions
         subgraph = _assemble_optigraph(subpartition.optinodes, subpartition.optiedges)
         add_subgraph(new_graph, subgraph)
+    end
+    if name != nothing
+        JuMP.set_name(new_graph, name)
     end
     return new_graph
 end

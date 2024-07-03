@@ -108,17 +108,13 @@ function _moi_call_bridge_function(::Function, ::MOI.ModelLike, args...)
 end
 
 function _moi_call_bridge_function(
-    f::Function,
-    model::MOI.Bridges.LazyBridgeOptimizer,
-    args...,
+    f::Function, model::MOI.Bridges.LazyBridgeOptimizer, args...
 )
     return f(model, args...)
 end
 
 function _moi_call_bridge_function(
-    f::Function,
-    model::MOI.Utilities.CachingOptimizer,
-    args...,
+    f::Function, model::MOI.Utilities.CachingOptimizer, args...
 )
     return _moi_call_bridge_function(f, model.optimizer, args...)
 end
@@ -139,7 +135,8 @@ function JuMP.optimize!(
     if !isempty(kwargs)
         error("Unrecognized keyword arguments: $(join([k[1] for k in kwargs], ", "))")
     end
-    if JuMP.mode(graph) != DIRECT && MOIU.state(JuMP.backend(graph_backend(graph))) == MOIU.NO_OPTIMIZER
+    if JuMP.mode(graph) != DIRECT &&
+        MOIU.state(JuMP.backend(graph_backend(graph))) == MOIU.NO_OPTIMIZER
         throw(JuMP.NoOptimizer())
     end
 
@@ -152,9 +149,7 @@ function JuMP.optimize!(
         _map_subgraph_elements!(graph)
     catch err
         if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
-            error(
-                "The solver does not support nonlinear problems"
-            )
+            error("The solver does not support nonlinear problems")
         else
             rethrow(err)
         end

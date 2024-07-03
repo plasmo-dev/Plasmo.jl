@@ -257,9 +257,7 @@ function _copy_model_to!(node::OptiNode, model::JuMP.Model)
             # new optinode cref
             new_cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
             new_func = MOIU.map_indices(index_map, src_func)
-            dest_index = MOI.add_constraint(
-                dest, new_cref, new_func, src_set
-            )
+            dest_index = MOI.add_constraint(dest, new_cref, new_func, src_set)
             index_map_FS[ci] = dest_index
         end
         # pass constraint attributes

@@ -6,4 +6,4 @@ docs/build/
 _*
 Manifest.toml
 docs/Manifest.toml
-src/notes.txt
+examples/notebooks/*ipynb_checkpoints

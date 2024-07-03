@@ -127,9 +127,8 @@ function JuMP.backend(backend::GraphMOIBackend)
 end
 
 function JuMP.set_optimizer(backend::GraphMOIBackend, optimizer)
-    return backend.moi_backend=MOIU.CachingOptimizer(
-        backend.moi_backend.model_cache, 
-        optimizer
+    return backend.moi_backend = MOIU.CachingOptimizer(
+        backend.moi_backend.model_cache, optimizer
     )
 end
 
@@ -353,16 +352,32 @@ end
 ### delete
 
 function MOI.delete(backend::GraphMOIBackend, nvref::NodeVariableRef)
-    MOI.delete(backend.moi_backend, backend.element_to_graph_map[nvref])
+    index = backend.element_to_graph_map[nvref]
+    MOI.delete(backend.moi_backend, index)
+
+    # delete from list
+    list_index = findall(x -> x == index, backend.node_variables[nvref.node])
+    deleteat!(backend.node_variables[nvref.node], list_index)
+
+    # delete dictionary entries
     delete!(backend.graph_to_element_map.var_map, backend.element_to_graph_map[nvref])
     delete!(backend.element_to_graph_map.var_map, nvref)
     return nothing
 end
 
 function MOI.delete(backend::GraphMOIBackend, cref::ConstraintRef)
-    MOI.delete(backend.moi_backend, backend.element_to_graph_map[cref])
+    # delete backend index
+    index = backend.element_to_graph_map[cref]
+    MOI.delete(backend.moi_backend, index)
+
+    # delete from list
+    list_index = findall(x -> x == index, backend.element_constraints[cref.model])
+    deleteat!(backend.element_constraints[cref.model], list_index)
+
+    # delete dicionary entries
     delete!(backend.graph_to_element_map.con_map, backend.element_to_graph_map[cref])
     delete!(backend.element_to_graph_map.con_map, cref)
+
     return nothing
 end
 
@@ -417,38 +432,38 @@ function MOI.add_variable(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
 end
 
 function MOI.add_constraint(
-    backend::GraphMOIBackend, 
-    cref::ConstraintRef, 
-    moi_func::F, 
+    backend::GraphMOIBackend,
+    cref::ConstraintRef,
+    moi_func::F,
     moi_set::S;
-    add_variables=false
+    add_variables=false,
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     # return if reference already mapped to element
     cref in keys(backend.element_to_graph_map.con_map) && return nothing
-    
+
     # create key for element if necessary
     if !haskey(backend.element_constraints, cref.model)
         graph_backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
     end
-    
+
     # create the constraint
     graph_con_index = MOI.add_constraint(backend.moi_backend, moi_func, moi_set)
-    
+
     # map reference to index
     backend.element_to_graph_map[cref] = graph_con_index
     backend.graph_to_element_map[graph_con_index] = cref
-    
+
     # add index to element map
     push!(backend.element_constraints[cref.model], graph_con_index)
     return graph_con_index
 end
 
 function MOI.add_constraint(
-    backend::GraphMOIBackend, 
-    cref::ConstraintRef, 
-    jump_func::F, 
+    backend::GraphMOIBackend,
+    cref::ConstraintRef,
+    jump_func::F,
     moi_set::S;
-    add_variables=false
+    add_variables=false,
 ) where {F<:JuMP.AbstractJuMPScalar,S<:MOI.AbstractSet}
     # add backend variables if necessary (such as adding links across graphs)
     if add_variables
@@ -459,11 +474,7 @@ function MOI.add_constraint(
     moi_func = JuMP.moi_function(jump_func)
     moi_func_graph = _create_graph_moi_func(backend, moi_func, jump_func)
     return MOI.add_constraint(
-        backend, 
-        cref, 
-        moi_func_graph, 
-        moi_set; 
-        add_variables=add_variables
+        backend, cref, moi_func_graph, moi_set; add_variables=add_variables
     )
 end
 
@@ -804,9 +815,7 @@ function _copy_element_constraints(
         # add constraint
         func = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
         set = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
-        dest_index = MOI.add_constraint(
-            dest, cref, MOIU.map_indices(index_map, func), set
-        )
+        dest_index = MOI.add_constraint(dest, cref, MOIU.map_indices(index_map, func), set)
 
         # update index_map
         index_map_FS[ci] = dest_index
