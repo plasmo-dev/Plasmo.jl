@@ -154,7 +154,7 @@ function _moi_add_node_constraint(node::OptiNode, con::JuMP.AbstractConstraint)
     moi_func = JuMP.moi_function(con)
     moi_set = JuMP.moi_set(con)
 
-    # create constraint reference
+    # create constraint index and reference
     constraint_index = next_constraint_index(
         node, typeof(moi_func), typeof(moi_set)
     )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
@@ -162,13 +162,14 @@ function _moi_add_node_constraint(node::OptiNode, con::JuMP.AbstractConstraint)
 
     # add to each containing optigraph
     for graph in containing_optigraphs(node)
-        # update func variable indices
-        moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
+        # # update func variable indices
+        # moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
 
-        # add contraint to backend
-        _add_element_constraint_to_backend(
-            graph_backend(graph), cref, moi_func_graph, moi_set
-        )
+        # # add contraint to backend
+        # _add_element_constraint_to_backend(
+        #     graph_backend(graph), cref, moi_func_graph, moi_set
+        # )
+        MOI.add_constraint(graph_backend(graph), cref, jump_func, moi_set)
     end
     return cref
 end
@@ -234,7 +235,7 @@ function _copy_model_to!(node::OptiNode, model::JuMP.Model)
     for vref in source_variables
         new_variable_index = next_variable_index(node)
         new_vref = NodeVariableRef(node, new_variable_index)
-        _add_variable_to_backend(dest, new_vref)
+        MOI.add_variable(dest, new_vref)
         index_map[JuMP.index(vref)] = graph_index(new_vref)
     end
 
@@ -256,7 +257,7 @@ function _copy_model_to!(node::OptiNode, model::JuMP.Model)
             # new optinode cref
             new_cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
             new_func = MOIU.map_indices(index_map, src_func)
-            dest_index = _add_element_constraint_to_backend(
+            dest_index = MOI.add_constraint(
                 dest, new_cref, new_func, src_set
             )
             index_map_FS[ci] = dest_index

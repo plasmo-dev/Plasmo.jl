@@ -163,7 +163,7 @@ function _copy_variables!(
     for nvref in source_variables
         new_variable_index = next_variable_index(new_node)
         new_vref = NodeVariableRef(new_node, new_variable_index)
-        _add_variable_to_backend(dest, new_vref)
+        MOI.add_variable(dest, new_vref)
         index_map[graph_index(nvref)] = graph_index(new_vref)
         ref_map[nvref] = new_vref
     end
@@ -216,7 +216,7 @@ function _copy_constraints!(
 
             # create new MOI function
             new_func = MOIU.map_indices(index_map, src_func)
-            dest_index = _add_element_constraint_to_backend(
+            dest_index = MOI.add_constraint(
                 dest, new_cref, new_func, src_set
             )
 

@@ -59,8 +59,7 @@ end
 ### Edge Variables
 
 function JuMP.all_variables(edge::OptiEdge)
-    gb = graph_backend(edge)
-    con_refs = getindex.(Ref(gb.graph_to_element_map), gb.element_constraints[edge])
+    con_refs = JuMP.all_constraints(edge)
     vars = vcat(_extract_variables.(con_refs)...)
     return unique(vars)
 end
@@ -98,18 +97,15 @@ function _moi_add_edge_constraint(edge::OptiEdge, con::JuMP.AbstractConstraint)
     )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
     cref = ConstraintRef(edge, constraint_index, JuMP.shape(con))
 
-    # update graph backends
     # TODO: disentangle backend interface
+    # add to each containing optigraph
     for graph in containing_optigraphs(edge)
-        # add backend variables if linking across optigraphs
-        _add_backend_variables(graph_backend(graph), jump_func)
-
-        # update the moi function variable indices
-        moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
-
-        # add the constraint to the backend
-        _add_element_constraint_to_backend(
-            graph_backend(graph), cref, moi_func_graph, moi_set
+        MOI.add_constraint(
+            graph_backend(graph), 
+            cref, 
+            jump_func, 
+            moi_set;
+            add_variables=true
         )
     end
     return cref

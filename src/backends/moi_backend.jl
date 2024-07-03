@@ -393,12 +393,14 @@ end
 
 ### Variables and Constraints
 
-function _add_variable_to_backend(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
-    # return if variable already in backend
+function MOI.add_variable(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
+    # return if variable already exists in backend
     vref in keys(graph_backend.element_to_graph_map.var_map) && return nothing
 
-    # add variable, track index
+    # add the variable
     graph_var_index = MOI.add_variable(graph_backend.moi_backend)
+
+    # map reference to index
     graph_backend.element_to_graph_map[vref] = graph_var_index
     graph_backend.graph_to_element_map[graph_var_index] = vref
 
@@ -410,18 +412,55 @@ function _add_variable_to_backend(graph_backend::GraphMOIBackend, vref::NodeVari
     return graph_var_index
 end
 
-function _add_element_constraint_to_backend(
-    graph_backend::GraphMOIBackend, cref::ConstraintRef, func::F, set::S
+function MOI.add_constraint(
+    backend::GraphMOIBackend, 
+    cref::ConstraintRef, 
+    moi_func::F, 
+    moi_set::S;
+    add_variables=false
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    cref in keys(graph_backend.element_to_graph_map.con_map) && return nothing
-    if !haskey(graph_backend.element_constraints, cref.model)
+    # return if reference already mapped to element
+    cref in keys(backend.element_to_graph_map.con_map) && return nothing
+    
+    # create key for element if necessary
+    if !haskey(backend.element_constraints, cref.model)
         graph_backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
     end
-    graph_con_index = MOI.add_constraint(graph_backend.moi_backend, func, set)
-    graph_backend.element_to_graph_map[cref] = graph_con_index
-    graph_backend.graph_to_element_map[graph_con_index] = cref
-    push!(graph_backend.element_constraints[cref.model], graph_con_index)
+    
+    # create the constraint
+    graph_con_index = MOI.add_constraint(backend.moi_backend, moi_func, moi_set)
+    
+    # map reference to index
+    backend.element_to_graph_map[cref] = graph_con_index
+    backend.graph_to_element_map[graph_con_index] = cref
+    
+    # add index to element map
+    push!(backend.element_constraints[cref.model], graph_con_index)
     return graph_con_index
+end
+
+function MOI.add_constraint(
+    backend::GraphMOIBackend, 
+    cref::ConstraintRef, 
+    jump_func::F, 
+    moi_set::S;
+    add_variables=false
+) where {F<:JuMP.AbstractJuMPScalar,S<:MOI.AbstractSet}
+    # add backend variables if necessary (such as adding links across graphs)
+    if add_variables
+        _add_backend_variables(backend, jump_func)
+    end
+
+    # assemble MOI function for graph backend
+    moi_func = JuMP.moi_function(jump_func)
+    moi_func_graph = _create_graph_moi_func(backend, moi_func, jump_func)
+    return MOI.add_constraint(
+        backend, 
+        cref, 
+        moi_func_graph, 
+        moi_set; 
+        add_variables=add_variables
+    )
 end
 
 ### Graph MOI Utilities
@@ -553,7 +592,8 @@ end
 function _add_backend_variables(backend::GraphMOIBackend, vars::Vector{NodeVariableRef})
     vars_to_add = setdiff(vars, keys(backend.element_to_graph_map.var_map))
     for var in vars_to_add
-        _add_variable_to_backend(backend, var)
+        # _add_variable_to_backend(backend, var)
+        MOI.add_variable(backend, var)
     end
     return nothing
 end
@@ -698,7 +738,8 @@ function _copy_node_variables(
     vars_to_add = setdiff(node_variables, keys(dest.element_to_graph_map.var_map))
     for var in vars_to_add
         src_graph_index = graph_index(var)
-        dest_graph_index = _add_variable_to_backend(dest, var)
+        #dest_graph_index = _add_variable_to_backend(dest, var)
+        dest_graph_index = MOI.add_variable(dest, var)
         index_map[src_graph_index] = dest_graph_index
     end
 
@@ -753,7 +794,10 @@ function _copy_element_constraints(
 
         # avoid creating duplicate constraints if destination already has reference
         cref in keys(dest.element_to_graph_map.con_map) && return nothing
-        dest_index = _add_element_constraint_to_backend(
+        # dest_index = _add_element_constraint_to_backend(
+        #     dest, cref, MOIU.map_indices(index_map, func), set
+        # )
+        dest_index = MOI.add_constraint(
             dest, cref, MOIU.map_indices(index_map, func), set
         )
         index_map_FS[ci] = dest_index

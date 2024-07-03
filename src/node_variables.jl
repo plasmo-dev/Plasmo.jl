@@ -72,16 +72,16 @@ end
 function _moi_add_node_variable(node::OptiNode, v::JuMP.AbstractVariable)
     # get a new variable index and create a reference
     variable_index = next_variable_index(node)
-    vref = NodeVariableRef(node, variable_index)
+    nvref = NodeVariableRef(node, variable_index)
 
     # add variable to all containing optigraphs
     for graph in containing_optigraphs(node)
-        _add_variable_to_backend(graph_backend(graph), vref)
+        MOI.add_variable(graph_backend(graph), nvref)
     end
 
     # constrain node variable (hits all graph backends)
-    _moi_constrain_node_variable(vref, v.info, Float64)
-    return vref
+    _moi_constrain_node_variable(nvref, v.info, Float64)
+    return nvref
 end
 
 function _moi_constrain_node_variable(nvref::NodeVariableRef, info, ::Type{T}) where {T}

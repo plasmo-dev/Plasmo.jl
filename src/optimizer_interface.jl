@@ -64,7 +64,7 @@ end
 # set optimizer
 #
 
-# TODO: call to backend
+# TODO: do not use private methods
 function JuMP.mode(graph::OptiGraph)
     return JuMP._moi_mode(JuMP.backend(graph))
 end
@@ -89,12 +89,6 @@ function JuMP.set_optimizer(
     else
         optimizer = MOI.instantiate(optimizer_constructor)
     end
-    # Update the backend to create a new, concretely typed CachingOptimizer
-    # using the existing `model_cache`.
-    # gb = graph_backend(graph)
-    # return gb.moi_backend = MOIU.CachingOptimizer(
-    #     JuMP.backend(graph).model_cache, optimizer
-    # )
     return JuMP.set_optimizer(graph_backend(graph), optimizer)
 end
 
