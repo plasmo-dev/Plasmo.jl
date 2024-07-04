@@ -71,7 +71,6 @@ function _moi_mode(model::MOIU.CachingOptimizer)
     return model.mode == MOIU.AUTOMATIC ? AUTOMATIC : MANUAL
 end
 
-# TODO: do not use private methods
 function JuMP.mode(graph::OptiGraph)
     return _moi_mode(JuMP.backend(graph_backend(graph)))
 end

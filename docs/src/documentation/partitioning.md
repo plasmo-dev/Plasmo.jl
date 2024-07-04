@@ -1,9 +1,9 @@
-# Graph Partitioning and Processing
+# Graph Processing and Analysis
 The [Modeling with OptiGraphs](@ref) section describes how to construct optigraphs using a bottom-up approach with a focus on [Hierarchical Modeling using Subgraphs](@ref) to create multi-level optigraphs.
 Plasmo.jl also supports creating multi-level optigraphs using a top-down approach. This is done using the optigraph partition functions and interfaces to standard graph partitioning tools such
 as [Metis](https://github.com/JuliaSparse/Metis.jl) and [KaHyPar](https://github.com/kahypar/KaHyPar.jl).
 
-## Example Partitioning Problem: Dynamic Optimization
+## Illustrative Example: Dynamic Optimization
 To help demonstrate graph partitioning capabilities in Plasmo.jl, we instantiate a simple optimal control problem described by the following equations. In this problem, ``x`` is a vector of states and ``u`` is a vector of control
 actions which are both indexed over the set of time indices ``t \in \{1,...,T\}``. The objective function minimizes the state trajectory with minimal control effort, the second equation describes the
 state dynamics, and the third equation defines the initial condition. The last two equations define limits on the state and control actions.
@@ -12,8 +12,8 @@ state dynamics, and the third equation defines the initial condition. The last t
     DocTestSetup = quote
     using Plasmo
 
-    T = 100          #number of time points
-    d = sin.(1:T)    #disturbance vector
+    T = 100          # number of time points
+    d = sin.(1:T)    # disturbance vector (a sin wave)
 
     graph = OptiGraph()
     @optinode(graph,state[1:T])
@@ -30,9 +30,10 @@ state dynamics, and the third equation defines the initial condition. The last t
         @objective(node,Min,u^2)
     end
 
-    @linkconstraint(graph,[i = 1:T-1],state[i+1][:x] == state[i][:x] + control[i][:u] + d[i])
+    @linkconstraint(graph, [i = 1:T-1], state[i+1][:x] == state[i][:x] + control[i][:u] + d[i])
     n1 = state[1]
-    @constraint(n1,n1[:x] == 0)
+    JuMP.fix(n1[:x], 0)
+    #@constraint(n1,n1[:x] == 0)
 end
 ```
 
@@ -52,8 +53,8 @@ objective functions for each optinode, and we use link-constraints to describe t
 ```julia
 using Plasmo
 
-T = 100          #number of time points
-d = sin.(1:T)    #disturbance vector
+T = 100          # number of time points
+d = sin.(1:T)    # disturbance vector (a sin wave)
 
 graph = OptiGraph()
 @optinode(graph,state[1:T])
@@ -72,7 +73,8 @@ end
 
 @linkconstraint(graph,[i = 1:T-1],state[i+1][:x] == state[i][:x] + control[i][:u] + d[i])
 n1 = state[1]
-@constraint(n1,n1[:x] == 0)
+JuMP.fix(n1[:x], 0)
+#@constraint(n1,n1[:x] == 0)
 ```
 
 When we print the newly created optigraph for our optimal control problem, we see it contains about 200 optinodes (one for each state and control) and contains almost 100 linking constraints (which couple the time periods).
@@ -131,6 +133,18 @@ plt_chain_matrix = matrix_plot(graph)
 
 ![partition_layout_1](../assets/chain_layout.svg) ![partition_matrix_1](../assets/chain_layout_matrix.svg)
 
+## OptiGraph Projections
+
+!!! note
+
+    Documentation coming soon!
+
+
+## Querying Topology
+
+!!! note
+
+    Documentation coming soon!
 
 ## Partitioning OptiGraphs
 At its core, the [`OptiGraph`](@ref) is a [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) and can naturally interface to hypergraph partitioning tools.  
@@ -282,8 +296,4 @@ plt_chain_matrix_aggregate = matrix_plot(aggregate_graph,
 ![partition_layout_3](../assets/chain_layout_aggregate.svg) ![partition_matrix_3](../assets/chain_layout_matrix_aggregate.svg)
 
 
-## OptiGraph Projections
 
-!!! note
-
-    Documentation coming soon!

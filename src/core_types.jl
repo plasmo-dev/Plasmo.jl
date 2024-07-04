@@ -25,6 +25,12 @@ struct OptiEdge{GT<:AbstractOptiGraph} <: AbstractEdge
     nodes::OrderedSet{OptiNode}
 end
 
+"""
+    OptiGraph
+
+The core modeling object of Plasmo.jl. An optigraph represents an optimization model as 
+a set of `OptiNode` and `OptiEdge` objects.
+"""
 mutable struct OptiGraph <: AbstractOptiGraph
     label::Symbol
 

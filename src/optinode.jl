@@ -162,13 +162,6 @@ function _moi_add_node_constraint(node::OptiNode, con::JuMP.AbstractConstraint)
 
     # add to each containing optigraph
     for graph in containing_optigraphs(node)
-        # # update func variable indices
-        # moi_func_graph = _create_graph_moi_func(graph_backend(graph), moi_func, jump_func)
-
-        # # add contraint to backend
-        # _add_element_constraint_to_backend(
-        #     graph_backend(graph), cref, moi_func_graph, moi_set
-        # )
         MOI.add_constraint(graph_backend(graph), cref, jump_func, moi_set)
     end
     return cref
@@ -216,9 +209,14 @@ end
 # Set a JuMP.Model to an OptiNode
 #
 
+"""
+    Set a JuMP.Model to `node`. This copies the model data over and does not mutate
+the `model` in any way. 
+"""
 function set_jump_model(node::OptiNode, model::JuMP.Model)
     return _copy_model_to!(node, model)
 end
+@deprecate set_model set_jump_model
 
 function _copy_model_to!(node::OptiNode, model::JuMP.Model)
     if !(num_variables(node) == 0 && num_constraints(node) == 0)

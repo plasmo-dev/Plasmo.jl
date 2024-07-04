@@ -1,15 +1,17 @@
-using Documenter, Plasmo, PlasmoPlots, Suppressor
+using Documenter, Plasmo, Suppressor, Graphs
+# using PlasmoPlots
 
 DocMeta.setdocmeta!(Plasmo, :DocTestSetup, :(using Plasmo); recursive=true)
-DocMeta.setdocmeta!(PlasmoPlots, :DocTestSetup, :(using PlasmoPlots); recursive=true)
+# DocMeta.setdocmeta!(PlasmoPlots, :DocTestSetup, :(using PlasmoPlots); recursive=true)
 
 #Fix issue with GKS for plotting
 ENV["GKSwstype"] = "100"
 
 makedocs(;
     sitename="Plasmo.jl",
-    modules=[Plasmo, PlasmoPlots],
+    modules=[Plasmo], #, PlasmoPlots],
     doctest=false,
+    checkdocs=:exports,
     format=Documenter.HTML(; prettyurls=get(ENV, "CI", nothing) == "true"),
     authors="Jordan Jalving",
     pages=[
@@ -23,4 +25,4 @@ makedocs(;
     ],
 )
 
-deploydocs(; repo="github.com/plasmo-dev/Plasmo.jl.git")
+# deploydocs(; repo="github.com/plasmo-dev/Plasmo.jl.git")

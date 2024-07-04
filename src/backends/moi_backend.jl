@@ -74,7 +74,7 @@ end
 """
     GraphMOIBackend
 
-Acts as an intermediate optimization layer. It maps graph elements to an MOI optimizer.
+Acts as an intermediate model layer. It maps graph elements to an underlying MOI optimizer.
 The backend does not yet support more than a CachingOptimizer. We intend to
 support Direct, Manual, and Automatic modes just like JuMP at some point.
 """

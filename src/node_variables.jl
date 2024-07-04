@@ -26,6 +26,10 @@ function Base.isequal(v1::NodeVariableRef, v2::NodeVariableRef)
     return owner_model(v1) === owner_model(v2) && v1.index == v2.index
 end
 
+function get_node(nvref::NodeVariableRef)
+    return JuMP.owner_model(nvref)
+end
+
 """
     MOI.get(node::OptiNode, attr::MOI.AbstractVariableAttribute, nvref::NodeVariableRef)
 

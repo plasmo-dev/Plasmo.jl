@@ -104,8 +104,8 @@ function hyper_projection(optigraph::OptiGraph)
     end
     return projection
 end
-@deprecate gethypergraph build_hyper_graph
-@deprecate hyper_graph build_hyper_graph
+@deprecate gethypergraph hyper_projection
+@deprecate hyper_graph hyper_projection
 
 struct CliqueGraphProjectionType <: AbstractProjectionType end
 
@@ -138,8 +138,8 @@ function clique_projection(optigraph::OptiGraph)
     end
     return projection
 end
-@deprecate getcliquegraph build_clique_graph
-@deprecate clique_graph build_clique_graph
+@deprecate getcliquegraph clique_projection
+@deprecate clique_graph clique_projection
 
 struct EdgeGraphProjectionType <: AbstractProjectionType end
 
@@ -171,7 +171,7 @@ function edge_clique_projection(optigraph::OptiGraph)
     end
     return projection
 end
-@deprecate edge_graph build_edge_graph
+@deprecate edge_graph edge_clique_projection
 
 struct EdgeHyperGraphProjectionType <: AbstractProjectionType end
 
@@ -207,7 +207,7 @@ function edge_hyper_projection(optigraph::OptiGraph)
     end
     return projection
 end
-@deprecate edge_hyper_graph build_edge_hypergraph
+@deprecate edge_hyper_graph edge_hyper_projection
 
 struct BipartiteGraphProjectionType <: AbstractProjectionType end
 
@@ -239,4 +239,4 @@ function bipartite_projection(optigraph::OptiGraph)
     end
     return projection
 end
-@deprecate bipartite_graph build_bipartite_graph
+@deprecate bipartite_graph bipartite_projection

@@ -26,8 +26,8 @@ end
 function Base.string(graph::OptiGraph)
     return @sprintf(
         """
-        An OptiGraph: %9s
-        %16s %10s %16s
+        An OptiGraph
+        %16s %9s %16s
         --------------------------------------------------
         %16s %9s %16s
         %16s %9s %16s
@@ -36,7 +36,6 @@ function Base.string(graph::OptiGraph)
         %16s %9s %16s
         """,
         "$(name(graph))",
-        "",
         "#local elements",
         "#total elements",
         "Nodes:",
@@ -85,10 +84,14 @@ end
 
 ### Graph Index
 
+"""
+    graph_index(ref::RT) where {RT<:Union{NodeVariableRef,ConstraintRef}}
+
+Return the the corresponding variable or constraint index corresponding to a reference.
+"""
 function graph_index(ref::RT) where {RT<:Union{NodeVariableRef,ConstraintRef}}
     return graph_index(graph_backend(JuMP.owner_model(ref)), ref)
 end
-
 function graph_index(
     graph::OptiGraph, ref::RT
 ) where {RT<:Union{NodeVariableRef,ConstraintRef}}
@@ -518,6 +521,12 @@ function local_constraints(graph::OptiGraph)
     return vcat(all_constraints.(local_elements(graph))...)
 end
 
+# TODO Methods
+
+# num_linked_variables(graph)
+
+# linked_variables(graph)
+
 ### MOI Methods
 
 function MOI.get(
@@ -677,7 +686,6 @@ end
 ### Other Methods
 
 function JuMP.backend(graph::OptiGraph)
-    # TODO: make this just graph backend
     return graph_backend(graph)
 end
 

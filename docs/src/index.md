@@ -4,7 +4,7 @@
 CurrentModule = Plasmo
 DocTestSetup = quote
     using Plasmo
-    using GLPK
+    using HiGHS
     using PlasmoPlots
 end
 ```
@@ -42,10 +42,11 @@ Depth = 2
 ## Future Development
 There are currently a few major development avenues for Plasmo.jl. Here is a list of some of the major features we intend to add for future releases:
 
-* Parallel & Distributed modeling capabilities
-* Nonlinear linking constraints
-* Graph metrics and custom partitioning algorithms
-* Better distributed solver support
+* Distributed modeling capabilities
+* Custom optigraph partitioning algorithms
+* Decomposition-based solver development
+* GraphOptInterface.jl development
+* Interface with InfiniteOpt.jl
 
 We are also looking for help from new contributors. If you would like to contribute to Plasmo.jl, please create a new issue or pull request on the [GitHub page](https://github.com/plasmo-dev/Plasmo.jl)
 
@@ -56,17 +57,21 @@ We are also looking for help from new contributors. If you would like to contrib
 
 ### Citing Plasmo.jl
 
-If you find Plasmo.jl useful for your work, you may cite the current [pre-print](https://arxiv.org/abs/2006.05378):
+If you find Plasmo.jl useful for your work, we ask that you cite the [manuscript](https://link.springer.com/article/10.1007/s12532-022-00223-3):
 ``` sourceCode
-@misc{JalvingShinZavala2020,
-title = {A Graph-Based Modeling Abstraction for Optimization: Concepts and Implementation in Plasmo.jl},
-author = {Jordan Jalving and Sungho Shin and Victor M. Zavala},
-year = {2020},
-eprint = {2006.05378},
-archivePrefix = {arXiv},
-primaryClass = {math.OC}
+@article{Jalving2022,
+  author = {Jalving, Jordan and Shin, Sangbin and Zavala, Victor M.},
+  title = {A graph-based modeling abstraction for optimization: concepts and implementation in {Plasmo.jl}},
+  journal = {Mathematical Programming Computation},
+  volume = {14},
+  pages = {699--747},
+  year = {2022},
+  doi = {10.1007/s12532-022-00223-3},
+  url = {https://doi.org/10.1007/s12532-022-00223-3},
 }
 ```
+You can access an earlier [pre-print](https://arxiv.org/abs/2006.05378) of this article.
+
 
 There is also an earlier manuscript where we presented the initial ideas behind Plasmo.jl which you can find
 [here](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
