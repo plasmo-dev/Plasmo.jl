@@ -139,6 +139,15 @@ function JuMP.optimize!(
         throw(JuMP.NoOptimizer())
     end
 
+    # check for node objectives when graph objective is empty
+    if iszero(objective_function(graph))
+        if has_node_objective(graph)
+            @warn "The optigraph objective is empty but objectives exist on optinodes. 
+            If this is not intended, consider using `set_to_node_objectives(graph)` to 
+            set the graph objective function."
+        end
+    end
+
     try
         # make sure subgraph elements are tracked in parent graph after solve
         MOI.optimize!(graph_backend(graph))

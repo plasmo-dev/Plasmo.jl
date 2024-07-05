@@ -160,6 +160,12 @@ function test_objective_functions()
     @test objective_function(graph) ==
         n1[:x] - n2[:x] + n3[:x][1]^2 + n3[:x][2]^2 + n4[:x]^2
 
+    JuMP.set_objective_function(n1, n1[:y])
+    JuMP.set_objective_sense(n1, MOI.MAX_SENSE)
+    set_to_node_objectives(graph)
+    @test objective_function(graph) ==
+        -n1[:y] - n2[:x] + n3[:x][1]^2 + n3[:x][2]^2 + n4[:x]^2
+
     @objective(n4, Min, n4[:x]^3)
     set_to_node_objectives(graph)
     @test typeof(objective_function(graph)) == GenericNonlinearExpr{NodeVariableRef}

@@ -719,6 +719,15 @@ end
 # Objective function
 #
 
+function has_node_objective(graph::OptiGraph)
+    for node in all_nodes(graph)
+        if has_objective(node)
+            return true
+        end
+    end
+    return false
+end
+
 function set_to_node_objectives(graph::OptiGraph)
     obj = 0
     for node in all_nodes(graph)

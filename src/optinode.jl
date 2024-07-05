@@ -189,6 +189,20 @@ function JuMP.set_objective(
     return nothing
 end
 
+function JuMP.set_objective_function(node::OptiNode, func::JuMP.AbstractJuMPScalar)
+    # check that all func terms are for this node
+    unique(collect_nodes(func)) == [node] || error("Optinode does not own all variables.")
+    d = JuMP.object_dictionary(node)
+    d[(node, :objective_function)] = func
+    return nothing
+end
+
+function JuMP.set_objective_sense(node::OptiNode, sense::MOI.OptimizationSense)
+    d = JuMP.object_dictionary(node)
+    d[(node, :objective_sense)] = sense
+    return nothing
+end
+
 function JuMP.objective_function(node::OptiNode)
     return JuMP.object_dictionary(node)[(node, :objective_function)]
 end

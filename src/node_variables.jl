@@ -270,7 +270,7 @@ function JuMP.upper_bound(nvref::NodeVariableRef)
 end
 
 function JuMP.delete_upper_bound(nvref::NodeVariableRef)
-    JuMP.delete(JuMP.owner_model(nvref), JuMP.LowerBoundRef(nvref))
+    JuMP.delete(JuMP.owner_model(nvref), JuMP.UpperBoundRef(nvref))
     return nothing
 end
 
