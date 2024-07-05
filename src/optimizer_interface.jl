@@ -142,9 +142,11 @@ function JuMP.optimize!(
     # check for node objectives when graph objective is empty
     if iszero(objective_function(graph))
         if has_node_objective(graph)
-            @warn "The optigraph objective is empty but objectives exist on optinodes. 
+            @warn """
+            The optigraph objective is empty but objectives exist on optinodes. 
             If this is not intended, consider using `set_to_node_objectives(graph)` to 
-            set the graph objective function."
+            set the graph objective function.
+            """
         end
     end
 
