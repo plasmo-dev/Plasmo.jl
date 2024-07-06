@@ -82,6 +82,15 @@ function JuMP.error_if_direct_mode(graph::OptiGraph, func::Symbol)
     return nothing
 end
 
+"""
+    JuMP.set_optimizer(
+        graph::OptiGraph, 
+        JuMP.@nospecialize(optimizer_constructor); 
+        add_bridges::Bool=true
+    )
+
+Set the optimizer on `graph` by passing an `optimizer_constructor`.
+"""
 function JuMP.set_optimizer(
     graph::OptiGraph, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
 )
@@ -119,6 +128,15 @@ function _moi_call_bridge_function(
 end
 
 # mostly copied from: https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
+
+"""
+    JuMP.optimize!(
+        graph::OptiGraph;
+        kwargs...,
+    )
+
+Optimize `graph` using the current set optimizer.
+"""
 function JuMP.optimize!(
     graph::OptiGraph;
     #ignore_optimize_hook = (graph.optimize_hook === nothing),
@@ -187,6 +205,11 @@ end
 
 ### termination status
 
+"""
+    JuMP.termination_status(graph::OptiGraph)
+
+Return the solver termination status of `graph` if a solver has been executed.
+"""
 function JuMP.termination_status(graph::OptiGraph)
     return MOI.get(graph, MOI.TerminationStatus())::MOI.TerminationStatusCode
 end
@@ -223,10 +246,20 @@ function MOI.get(graph::OptiGraph, attr::Union{MOI.PrimalStatus,MOI.DualStatus})
     return MOI.get(graph_backend(graph), attr)
 end
 
+"""
+    JuMP.primal_status(graph::OptiGraph; result::Int=1)
+
+Return the primal status of `graph` if a solver has been executed.
+"""
 function JuMP.primal_status(graph::OptiGraph; result::Int=1)
     return MOI.get(graph, MOI.PrimalStatus(result))::MOI.ResultStatusCode
 end
 
+"""
+    JuMP.dual_status(graph::OptiGraph; result::Int=1)
+
+Return the dual status of `graph` if a solver has been executed.
+"""
 function JuMP.dual_status(graph::OptiGraph; result::Int=1)
     return MOI.get(graph, MOI.DualStatus(result))::MOI.ResultStatusCode
 end
@@ -235,6 +268,16 @@ end
 # Optinode optimizer
 #
 
+"""
+    JuMP.set_optimizer(
+        node::OptiNode, 
+        JuMP.@nospecialize(optimizer_constructor); 
+        add_bridges::Bool=true
+    )
+
+Set the optimizer for an optinode.This internally creates a new optigraph that is 
+used to optimize the node. Calling this method on a node returns the newly created graph.
+"""
 function JuMP.set_optimizer(
     node::OptiNode, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
 )
@@ -252,9 +295,6 @@ function JuMP.set_optimizer(
     return node_graph
 end
 
-# NOTE: this resets NLP data on every NodePointer, so graph solutions get cleared
-# This is currently a known limitation in Plasmo.jl. If you solve a node after a graph,
-# it will remove the graph solution.
 function JuMP.optimize!(node::OptiNode; kwargs...)
     node_graph = source_graph(node).node_graphs[node]
     JuMP.optimize!(node_graph; kwargs...)

@@ -86,15 +86,15 @@ struct HyperGraphProjectionType <: AbstractProjectionType end
 Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
 that maps hypernodes and hyperedges to the original optinodes and optiedges.
 """
-function hyper_projection(optigraph::OptiGraph)
+function hyper_projection(graph::OptiGraph)
     hypergraph = GOI.HyperGraph()
-    projection = GraphProjection(optigraph, hypergraph, HyperGraphProjectionType())
-    for node in all_nodes(optigraph)
+    projection = GraphProjection(graph, hypergraph, HyperGraphProjectionType())
+    for node in all_nodes(graph)
         hypernode = Graphs.add_vertex!(hypergraph)
         projection[hypernode] = node
         projection[node] = hypernode
     end
-    for edge in all_edges(optigraph)
+    for edge in all_edges(graph)
         nodes = all_nodes(edge)
         hypernodes = Base.getindex.(projection, nodes)
         @assert length(hypernodes) >= 2
@@ -110,21 +110,22 @@ end
 struct CliqueGraphProjectionType <: AbstractProjectionType end
 
 """
-    build_clique_graph(graph::OptiGraph)
+    clique_projection(graph::OptiGraph)
 
-Retrieve a standard graph representation of the optigraph `graph`. Returns a `LightGraphs.Graph` object, as well as a dictionary
-that maps vertices and edges to the optinodes and optiedges.
+Retrieve a standard graph representation of `graph`. The projection contains a standard
+`Graphs.Graph` and a mapping between its elements and the given optigraph. This projection
+works by creating an edge for each pair of nodes in each hyperedge.
 """
-function clique_projection(optigraph::OptiGraph)
-    graph = Graphs.Graph()
-    projection = GraphProjection(optigraph, graph, CliqueGraphProjectionType())
-    for optinode in all_nodes(optigraph)
-        Graphs.add_vertex!(graph)
-        vertex = nv(graph)
+function clique_projection(graph::OptiGraph)
+    clique_graph = Graphs.Graph()
+    projection = GraphProjection(graph, clique_graph, CliqueGraphProjectionType())
+    for optinode in all_nodes(graph)
+        Graphs.add_vertex!(clique_graph)
+        vertex = nv(clique_graph)
         projection[vertex] = optinode
         projection[optinode] = vertex
     end
-    for edge in all_edges(optigraph)
+    for edge in all_edges(graph)
         nodes = edge.nodes
         edge_vertices = [projection[optinode] for optinode in nodes]
         for i in 1:length(edge_vertices)
@@ -132,7 +133,7 @@ function clique_projection(optigraph::OptiGraph)
             other_vertices = edge_vertices[(i + 1):end]
             for j in 1:length(other_vertices)
                 vertex_to = other_vertices[j]
-                inserted = Graphs.add_edge!(graph, vertex_from, vertex_to)
+                inserted = Graphs.add_edge!(clique_graph, vertex_from, vertex_to)
             end
         end
     end
@@ -144,28 +145,28 @@ end
 struct EdgeGraphProjectionType <: AbstractProjectionType end
 
 """
-    edge_graph(optigraph::OptiGraph)
+    edge_clique_projection(graph::OptiGraph)
 
-Retrieve the edge-graph representation of `optigraph`. This is sometimes called the line graph of a hypergraph.
-Returns a `GraphProjection`.
+Retrieve the edge-graph representation of optigraph `graph`. This is sometimes called the 
+line graph of a hypergraph.
 """
-function edge_clique_projection(optigraph::OptiGraph)
-    graph = Graphs.Graph()
-    projection = GraphProjection(optigraph, graph, EdgeGraphProjectionType())
-    for optiedge in all_edges(optigraph)
-        Graphs.add_vertex!(graph)
-        vertex = nv(graph)
+function edge_clique_projection(graph::OptiGraph)
+    edge_graph = Graphs.Graph()
+    projection = GraphProjection(graph, edge_graph, EdgeGraphProjectionType())
+    for optiedge in all_edges(graph)
+        Graphs.add_vertex!(edge_graph)
+        vertex = nv(edge_graph)
         projection[vertex] = optiedge
         projection[optiedge] = vertex
     end
-    edge_array = all_edges(optigraph)
+    edge_array = all_edges(graph)
     n_edges = length(edge_array)
     for i in 1:(n_edges - 1)
         for j in (i + 1):n_edges
             e1 = edge_array[i]
             e2 = edge_array[j]
             if !isempty(intersect(e1.nodes, e2.nodes))
-                Graphs.add_edge!(graph, projection[e1], projection[e2])
+                Graphs.add_edge!(edge_graph, projection[e1], projection[e2])
             end
         end
     end
@@ -176,24 +177,24 @@ end
 struct EdgeHyperGraphProjectionType <: AbstractProjectionType end
 
 """
-    edge_hyper_graph(graph::OptiGraph)
+    edge_hyper_projection(graph::OptiGraph)
 
-Retrieve an edge-hypergraph representation of the optigraph `graph`. Returns a [`GraphProjection`](@ref) object, as well as a dictionary
-that maps hypernodes and hyperedges to the original optinodes and optiedges. This is also called the dual-hypergraph representation of a hypergraph.
+Retrieve an edge-hypergraph representation of the optigraph `graph`. This is sometimes 
+called  the dual-hypergraph representation of a hypergraph.
 """
-function edge_hyper_projection(optigraph::OptiGraph)
+function edge_hyper_projection(graph::OptiGraph)
     # create a primal hypergraph first. we need to do this to get the node --> edge mapping
-    primal_map = hyper_projection(optigraph)
+    primal_map = hyper_projection(graph)
 
     # build the edge hypergraph
     hypergraph = GOI.HyperGraph()
-    projection = GraphProjection(optigraph, hypergraph, EdgeHyperGraphProjectionType())
-    for edge in all_edges(optigraph)
+    projection = GraphProjection(graph, hypergraph, EdgeHyperGraphProjectionType())
+    for edge in all_edges(graph)
         hypernode = Graphs.add_vertex!(hypergraph)
         projection[hypernode] = edge
         projection[edge] = hypernode
     end
-    for node in all_nodes(optigraph)
+    for node in all_nodes(graph)
         hyperedges = incident_edges(primal_map, node)
         dual_nodes = Base.getindex.(projection, hyperedges)
         # NOTE: a hypergraph may not always have a valid edge projection; we only
@@ -212,29 +213,29 @@ end
 struct BipartiteGraphProjectionType <: AbstractProjectionType end
 
 """
-    bipartite_graph(optigraph::OptiGraph)
+    bipartite_graph(graph::OptiGraph)
 
-Create a bipartite graph representation from `optigraph`.  
-The bipartite graph contains two sets of vertices corresponding to optinodes and optiedges respectively.
+Create a bipartite graph representation from `graph`.  The bipartite graph contains two 
+sets of vertices corresponding to optinodes and optiedges respectively.
 """
-function bipartite_projection(optigraph::OptiGraph)
-    graph = GOI.BipartiteGraph()
-    projection = GraphProjection(optigraph, graph, BipartiteGraphProjectionType())
-    for optinode in all_nodes(optigraph)
-        Graphs.add_vertex!(graph; bipartite=1)
-        node_vertex = nv(graph)
+function bipartite_projection(graph::OptiGraph)
+    bipartite_graph = GOI.BipartiteGraph()
+    projection = GraphProjection(graph, bipartite_graph, BipartiteGraphProjectionType())
+    for optinode in all_nodes(graph)
+        Graphs.add_vertex!(bipartite_graph; bipartite=1)
+        node_vertex = nv(bipartite_graph)
         projection[node_vertex] = optinode
         projection[optinode] = node_vertex
     end
-    for edge in all_edges(optigraph)
-        Graphs.add_vertex!(graph; bipartite=2)
-        edge_vertex = nv(graph)
+    for edge in all_edges(graph)
+        Graphs.add_vertex!(bipartite_graph; bipartite=2)
+        edge_vertex = nv(bipartite_graph)
         projection[edge] = edge_vertex
         projection[edge_vertex] = edge
         nodes = edge.nodes
         edge_vertices = [projection[optinode] for optinode in nodes]
         for node_vertex in edge_vertices
-            Graphs.add_edge!(graph, edge_vertex, node_vertex)
+            Graphs.add_edge!(bipartite_graph, edge_vertex, node_vertex)
         end
     end
     return projection

@@ -17,6 +17,8 @@ using Reexport
 @reexport using JuMP
 
 export OptiGraph,
+    OptiNode,
+    OptiEdge,
     NodeVariableRef,
     graph_backend,
     graph_index,

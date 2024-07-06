@@ -1,8 +1,8 @@
 abstract type AbstractOptiGraph <: JuMP.AbstractModel end
 
-abstract type AbstractNode <: JuMP.AbstractModel end
+abstract type AbstractOptiNode <: JuMP.AbstractModel end
 
-abstract type AbstractEdge <: JuMP.AbstractModel end
+abstract type AbstractOptiEdge <: JuMP.AbstractModel end
 
 struct NodeIndex
     value::Symbol
@@ -13,13 +13,32 @@ end
 # NOTE: We parameterize nodes and edges on the graph type itself. This may instead
 # become a special type that denotes whether we have a standard optigraph, or a 
 # distributed memory optigraph in the future.
-struct OptiNode{GT<:AbstractOptiGraph} <: AbstractNode
+
+"""
+    OptiNode{GT<:AbstractOptiGraph} <: AbstractOptiNode
+
+A data structure meant to encapsulate variables, constraints, an objective function, and 
+other model data. An optinode is "lightweight" in the sense that it does not directly 
+contain model data, but instead acts as an interface that maps to a backend where 
+the model data is stored. This avoids the need to generate memory overhead through 
+container structures in cases when a node contains very little model data.
+"""
+struct OptiNode{GT<:AbstractOptiGraph} <: AbstractOptiNode
     source_graph::Base.RefValue{<:GT}
     idx::NodeIndex
     label::Symbol
 end
 
-struct OptiEdge{GT<:AbstractOptiGraph} <: AbstractEdge
+"""
+    OptiEdge{GT<:AbstractOptiGraph} <: AbstractOptiEdge
+
+A data structure meant to encapsulate linking constraints other model data. An optiedge 
+is "lightweight" in the sense that it does not directly contain model data, but instead acts
+as an interface that maps to a backend where the model data is stored. This avoids the need 
+to generate memory overhead through container structures in cases when a node contains very 
+little model data.
+"""
+struct OptiEdge{GT<:AbstractOptiGraph} <: AbstractOptiEdge
     source_graph::Base.RefValue{<:GT}
     label::Symbol
     nodes::OrderedSet{OptiNode}

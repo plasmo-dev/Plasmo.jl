@@ -8,6 +8,7 @@ OptiEdge
 @optinode
 @linkconstraint
 @nodevariables
+set_to_node_objectives
 graph_backend
 graph_index
 source_graph
@@ -23,16 +24,23 @@ all_nodes
 collect_nodes
 num_local_nodes
 num_nodes
+num_local_variables
 add_edge
 get_edge
+get_edge_by_index
+Plasmo.has_edge
 local_edges
 all_edges
 num_local_edges
 num_edges
 num_local_link_constraints
-num_linkconstraints
+num_link_constraints
 local_link_constraints
 all_link_constraints
+num_local_constraints
+local_constraints
+local_elements
+all_elements
 Base.getindex(::OptiGraph, ::Int)
 ```
 
@@ -43,35 +51,47 @@ set_jump_model
 
 ## Extended Methods
 ```@docs
-JuMP.all_variables
-JuMP.set_optimizer
-JuMP.optimize!
-JuMP.objective_function
+JuMP.name
+JuMP.set_name
+JuMP.index
+JuMP.backend
 JuMP.value
-JuMP.dual
-JuMP.num_variables
-JuMP.num_constraints
-JuMP.object_dictionary
 JuMP.add_variable
+JuMP.num_variables
+JuMP.all_variables
+JuMP.start_value
+JuMP.set_start_value
 JuMP.add_constraint
 JuMP.list_of_constraint_types
+JuMP.num_constraints
 JuMP.all_constraints
 JuMP.objective_value
+JuMP.dual_objective_value
 JuMP.objective_sense
+JuMP.objective_function
+JuMP.objective_function_type
+JuMP.objective_bound
 JuMP.set_objective
 JuMP.set_objective_function
 JuMP.set_objective_sense
+JuMP.set_objective_coefficient
+JuMP.set_optimizer
+JuMP.add_nonlinear_operator
+JuMP.optimize!
 JuMP.termination_status
+JuMP.primal_status
+JuMP.dual_status
+JuMP.relative_gap
 JuMP.constraint_ref_with_index
+JuMP.object_dictionary
 ```
 
 ## Graph Projections
 ```@docs
 hyper_projection
-clique_projection
-edge_projection
-edge_clique_projection
 edge_hyper_projection
+clique_projection
+edge_clique_projection
 bipartite_projection
 ```
 
@@ -95,8 +115,7 @@ identify_nodes
 expand
 ```
 
-## Plotting
-```@docs
+<!--  ```@docs
 PlasmoPlots.layout_plot
 PlasmoPlots.matrix_plot
-```
+``` -->
