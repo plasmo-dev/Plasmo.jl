@@ -83,8 +83,8 @@ struct HyperGraphProjectionType <: AbstractProjectionType end
 """
     hyper_projection(graph::OptiGraph)
 
-Retrieve a hypergraph representation of the optigraph `graph`. Returns a [`HyperGraph`](@ref) object, as well as a dictionary
-that maps hypernodes and hyperedges to the original optinodes and optiedges.
+Retrieve a hypergraph representation of the optigraph `graph`. Returns 
+a [`GraphProjection`](@ref) that maps elements between the optigraph and the projected graph.
 """
 function hyper_projection(graph::OptiGraph)
     hypergraph = GOI.HyperGraph()

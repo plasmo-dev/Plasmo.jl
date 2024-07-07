@@ -66,12 +66,9 @@ Optionally add a `base_name` to the variable for printing.
 """
 function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
     vref = _moi_add_node_variable(node, v)
-    if !isempty(name) &&
-        MOI.supports(
-            JuMP.backend(graph_backend(node)), 
-            MOI.VariableName(), 
-            MOI.VariableIndex
-        )
+    if !isempty(name) && MOI.supports(
+        JuMP.backend(graph_backend(node)), MOI.VariableName(), MOI.VariableIndex
+    )
         JuMP.set_name(vref, "$(JuMP.name(node)).$(name)")
     end
     return vref
@@ -179,10 +176,7 @@ _convert_if_something(::Type, ::Nothing) = nothing
 function JuMP.set_start_value(nvref::NodeVariableRef, value::Union{Nothing,Real})
     # NOTE: sets the start value in all backends
     return MOI.set(
-        nvref.node,
-        MOI.VariablePrimalStart(),
-        nvref,
-        _convert_if_something(Float64, value),
+        nvref.node, MOI.VariablePrimalStart(), nvref, _convert_if_something(Float64, value)
     )
 end
 

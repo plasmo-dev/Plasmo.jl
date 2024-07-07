@@ -26,21 +26,15 @@ pkg> add Plasmo
 
 ## Contents
 
-<!-- ```@contents
+```@contents
 Pages = [
-    "documentation/quickstart.md"
-    "documentation/api_docs.md"
-    ]
-Depth = 2
-``` -->
-
-<!-- Pages = [
     "documentation/quickstart.md"
     "documentation/modeling.md"
     "documentation/partitioning.md"
-    "documentation/solvers.md"
     "documentation/api_docs.md"
-    ] -->
+    ]
+Depth = 2
+```
 
 ## Future Development
 There are currently a few major development avenues for Plasmo.jl. Here is a list of some of the major features we intend to add for future releases:
@@ -55,9 +49,9 @@ We are also looking for help from new contributors. If you would like to contrib
 
 ## Index
 
-<!-- ```@index
+```@index
 ```
- -->
+
 ### Citing Plasmo.jl
 
 If you find Plasmo.jl useful for your work, we ask that you cite the [manuscript](https://link.springer.com/article/10.1007/s12532-022-00223-3):
