@@ -327,15 +327,16 @@ function create_gas_network(net_data)
 end
 ```
 
-Using the above function, we can obtain a complete optigraph representation of the optimal control problem. It is now possible to plot the graph layout using [Plotting](@ref) functions or export the graph structure and use another graph visualization tool.
-`Gephi` was used to produce the below figure. Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and grey corresponds to pipelines.  Notice that the optigraph captures the space-time structure of the optimization problem.
+Using the above function, we can obtain a complete optigraph representation of the optimal control problem. It is now possible to plot the graph layout using [Plotting]()
+functions or export the graph structure and use another graph visualization tool.
+`Gephi` was used to produce the below figure. Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and grey corresponds to pipelines. Notice that the optigraph captures the space-time structure of the optimization problem.
 We also observe a cylindrical shape to the problem which results from the line-pack constraint which couples the initial and final time optinodes for each pipeline.
 
 ![space_time](../assets/13_pipeline_space_time.svg)
 
 ## Partitioning
 Now that we have an optigraph representation of our optimal control problem, we can use [hypergraph partitioning](https://en.wikipedia.org/wiki/Hypergraph#Partitions)
-to decompose the space-time structure. To do so, we use [KaHyPar](https://github.com/kahypar/KaHyPar.jl) and the functions described in [Graph Partitioning and Processing](@ref).
+to decompose the space-time structure. To do so, we use [KaHyPar](https://github.com/kahypar/KaHyPar.jl) and the functions described in [Graph Partitioning and Processing]().
 the below code creates a hypergraph representation of the optigraph, sets up node and edge weights, partitions the problem, and forms new subgraphs based on the partitions.
 We also aggregate the subgraphs to produce solvable optinode subproblems which will communicate to our solver.
 

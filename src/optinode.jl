@@ -1,5 +1,5 @@
 function Base.string(node::OptiNode)
-    return "$(node.label)"
+    return string(JuMP.name(node))
 end
 Base.print(io::IO, node::OptiNode) = Base.print(io, Base.string(node))
 Base.show(io::IO, node::OptiNode) = Base.print(io, node)
@@ -13,6 +13,15 @@ end
 function Base.getindex(node::OptiNode, name::Symbol)
     t = (node, name)
     return source_graph(node).node_obj_dict[t]
+end
+
+function JuMP.name(node::OptiNode)
+    return node.label.x
+end
+
+function JuMP.set_name(node::OptiNode, label::Symbol)
+    node.label.x = label
+    return nothing
 end
 
 """
@@ -82,7 +91,7 @@ function JuMP.object_dictionary(node::OptiNode)
 end
 
 function JuMP.backend(node::OptiNode)
-    return JuMP.backend(graph_backend(node))
+    return JuMP.backend(source_graph(node))
 end
 
 ### Variables

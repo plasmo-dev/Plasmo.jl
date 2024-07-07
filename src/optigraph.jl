@@ -164,10 +164,11 @@ Add a new optinode to `graph`. By default, the node label is set to be "n<i+1>" 
 the number of nodes in the graph.
 """
 function add_node(
-    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1)
+    graph::OptiGraph; 
+    label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1)
 )
-    node_index = NodeIndex(gensym()) #NodeIndex(length(graph.optinodes)+1)
-    node = OptiNode(Ref(graph), node_index, label)
+    node_index = NodeIndex(gensym())
+    node = OptiNode(Ref(graph), node_index, Ref(label))
     push!(graph.optinodes, node)
     add_node(graph_backend(graph), node)
     return node

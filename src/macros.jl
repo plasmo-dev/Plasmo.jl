@@ -22,26 +22,26 @@ Add a new optinode to `optigraph`. The expression `expr` can either be
 macro optinode(graph, args...)
     #check arguments
     @assert length(args) <= 1
-    var = Base.string(_get_name(args[1]))
-
-    #get the name passed into the macro expression
-    # if typeof(args[1]) == Symbol
-    #     macro_code = :(add_node($graph); label=Symbol($var))
-    # else
-    macro_code = quote
-        container = JuMP.Containers.@container($(args...), add_node($graph))
-        #set node labels
-        # if isa(container, Plasmo.OptiNode)
-        #     container.label = $var
-        # TODO: decide whether we want node labels to match macro input
-        # else
-        #     axs = axes(container)
-        #     terms = collect(Base.Iterators.product(axs...))[:]
-        #     for (i, node) in enumerate(container)
-        #         node.label = Symbol($var * "[$(string(terms[i]...))]")
-        #     end
-        #end
-        $(graph).obj_dict[Symbol($var)] = container
+    if isempty(args)
+        macro_code = :(add_node($graph))
+    else
+        #get the name passed into the macro expression
+        var = Base.string(_get_name(args[1]))
+        macro_code = quote
+            container = JuMP.Containers.@container($(args...), add_node($graph))
+            if isa(container, Plasmo.OptiNode)
+                set_name(container, Symbol($var))
+            else
+                #set node labels
+                axs = axes(container)
+                terms = collect(Base.Iterators.product(axs...))[:]
+                for (i, node) in enumerate(container)
+                    JuMP.set_name(node, Symbol($var * "[$(string(terms[i]...))]"))
+                end
+            end
+            $(graph).obj_dict[Symbol($var)] = container
+            container
+        end
     end
     return esc(macro_code)
 end

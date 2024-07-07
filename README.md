@@ -92,7 +92,7 @@ The primary developer is Jordan Jalving (@jalving) with support from the followi
 
 If you find Plasmo.jl useful for your work, you may cite the [manuscript](https://link.springer.com/article/10.1007/s12532-022-00223-3) as:
 ```
-@article{JalvingShinZavala2022,
+@article{Jalving2022,
   title={A Graph-Based Modeling Abstraction for Optimization: Concepts and Implementation in Plasmo.jl},
   author={Jordan Jalving and Sungho Shin and Victor M. Zavala},
   journal={Mathematical Programming Computation},
@@ -101,15 +101,5 @@ If you find Plasmo.jl useful for your work, you may cite the [manuscript](https:
   pages={699 - 747}
 }
 ```
+There is also a freely available [pre-print](https://arxiv.org/abs/2006.05378).
 
-There is also a freely available [pre-print](https://arxiv.org/abs/2006.05378):
-```
-@misc{JalvingShinZavala2020,
-title = {A Graph-Based Modeling Abstraction for Optimization: Concepts and Implementation in Plasmo.jl},
-author = {Jordan Jalving and Sungho Shin and Victor M. Zavala},
-year = {2020},
-eprint = {2006.05378},
-archivePrefix = {arXiv},
-primaryClass = {math.OC}
-}
-```

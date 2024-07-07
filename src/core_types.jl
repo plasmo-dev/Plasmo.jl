@@ -26,7 +26,7 @@ container structures in cases when a node contains very little model data.
 struct OptiNode{GT<:AbstractOptiGraph} <: AbstractOptiNode
     source_graph::Base.RefValue{<:GT}
     idx::NodeIndex
-    label::Symbol
+    label::Base.RefValue{Symbol}
 end
 
 """

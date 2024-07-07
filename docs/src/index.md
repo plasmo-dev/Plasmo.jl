@@ -4,8 +4,6 @@
 CurrentModule = Plasmo
 DocTestSetup = quote
     using Plasmo
-    using HiGHS
-    using PlasmoPlots
 end
 ```
 
@@ -28,16 +26,21 @@ pkg> add Plasmo
 
 ## Contents
 
-```@contents
+<!-- ```@contents
 Pages = [
+    "documentation/quickstart.md"
+    "documentation/api_docs.md"
+    ]
+Depth = 2
+``` -->
+
+<!-- Pages = [
     "documentation/quickstart.md"
     "documentation/modeling.md"
     "documentation/partitioning.md"
     "documentation/solvers.md"
     "documentation/api_docs.md"
-    ]
-Depth = 2
-```
+    ] -->
 
 ## Future Development
 There are currently a few major development avenues for Plasmo.jl. Here is a list of some of the major features we intend to add for future releases:
@@ -52,22 +55,21 @@ We are also looking for help from new contributors. If you would like to contrib
 
 ## Index
 
-```@index
+<!-- ```@index
 ```
-
+ -->
 ### Citing Plasmo.jl
 
 If you find Plasmo.jl useful for your work, we ask that you cite the [manuscript](https://link.springer.com/article/10.1007/s12532-022-00223-3):
 ``` sourceCode
 @article{Jalving2022,
-  author = {Jalving, Jordan and Shin, Sangbin and Zavala, Victor M.},
+  author = {Jalving, Jordan and Shin, Sungho and Zavala, Victor M.},
   title = {A graph-based modeling abstraction for optimization: concepts and implementation in {Plasmo.jl}},
   journal = {Mathematical Programming Computation},
   volume = {14},
   pages = {699--747},
   year = {2022},
-  doi = {10.1007/s12532-022-00223-3},
-  url = {https://doi.org/10.1007/s12532-022-00223-3},
+  doi = {10.1007/s12532-022-00223-3}
 }
 ```
 You can access an earlier [pre-print](https://arxiv.org/abs/2006.05378) of this article.
