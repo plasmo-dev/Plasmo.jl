@@ -102,6 +102,8 @@ Partition
 assemble_optigraph
 apply_partition!
 aggregate
+aggregate_to_depth
+aggregate_to_depth!
 ```
 
 ## Graph Topology

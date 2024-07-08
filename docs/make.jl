@@ -17,8 +17,8 @@ makedocs(;
     pages=[
         "Introduction" => "index.md",
         "Quickstart" => "documentation/quickstart.md",
-        # "Modeling with OptiGraphs" => "documentation/modeling.md",
-        # "Graph Partitioning and Processing" => "documentation/partitioning.md",
+        "Modeling with OptiGraphs" => "documentation/modeling.md",
+        "Graph Processing and Analysis" => "documentation/graph_processing.md",
         # "Tutorials" =>
         #     ["Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md"],
         "API Documentation" => "documentation/api_docs.md"

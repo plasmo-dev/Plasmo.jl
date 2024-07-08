@@ -67,6 +67,10 @@ function Base.getindex(graph::OptiGraph, idx::Int)
     return collect(graph.optinodes)[idx]
 end
 
+function Base.getindex(graph::OptiGraph, range::UnitRange{Int})
+    return collect(graph.optinodes)[range]
+end
+
 Base.broadcastable(graph::OptiGraph) = Ref(graph)
 
 # TODO: parameterize on numerical precision like JuMP Models do

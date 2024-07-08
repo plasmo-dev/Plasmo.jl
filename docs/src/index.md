@@ -30,7 +30,7 @@ pkg> add Plasmo
 Pages = [
     "documentation/quickstart.md"
     "documentation/modeling.md"
-    "documentation/partitioning.md"
+    "documentation/graph_processing.md"
     "documentation/api_docs.md"
     ]
 Depth = 2
@@ -52,7 +52,7 @@ We are also looking for help from new contributors. If you would like to contrib
 ```@index
 ```
 
-### Citing Plasmo.jl
+## Citing Plasmo.jl
 
 If you find Plasmo.jl useful for your work, we ask that you cite the [manuscript](https://link.springer.com/article/10.1007/s12532-022-00223-3):
 ``` sourceCode

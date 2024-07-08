@@ -27,11 +27,10 @@ We also sometimes drop the 'opti' prefix and refer to objects as graphs, nodes, 
      `@variable`, `@constraint`, `@expression`, and `@objective` as well as many other JuMP methods that work on a `JuMP.Model`. 
      The [`OptiEdge`](@ref) supports most JuMP methods as well but does not support `@variable` or `@objective`.
 
-## Creating an OptiGraph
+## Creating a New OptiGraph
 An optigraph does not require any arguments to construct but it is recommended to include the optional `name` argument for tracking and model management purposes.
 We begin by creating a new optigraph named `graph1`.
 
-```
 
 ```jldoctest modeling
 julia> using Plasmo
@@ -83,7 +82,7 @@ nodes1[3]
 ```
 
 Each optinode supports adding variables, constraints, expressions, and an objective function. 
-Here we loop through each optinode in `graph1` using the [`optinodes`](@ref) function and we construct underlying model elements.
+Here we loop through each optinode in `graph1` using the [`local_nodes`](@ref) function and we construct underlying model elements.
 
 ```jldoctest modeling
 julia>  for node in all_nodes(graph1)
@@ -110,7 +109,7 @@ Variables within an optinode can be accessed directly by indexing the associated
 referencing variables on different optinodes when creating linking constraints or optigraph objective functions.
 ```jldoctest modeling
 julia> n1[:x]
-n1.x
+n1[:x]
 
 julia> nodes1[2][:x]
 nodes1[2][:x]
@@ -122,7 +121,7 @@ the linking constraint. This optiedge is created if it does not already exist.
 
 ```jldoctest modeling
 julia> @linkconstraint(graph1, link_reference, n1[:x] + nodes1[2][:x] + nodes1[3][:x] == 3)
-n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3.0
+n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3
 
 ```
 
@@ -136,7 +135,7 @@ n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3.0
     Both approaches are equivalent.
 
 
-## Adding an Objective Function
+## Add an Objective Function
 By default, the graph objective is empty even if objective functions exist on nodes. We leave it up to the user to determine what the objective function for the graph should be 
 given its contained nodes. We provide the convenience function [`set_to_node_objectives`](@ref) which will set the graph objective function to the sum of all the node objectives. 
 We can set the graph objective like following:
@@ -157,17 +156,14 @@ For example, we use the `Ipopt.Optimizer` from the [Ipopt.jl](https://github.com
 ```jldoctest modeling
 julia> using Ipopt
 
+julia> using Suppressor # suppress complete output
+
 julia> set_optimizer(graph1, Ipopt.Optimizer);
 
 julia> set_optimizer_attribute(graph1, "print_level", 0); #suppress Ipopt output
 
-julia> optimize!(graph1)
+julia> @suppress optimize!(graph1)
 
-******************************************************************************
-This program contains Ipopt, a library for large-scale nonlinear optimization.
- Ipopt is released as open source code under the Eclipse Public License (EPL).
-         For more information visit https://github.com/coin-or/Ipopt
-******************************************************************************
 ```
 
 The solution of an optigraph is stored directly on its optinodes and optiedges. Variables values, constraint duals, objective function values, and solution status codes can be queried just like in JuMP.
@@ -179,10 +175,10 @@ LOCALLY_SOLVED::TerminationStatusCode = 4
 julia> value(n1[:x])    
 1.0
 
-julia> value(nodes[2][:x])
+julia> value(nodes1[2][:x])
 1.0
 
-julia> value(nodes[3][:x])
+julia> value(nodes1[3][:x])
 1.0
 
 julia> round(objective_value(graph1))
@@ -197,7 +193,6 @@ julia> round(dual(n1[:node_constraint_1]), digits = 2)
 julia> round(dual(n1[:node_constraint_2]), digits = 2)
 0.25
 ```   
-
 
 ## Plotting OptiGraphs
 We can also plot the structure of `graph1` using both graph and matrix layouts from the [PlasmoPlots](https://github.com/plasmo-dev/PlasmoPlots.jl) package.
@@ -261,7 +256,18 @@ for node in all_nodes(graph3)
 end
 @linkconstraint(graph3, nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] == 7);
 
+graph3
+
 # output
+
+An OptiGraph
+          graph3 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        10               10
 
 ```
 
@@ -325,8 +331,8 @@ made for optiedges and nested subgraphs.
 Using this nested approach, linking constraints can be expressed both locally and globally. For instance, we can add a linking constraint to `graph0` that
 connects optinodes across its subgraphs like following:
 ```jldoctest modeling
-julia> @linkconstraint(graph0, nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] == 10)
-nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
+julia> @linkconstraint(graph0, nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] == 10)
+nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
 
 julia> graph0
 An OptiGraph
@@ -382,10 +388,10 @@ the optinodes contained directly within an optigraph, or we can use [`all_nodes`
 julia> local_nodes(graph1)
 3-element Vector{OptiNode{OptiGraph}}:
  n1
- nodes[2]
- nodes[3]
+ nodes1[2]
+ nodes1[3]
 
-julia> optinodes(graph0)
+julia> local_nodes(graph0)
 OptiNode{OptiGraph}[]
 
 julia> all_nodes(graph0)
@@ -417,7 +423,7 @@ julia> all_edges(graph0)
  root_graph.e1
  graph1.e1
  graph2.e1
- graph_3.e1
+ graph3.e1
 
 ```
 
@@ -430,7 +436,7 @@ julia> local_link_constraints(graph1)
 
 julia> local_link_constraints(graph0)
 1-element Vector{ConstraintRef}:
- nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
+ nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
 
 julia> all_link_constraints(graph0)
 4-element Vector{ConstraintRef}:
@@ -521,7 +527,7 @@ julia> round(value(graph3, n3[:x]); digits=2)
 
 Now assume we want to use these subgraph solutions to initialize the full graph solution. We could do this using [`JuMP.set_start_value`](@ref) like following:
 
-```jldoctest
+```jldoctest modeling
 julia> set_start_value.(all_variables(graph1), value.(graph1, all_variables(graph1)));
 
 julia> set_start_value.(all_variables(graph2), value.(graph2, all_variables(graph2)));
@@ -531,7 +537,7 @@ julia> set_start_value.(all_variables(graph3), value.(graph3, all_variables(grap
 
 Now that each subgraph has a new initial solution, the total initial solution can be used to optimize `graph0` since all of the subgraph attributes will be copied over.
 
-```jldoctest
+```jldoctest modeling
 julia> @objective(graph0, Min, sum(all_variables(graph0))); # set graph0 objective
 
 julia> set_optimizer(graph0, Ipopt.Optimizer);
@@ -544,3 +550,6 @@ julia> termination_status(graph0)
 LOCALLY_SOLVED::TerminationStatusCode = 4
 
 ```
+
+While somewhat simple, this example shows what kinds of model approaches can be taken with Plasmo.jl. Checkout [Graph Processing and Analysis](@ref) for more advanced functionality 
+that makes use of the optigraph structure to define and solve problems.

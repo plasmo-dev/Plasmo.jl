@@ -69,6 +69,7 @@ export OptiGraph,
     aggregate,
     aggregate!,
     aggregate_to_depth,
+    aggregate_to_depth!,
 
     # projections
 
@@ -80,11 +81,13 @@ export OptiGraph,
 
     # topoology
 
+    all_neighbors,
     incident_edges,
     induced_edges,
     identify_nodes,
     identify_edges,
     neighborhood,
+    induced_subgraph,
     expand,
 
     # macros

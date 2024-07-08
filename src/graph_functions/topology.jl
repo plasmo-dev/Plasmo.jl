@@ -17,9 +17,11 @@ end
 
 Create an induced subgraph of optigraph given a vector of optinodes.
 """
-function Graphs.induced_subgraph(hyper::HyperGraphProjection, nodes::Vector{<:OptiNode})
+function Graphs.induced_subgraph(
+    hyper::HyperGraphProjection, nodes::Vector{<:OptiNode}; name=nothing
+)
     edges = induced_edges(hyper, nodes)
-    induced_graph = assemble_optigraph(nodes, edges)
+    induced_graph = assemble_optigraph(nodes, edges; name=name)
     return induced_graph
 end
 
@@ -111,7 +113,7 @@ function Graphs.neighborhood(
 )
     vertices = get_mapped_elements(hyper, nodes)
     new_nodes = GOI.neighborhood(hyper.projected_graph, vertices, distance)
-    return get_mapped_elements(hyper, new_nodes) #getindex.(Ref(hyper), new_nodes)
+    return get_mapped_elements(hyper, new_nodes)
 end
 
 """
@@ -120,14 +122,18 @@ end
 Return a new expanded subgraph given the optigraph `graph` and an existing subgraph `subgraph`.
 The returned subgraph contains the expanded neighborhood within `distance` of the given `subgraph`.
 """
-function expand(hyper::HyperGraphProjection, subgraph::OptiGraph, distance::Int64)
+function expand(
+    hyper::HyperGraphProjection, subgraph::OptiGraph, distance::Int64; name=nothing
+)
     nodes = all_nodes(subgraph)
-    return expand(hyper, nodes, distance)
+    return expand(hyper, nodes, distance; name=name)
 end
 
-function expand(hyper::HyperGraphProjection, nodes::Vector{<:OptiNode}, distance::Int64)
+function expand(
+    hyper::HyperGraphProjection, nodes::Vector{<:OptiNode}, distance::Int64; name=nothing
+)
     new_optinodes = Graphs.neighborhood(hyper, nodes, distance)
     new_optiedges = induced_edges(hyper, new_optinodes)
-    expanded_subgraph = assemble_optigraph(new_optinodes, new_optiedges)
+    expanded_subgraph = assemble_optigraph(new_optinodes, new_optiedges; name=name)
     return expanded_subgraph
 end

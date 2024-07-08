@@ -32,9 +32,9 @@ quickstart_graph #local elements  #total elements
 ```
 
 !!! note
-    An [`OptiGraph`](@ref) distinguishes between its local elements (optinodes and optiedges contained directly within the graph) and its total elements (local elements plus elements contained within subgraphs). This distinction helps to describe nested graph structures as described in [Modeling with Subgraphs](@ref).
+    An [`OptiGraph`](@ref) distinguishes between its local elements (optinodes and optiedges contained directly within the graph) and its total elements (local elements plus elements contained within subgraphs). This distinction helps to describe nested graph structures as described in [Modeling with OptiGraphs](@ref).
 
-## Add Variables and Constraints using OptiNodes
+## Add Variables and Constraints (using OptiNodes)
 An optigraph consists of [`OptiNode`](@ref) objects which represent stand-alone optimization models. An optinode supports JuMP
 macros used to create variables, constraints, expressions, and objective functions (i.e. it supports JuMP macros such as `@variable`, `@constraint`, `@expression` and `@objective`). The simplest way to add optinodes to an optigraph is
 to use the [`@optinode`](@ref) macro as shown in the following code snippet. Here we create the optinode `n1` and add two variables `x` and `y`. We also add
@@ -45,16 +45,16 @@ julia> @optinode(graph, n1)
 n1
 
 julia> @variable(n1, y >= 2)
-n1.y
+n1[:y]
 
 julia> @variable(n1, x >= 1)
-n1.x
+n1[:x]
 
 julia> @constraint(n1, x + y >= 3)
-n1.y + n1.x ≥ 3
+n1[:y] + n1[:x] ≥ 3
 
 julia> @objective(n1, Min, y)
-n1.y
+n1[:y]
 
 julia> graph
 An OptiGraph
@@ -100,7 +100,7 @@ quickstart_graph #local elements  #total elements
 ```
 
 
-## Add Linking Constraints using Edges
+## Add Linking Constraints (using Edges)
 A linking constraint can be created by adding a constraint to an [`OptiEdge`](@ref). Linking constraints 
 couple variables across nodes (or graphs!) and can take any valid JuMP expression composed of node variables. We add a simple linear equality constraint
 here between variables that exist on nodes `n1`, `n2`, and `n3`.

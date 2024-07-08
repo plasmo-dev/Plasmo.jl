@@ -66,7 +66,7 @@ function aggregate(graph::OptiGraph; name=gensym())
     # setup index_map from the ref_map
     _copy_attributes_to!(new_graph, graph, ref_map)
 
-    # copy objective function to node
+    # TODO: correctly copy objective function to node
     JuMP.set_objective(new_node, objective_sense(new_graph), objective_function(new_graph))
     return new_node, ref_map
 end
@@ -262,7 +262,19 @@ function _copy_edge_to!(
     # copy constraints from source_edge
 end
 
+"""
+    aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
+
+Aggregate `graph` by converting subgraphs into optinodes. The `max_depth` determines how many levels of
+subgraphs remain in the new aggregated optigraph. For example, a `max_depth` of `0` signifies there should be no subgraphs in
+the aggregated optigraph. Return a new aggregated optigraph and reference map that 
+maps elements from the old optigraph to the new aggregate optigraph.
+"""
 function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
+    if num_subgraphs(graph) == 0
+        error("`aggregate_to_depth` requires the graph to contain subgraphs.")
+    end
+
     root_optigraph = OptiGraph()
     ref_map = GraphReferenceMap()
     subgraph_dict = Dict(graph => root_optigraph)
@@ -278,10 +290,10 @@ function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
         subgraphs_to_check = []
         for parent in last_parents
             new_parent = subgraph_dict[parent]
-            subgraphs = get_subgraphs(parent)
+            subgraphs = local_subgraphs(parent)
             for subgraph in subgraphs
                 new_subgraph = OptiGraph()
-                add_subgraph!(new_parent, new_subgraph)
+                add_subgraph(new_parent, new_subgraph)
                 subgraph_dict[subgraph] = new_subgraph
             end
             append!(subgraphs_to_check, subgraphs)
@@ -297,7 +309,7 @@ function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
     all_ref_maps = []
     for parent in last_parents
         new_parent = subgraph_dict[parent]
-        leaf_subgraphs = get_subgraphs(parent)
+        leaf_subgraphs = local_subgraphs(parent)
 
         # aggregate the subgraphs into nodes within `new_parent`
         nodes, subgraph_ref_maps = _aggregate_subgraphs!(new_parent, parent)
@@ -310,10 +322,10 @@ function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
     end
 
     #now copy nodes and edges going back up the tree
-    for graph in reverse(all_parents)
-        nodes = local_nodes(graph)
-        edges = local_edges(graph)
-        new_graph = subgraph_dict[graph]
+    for rgraph in reverse(all_parents)
+        nodes = local_nodes(rgraph)
+        edges = local_edges(rgraph)
+        new_graph = subgraph_dict[rgraph]
 
         # copy optinodes
         for node in nodes
@@ -338,7 +350,7 @@ end
 function _aggregate_subgraphs!(new_graph::OptiGraph, source_graph::OptiGraph)
     # aggregate each subgraph into a node in new_graph
     nodes, ref_maps = [], []
-    for subgraph in get_subgraphs(source_graph)
+    for subgraph in local_subgraphs(source_graph)
         node, ref_map = _copy_graph_elements_to!(new_graph, subgraph)
         push!(nodes, node)
         push!(ref_maps, ref_map)
@@ -347,11 +359,12 @@ function _aggregate_subgraphs!(new_graph::OptiGraph, source_graph::OptiGraph)
 end
 
 """
-    aggregate!(graph::OptiGraph, max_depth::Int64)
+    aggregate_to_depth!(graph::OptiGraph, max_depth::Int64=0)
 
 Aggregate `graph` by converting subgraphs into optinodes. The `max_depth` determines how many levels of
 subgraphs remain in the new aggregated optigraph. For example, a `max_depth` of `0` signifies there should be no subgraphs in
-the aggregated optigraph.
+the aggregated optigraph. This version of the method modifies the optigraph and transforms it 
+into the aggregated version. 
 """
 function aggregate_to_depth!(graph::OptiGraph, max_depth::Int64=0)
     temp_graph, ref_map = aggregate_to_depth(graph, max_depth)
