@@ -490,7 +490,7 @@ end
 Retrieve the local subgraphs of `graph`.
 """
 function local_subgraphs(graph::OptiGraph)
-    return graph.subgraphs
+    return collect(graph.subgraphs)
 end
 @deprecate getsubgraphs local_subgraphs
 

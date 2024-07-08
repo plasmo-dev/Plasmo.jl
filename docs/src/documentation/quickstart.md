@@ -3,8 +3,7 @@
 This quickstart gives a brief overview of the functions needed to effectively use Plasmo.jl to build optimization models. If you have used [JuMP.jl](https://github.com/jump-dev/JuMP.jl),
 much of the functionality here will look familiar. In fact, the primary modeling objects in Plasmo.jl extend the `JuMP.AbstractModel` and support most JuMP methods.  
 
-The below example demonstrates the construction of a simple linear optimization problem that contains two optinodes coupled by a simple linking contraint (which induces an [`OptiEdge`](@ref)) that is solved with
-the [HiGHS](https://github.com/jump-dev/HiGHS.jl) linear optimization solver.
+The below example demonstrates the construction of a simple linear optimization problem that contains two optinodes coupled by a simple linking contraint (which induces an [`OptiEdge`](@ref)) that is solved with the [HiGHS](https://github.com/jump-dev/HiGHS.jl) linear optimization solver.
 
 Once Plasmo.jl has been installed, you can use it from a Julia session as following:
 ```jldoctest quickstart
@@ -33,7 +32,7 @@ quickstart_graph #local elements  #total elements
 ```
 
 !!! note
-    An [`OptiGraph`](@ref) distinguishes between its local elements (optinodes and optiedges contained directly within the graph) and its total elements (local elements plus elements contained within subgraphs). This distinction helps to describe nested graph structures in [Modeling with Subgraphs]().
+    An [`OptiGraph`](@ref) distinguishes between its local elements (optinodes and optiedges contained directly within the graph) and its total elements (local elements plus elements contained within subgraphs). This distinction helps to describe nested graph structures as described in [Modeling with Subgraphs](@ref).
 
 ## Add Variables and Constraints using OptiNodes
 An optigraph consists of [`OptiNode`](@ref) objects which represent stand-alone optimization models. An optinode supports JuMP
@@ -101,7 +100,7 @@ quickstart_graph #local elements  #total elements
 ```
 
 
-## Add Linking Constraints
+## Add Linking Constraints using Edges
 A linking constraint can be created by adding a constraint to an [`OptiEdge`](@ref). Linking constraints 
 couple variables across nodes (or graphs!) and can take any valid JuMP expression composed of node variables. We add a simple linear equality constraint
 here between variables that exist on nodes `n1`, `n2`, and `n3`.
@@ -110,7 +109,7 @@ here between variables that exist on nodes `n1`, `n2`, and `n3`.
 julia> edge = add_edge(graph, n1, n2, n3);
 
 julia> @constraint(edge, n1[:x] + n2[:x] + n3[:x] == 3)
-n1.x + n2.x + n3.x = 3
+n1[:x] + n2[:x] + n3[:x] = 3
 
 julia> println(graph)
 An OptiGraph
@@ -124,7 +123,7 @@ quickstart_graph #local elements  #total elements
 
 ```
 
-!!! note
+!!! info
     You can also create edges implicitly using the [`@linkconstraint`](@ref) macro which takes the exact same input as the `JuMP.@constraint` macro above. 
     The above snippet would correspond to doing:
     ```julia
@@ -141,10 +140,10 @@ objective for each node we can use the `set_to_node_objectives` function to deno
 julia> set_to_node_objectives(graph)
 
 julia> objective_function(graph)
-n1.y + n2.y + n3.y
+n1[:y] + n2[:y] + n3[:y]
 ```
 
-!!! note
+!!! info
     The graph objective approach would look like:
     ```julia
     @objective(graph, Min, n1[:y] + n2[:y] + n3[:y])

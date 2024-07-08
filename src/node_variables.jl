@@ -69,7 +69,7 @@ function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::Strin
     if !isempty(name) && MOI.supports(
         JuMP.backend(graph_backend(node)), MOI.VariableName(), MOI.VariableIndex
     )
-        JuMP.set_name(vref, "$(JuMP.name(node)).$(name)")
+        JuMP.set_name(vref, "$(JuMP.name(node))[:$(name)]")
     end
     return vref
 end
