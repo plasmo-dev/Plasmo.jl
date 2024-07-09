@@ -118,6 +118,18 @@ function JuMP.delete(node::OptiNode, cref::ConstraintRef)
     return nothing
 end
 
+### Duals
+
+"""
+    JuMP.dual(cref::NodeConstraintRef; result::Int=1)
+
+Return the dual for a `NodeConstraintRef`. This returns the dual for the source graph that
+corresponds to the constraint reference.
+"""
+function JuMP.dual(cref::NodeConstraintRef; result::Int=1)
+    return MOI.get(graph_backend(cref.model), MOI.ConstraintDual(result), cref)
+end
+
 ### Constraints
 
 """

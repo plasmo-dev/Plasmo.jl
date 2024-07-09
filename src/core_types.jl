@@ -85,3 +85,11 @@ const OptiElement = Union{OptiNode{<:AbstractOptiGraph},OptiEdge{<:AbstractOptiG
 const OptiObject = Union{
     OptiNode{<:AbstractOptiGraph},OptiEdge{<:AbstractOptiGraph},OptiGraph
 }
+
+const NodeConstraintRef = JuMP.ConstraintRef{
+    OptiNode{GT},MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
+} where {GT<:AbstractOptiGraph,FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}
+
+const EdgeConstraintRef = JuMP.ConstraintRef{
+    OptiEdge{GT},MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
+} where {GT<:AbstractOptiGraph,FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}

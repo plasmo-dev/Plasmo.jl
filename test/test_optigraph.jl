@@ -32,6 +32,11 @@ function test_simple_graph()
     @test JuMP.dual_status(graph) == MOI.FEASIBLE_POINT
     @test JuMP.result_count(graph) == 1
     @test JuMP.raw_status(graph) == "kHighsModelStatusOptimal"
+
+    constraints = all_constraints(graph)
+    @test JuMP.dual(constraints[1]) == 1.0
+    @test JuMP.dual(constraints[2]) == 0.0
+    @test JuMP.dual(constraints[3]) == -2.0
 end
 
 function _create_test_nonlinear_optigraph()

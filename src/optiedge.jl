@@ -15,6 +15,10 @@ function Base.getindex(edge::OptiEdge, name::Symbol)
     return edge.source_graph.edge_obj_dict[t]
 end
 
+const EdgeConstraintRef = JuMP.ConstraintRef{
+    OptiEdge{GT},MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
+} where {GT<:AbstractOptiGraph,FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}
+
 """
     graph_backend(edge::OptiEdge)
 
@@ -109,4 +113,14 @@ end
 
 function JuMP.is_valid(edge::OptiEdge, cref::ConstraintRef)
     return edge === JuMP.owner_model(cref) && MOI.is_valid(graph_backend(edge), cref)
+end
+
+"""
+    JuMP.dual(cref::EdgeConstraintRef; result::Int=1)
+
+Return the dual for an `EdgeConstraintRef`. This returns the dual for the source graph that
+corresponds to the constraint reference.
+"""
+function JuMP.dual(cref::EdgeConstraintRef; result::Int=1)
+    return MOI.get(graph_backend(cref.model), MOI.ConstraintDual(result), cref)
 end
