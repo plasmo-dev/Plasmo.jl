@@ -53,7 +53,12 @@ end
 Return the next variable index that would be created on this node.
 """
 function next_variable_index(node::OptiNode)
-    return MOI.VariableIndex(JuMP.num_variables(node) + 1)
+    source = source_graph(node)
+    if !haskey(source.last_variable_index, node)
+        source.last_variable_index[node] = 0
+    end
+    source.last_variable_index[node] += 1
+    return MOI.VariableIndex(source.last_variable_index[node])
 end
 
 """
@@ -77,8 +82,12 @@ end
 function next_constraint_index(
     node::OptiNode, ::Type{F}, ::Type{S}
 )::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    index = MOI.get(graph_backend(node), MOI.NumberOfConstraints{F,S}(), node)
-    return MOI.ConstraintIndex{F,S}(index + 1)
+    source = source_graph(node)
+    if !haskey(source.last_constraint_index, (node, F, S))
+        source.last_constraint_index[(node, F, S)] = 0
+    end
+    source.last_constraint_index[(node, F, S)] += 1
+    return MOI.ConstraintIndex{F,S}(source.last_constraint_index[(node, F, S)])
 end
 
 #
@@ -180,7 +189,6 @@ function _moi_add_node_constraint(node::OptiNode, con::JuMP.AbstractConstraint)
         node, typeof(moi_func), typeof(moi_set)
     )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
     cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
-
     # add to each containing optigraph
     for graph in containing_optigraphs(node)
         MOI.add_constraint(graph_backend(graph), cref, jump_func, moi_set)

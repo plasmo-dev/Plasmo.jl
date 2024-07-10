@@ -16,6 +16,8 @@ function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
         Dict{Symbol,Any}(),
         Set{Any}(),
         false,
+        OrderedDict{OptiNode,Int}(),
+        OrderedDict{Tuple,Int}(),
     )
 
     # default is MOI backend

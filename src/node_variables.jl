@@ -241,6 +241,7 @@ function _moi_nv_set_lower_bound(nvref::NodeVariableRef, lower::Number)
     else
         @assert !_moi_nv_is_fixed(nvref)
         con = JuMP.ScalarConstraint(nvref, new_set)
+        println(con)
         _moi_add_node_constraint(node, con)
     end
     return nothing

@@ -73,8 +73,12 @@ end
 function next_constraint_index(
     edge::OptiEdge, ::Type{F}, ::Type{S}
 )::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    index = _num_moi_constraints(edge, F, S)
-    return MOI.ConstraintIndex{F,S}(index + 1)
+    source = source_graph(edge)
+    if !haskey(source.last_constraint_index, (edge, F, S))
+        source.last_constraint_index[(edge, F, S)] = 0
+    end
+    source.last_constraint_index[(edge, F, S)] += 1
+    return MOI.ConstraintIndex{F,S}(source.last_constraint_index[(edge, F, S)])
 end
 
 function _num_moi_constraints(

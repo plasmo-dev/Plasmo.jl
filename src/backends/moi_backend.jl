@@ -384,11 +384,11 @@ end
 ### is_valid
 
 function MOI.is_valid(backend::GraphMOIBackend, vref::NodeVariableRef)
-    return MOI.is_valid(backend.moi_backend, graph_index(vref))
+    return MOI.is_valid(backend.moi_backend, graph_index(backend, vref))
 end
 
 function MOI.is_valid(backend::GraphMOIBackend, cref::ConstraintRef)
-    return MOI.is_valid(backend.moi_backend, graph_index(cref))
+    return MOI.is_valid(backend.moi_backend, graph_index(backend, cref))
 end
 
 function MOI.is_valid(backend::GraphMOIBackend, vi::MOI.VariableIndex)
@@ -409,7 +409,7 @@ function MOI.optimize!(backend::GraphMOIBackend)
 end
 
 #
-# MOI cariables and constraints
+# MOI variables and constraints
 #
 
 function MOI.add_variable(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
@@ -432,11 +432,7 @@ function MOI.add_variable(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
 end
 
 function MOI.add_constraint(
-    backend::GraphMOIBackend,
-    cref::ConstraintRef,
-    moi_func::F,
-    moi_set::S;
-    add_variables=false,
+    backend::GraphMOIBackend, cref::ConstraintRef, moi_func::F, moi_set::S
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     # return if reference already mapped to element
     cref in keys(backend.element_to_graph_map.con_map) && return nothing
@@ -473,9 +469,7 @@ function MOI.add_constraint(
     # assemble MOI function for graph backend
     moi_func = JuMP.moi_function(jump_func)
     moi_func_graph = _create_graph_moi_func(backend, moi_func, jump_func)
-    return MOI.add_constraint(
-        backend, cref, moi_func_graph, moi_set; add_variables=add_variables
-    )
+    return MOI.add_constraint(backend, cref, moi_func_graph, moi_set)
 end
 
 #

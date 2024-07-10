@@ -44,6 +44,8 @@ struct OptiEdge{GT<:AbstractOptiGraph} <: AbstractOptiEdge
     nodes::OrderedSet{OptiNode}
 end
 
+const OptiElement = Union{OptiNode{<:AbstractOptiGraph},OptiEdge{<:AbstractOptiGraph}}
+
 """
     OptiGraph
 
@@ -78,9 +80,11 @@ mutable struct OptiGraph <: AbstractOptiGraph
 
     bridge_types::Set{Any}
     is_model_dirty::Bool
-end
 
-const OptiElement = Union{OptiNode{<:AbstractOptiGraph},OptiEdge{<:AbstractOptiGraph}}
+    # track the next index for nodes and edges
+    last_variable_index::OrderedDict{OptiNode,Int}
+    last_constraint_index::OrderedDict{Tuple,Int}
+end
 
 const OptiObject = Union{
     OptiNode{<:AbstractOptiGraph},OptiEdge{<:AbstractOptiGraph},OptiGraph
