@@ -378,10 +378,8 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
     source = source_graph(node)
 
     # update object dictionary
-    # node_dict = JuMP.object_dictionary(node)
     node_dict = node_object_dictionary(node) # NOTE: will be slow for large partitions
     merge!(new_graph.element_data.node_obj_dict, node_dict)
-    new_graph.element_data.node_to_graphs[node] = source.element_data.node_to_graphs[node]
 
     # transfer element data
     _transfer_element_data!(new_graph, node)
@@ -403,7 +401,35 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
 end
 
 # TODO: copy over relevant element data
-function _transfer_element_data!(new_graph::OptiGraph, node::OptiNode) end
+function _transfer_element_data!(new_graph::OptiGraph, node::OptiNode)
+    source_data = source_graph(node).element_data
+    dest_data = new_graph.element_data
+
+    dest_data.node_to_graphs[node] = source_data.node_to_graphs[node]
+    dest_data.last_variable_index[node] = source_data.last_variable_index[node]
+    dest_data.last_constraint_index[node] = source_data.last_constraint_index[node]
+    node_object_data = node_object_dictionary(node)
+    for (k, v) in node_object_data
+        dest_data.node_obj_dict[k] = v
+    end
+    if haskey(source_data.node_graphs, node)
+        dest_data.node_graphs[node] = source_data.node_graphs[node]
+    end
+    return nothing
+end
+
+function _transfer_element_data!(new_graph::OptiGraph, edge::OptiEdge)
+    source_data = source_graph(edge).element_data
+    dest_data = new_graph.element_data
+    dest_data.edge_to_graphs[edge] = source_data.edge_to_graphs[edge]
+    dest_data.last_constraint_index[edge] = source_data.last_constraint_index[edge]
+
+    edge_object_data = edge_object_dictionary(edge)
+    for (k, v) in edge_object_data
+        dest.edge_obj_dict[k] = v
+    end
+    return nothing
+end
 
 """
     Transfer optiedge ownership to new optigraph 
@@ -411,7 +437,9 @@ function _transfer_element_data!(new_graph::OptiGraph, node::OptiNode) end
 function _transfer_element!(new_graph::OptiGraph, edge::OptiEdge)
     source = source_graph(edge)
     edge_dict = edge_object_dictionary(edge) #JuMP.object_dictionary(edge)
-    new_graph.element_data.edge_to_graphs[edge] = source.element_data.edge_to_graphs[edge]
+
+    # transfer element data
+    _transfer_element_data!(new_graph, edge)
 
     # delete the edge_to_graphs reference since new_graph is now the source graph
     delete!(new_graph.element_data.edge_to_graphs, edge)
