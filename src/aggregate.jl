@@ -108,7 +108,7 @@ function _copy_attributes_to!(
     # the variables or constraints. we just want to pass the attributes that would be 
     # exposed such as the graph objective function.
     for (source_vref, dest_vref) in ref_map.var_map
-        # TODO: use outer method here; don't access data members directly 
+        # TODO: use outer method here; don't access data members directly
         if source_vref in keys(src.element_to_graph_map.var_map)
             index_map[graph_index(source_graph, source_vref)] = graph_index(dest_vref)
         end

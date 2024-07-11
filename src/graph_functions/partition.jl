@@ -341,6 +341,7 @@ function apply_partition!(graph::OptiGraph, partition::Partition)
     # TODO: filter nodes and edges that actually need to be transferred
     # it is possible a node or edge source is defined in another graph.
     _transfer_elements!(graph, partition)
+
     return nothing
 end
 
@@ -379,18 +380,21 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
     # update object dictionary
     # node_dict = JuMP.object_dictionary(node)
     node_dict = node_object_dictionary(node) # NOTE: will be slow for large partitions
-    merge!(new_graph.node_obj_dict, node_dict)
-    new_graph.node_to_graphs[node] = source.node_to_graphs[node]
+    merge!(new_graph.element_data.node_obj_dict, node_dict)
+    new_graph.element_data.node_to_graphs[node] = source.element_data.node_to_graphs[node]
+
+    # transfer element data
+    _transfer_element_data!(new_graph, node)
 
     # delete the node_to_graphs reference since new_graph is now the source graph
-    delete!(new_graph.node_to_graphs, node)
+    delete!(new_graph.element_data.node_to_graphs, node)
 
     # also delete source reference, since it gets created in _make_subgraphs!
-    delete!(source.node_to_graphs, node)
+    delete!(source.element_data.node_to_graphs, node)
 
     # clean up the source graph
     for key in keys(node_dict)
-        delete!(source.node_obj_dict, key)
+        delete!(source.element_data.node_obj_dict, key)
     end
 
     # update the node source reference
@@ -398,23 +402,26 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
     return nothing
 end
 
+# TODO: copy over relevant element data
+function _transfer_element_data!(new_graph::OptiGraph, node::OptiNode) end
+
 """
     Transfer optiedge ownership to new optigraph 
 """
 function _transfer_element!(new_graph::OptiGraph, edge::OptiEdge)
     source = source_graph(edge)
-    edge_dict = JuMP.object_dictionary(edge)
-    new_graph.edge_to_graphs[edge] = source.edge_to_graphs[edge]
+    edge_dict = edge_object_dictionary(edge) #JuMP.object_dictionary(edge)
+    new_graph.element_data.edge_to_graphs[edge] = source.element_data.edge_to_graphs[edge]
 
     # delete the edge_to_graphs reference since new_graph is now the source graph
-    delete!(new_graph.edge_to_graphs, edge)
+    delete!(new_graph.element_data.edge_to_graphs, edge)
 
     # also delete source reference, since it gets created in _make_subgraphs!
-    delete!(source.edge_to_graphs, edge)
+    delete!(source.element_data.edge_to_graphs, edge)
 
     # clean up the source graph
     for key in keys(edge_dict)
-        delete!(source.edge_obj_dict, key)
+        delete!(source.element_data.edge_obj_dict, key)
     end
 
     # update the edge source reference
@@ -426,55 +433,55 @@ end
 #function swap_separators(graph::OptiGraph, partition::Partition)
 #end
 
-##################################################################
-# Convenience partition functions.  
-# These are simple interfaces to generate hybrid partitions
-# TODO: recursive partitions
-##################################################################
-"""
-    partition_to_subgraphs!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
+# ##################################################################
+# # Convenience partition functions.  
+# # These are simple interfaces to generate hybrid partitions
+# # TODO: recursive partitions
+# ##################################################################
+# """
+#     partition_to_subgraphs!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
 
-Create subgraphs in `optigraph` that form a `RECURSIVE_GRAPH` structure.
-"""
-function partition_to_subgraphs!(
-    graph::OptiGraph, partition_func::Function, args...; kwargs...
-)
-    hyper = hyper_projection(graph)
-    membership_vector = partition_func(hyper.projected_graph, args...; kwargs...)
-    partition = Partition(projection, membership_vector)
-    apply_partition!(graph, partition)
-    return nothing
-end
+# Create subgraphs in `optigraph` that form a `RECURSIVE_GRAPH` structure.
+# """
+# function partition_to_subgraphs!(
+#     graph::OptiGraph, partition_func::Function, args...; kwargs...
+# )
+#     hyper = hyper_projection(graph)
+#     membership_vector = partition_func(hyper.projected_graph, args...; kwargs...)
+#     partition = Partition(projection, membership_vector)
+#     apply_partition!(graph, partition)
+#     return nothing
+# end
 
-"""
-    partition_to_tree!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
+# """
+#     partition_to_tree!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
 
-Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
-"""
-function partition_to_tree!(graph::OptiGraph, partition_func::Function, args...; kwargs...)
-    projection = build_edge_hyper_graph(graph)
-    membership_vector = partition_func(projection.projected_graph, args...; kwargs...)
-    partition = Partition(projection, membership_vector)
-    apply_partition!(graph, partition)
-    return nothing
-end
+# Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
+# """
+# function partition_to_tree!(graph::OptiGraph, partition_func::Function, args...; kwargs...)
+#     projection = build_edge_hyper_graph(graph)
+#     membership_vector = partition_func(projection.projected_graph, args...; kwargs...)
+#     partition = Partition(projection, membership_vector)
+#     apply_partition!(graph, partition)
+#     return nothing
+# end
 
-"""
-    partition_to_tree!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
+# """
+#     partition_to_tree!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
 
-Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
-"""
-function partition_to_subgraph_tree!(
-    graph::OptiGraph, partition_func::Function, args...; kwargs...
-)
-    projection = build_bipartite_graph(graph)
-    membership_vector = partition_func(projection.projected_graph, args...; kwargs...)
-    partition = Partition(projection, membership_vector)
-    return apply_partition!(graph, partition)
-end
+# Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
+# """
+# function partition_to_subgraph_tree!(
+#     graph::OptiGraph, partition_func::Function, args...; kwargs...
+# )
+#     projection = build_bipartite_graph(graph)
+#     membership_vector = partition_func(projection.projected_graph, args...; kwargs...)
+#     partition = Partition(projection, membership_vector)
+#     return apply_partition!(graph, partition)
+# end
 
-function Base.string(partition::Partition)
-    return "OptiGraph Partition w/ $(n_subpartitions(partition)) subpartitions"
-end
-Base.print(io::IO, partition::Partition) = Base.print(io, string(partition))
-Base.show(io::IO, partition::Partition) = Base.print(io, partition)
+# function Base.string(partition::Partition)
+#     return "OptiGraph Partition w/ $(n_subpartitions(partition)) subpartitions"
+# end
+# Base.print(io::IO, partition::Partition) = Base.print(io, string(partition))
+# Base.show(io::IO, partition::Partition) = Base.print(io, partition)

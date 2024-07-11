@@ -40,9 +40,10 @@ end
 
 function containing_optigraphs(edge::OptiEdge)
     source = source_graph(edge)
+    source_data = source.element_data
     graphs = [source]
-    if haskey(source.edge_to_graphs, edge)
-        graphs = [graphs; source.edge_to_graphs[edge]]
+    if haskey(source_data.edge_to_graphs, edge)
+        graphs = [graphs; source_data.edge_to_graphs[edge]]
     end
     return graphs
 end
@@ -51,9 +52,15 @@ function all_nodes(edge::OptiEdge)
     return collect(edge.nodes)
 end
 
-function JuMP.object_dictionary(edge::OptiEdge)
-    d = source_graph(edge).edge_obj_dict
+function edge_object_dictionary(edge::OptiEdge)
+    d = source_graph(edge).element_data.edge_obj_dict
     return filter(p -> p.first[1] == edge, d)
+end
+
+function JuMP.object_dictionary(edge::OptiEdge)
+    d = source_graph(edge).element_data.edge_obj_dict
+    return d
+    # return filter(p -> p.first[1] == edge, d)
 end
 
 function JuMP.backend(edge::OptiEdge)
@@ -70,15 +77,16 @@ end
 
 ### Edge Constraints
 
+# NOTE: could use one method for node and edge
 function next_constraint_index(
     edge::OptiEdge, ::Type{F}, ::Type{S}
 )::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    source = source_graph(edge)
-    if !haskey(source.last_constraint_index, (edge, F, S))
-        source.last_constraint_index[(edge, F, S)] = 0
+    source_data = source_graph(edge).element_data
+    if !haskey(source_data.last_constraint_index, edge)
+        source_data.last_constraint_index[edge] = 0
     end
-    source.last_constraint_index[(edge, F, S)] += 1
-    return MOI.ConstraintIndex{F,S}(source.last_constraint_index[(edge, F, S)])
+    source_data.last_constraint_index[edge] += 1
+    return MOI.ConstraintIndex{F,S}(source_data.last_constraint_index[edge])
 end
 
 function _num_moi_constraints(

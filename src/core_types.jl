@@ -46,6 +46,38 @@ end
 
 const OptiElement = Union{OptiNode{<:AbstractOptiGraph},OptiEdge{<:AbstractOptiGraph}}
 
+struct ElementData{GT<:AbstractOptiGraph}
+    # track node membership in other graphs; nodes use this to query different backends
+    node_to_graphs::OrderedDict{OptiNode{GT},Vector{GT}}
+    edge_to_graphs::OrderedDict{OptiEdge{GT},Vector{GT}}
+
+    # special case where nodes are optimized directly
+    node_graphs::OrderedDict{OptiNode{GT},GT}
+
+    # node and edge object dictionaries
+    node_obj_dict::OrderedDict{Tuple{OptiNode{GT},Symbol},Any}
+    edge_obj_dict::OrderedDict{Tuple{OptiEdge{GT},Symbol},Any}
+
+    # track variable indices 
+    last_variable_index::OrderedDict{OptiNode,Int}
+
+    # track constraint indices
+    last_constraint_index::OrderedDict{OptiElement,Int}
+end
+
+# default is OptiGraph
+function ElementData(GT::Type{<:AbstractOptiGraph})
+    return ElementData{GT}(
+        OrderedDict{OptiNode{GT},Vector{GT}}(),
+        OrderedDict{OptiEdge{GT},Vector{GT}}(),
+        OrderedDict{OptiNode{GT},GT}(),
+        OrderedDict{Tuple{OptiNode{GT},Symbol},Any}(),
+        OrderedDict{Tuple{OptiEdge{GT},Symbol},Any}(),
+        OrderedDict{OptiNode{GT},Int}(),
+        OrderedDict{OptiElement,Int}(),
+    )
+end
+
 """
     OptiGraph
 
@@ -63,27 +95,16 @@ mutable struct OptiGraph <: AbstractOptiGraph
     # subgraphs keep a reference to their parent
     parent_graph::Union{Nothing,OptiGraph}
 
-    # track node membership in other graphs; nodes use this to query different backends
-    node_to_graphs::OrderedDict{OptiNode{OptiGraph},Vector{OptiGraph}}
-    edge_to_graphs::OrderedDict{OptiEdge{OptiGraph},Vector{OptiGraph}}
-
-    # special case where nodes are optimized directly
-    node_graphs::OrderedDict{OptiNode{OptiGraph},OptiGraph}
+    # all mappings related to graph elements
+    element_data::ElementData{OptiGraph}
 
     # intermediate backend that maps graph elements to the actual model
     backend::Union{Nothing,MOI.ModelLike}
-
-    node_obj_dict::OrderedDict{Tuple{OptiNode{OptiGraph},Symbol},Any}
-    edge_obj_dict::OrderedDict{Tuple{OptiEdge{OptiGraph},Symbol},Any}
     obj_dict::Dict{Symbol,Any}
     ext::Dict{Symbol,Any}
 
     bridge_types::Set{Any}
     is_model_dirty::Bool
-
-    # track the next index for nodes and edges
-    last_variable_index::OrderedDict{OptiNode,Int}
-    last_constraint_index::OrderedDict{Tuple,Int}
 end
 
 const OptiObject = Union{

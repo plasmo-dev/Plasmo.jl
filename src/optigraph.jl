@@ -6,18 +6,12 @@ function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
         OrderedSet{OptiGraph}(),
         OrderedDict{Set{OptiNode},OptiEdge}(),
         nothing,
-        OrderedDict{OptiNode,Vector{OptiGraph}}(),
-        OrderedDict{OptiEdge,Vector{OptiGraph}}(),
-        OrderedDict{OptiNode,OptiGraph}(),
+        ElementData(OptiGraph),
         nothing,
-        OrderedDict{Tuple{OptiNode,Symbol},Any}(),
-        OrderedDict{Tuple{OptiEdge,Symbol},Any}(),
         Dict{Symbol,Any}(),
         Dict{Symbol,Any}(),
         Set{Any}(),
         false,
-        OrderedDict{OptiNode,Int}(),
-        OrderedDict{Tuple,Int}(),
     )
 
     # default is MOI backend
@@ -196,10 +190,11 @@ end
 
 function _track_node_in_graph(graph::OptiGraph, node::OptiNode)
     source = source_graph(node)
-    if haskey(source.node_to_graphs, node)
-        push!(source.node_to_graphs[node], graph)
+    source_data = source.element_data
+    if haskey(source_data.node_to_graphs, node)
+        push!(source_data.node_to_graphs[node], graph)
     else
-        source.node_to_graphs[node] = [graph]
+        source_data.node_to_graphs[node] = [graph]
     end
     return nothing
 end
@@ -315,10 +310,11 @@ end
 
 function _track_edge_in_graph(graph::OptiGraph, edge::OptiEdge)
     source = source_graph(edge)
-    if haskey(source.edge_to_graphs, edge)
-        push!(source.edge_to_graphs[edge], graph)
+    source_data = source.element_data
+    if haskey(source_data.edge_to_graphs, edge)
+        push!(source_data.edge_to_graphs[edge], graph)
     else
-        source.edge_to_graphs[edge] = [graph]
+        source_data.edge_to_graphs[edge] = [graph]
     end
     return nothing
 end

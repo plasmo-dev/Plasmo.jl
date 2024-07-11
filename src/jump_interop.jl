@@ -29,8 +29,9 @@ function JuMP.jump_function_type(::OptiObject, ::Type{MOI.VariableIndex})
 end
 
 function JuMP.jump_function(obj::OptiObject, vidx::MOI.VariableIndex)
-    gb = graph_backend(obj)
-    node_var = gb.graph_to_element_map[vidx]
+    backend = graph_backend(obj)
+    #node_var = gb.graph_to_element_map[vidx]
+    node_var = JuMP.constraint_ref_with_index(backend, vidx)
     node = node_var.node
     return NodeVariableRef(node, node_var.index)
 end
@@ -75,8 +76,10 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     node::OptiNode, f::MOI.ScalarAffineFunction
 ) where {C}
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
+    backend = graph_backend(node)
     for t in f.terms
-        node_var_index = graph_backend(node).graph_to_element_map[t.variable].index
+        node_var_index = JuMP.constraint_ref_with_index(backend, t.variable).index
+        #node_var_index = graph_backend(node).graph_to_element_map[t.variable].index
         JuMP.add_to_expression!(aff, t.coefficient, NodeVariableRef(node, node_var_index))
     end
     return aff
@@ -86,12 +89,14 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
     edge::OptiEdge, f::MOI.ScalarAffineFunction
 ) where {C}
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
+    backend = graph_backend(edge)
     # build JuMP Affine Expression over edge variables
     for t in f.terms
-        node_var = graph_backend(edge).graph_to_element_map[t.variable]
+        #node_var = graph_backend(edge).graph_to_element_map[t.variable]
+        node_var = JuMP.constraint_ref_with_index(backend, t.variable)
         node = node_var.node
-        node_index = node_var.index
-        JuMP.add_to_expression!(aff, t.coefficient, NodeVariableRef(node, node_index))
+        node_var_index = node_var.index
+        JuMP.add_to_expression!(aff, t.coefficient, NodeVariableRef(node, node_var_index))
     end
     return aff
 end
@@ -101,12 +106,14 @@ function JuMP.GenericAffExpr{C,NodeVariableRef}(
 ) where {C}
     aff = GenericAffExpr{C,NodeVariableRef}(f.constant)
     # build JuMP Affine Expression over func variables
+    backend = graph_backend(graph)
     for t in f.terms
-        gb = graph_backend(graph)
-        node_var = gb.graph_to_element_map[t.variable]
+        #gb = graph_backend(graph)
+        #node_var = gb.graph_to_element_map[t.variable]
+        node_var = JuMP.constraint_ref_with_index(backend, t.variable)
         node = node_var.node
-        node_index = node_var.index
-        JuMP.add_to_expression!(aff, t.coefficient, NodeVariableRef(node, node_index))
+        node_var_index = node_var.index
+        JuMP.add_to_expression!(aff, t.coefficient, NodeVariableRef(node, node_var_index))
     end
     return aff
 end

@@ -282,11 +282,12 @@ function JuMP.set_optimizer(
     node::OptiNode, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
 )
     # determine the graph to use to optimize the node
-    if !haskey(source_graph(node).node_graphs, node)
+    source_data = source_graph(node).element_data
+    if !haskey(source_data.node_graphs, node)
         node_graph = assemble_optigraph(node)
-        source_graph(node).node_graphs[node] = node_graph
+        source_data.node_graphs[node] = node_graph
     else
-        node_graph = source_graph(node).node_graphs[node]
+        node_graph = source_data.node_graphs[node]
     end
 
     # set objective on node graph
@@ -296,7 +297,8 @@ function JuMP.set_optimizer(
 end
 
 function JuMP.optimize!(node::OptiNode; kwargs...)
-    node_graph = source_graph(node).node_graphs[node]
+    source_data = source_graph(node).element_data
+    node_graph = source_data.node_graphs[node]
     JuMP.optimize!(node_graph; kwargs...)
     return nothing
 end

@@ -6,13 +6,13 @@ Base.show(io::IO, node::OptiNode) = Base.print(io, node)
 
 function Base.setindex!(node::OptiNode, value::Any, name::Symbol)
     t = (node, name)
-    source_graph(node).node_obj_dict[t] = value
+    source_graph(node).element_data.node_obj_dict[t] = value
     return nothing
 end
 
 function Base.getindex(node::OptiNode, name::Symbol)
     t = (node, name)
-    return source_graph(node).node_obj_dict[t]
+    return source_graph(node).element_data.node_obj_dict[t]
 end
 
 function JuMP.name(node::OptiNode)
@@ -36,9 +36,10 @@ end
 
 function containing_optigraphs(node::OptiNode)
     source = source_graph(node)
+    source_data = source.element_data
     graphs = [source]
-    if haskey(source.node_to_graphs, node)
-        graphs = [graphs; source.node_to_graphs[node]]
+    if haskey(source_data.node_to_graphs, node)
+        graphs = [graphs; source_data.node_to_graphs[node]]
     end
     return graphs
 end
@@ -53,12 +54,12 @@ end
 Return the next variable index that would be created on this node.
 """
 function next_variable_index(node::OptiNode)
-    source = source_graph(node)
-    if !haskey(source.last_variable_index, node)
-        source.last_variable_index[node] = 0
+    source_data = source_graph(node).element_data
+    if !haskey(source_data.last_variable_index, node)
+        source_data.last_variable_index[node] = 0
     end
-    source.last_variable_index[node] += 1
-    return MOI.VariableIndex(source.last_variable_index[node])
+    source_data.last_variable_index[node] += 1
+    return MOI.VariableIndex(source_data.last_variable_index[node])
 end
 
 """
@@ -83,11 +84,12 @@ function next_constraint_index(
     node::OptiNode, ::Type{F}, ::Type{S}
 )::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     source = source_graph(node)
-    if !haskey(source.last_constraint_index, (node, F, S))
-        source.last_constraint_index[(node, F, S)] = 0
+    source_data = source.element_data
+    if !haskey(source_data.last_constraint_index, node)
+        source_data.last_constraint_index[node] = 0
     end
-    source.last_constraint_index[(node, F, S)] += 1
-    return MOI.ConstraintIndex{F,S}(source.last_constraint_index[(node, F, S)])
+    source_data.last_constraint_index[node] += 1
+    return MOI.ConstraintIndex{F,S}(source_data.last_constraint_index[node])
 end
 
 #
@@ -95,7 +97,7 @@ end
 #
 
 function JuMP.object_dictionary(node::OptiNode)
-    d = source_graph(node).node_obj_dict
+    d = source_graph(node).element_data.node_obj_dict
     return d
 end
 
