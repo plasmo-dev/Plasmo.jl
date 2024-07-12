@@ -934,12 +934,15 @@ end
 
 Return all of the constraints in `graph` (all function and set types).
 """
-function JuMP.all_constraints(graph::OptiGraph)
+function JuMP.all_constraints(graph::OptiGraph; include_variable_in_set_constraints=true)
     constraints = ConstraintRef[]
     con_types = JuMP.list_of_constraint_types(graph)
     for con_type in con_types
         F = con_type[1]
         S = con_type[2]
+        if F == NodeVariableRef && include_variable_in_set_constraints == false
+            continue
+        end
         append!(constraints, JuMP.all_constraints(graph, F, S))
     end
     return constraints

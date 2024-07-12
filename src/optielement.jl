@@ -119,12 +119,18 @@ function JuMP.all_constraints(
     return result
 end
 
-function JuMP.all_constraints(element::OptiElement)
+function JuMP.all_constraints(
+    element::OptiElement; 
+    include_variable_in_set_constraints=true
+)
     constraints = ConstraintRef[]
     con_types = JuMP.list_of_constraint_types(element)
     for con_type in con_types
         function_type = con_type[1]
         set_type = con_type[2]
+        if function_type == NodeVariableRef && include_variable_in_set_constraints == false
+            continue
+        end
         append!(constraints, JuMP.all_constraints(element, function_type, set_type))
     end
     return constraints
