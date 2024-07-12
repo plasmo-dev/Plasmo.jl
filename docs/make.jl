@@ -19,10 +19,11 @@ makedocs(;
         "Quickstart" => "documentation/quickstart.md",
         "Modeling with OptiGraphs" => "documentation/modeling.md",
         "Graph Processing and Analysis" => "documentation/graph_processing.md",
-        # "Tutorials" =>
-        #     ["Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md"],
-        "API Documentation" => "documentation/api_docs.md"
+        "API Documentation" => "documentation/api_docs.md",
+        "Tutorials" => [
+            "Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md"
+        ],
     ],
 )
 
-# deploydocs(; repo="github.com/plasmo-dev/Plasmo.jl.git")
+deploydocs(; repo="github.com/plasmo-dev/Plasmo.jl.git")

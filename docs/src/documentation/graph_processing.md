@@ -309,24 +309,24 @@ julia> using KaHyPar
 
 julia> using Suppressor # suppress KaHyPar output
 
-julia> partition_vector = @suppress KaHyPar.partition(projection, 5, configuration=:connectivity, imbalance=0.01);
+julia> partition_vector = @suppress KaHyPar.partition(projection, 8, configuration=:connectivity, imbalance=0.01);
 
 julia> partition_kahypar = Partition(projection, partition_vector)
-OptiGraph Partition w/ 5 subpartitions
+OptiGraph Partition w/ 8 subpartitions
 
 julia> kahypar_graph = assemble_optigraph(partition_kahypar; name=:kahypar_graph)
 An OptiGraph
    kahypar_graph #local elements  #total elements
 --------------------------------------------------
           Nodes:         0              199
-          Edges:         4               99
-      Subgraphs:         5                5
+          Edges:         7               99
+      Subgraphs:         8                8
       Variables:         0              199
-    Constraints:         4              299
+    Constraints:         7              299
 
 ```
-In this case, we ended up with the same partition as our manual approach (KaHyPar finds 
-the best time partition). In most cases, the best partition is not this obvious.
+In this case, we ended up with a similar partition to the manual one (where instead we ask for 8 partitions as 
+KaHyPar makes it easy to do so). In most cases, the best partition is not this obvious.
 
 !!! warning
 
@@ -390,7 +390,7 @@ plt_chain_partition_matrix = matrix_layout(kahypar_graph, subgraph_colors=true)
 
 ![partition_layout_2](../assets/chain_layout_partition.svg) ![partition_matrix_2](../assets/chain_layout_matrix_partition.svg)
 
-## Aggregating OptiGraphs
+## Aggregating OptiGraphs (Experimental)
 
 Optigraphs can be converted into stand-alone optinodes using the using the [`aggregate`](@ref) and [`aggregate_to_depth`](@ref) functions. This can be helpful when the user models using optigraphs, but they want to represent subproblems using optinodes. In the snippet below, we aggregate our optigraph that contains 5 subgraphs.  We include the argument `0` which specifies how many subgraph levels to retain.  In this case,
 `0` means we aggregate subgraphs at the highest level so `graph` contains only new aggregated optinodes. For hierarchical graphs with many levels,
@@ -398,14 +398,14 @@ we can define how many subgraph levels we wish to retain. The function returns a
 `reference_map` which maps elements in `aggregate_graph` to the original optigraph `graph`.
 
 ```julia
-julia> aggregate_graph, reference_map = aggregate_to_depth(graph, 0);
+julia> aggregate_graph, reference_map = aggregate_to_depth(graph, 0; name=:agg_graph);
 
 julia> aggregate_graph
 An OptiGraph
-     metis_graph #local elements  #total elements
+       agg_graph #local elements  #total elements
 --------------------------------------------------
-          Nodes:         5              5
-          Edges:         4              4
+          Nodes:         8              8
+          Edges:         7              7
       Subgraphs:         0              0
       Variables:         199            199
     Constraints:         299            299

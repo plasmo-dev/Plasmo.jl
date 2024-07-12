@@ -71,7 +71,7 @@ function create_junction_model(data,nt)
     graph = OptiGraph()
 
     #Add model-node for each time interval
-    @optinode(graph,nodes[1:nt])
+    @optinode(graph, nodes[1:nt])
 
     #query number of supply and demands on the junction
     n_demands = length(data[:demand_values])
@@ -79,8 +79,8 @@ function create_junction_model(data,nt)
 
     #Loop and create variables, constraints, and objective for each model-node
     for (i,node) in enumerate(nodes)
-        @variable(node, data[:pmin] <= pressure <= data[:pmax], start = 60)
-        @variable(node, 0 <= fgen[1:n_supplies] <= 200, start = 10)
+        @variable(node, data[:pmin] <= pressure <= data[:pmax], start=60)
+        @variable(node, 0 <= fgen[1:n_supplies] <= 200, start=10)
         @variable(node, fdeliver[1:n_demands] >= 0)
         @variable(node, fdemand[1:n_demands] >= 0)
 
@@ -93,7 +93,7 @@ function create_junction_model(data,nt)
         @objective(node,Min,total_delivercost)
     end
 
-    #Return the junction OptiGraph
+    #Return the junction graph
     return graph
 end
 ```
@@ -132,16 +132,16 @@ function create_compressor_model(data,nt)
         @variable(node, 0 <= power <= 1000)
         @variable(node, flow >= 0)
         @variable(node, 1 <= eta <= 2.5)
-        @NLconstraint(node, pdischarge == eta*psuction)
-        @NLconstraint(node, power == c4*flow*((pdischarge/psuction)^om-1) )
+        @constraint(node, pdischarge == eta*psuction)
+        @constraint(node, power == c4*flow*((pdischarge/psuction)^om-1) )
         @objective(node, Min, cost*power*(dt/3600.0))
     end
 
     #Create references for flow in and out
-    @expression(graph,fin[t=1:nt],nodes[t][:flow])
-    @expression(graph,fout[t=1:nt],nodes[t][:flow])
+    @expression(graph, fin[t=1:nt], nodes[t][:flow])
+    @expression(graph, fout[t=1:nt], nodes[t][:flow])
 
-    #Return compressor OptiGraph
+    #Return compressor graph
     return graph
 end
 ```
@@ -190,8 +190,8 @@ wherein pressure and flow variables are assigned to each node. Flow dynamics wit
 PDE equations for mass and momentum using finite differences. We lastly include linking constraints that represent the initial steady-state condition and line-pack constraint.
 
 ```julia
-function create_pipeline_model(data,nt,nx)
-    #Unpack data
+function create_pipeline_model(data, nt, nx)
+    #unpack data
     c1 = data[:c1]; c2 = data[:c2]; c3 = data[:c3]
     dx = data[:pipe_length] / (nx - 1)
 
@@ -199,39 +199,46 @@ function create_pipeline_model(data,nt,nx)
     graph = OptiGraph()
 
     #Create grid of optinodes
-    @node(mg,grid[1:nt,1:nx])
+    @optinode(graph, grid[1:nt,1:nx])
 
     #Create variables on each node in the grid
     for node in grid
         @variable(node, 1 <= px <= 100)
         @variable(node, 0 <= fx <= 100)
         @variable(node, slack >= 0)
-        @NLconstraint(node, slack*px - c3*fx*fx == 0)
+        @constraint(node, slack*px - c3*fx*fx == 0)
     end
 
-    #Setup dummy variable references
-    @expression(mg, fin[t=1:nt], grid[:,1][t][:fx])
-    @expression(mg, fout[t=1:nt], grid[:,end][t][:fx])
-    @expression(mg, pin[t=1:nt], grid[:,1][t][:px])
-    @expression(mg, pout[t=1:nt], grid[:,end][t][:px])
-    @expression(mg, linepack[t=1:nt], c2/A*sum(grid[t,x][:px]*dx for x in 1:nx-1))
+    # setup useful expressions
+    @expression(graph, fin[t=1:nt], grid[:,1][t][:fx])
+    @expression(graph, fout[t=1:nt], grid[:,end][t][:fx])
+    @expression(graph, pin[t=1:nt], grid[:,1][t][:px])
+    @expression(graph, pout[t=1:nt], grid[:,end][t][:px])
+    @expression(graph, linepack[t=1:nt], c2/A*sum(grid[t,x][:px]*dx for x in 1:nx-1))
 
-    #Finite differencing.  Backward difference in time from t, Forward difference in space from x.
-    @linkconstraint(mg, press[t=2:nt,x=1:nx-1],
-    (grid[t,x][:px]-grid[t-1,x][:px])/dt +
-    c1*(grid[t,x+1][:fx] - grid[t,x][:fx])/dx == 0)
+    # finite differencing.  Backward difference in time from t, forward difference in space from x.
+    @linkconstraint(
+        graph, 
+        press[t=2:nt,x=1:nx-1],
+        (grid[t,x][:px]-grid[t-1,x][:px])/dt + c1*(grid[t,x+1][:fx] - grid[t,x][:fx])/dx == 0
+    )
 
-    @linkconstraint(mg, flow[t=2:nt,x=1:nx-1], (grid[t,x][:fx] -
-    grid[t-1,x][:fx])/dt == -c2*(grid[t,x+1][:px] -
-    grid[t,x][:px])/dx - grid[t,x][:slack])
+    @linkconstraint(
+        graph, 
+        flow[t=2:nt,x=1:nx-1], 
+        (grid[t,x][:fx] - grid[t-1,x][:fx])/dt == -c2*(grid[t,x+1][:px] - grid[t,x][:px])/dx - grid[t,x][:slack]
+    )
 
-    #Initial steady state
-    @linkconstraint(mg, ssflow[x=1:nx-1], grid[1,x+1][:fx] - grid[1,x][:fx] == 0)
-    @linkconstraint(mg, sspress[x = 1:nx-1], -c2*(grid[1,x+1][:px] -
-    grid[1,x][:px])/dx - grid[1,x][:slack] == 0)
+    # initially at steady state
+    @linkconstraint(graph, ssflow[x=1:nx-1], grid[1,x+1][:fx] - grid[1,x][:fx] == 0)
+    @linkconstraint(
+        graph, 
+        sspress[x = 1:nx-1], 
+        -c2*(grid[1,x+1][:px] - grid[1,x][:px])/dx - grid[1,x][:slack] == 0
+    )
 
-    #Refill pipeline linepack
-    @linkconstraint(mg, linepack[end] >= linepack[1])
+    # refill pipeline linepack
+    @linkconstraint(graph, linepack[end] >= linepack[1])
     return graph
 end
 ```
@@ -277,40 +284,40 @@ function create_gas_network(net_data)
     #Create device OptiGraphs and setup data structures
     for j_data in junc_data
         junc= create_junction_optigraph(j_data)
-        add_subgraph!(network,junc); push!(network[:junctions],junc)
+        add_subgraph(network,junc); push!(network[:junctions],junc)
         j_map[j_data[:id]] = junc
         junc[:devices_in] = []; junc[:devices_out] = []
     end
     for p_data in pipe_data
         pipe = create_pipeline_optigraph(p_data); push!(network[:pipelines],pipe)
-        add_subgraph!(network,pipe);
+        add_subgraph(network,pipe);
         pipe[:junc_from] = j_map[p_data[:junc_from]]
         pipe[:junc_to] = j_map[p_data[:junc_to]]
         push!(pipe[:junc_from][:devices_out],pipe); push!(pipe[:junc_to][:devices_in],pipe)
     end
     for c_data in comp_data
         comp = create_compressor_optigraph(c_data)
-        add_subgraph!(gas_network,comp); comp[:data] = c_data
+        add_subgraph(gas_network,comp); comp[:data] = c_data
         comp[:junc_from] = j_map[c_data[:junc_from]]
         comp[:junc_to] = j_map[c_data[:junc_to]]
         push!(comp[:junc_from][:devices_out],comp); push!(comp[:junc_to][:devices_in],comp)
     end
 
-    #Link pipelines in gas network
+    # link pipelines in gas network
     for pipe in network[:pipelines]
         junc_from,junc_to = [pipe[:junc_from],pipe[:junc_to]]
         @linkconstraint(network,[t = 1:nt],pipe[:pin][t] == junc_from[:pressure][t])
         @linkconstraint(gas_network,[t = 1:nt],pipe[:pout][t] == junc_to[:pressure][t])
     end
 
-    #Link compressors in gas network
+    # link compressors in gas network
     for comp in network[:compressors]
         junc_from,junc_to = [comp[:junc_from].comp[:junc_to]]
         @linkconstraint(network,[t = 1:nt],comp[:pin][t] == junc_from[:pressure][t])
         @linkconstraint(network,[t = 1:nt],comp[:pout][t]  == junc_to[:pressure][t])
     end
 
-    #Link junctions in gas network
+    # link junctions in gas network
     for junc in network[:junctions]
         devices_in = junc[:devices_in]; devices_out = junc[:devices_out]
 
@@ -320,8 +327,11 @@ function create_gas_network(net_data)
         total_supplied = [junction[:total_supplied][t] for t = 1:nt]
         total_delivered = [junction[:total_delivered][t] for t = 1:nt]
 
-        @linkconstraint(gas_network,[t = 1:nt], flow_in[t] - flow_out[t] +
-        total_supplied[t] - total_delivered[t] == 0)
+        @linkconstraint(
+            gas_network,
+            [t = 1:nt], 
+            flow_in[t] - flow_out[t] + total_supplied[t] - total_delivered[t] == 0
+        )
     end
     return gas_network
 end
@@ -341,37 +351,35 @@ the below code creates a hypergraph representation of the optigraph, sets up nod
 We also aggregate the subgraphs to produce solvable optinode subproblems which will communicate to our solver.
 
 ```julia
-#Import the KaHyPar interface
+# import the KaHyPar interface
 using KaHyPar
 
-#Get the hypergraph representation of the gas network
-hgraph,ref_map = hyper_graph(gas_network)
+# get the hypergraph representation of the gas network
+projection = hyper_projection(gas_network)
 
-#Setup node and edge weights
+# setup node and edge weights
 n_vertices = length(vertices(hgraph))
 node_weights = [num_variables(node) for node in all_nodes(gas_network)]
-edge_weights = [num_linkconstraints(edge) for edge in all_edges(gas_network)]
+edge_weights = [num_constraints(edge) for edge in all_edges(gas_network)]
 
 #Use KaHyPar to partition the hypergraph
-node_vector = KaHyPar.partition(hypergraph,
-                                13,
-                                configuration=:edge_cut,
-                                imbalance=0.01,
-                                node_weights=node_weights,
-                                edge_weights=edge_weights)
+node_vector = KaHyPar.partition(
+    projection,
+    13,
+    configuration=:edge_cut,
+    imbalance=0.01,
+    node_weights=node_weights,
+    edge_weights=edge_weights
+)
 
-#Create a Partition object
-partition = Partition(node_vector, ref_map)
+# create a Partition object
+partition = Partition(projection, node_vector)
 
-#Setup subgraphs based on the partition
+# setup subgraphs based on the partition
 apply_partition!(gas_network, partition)
-
-#Aggregate the subgraphs into OptiNodes which can be solved
-new_graph , aggregate_map  = aggregate(gas_network, 0)
 ```
 
-The partitioned optimal control problem is visualized in the below figure and
-depicts the optimization problem partitioned into 13 distinct partitions.
+The partitioned optimal control problem is visualized in the below figure and depicts the optimization problem partitioned into 13 distinct partitions.
 
 
 ![partition](../assets/13_pipeline_space_time_partition.svg)

@@ -15,10 +15,6 @@ function Base.getindex(edge::OptiEdge, name::Symbol)
     return edge.source_graph.edge_obj_dict[t]
 end
 
-const EdgeConstraintRef = JuMP.ConstraintRef{
-    OptiEdge{GT},MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
-} where {GT<:AbstractOptiGraph,FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}
-
 """
     graph_backend(edge::OptiEdge)
 
