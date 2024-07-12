@@ -88,12 +88,18 @@ function JuMP.num_constraints(
     return MOI.get(element, MOI.NumberOfConstraints{F,set_type}())
 end
 
-function JuMP.num_constraints(element::OptiElement)::Int64
+function JuMP.num_constraints(
+    element::OptiElement;
+    count_variable_in_set_constraints=true
+)::Int64
     num_cons = 0
     con_types = JuMP.list_of_constraint_types(element)
     for con_type in con_types
         function_type = con_type[1]
         set_type = con_type[2]
+        if function_type == NodeVariableRef && count_variable_in_set_constraints == false
+            continue
+        end
         num_cons += JuMP.num_constraints(element, function_type, set_type)
     end
     return num_cons
