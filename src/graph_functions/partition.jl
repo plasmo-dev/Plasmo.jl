@@ -13,6 +13,12 @@ function Partition()
     return Partition(Vector{OptiNode}(), Vector{OptiEdge}(), Vector{Partition}())
 end
 
+function Base.string(partition::Partition)
+    return "OptiGraph Partition w/ $(n_subpartitions(partition)) subpartitions"
+end
+Base.print(io::IO, partition::Partition) = Base.print(io, string(partition))
+Base.show(io::IO, partition::Partition) = Base.print(io, partition)
+
 """
     build_partition_list(hyper::HyperGraphProjection, membership_vector::Vector{Int64})
 
@@ -463,55 +469,6 @@ end
 #function swap_separators(graph::OptiGraph, partition::Partition)
 #end
 
-# ##################################################################
-# # Convenience partition functions.  
-# # These are simple interfaces to generate hybrid partitions
-# # TODO: recursive partitions
-# ##################################################################
-# """
-#     partition_to_subgraphs!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
+# IDEA: convenience functions for partitioning with different projections
 
-# Create subgraphs in `optigraph` that form a `RECURSIVE_GRAPH` structure.
-# """
-# function partition_to_subgraphs!(
-#     graph::OptiGraph, partition_func::Function, args...; kwargs...
-# )
-#     hyper = hyper_projection(graph)
-#     membership_vector = partition_func(hyper.projected_graph, args...; kwargs...)
-#     partition = Partition(projection, membership_vector)
-#     apply_partition!(graph, partition)
-#     return nothing
-# end
-
-# """
-#     partition_to_tree!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
-
-# Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
-# """
-# function partition_to_tree!(graph::OptiGraph, partition_func::Function, args...; kwargs...)
-#     projection = build_edge_hyper_graph(graph)
-#     membership_vector = partition_func(projection.projected_graph, args...; kwargs...)
-#     partition = Partition(projection, membership_vector)
-#     apply_partition!(graph, partition)
-#     return nothing
-# end
-
-# """
-#     partition_to_tree!(optigraph::OptiGraph,partition_func::Function,args...; kwargs...)
-
-# Create subgraphs in `optigraph` that form a `RECURSIVE_TREE` structure.
-# """
-# function partition_to_subgraph_tree!(
-#     graph::OptiGraph, partition_func::Function, args...; kwargs...
-# )
-#     projection = build_bipartite_graph(graph)
-#     membership_vector = partition_func(projection.projected_graph, args...; kwargs...)
-#     partition = Partition(projection, membership_vector)
-#     return apply_partition!(graph, partition)
-# end
-
-# function Base.string(partition::Partition)
-#     return "OptiGraph Partition w/ $(n_subpartitions(partition)) subpartitions"
-# end
-# Base.print(io::IO, partition::Partition) = Base.print(io, string(partition))
-# Base.show(io::IO, partition::Partition) = Base.print(io, partition)
+# IDEA: convenience functions for partitioning recursively
