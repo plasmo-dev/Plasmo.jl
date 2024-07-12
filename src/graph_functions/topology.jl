@@ -35,8 +35,7 @@ Retrieve incident edges to a set of optinodes.
 Retrieve incident edges to a single optinode.
 """
 function incident_edges(hyper::HyperGraphProjection, nodes::Vector{<:OptiNode})
-    hypernodes = Base.getindex.(Ref(hyper), nodes)
-    #hypernodes = get_mapped_elements(hyper, nodes)
+    hypernodes = get_mapped_elements(hyper, nodes)
     inc_edges = GOI.incident_edges(hyper.projected_graph, hypernodes)
     return get_mapped_elements(hyper, inc_edges)
 end

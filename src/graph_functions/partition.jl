@@ -22,8 +22,8 @@ function build_partition_list(hyper::HyperGraphProjection, membership_vector::Ve
     partitions = _build_partition_list(membership_vector)
     return get_mapped_elements.(Ref(hyper), partitions)
 end
-@deprecate getpartitionlist get_partition_list
-@deprecate partition_list get_partition_list
+@deprecate getpartitionlist build_partition_list
+@deprecate partition_list build_partition_list
 
 #
 # Partition constructors
@@ -275,7 +275,7 @@ function _build_partition_list(membership_vector::Vector)
 end
 
 #
-# partition methods
+# Partition Methods
 #
 
 function all_subpartitions(partition::Partition)
@@ -371,7 +371,10 @@ function _transfer_elements!(new_graph::OptiGraph, partition::Partition)
 end
 
 """
-    Transfer optinode backend to a new graph
+    _transfer_element!(new_graph::OptiGraph, node::OptiNode)
+
+Transfer the optinode `node` to optigraph `new_graph`. The new graph becomes the 
+node's source graph and contains all of its model information and other data.
 """
 function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
     # TODO: make sure `new_graph` has a backend to point to
@@ -400,7 +403,6 @@ function _transfer_element!(new_graph::OptiGraph, node::OptiNode)
     return nothing
 end
 
-# TODO: copy over relevant element data
 function _transfer_element_data!(new_graph::OptiGraph, node::OptiNode)
     source_data = source_graph(node).element_data
     dest_data = new_graph.element_data

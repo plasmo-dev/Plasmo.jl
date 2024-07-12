@@ -66,7 +66,7 @@ function aggregate(graph::OptiGraph; name=gensym())
     # setup index_map from the ref_map
     _copy_attributes_to!(new_graph, graph, ref_map)
 
-    # TODO: correctly copy objective function to node
+    # TODO: make sure we are correctly copying objective function to node
     JuMP.set_objective(new_node, objective_sense(new_graph), objective_function(new_graph))
     return new_node, ref_map
 end
