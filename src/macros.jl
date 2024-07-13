@@ -40,7 +40,6 @@ macro optinode(graph, args...)
                 end
             end
             $(graph).obj_dict[Symbol($var)] = container
-            container
         end
     end
     return esc(macro_code)

@@ -6,16 +6,15 @@ methods that can help develop specialized solution strategies, visualize problem
 The optigraph ultimately describes the following mathematical representation of an optimization problem:
 ```math
 \begin{aligned}
-    \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} & \quad \sum_{n \in \mathcal{N(\mathcal{G})}} f_n(x_n) \quad & (\textrm{Objective}) \\
+    \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} & \quad F(\{f_n(x_n)\}_{n \in \mathcal{N(\mathcal{G})}}) \quad & (\textrm{Objective}) \\
     \textrm{s.t.} & \quad x_n \in \mathcal{X}_n,      \quad n \in \mathcal{N(\mathcal{G})}, \quad & (\textrm{Node Constraints})\\
     & \quad g_e(\{x_n\}_{n \in \mathcal{N}(e)}) = 0,  \quad e \in \mathcal{E(\mathcal{G})}. &(\textrm{Edge (Link) Constraints})
 \end{aligned}
 ```
 In this formulation, ``\mathcal{G}`` represents the optigraph, ``{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}`` describes a collection of decision
-variables over the set of nodes (optinodes) ``\mathcal{N}(\mathcal{G})``, and ``x_n`` is the set of
-decision variables on node ``n``. The objective function for the optigraph ``\mathcal{G}`` is given by a composition of objective functions defined over optinodes ``f_n(x_n)``.
-The second equation represents constraints on each optinode ``\mathcal{N}(\mathcal{G})``, and the third equation represents the collection of
-linking constraints associated with optiedges ``\mathcal{E}(\mathcal{G})``. The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints
+variables over the set of optinodes ``\mathcal{N}(\mathcal{G})``, and ``x_n`` is the set of
+decision variables on optinode ``n``. The objective function for the optigraph ``F(\{f_n(x_n)\}_{n \in \mathcal{N(\mathcal{G})}})`` is given as a composition of optinode objective functions ``f_n(x_n)`` (it could be a separable summation of node objectives or any nonlinear function defined over optinode variables). 
+The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints
 that correspond to an edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})``.
 
 From an implementation standpoint, an optigraph extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl). 
