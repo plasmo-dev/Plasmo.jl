@@ -132,6 +132,12 @@ function JuMP.set_optimizer(backend::GraphMOIBackend, optimizer)
     )
 end
 
+"""
+    JuMP.constraint_ref_with_index(backend::GraphMOIBackend, idx::MOI.Index)
+
+Return the constraint reference (or variable reference) associated with the graph index 
+in `backend`. Returns a `JuMP.ConstraintRef` (or `NodeVariableRef`) object.
+"""
 function JuMP.constraint_ref_with_index(backend::GraphMOIBackend, idx::MOI.Index)
     return backend.graph_to_element_map[idx]
 end
@@ -197,6 +203,17 @@ function MOI.set(
     backend::GraphMOIBackend, attr::AT, args...
 ) where {AT<:Union{MOI.AbstractModelAttribute,MOI.AbstractOptimizerAttribute}}
     MOI.set(backend.moi_backend, attr, args...)
+    return nothing
+end
+
+function MOI.set(
+    backend::GraphMOIBackend,
+    attr::MOI.ObjectiveFunction{F},
+    jump_func::JuMP.AbstractJuMPScalar,
+) where {F<:MOI.AbstractFunction}
+    moi_func = JuMP.moi_function(jump_func)
+    moi_func_graph = _create_graph_moi_func(backend, moi_func, jump_func)
+    MOI.set(backend, attr, moi_func_graph)
     return nothing
 end
 

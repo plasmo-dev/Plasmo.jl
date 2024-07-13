@@ -44,4 +44,4 @@ plt_graph = Plots.plot(
 );
 
 # generate block layout
-plt_matrix = Plots.spy(graph2; node_labels=true);
+plt_matrix = PlasmoPlots.matrix_layout(graph2; node_labels=true);

@@ -89,8 +89,7 @@ function JuMP.num_constraints(
 end
 
 function JuMP.num_constraints(
-    element::OptiElement;
-    count_variable_in_set_constraints=true
+    element::OptiElement; count_variable_in_set_constraints=true
 )::Int64
     num_cons = 0
     con_types = JuMP.list_of_constraint_types(element)
@@ -126,8 +125,7 @@ function JuMP.all_constraints(
 end
 
 function JuMP.all_constraints(
-    element::OptiElement; 
-    include_variable_in_set_constraints=true
+    element::OptiElement; include_variable_in_set_constraints=true
 )
     constraints = ConstraintRef[]
     con_types = JuMP.list_of_constraint_types(element)

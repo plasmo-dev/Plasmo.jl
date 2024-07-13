@@ -130,7 +130,7 @@ n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3
     Some users may choose to create the edge manually and add the constraint like following:
     ```julia
     edge = add_edge(graph1, n1, nodes1[2], nodes1[3])
-    @constraint(edge, n1[:x] + nodes1[2][:x] + nodes1[3][:x] == 3)
+    @constraint(edge, link_reference, n1[:x] + nodes1[2][:x] + nodes1[3][:x] == 3)
     ```
     Both approaches are equivalent.
 

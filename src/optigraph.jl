@@ -1192,16 +1192,12 @@ function JuMP.set_objective_function(graph::OptiGraph, expr::JuMP.AbstractJuMPSc
 end
 
 function _moi_set_objective_function(graph::OptiGraph, expr::JuMP.AbstractJuMPScalar)
-    # get the moi function made from local node variable indices
-    moi_func = JuMP.moi_function(expr)
-
     # add variables to backend if using subgraphs
     _add_backend_variables(graph_backend(graph), expr)
 
-    # update the moi function using true graph variable indices
-    graph_moi_func = _create_graph_moi_func(graph_backend(graph), moi_func, expr)
-    func_type = typeof(graph_moi_func)
-    MOI.set(graph_backend(graph), MOI.ObjectiveFunction{func_type}(), graph_moi_func)
+    # get the moi function made from local node variable indices
+    func_type = JuMP.moi_function_type(typeof(expr))
+    MOI.set(graph_backend(graph), MOI.ObjectiveFunction{func_type}(), expr)
     return nothing
 end
 
