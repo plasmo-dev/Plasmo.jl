@@ -504,6 +504,9 @@ function JuMP.unset_binary(nvref::NodeVariableRef)
     return nothing
 end
 
+### Relax Integrality
+
+
 ### Utilities for querying variables used in constraints
 
 function _extract_variables(func::NodeVariableRef)

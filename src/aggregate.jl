@@ -54,9 +54,13 @@ end
 ### Aggregate Functions
 
 """
-    aggregate(graph::OptiGraph; return_mapping=true)
+    aggregate(graph::OptiGraph; name=gensym())
 
-Aggregate an optigraph into a graph containing a single optinode.
+Aggregate an optigraph into a graph containing a single optinode. An optional 
+`name` can be used to name the new optigraph.
+Returns the new optinode (which points to a new graph with `source_graph(node)`) and a 
+mapping from the original graph variables and constraints to the new node variables and 
+constraints.
 """
 function aggregate(graph::OptiGraph; name=gensym())
     # aggregate into a graph containing a single optinode
@@ -93,9 +97,14 @@ function _copy_graph_elements_to!(new_graph::OptiGraph, source_graph::OptiGraph)
 end
 
 """
-    Copy graph attributes from `source_graph` to the new optigraph `new_graph`.
-
-These attributes include all model and optimizer attributes
+    _copy_attributes_to!(
+        new_graph::OptiGraph, 
+        source_graph::OptiGraph, 
+        ref_map::GraphReferenceMap
+    )
+    
+Copy graph attributes from `source_graph` to the new optigraph `new_graph`.These attributes 
+include all model and optimizer attributes
 """
 function _copy_attributes_to!(
     new_graph::OptiGraph, source_graph::OptiGraph, ref_map::GraphReferenceMap
@@ -124,7 +133,13 @@ function _copy_attributes_to!(
 end
 
 """
-    Copy (append) the `source_node` backend model into `new_node`.
+    copy_node_to!(
+        new_node::OptiNode, 
+        source_node::OptiNode, 
+        ref_map::GraphReferenceMap
+    )
+
+Copy (append) the `source_node` backend model into `new_node`.
 """
 function _copy_node_to!(
     new_node::OptiNode, source_node::OptiNode, ref_map::GraphReferenceMap
@@ -139,7 +154,9 @@ function _copy_node_to!(
 end
 
 """
-    Copy an optinode to a new optigraph.
+    _copy_node_to!(new_graph::OptiGraph, source_node::OptiNode)
+
+Copy an optinode to a new optigraph.
 """
 function _copy_node_to!(new_graph::OptiGraph, source_node::OptiNode)
     ref_map = GraphReferenceMap()
@@ -180,7 +197,14 @@ function _copy_variables!(
 end
 
 """
-    Copy the constraints from a node or edge into a new node.
+    _copy_constraints!(
+        new_node::OptiNode,
+        source_element::OptiElement,
+        ref_map::GraphReferenceMap,
+        index_map::MOIU.IndexMap,
+    )
+
+Copy the constraints from a node or edge into a new node.
 """
 function _copy_constraints!(
     new_node::OptiNode,
@@ -228,7 +252,13 @@ function _copy_constraints!(
 end
 
 """
-    Aggregate an optiedge `source_edge` into new optinode `new_node`.
+    _copy_edge_to!(
+        new_node::OptiNode, 
+        source_edge::OptiEdge, 
+        ref_map::GraphReferenceMap
+    )
+
+Aggregate an optiedge `source_edge` into new optinode `new_node`.
 """
 function _copy_edge_to!(
     new_node::OptiNode, source_edge::OptiEdge, ref_map::GraphReferenceMap
@@ -250,7 +280,7 @@ function _copy_edge_to!(
     return nothing
 end
 
-# TODO
+# TODO: aggregate_to_depth will not work until this is implemented
 """
     Aggregate an optiedge `source_edge` into new optinode `new_node`.
 """
@@ -265,10 +295,11 @@ end
 """
     aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
 
-Aggregate `graph` by converting subgraphs into optinodes. The `max_depth` determines how many levels of
-subgraphs remain in the new aggregated optigraph. For example, a `max_depth` of `0` signifies there should be no subgraphs in
-the aggregated optigraph. Return a new aggregated optigraph and reference map that 
-maps elements from the old optigraph to the new aggregate optigraph.
+Aggregate `graph` by converting subgraphs into optinodes. The `max_depth` determines 
+how many levels of subgraphs remain in the new aggregated optigraph. For example, a 
+`max_depth` of `0` signifies there should be no subgraphs in the aggregated optigraph. 
+Return a new aggregated optigraph and reference map that maps elements from the old 
+optigraph to the new aggregate optigraph.
 """
 function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
     if num_subgraphs(graph) == 0
@@ -345,7 +376,9 @@ function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
 end
 
 """
-    Aggregate the subgraphs within `source_graph` into nodes withing `new_subgraph`.
+    _aggregate_subgraphs!(new_graph::OptiGraph, source_graph::OptiGraph)
+
+Aggregate the subgraphs within `source_graph` into nodes withing `new_subgraph`.
 """
 function _aggregate_subgraphs!(new_graph::OptiGraph, source_graph::OptiGraph)
     # aggregate each subgraph into a node in new_graph
