@@ -320,6 +320,25 @@ function test_variable_constraints()
     set_integer(n2[:x])
     @test is_integer(n2[:x]) == true
     @suppress optimize!(graph)
+
+    # relax and unrelax integrality for each node
+    unrelax1 = JuMP.relax_integrality(n1)
+    @test is_binary(n1[:x]) == false
+    unrelax1()
+    @test is_binary(n1[:x]) == true
+
+    unrelax2 = JuMP.relax_integrality(n2)
+    @test is_integer(n2[:x]) == false
+    unrelax2()
+    @test is_integer(n2[:x]) == true
+
+    # relax and unrelax integrality for entire graph
+    unrelax_graph = JuMP.relax_integrality(graph)
+    @test is_binary(n1[:x]) == false
+    @test is_integer(n2[:x]) == false
+    unrelax_graph()
+    @test is_binary(n1[:x]) == true
+    @test is_integer(n2[:x]) == true
 end
 
 function test_nonlinear_operators()

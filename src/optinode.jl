@@ -243,11 +243,124 @@ function JuMP.objective_sense(node::OptiNode)
 end
 
 function JuMP.objective_value(graph::OptiGraph, node::OptiNode)
-    return value(graph, objective_function(node))
+    return JuMP.value(graph, JuMP.objective_function(node))
 end
 
 function has_objective(node::OptiNode)
     return haskey(JuMP.object_dictionary(node), (node, :objective_function))
+end
+
+#
+# Relax Integrality
+#
+
+function JuMP.relax_integrality(node::OptiNode)
+    return _relax_or_fix_integrality(nothing, node)
+end
+
+# adapted from: https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/variables.jl#L2602-L2689
+function JuMP.fix_discrete_variables(var_value::Function, node::OptiNode)
+    return _relax_or_fix_integrality(var_value, node)
+end
+
+function JuMP.fix_discrete_variables(node::OptiNode)
+    return fix_discrete_variables(value, node)
+end
+
+function _relax_or_fix_integrality(var_value::Union{Nothing,Function}, node::OptiNode)
+    if JuMP.num_constraints(node, NodeVariableRef, MOI.Semicontinuous{Float64}) > 0
+        error(
+            "Support for relaxing semicontinuous constraints is not " * "yet implemented."
+        )
+    end
+    if JuMP.num_constraints(node, NodeVariableRef, MOI.Semiinteger{Float64}) > 0
+        error("Support for relaxing semi-integer constraints is not " * "yet implemented.")
+    end
+
+    discrete_variable_constraints = vcat(
+        JuMP.all_constraints(node, NodeVariableRef, MOI.ZeroOne),
+        JuMP.all_constraints(node, NodeVariableRef, MOI.Integer),
+    )
+    # We gather the info first because we cannot modify-then-query.
+    info_pre_relaxation = map(discrete_variable_constraints) do c
+        v = NodeVariableRef(c)
+        solution = var_value === nothing ? nothing : var_value(v)
+        return (v, solution, _info_from_variable(v))
+    end
+    # Now we can modify.
+    for (v, solution, info) in info_pre_relaxation
+        if info.integer
+            JuMP.unset_integer(v)
+        elseif info.binary
+            JuMP.unset_binary(v)
+            if !info.has_fix
+                JuMP.set_lower_bound(v, max(zero(T), info.lower_bound))
+                JuMP.set_upper_bound(v, min(one(T), info.upper_bound))
+            elseif info.fixed_value < 0 || info.fixed_value > 1
+                error(
+                    "The model has no valid relaxation: binary variable " *
+                    "fixed out of bounds.",
+                )
+            end
+        end
+        if solution !== nothing
+            fix(v, solution; force=true)
+        end
+    end
+    function unrelax()
+        for (v, solution, info) in info_pre_relaxation
+            if solution !== nothing
+                JuMP.unfix(v)
+            end
+            if info.has_lb
+                JuMP.set_lower_bound(v, info.lower_bound)
+            end
+            if info.has_ub
+                JuMP.set_upper_bound(v, info.upper_bound)
+            end
+            if info.integer
+                JuMP.set_integer(v)
+            end
+            if info.binary
+                JuMP.set_binary(v)
+            end
+            # Now a special case: when binary variables are relaxed, we add
+            # [0, 1] bounds, but only if the variable was not previously fixed
+            # and we did not provide a fixed value, and a bound did not already
+            # exist. In this case, delete the new bounds that we added.
+            if solution === nothing && info.binary && !info.has_fix
+                if !info.has_lb
+                    JuMP.delete_lower_bound(v)
+                end
+                if !info.has_ub
+                    JuMP.delete_upper_bound(v)
+                end
+            end
+        end
+        return nothing
+    end
+    return unrelax
+end
+
+function _info_from_variable(nvref::NodeVariableRef)
+    has_lb = JuMP.has_lower_bound(nvref)
+    lb = has_lb ? JuMP.lower_bound(nvref) : -Inf
+    has_ub = JuMP.has_upper_bound(nvref)
+    ub = has_ub ? JuMP.upper_bound(nvref) : Inf
+    has_fix = JuMP.is_fixed(nvref)
+    fixed_value = has_fix ? JuMP.fix_value(nvref) : NaN
+    has_start, start = false, NaN
+    if MOI.supports(
+        JuMP.backend(JuMP.owner_model(nvref)), MOI.VariablePrimalStart(), MOI.VariableIndex
+    )
+        start = JuMP.start_value(nvref)
+        has_start = start !== nothing
+    end
+    binary = JuMP.is_binary(nvref)
+    integer = JuMP.is_integer(nvref)
+    return JuMP.VariableInfo(
+        has_lb, lb, has_ub, ub, has_fix, fixed_value, has_start, start, binary, integer
+    )
 end
 
 #

@@ -1005,6 +1005,22 @@ function JuMP.object_dictionary(graph::OptiGraph)
     return graph.obj_dict
 end
 
+"""
+    JuMP.relax_integrality(graph::OptiGraph)
+
+Relax all binary and integer constraints in `graph`. Return a function that un-relaxes the
+graph by re-adding the binary and/or integer constraints.
+"""
+function JuMP.relax_integrality(graph::OptiGraph)
+    unrelax_node_funcs = JuMP.relax_integrality.(all_nodes(graph))
+    function unrelax()
+        for func in unrelax_node_funcs
+            func()
+        end
+    end
+    return unrelax
+end
+
 ### Nonlinear Operators
 
 """

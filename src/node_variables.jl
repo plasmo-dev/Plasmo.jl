@@ -12,6 +12,13 @@ Base.print(io::IO, vref::NodeVariableRef) = Base.print(io, Base.string(vref))
 Base.show(io::IO, vref::NodeVariableRef) = Base.print(io, vref)
 Base.broadcastable(vref::NodeVariableRef) = Ref(vref)
 
+function NodeVariableRef(cref::JuMP.ConstraintRef)
+    constraint = JuMP.constraint_object(cref)
+    nvref = JuMP.jump_function(constraint)
+    @assert nvref isa NodeVariableRef
+    return nvref
+end
+
 # Per JuMP comment:
 # """
 # The default hash is slow. It's important for the performance of AffExpr to
@@ -503,9 +510,6 @@ function JuMP.unset_binary(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.BinaryRef(nvref))
     return nothing
 end
-
-### Relax Integrality
-
 
 ### Utilities for querying variables used in constraints
 
