@@ -20,6 +20,18 @@ function _create_test_optigraph()
     return graph
 end
 
+function _create_nested_test_optigraph()
+    graph = OptiGraph()
+    for _ in 1:4
+        add_subgraph(graph, _create_test_optigraph())
+    end
+    subs = local_subgraphs(graph)
+    for i in 1:3
+        @linkconstraint(graph, subs[i + 1][1][:x] == subs[i][10][:x])
+    end
+    return graph
+end
+
 function _create_test_model()
     model = Model()
     @variable(model, x[1:10] >= 0)
@@ -64,22 +76,16 @@ function test_set_model()
     @test value.(all_variables(m)) == value.(graph, all_variables(n1))
 end
 
-# TODO
-# function test_aggregate_to_depth()
-#     graph = _create_test_optigraph_w_subgraphs()
-#     new_graph, ref = aggregate(graph, 0)
-#     @test num_all_nodes(new_graph) == 5
-#     @test num_all_linkconstraints(new_graph) == 4
-
-#     aggregate!(graph, 0)
-#     @test num_all_nodes(graph) == 5
-#     @test num_all_linkconstraints(graph) == 4
-
-#     #TODO: more checks
-#     graph = _create_test_optigraph_w_recursive_subgraphs()
-#     new_graph, ref = aggregate(graph, 1)
-#     @test num_all_subgraphs(new_graph) == 5
-# end
+function test_aggregate_to_depth()
+    graph = _create_nested_test_optigraph()
+    agg_graph, ref_map = aggregate_to_depth(graph, 0; name=:agg_graph)
+    @test num_nodes(agg_graph) == 4
+    @test num_edges(agg_graph) == 3
+    @test num_subgraphs(agg_graph) == 0
+    @test num_variables(agg_graph) == 80
+    @test num_constraints(agg_graph) == 319
+    @test num_local_link_constraints(agg_graph) == 3
+end
 
 function run_tests()
     for name in names(@__MODULE__; all=true)

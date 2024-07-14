@@ -252,7 +252,6 @@ end
 function MOI.get(
     backend::GraphMOIBackend, attr::MOI.NumberOfConstraints{F,S}, element::OptiElement
 ) where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
-    # filter F and S
     n_cons = 0
     for con in backend.element_constraints[element]
         if (typeof(con).parameters[1] == F && typeof(con).parameters[2] == S)
@@ -702,6 +701,7 @@ function _copy_subgraph_edges!(backend::GraphMOIBackend, subgraph::OptiGraph)
     end
 end
 
+# TODO: re-implement MOIU._is_variable_function
 function _copy_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
     dest = backend
     index_map = MOIU.IndexMap()
@@ -768,7 +768,6 @@ function _copy_node_variables(
     vars_to_add = setdiff(node_variables, keys(dest.element_to_graph_map.var_map))
     for var in vars_to_add
         src_graph_index = graph_index(var)
-        #dest_graph_index = _add_variable_to_backend(dest, var)
         dest_graph_index = MOI.add_variable(dest, var)
         index_map[src_graph_index] = dest_graph_index
     end
@@ -832,4 +831,31 @@ function _copy_element_constraints(
         index_map_FS[ci] = dest_index
     end
     return nothing
+end
+
+#
+# MOIU Utility Methods
+#
+function MOIU.pass_attributes(
+    dest::GraphMOIBackend, src::GraphMOIBackend, index_map::MOIU.IndexMap
+)
+    return MOIU.pass_attributes(dest.moi_backend, src.moi_backend, index_map)
+end
+
+function MOIU.pass_attributes(
+    dest::GraphMOIBackend,
+    src::GraphMOIBackend,
+    index_map::MOIU.IndexMap,
+    vis_src::Vector{MOI.VariableIndex},
+)
+    return MOIU.pass_attributes(dest.moi_backend, src.moi_backend, index_map, vis_src)
+end
+
+function MOIU.pass_attributes(
+    dest::GraphMOIBackend,
+    src::GraphMOIBackend,
+    index_map::MOIU.IndexMap,
+    cis_src::Vector{MOI.ConstraintIndex{F,S}},
+) where {F,S}
+    return MOIU.pass_attributes(dest.moi_backend, src.moi_backend, index_map, cis_src)
 end

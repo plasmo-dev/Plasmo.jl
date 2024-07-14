@@ -9,6 +9,17 @@ struct GraphReferenceMap
     # map variables and from original optigraph to new aggregate node or graph
     var_map::OrderedDict{NodeVariableRef,NodeVariableRef}
     con_map::OrderedDict{JuMP.ConstraintRef,JuMP.ConstraintRef}
+    node_map::OrderedDict{OptiNode,OptiNode}
+    edge_map::OrderedDict{OptiEdge,OptiEdge}
+end
+
+function GraphReferenceMap()
+    return GraphReferenceMap(
+        OrderedDict{NodeVariableRef,NodeVariableRef}(),
+        OrderedDict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),
+        OrderedDict{OptiNode,OptiNode}(),
+        OrderedDict{OptiEdge,OptiEdge}(),
+    )
 end
 
 function Base.getindex(ref_map::GraphReferenceMap, vref::NodeVariableRef)
@@ -40,15 +51,12 @@ function Base.setindex!(
     return ref_map.var_map[node_vref] = graph_vref
 end
 
-function GraphReferenceMap()
-    return GraphReferenceMap(
-        OrderedDict{NodeVariableRef,NodeVariableRef}(),
-        OrderedDict{JuMP.ConstraintRef,JuMP.ConstraintRef}(),
-    )
-end
 function Base.merge!(ref_map1::GraphReferenceMap, ref_map2::GraphReferenceMap)
     merge!(ref_map1.var_map, ref_map2.var_map)
-    return merge!(ref_map1.con_map, ref_map2.con_map)
+    merge!(ref_map1.con_map, ref_map2.con_map)
+    merge!(ref_map1.node_map, ref_map2.node_map)
+    merge!(ref_map1.edge_map, ref_map2.edge_map)
+    return nothing
 end
 
 ### Aggregate Functions
@@ -127,8 +135,7 @@ function _copy_attributes_to!(
             index_map[graph_index(source_graph, source_cref)] = graph_index(dest_cref)
         end
     end
-    # TODO: avoid using direct reference to moi_backend
-    MOIU.pass_attributes(dest.moi_backend, src.moi_backend, index_map)
+    MOIU.pass_attributes(dest, src, index_map)
     return nothing
 end
 
@@ -150,13 +157,16 @@ function _copy_node_to!(
 
     _copy_variables!(new_node, source_node, ref_map, index_map)
 
-    return _copy_constraints!(new_node, source_node, ref_map, index_map)
+    _copy_constraints!(new_node, source_node, ref_map, index_map)
+
+    return nothing
 end
 
 """
     _copy_node_to!(new_graph::OptiGraph, source_node::OptiNode)
 
-Copy an optinode to a new optigraph.
+Copy an optinode to a new optigraph. Creates the new node and then calls the 
+underlying method to copy to a node.
 """
 function _copy_node_to!(new_graph::OptiGraph, source_node::OptiNode)
     ref_map = GraphReferenceMap()
@@ -187,7 +197,7 @@ function _copy_variables!(
 
     # pass variable attributes
     vis_src = graph_index.(source_variables)
-    MOIU.pass_attributes(dest.moi_backend, src.moi_backend, index_map, vis_src)
+    MOIU.pass_attributes(dest, src, index_map, vis_src)
 
     # set new variable names
     for nvref in all_variables(source_node)
@@ -217,19 +227,13 @@ function _copy_constraints!(
     dest = graph_backend(new_node)
 
     # copy each constraint by iterating through each type
-    constraint_types = MOI.get(src.moi_backend, MOI.ListOfConstraintTypesPresent())
+    constraint_types = JuMP.list_of_constraint_types(source_element)
     for (F, S) in constraint_types
-        cis_src = MOI.get(source_element, MOI.ListOfConstraintIndices{F,S}())
         index_map_FS = index_map[F, S]
-        for ci in cis_src
-            # TODO: use references to elements instead so we don't have to hardcode backend
-            src_func = MOI.get(src.moi_backend, MOI.ConstraintFunction(), ci)
-            src_set = MOI.get(src.moi_backend, MOI.ConstraintSet(), ci)
-            # src_func = MOI.get(source_element, MOI.ConstraintFunction(), ci)
-            # src_set = MOI.get(source_element, MOI.ConstraintSet(), ci)
-
-            # get source cref to lookup constraint shape
-            src_cref = JuMP.constraint_ref_with_index(src, ci)
+        for src_cref in JuMP.all_constraints(source_element, F, S)
+            # get source constraint data
+            src_func = MOI.get(source_element, MOI.ConstraintFunction(), src_cref)
+            src_set = MOI.get(source_element, MOI.ConstraintSet(), src_cref)
             new_shape = src_cref.shape
 
             # create a new ConstraintRef
@@ -243,11 +247,66 @@ function _copy_constraints!(
             dest_index = MOI.add_constraint(dest, new_cref, new_func, src_set)
 
             # update index_map and ref_map
-            index_map_FS[ci] = dest_index
+            index_map_FS[graph_index(src_cref)] = dest_index
             ref_map[src_cref] = new_cref
         end
         # pass constraint attributes
-        MOIU.pass_attributes(dest.moi_backend, src.moi_backend, index_map_FS, cis_src)
+        F_moi = JuMP.moi_function_type(F)
+        cis_src = MOI.get(source_element, MOI.ListOfConstraintIndices{F_moi,S}())
+        MOIU.pass_attributes(dest, src, index_map_FS, cis_src)
+    end
+end
+
+"""
+    _copy_constraints!(
+        new_edge::OptiEdge,
+        source_edge::OptiEdge,
+        ref_map::GraphReferenceMap,
+        index_map::MOIU.IndexMap,
+    )
+
+Copy the constraints from a node or edge into a new node.
+"""
+function _copy_constraints!(
+    new_edge::OptiEdge,
+    source_edge::OptiEdge,
+    ref_map::GraphReferenceMap,
+    index_map::MOIU.IndexMap,
+)
+    source_element = source_edge
+
+    # get relevant backends
+    src = graph_backend(source_element)
+    dest = graph_backend(new_edge)
+
+    # copy each constraint by iterating through each type
+    constraint_types = JuMP.list_of_constraint_types(source_element)
+    for (F, S) in constraint_types
+        index_map_FS = index_map[F, S]
+        for src_cref in JuMP.all_constraints(source_element, F, S)
+            # get source constraint data
+            src_func = MOI.get(source_element, MOI.ConstraintFunction(), src_cref)
+            src_set = MOI.get(source_element, MOI.ConstraintSet(), src_cref)
+            new_shape = src_cref.shape
+
+            # create a new ConstraintRef
+            new_constraint_index = next_constraint_index(
+                new_edge, typeof(src_func), typeof(src_set)
+            )::MOI.ConstraintIndex{typeof(src_func),typeof(src_set)}
+            new_cref = ConstraintRef(new_edge, new_constraint_index, new_shape)
+
+            # create new MOI function
+            new_func = MOIU.map_indices(index_map, src_func)
+            dest_index = MOI.add_constraint(dest, new_cref, new_func, src_set)
+
+            # update index_map and ref_map
+            index_map_FS[graph_index(src_cref)] = dest_index
+            ref_map[src_cref] = new_cref
+        end
+        # pass constraint attributes
+        F_moi = JuMP.moi_function_type(F)
+        cis_src = MOI.get(source_element, MOI.ListOfConstraintIndices{F_moi,S}())
+        MOIU.pass_attributes(dest, src, index_map_FS, cis_src)
     end
 end
 
@@ -287,9 +346,21 @@ end
 function _copy_edge_to!(
     new_graph::OptiGraph, source_edge::OptiEdge, ref_map::GraphReferenceMap
 )
-    # create a new edge
+    source_nodes = all_nodes(source_edge)
+    new_nodes = Base.getindex.(Ref(ref_map.node_map), source_nodes)
+    new_edge = add_edge(new_graph, new_nodes...)
 
-    # copy constraints from source_edge
+    # setup variable index map
+    index_map = MOIU.IndexMap()
+    vars = all_variables(source_edge)
+    for var in vars
+        source_index = graph_index(graph_backend(source_edge), var)
+        dest_index = graph_index(graph_backend(new_edge), ref_map[var])
+        index_map[source_index] = dest_index
+    end
+
+    # copy constraints from source_edge to new edge
+    return _copy_constraints!(new_edge, source_edge, ref_map, index_map)
 end
 
 """
@@ -301,12 +372,12 @@ how many levels of subgraphs remain in the new aggregated optigraph. For example
 Return a new aggregated optigraph and reference map that maps elements from the old 
 optigraph to the new aggregate optigraph.
 """
-function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
+function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0; name=gensym())
     if num_subgraphs(graph) == 0
         error("`aggregate_to_depth` requires the graph to contain subgraphs.")
     end
 
-    root_optigraph = OptiGraph()
+    root_optigraph = OptiGraph(; name=name)
     ref_map = GraphReferenceMap()
     subgraph_dict = Dict(graph => root_optigraph)
 
@@ -352,7 +423,7 @@ function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
         merge!(ref_map, sub_ref_map)
     end
 
-    #now copy nodes and edges going back up the tree
+    # now copy nodes and edges going back up the tree
     for rgraph in reverse(all_parents)
         nodes = local_nodes(rgraph)
         edges = local_edges(rgraph)
@@ -362,11 +433,14 @@ function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0)
         for node in nodes
             new_node, node_ref_map = _copy_node_to!(new_graph, node)
             merge!(ref_map, node_ref_map)
+            ref_map.node_map[node] = new_node
         end
 
         # copy optiedges
         for edge in edges
             _copy_edge_to!(new_graph, edge, ref_map)
+            # new_edge, edge_ref_map = 
+            # ref_map[edge] = new_edge
         end
     end
 
@@ -384,8 +458,11 @@ function _aggregate_subgraphs!(new_graph::OptiGraph, source_graph::OptiGraph)
     # aggregate each subgraph into a node in new_graph
     nodes, ref_maps = [], []
     for subgraph in local_subgraphs(source_graph)
-        node, ref_map = _copy_graph_elements_to!(new_graph, subgraph)
-        push!(nodes, node)
+        new_node, ref_map = _copy_graph_elements_to!(new_graph, subgraph)
+        for node in all_nodes(subgraph)
+            ref_map.node_map[node] = new_node
+        end
+        push!(nodes, new_node)
         push!(ref_maps, ref_map)
     end
     return nodes, ref_maps
