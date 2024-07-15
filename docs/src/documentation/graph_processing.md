@@ -397,18 +397,18 @@ Optigraphs can be converted into stand-alone optinodes using the using the [`agg
 we can define how many subgraph levels we wish to retain. The function returns a new aggregated graph (`aggregate_graph`), as well as a
 `reference_map` which maps elements in `aggregate_graph` to the original optigraph `graph`.
 
-```julia
-julia> aggregate_graph, reference_map = aggregate_to_depth(graph, 0; name=:agg_graph);
+```jldoctest optimal_control
+julia> aggregate_graph, reference_map = aggregate_to_depth(kahypar_graph, 0; name=:agg_graph);
 
 julia> aggregate_graph
 An OptiGraph
        agg_graph #local elements  #total elements
 --------------------------------------------------
-          Nodes:         8              8
-          Edges:         7              7
-      Subgraphs:         0              0
-      Variables:         199            199
-    Constraints:         299            299
+          Nodes:         8                8
+          Edges:         7                7
+      Subgraphs:         0                0
+      Variables:       199              199
+    Constraints:       299              299
 
 ```
 
