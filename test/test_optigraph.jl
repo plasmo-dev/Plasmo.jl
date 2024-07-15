@@ -339,6 +339,42 @@ function test_variable_constraints()
     unrelax_graph()
     @test is_binary(n1[:x]) == true
     @test is_integer(n2[:x]) == true
+
+    graph = OptiGraph()
+
+    @optinode(graph, nodes[1:2])
+    n1, n2 = all_nodes(graph)
+
+    @variable(n1, x >= 1)
+    @variable(n2, 0 <= x <= 2)
+
+    # set normalized coefficients
+    @variable(n1, y >= 0)
+    @constraint(n1, con1, n1[:x] + n1[:y] >= 1)
+    @constraint(n1, con2, 2 * n1[:x] + n1[:y] >= 1)
+    @linkconstraint(graph, link_con1, n1[:x] + n2[:x] >= 0)
+    @linkconstraint(graph, link_con2, n1[:y] * n2[:x] >= 0)
+    @linkconstraint(graph, link_con3, 2 * n1[:y] * n2[:x] >= 1)
+
+    set_normalized_coefficient(n1[:con1], n1[:x], 2)
+    @test normalized_coefficient(n1[:con1], n1[:x]) == 2
+    set_normalized_coefficient(
+        [n1[:con1], n1[:con2]],
+        [n1[:x], n1[:x]],
+        [3.0, 2.0]
+    )
+    @test normalized_coefficient(n1[:con1], n1[:x]) == 3
+    @test normalized_coefficient(n1[:con2], n1[:x]) == 2
+    set_normalized_coefficient(graph[:link_con2], n1[:y], n2[:x], 2.0)
+    @test normalized_coefficient(graph[:link_con2], n1[:y], n2[:x]) == 2
+    set_normalized_coefficient(
+        [graph[:link_con2], graph[:link_con3]],
+        [n1[:y], n1[:y]],
+        [n2[:x], n2[:x]],
+        [3.0, 3.0]
+    )
+    @test normalized_coefficient(graph[:link_con2], n1[:y], n2[:x]) == 3
+    @test normalized_coefficient(graph[:link_con3], n1[:y], n2[:x]) == 3
 end
 
 function test_nonlinear_operators()

@@ -40,7 +40,7 @@ end
 """
     MOI.get(node::OptiNode, attr::MOI.AbstractVariableAttribute, nvref::NodeVariableRef)
 
-Get the MOI variable attribute given by `attr` for the variable `nvref`. This returns 
+Get the MOI variable attribute given by `attr` for the variable `nvref`. This returns
 the attribute from model backend corresponding to the `node`.
 """
 function MOI.get(
@@ -545,4 +545,137 @@ function _extract_variables(func::JuMP.GenericNonlinearExpr)
         end
     end
     return vars
+end
+
+# Extended from https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/variables.jl#L2721
+function JuMP.set_normalized_coefficient(
+    con_ref::S,
+    variable::NodeVariableRef,
+    value::Number,
+) where {S<:Union{NodeConstraintRef, EdgeConstraintRef}}
+    graph = owner_model(con_ref).source_graph.x
+    _backend = backend(graph)
+
+    MOI.modify(
+        _backend.moi_backend,
+        graph_index(con_ref),
+        MOI.ScalarCoefficientChange(graph_index(_backend, variable), convert(Float64,value)),
+    )
+    graph.is_model_dirty = true
+    return
+end
+
+function JuMP.set_normalized_coefficient(
+    constraints::AbstractVector{<:S},
+    variables::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Number},
+) where {S<:Union{NodeConstraintRef, EdgeConstraintRef, Union{NodeConstraintRef, EdgeConstraintRef}}}
+    c, n, m = length(constraints), length(variables), length(coeffs)
+    if !(c == n == m)
+        msg = "The number of constraints ($c), variables ($n) and coefficients ($m) must match"
+        throw(DimensionMismatch(msg))
+    end
+    graph = [owner_model(con).source_graph.x for con in constraints]
+    _backends = unique(backend.(graph))
+    if length(_backends) != 1
+        error("Constraints belong to different graph backends; make sure constraints all come from the same graph")
+    end
+    _backend = _backends[1]
+    graph = graph[1]
+
+    MOI.modify(
+        _backend.moi_backend,
+        graph_index.(Ref(_backend), constraints),
+        MOI.ScalarCoefficientChange.(graph_index.(Ref(_backend), variables), convert.(Float64, coeffs)),
+    )
+    graph.is_model_dirty = true
+    return
+end
+
+function JuMP.set_normalized_coefficient(
+    constraint::S,
+    variable::NodeVariableRef,
+    new_coefficients::Vector{Tuple{Int64,T}},
+) where {T,S<:Union{NodeConstraintRef, EdgeConstraintRef}}
+    graph = owner_model(con_ref).source_graph.x
+    _backend = backend(graph)
+
+    MOI.modify(
+        _backend.moi_backend,
+        graph_index(_backend, constraint),
+        MOI.MultirowChange(graph_index(_backend, variable), new_coefficients),
+    )
+    graph.is_model_dirty = true
+    return
+end
+
+function JuMP.set_normalized_coefficients(
+    constraint::S,
+    variable::NodeVariableRef,
+    new_coefficients::Vector{Tuple{Int64,T}},
+) where {T,S<:Union{NodeConstraintRef, EdgeConstraintRef}}
+    return JuMP.set_normalized_coefficient(constraint, variable, new_coefficients)
+end
+
+function JuMP.set_normalized_coefficient(
+    constraint::S,
+    variable_1::NodeVariableRef,
+    variable_2::NodeVariableRef,
+    value::Number,
+) where {S<:Union{NodeConstraintRef, EdgeConstraintRef}}
+    new_value = convert(Float64, value)
+    if variable_1 == variable_2
+        new_value *= Float64(2)
+    end
+    graph = owner_model(constraint).source_graph.x
+    _backend = backend(graph)
+    MOI.modify(
+        _backend.moi_backend,
+        graph_index(_backend, constraint),
+        MOI.ScalarQuadraticCoefficientChange(
+            graph_index(_backend, variable_1),
+            graph_index(_backend, variable_2),
+            new_value,
+        ),
+    )
+    graph.is_model_dirty = true
+    return
+end
+
+function JuMP.set_normalized_coefficient(
+    constraints::AbstractVector{S},
+    variables_1::AbstractVector{<:NodeVariableRef},
+    variables_2::AbstractVector{<:NodeVariableRef},
+    coeffs::AbstractVector{<:Number},
+) where {S<:Union{NodeConstraintRef, EdgeConstraintRef}}
+    c, m = length(constraints), length(coeffs)
+    n1, n2 = length(variables_1), length(variables_1)
+    if !(c == n1 == n2 == m)
+        msg = "The number of constraints ($c), variables ($n1, $n2) and coefficients ($m) must match"
+        throw(DimensionMismatch(msg))
+    end
+    new_coeffs = convert.(Float64, coeffs)
+    for (i, x, y) in zip(eachindex(new_coeffs), variables_1, variables_2)
+        if x == y
+            new_coeffs[i] *= T(2)
+        end
+    end
+    graph = [owner_model(con).source_graph.x for con in constraints]
+    _backends = unique(backend.(graph))
+    if length(_backends) != 1
+        error("Constraints belong to different graph backends; make sure constraints all come from the same graph")
+    end
+    _backend = _backends[1]
+    graph = graph[1]
+    MOI.modify(
+        _backend.moi_backend,
+        graph_index.(Ref(_backend), constraints),
+        MOI.ScalarQuadraticCoefficientChange.(
+            graph_index.(Ref(_backend), variables_1),
+            graph_index.(Ref(_backend), variables_2),
+            new_coeffs,
+        ),
+    )
+    graph.is_model_dirty = true
+    return
 end
