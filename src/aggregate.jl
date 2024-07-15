@@ -220,7 +220,7 @@ function _copy_constraints!(
     new_node::OptiNode,
     source_element::OptiElement,
     ref_map::GraphReferenceMap,
-    index_map::MOIU.IndexMap,
+    index_map #::MOIU.IndexMap,
 )
     # get relevant backends
     src = graph_backend(source_element)
@@ -271,7 +271,7 @@ function _copy_constraints!(
     new_edge::OptiEdge,
     source_edge::OptiEdge,
     ref_map::GraphReferenceMap,
-    index_map::MOIU.IndexMap,
+    index_map #::MOIU.IndexMap,
 )
     source_element = source_edge
 
