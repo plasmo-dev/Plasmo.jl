@@ -225,12 +225,11 @@ function _copy_constraints!(
     # get relevant backends
     src = graph_backend(source_element)
     dest = graph_backend(new_node)
-
     # copy each constraint by iterating through each type
     constraint_types = JuMP.list_of_constraint_types(source_element)
     for (F, S) in constraint_types
-        # NOTE: I think this fails in julia nightly
-        index_map_FS = index_map[F, S]
+        F_moi = JuMP.moi_function_type(F)
+        index_map_FS = index_map[F_moi, S]
         for src_cref in JuMP.all_constraints(source_element, F, S)
             # get source constraint data
             src_func = MOI.get(source_element, MOI.ConstraintFunction(), src_cref)
@@ -252,7 +251,7 @@ function _copy_constraints!(
             ref_map[src_cref] = new_cref
         end
         # pass constraint attributes
-        F_moi = JuMP.moi_function_type(F)
+        
         cis_src = MOI.get(source_element, MOI.ListOfConstraintIndices{F_moi,S}())
         MOIU.pass_attributes(dest, src, index_map_FS, cis_src)
     end
@@ -283,7 +282,8 @@ function _copy_constraints!(
     # copy each constraint by iterating through each type
     constraint_types = JuMP.list_of_constraint_types(source_element)
     for (F, S) in constraint_types
-        index_map_FS = index_map[F, S]
+        F_moi = JuMP.moi_function_type(F)
+        index_map_FS = index_map[F_moi, S]
         for src_cref in JuMP.all_constraints(source_element, F, S)
             # get source constraint data
             src_func = MOI.get(source_element, MOI.ConstraintFunction(), src_cref)
@@ -469,6 +469,7 @@ function _aggregate_subgraphs!(new_graph::OptiGraph, source_graph::OptiGraph)
     return nodes, ref_maps
 end
 
+# NOTE: note tested anywhere
 """
     aggregate_to_depth!(graph::OptiGraph, max_depth::Int64=0)
 
@@ -480,16 +481,15 @@ into the aggregated version.
 function aggregate_to_depth!(graph::OptiGraph, max_depth::Int64=0)
     temp_graph, ref_map = aggregate_to_depth(graph, max_depth)
     Base.empty!(graph)
-
     # set fields
     graph.backend = temp_graph.backend
     graph.backend.optigraph = graph
-    graph.obj_dict = new_graph.obj_dict
+    graph.obj_dict = temp_graph.obj_dict
     graph.ext = new_graph.ext
-    graph.optinodes = new_graph.optinodes
-    graph.optiedges = new_graph.optiedges
-    graph.subgraphs = new_graph.subgraphs
-    graph.optiedge_map = new_graph.optiedge_map
-    graph.node_to_graphs = new_graph.node_to_graphs
+    graph.optinodes = temp_graph.optinodes
+    graph.optiedges = temp_graph.optiedges
+    graph.subgraphs = temp_graph.subgraphs
+    graph.optiedge_map = temp_graph.optiedge_map
+    graph.element_data = temp_graph.element_data
     return graph
 end
