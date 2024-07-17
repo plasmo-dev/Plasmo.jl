@@ -715,12 +715,12 @@ function local_constraints(graph::OptiGraph)
 end
 
 # TODO Methods
-
 # num_linked_variables(graph)
-
 # linked_variables(graph)
 
-### MOI Methods
+#
+# MOI Methods
+#
 
 function MOI.get(
     graph::OptiGraph, attr::AT
@@ -1054,9 +1054,7 @@ function JuMP.add_nonlinear_operator(
     return JuMP.NonlinearOperator(f, name)
 end
 
-#
-# Objective function
-#
+### Objective function
 
 """
     has_node_objective(graph::OptiGraph)

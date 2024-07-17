@@ -836,6 +836,7 @@ end
 #
 # MOIU Utility Methods
 #
+
 function MOIU.pass_attributes(
     dest::GraphMOIBackend, src::GraphMOIBackend, index_map::MOIU.IndexMap
 )

@@ -64,7 +64,7 @@ end
 # set optimizer
 #
 
-# NOTE: _moi_mode copied from JuMP.jl
+# NOTE: _moi_mode adapted from JuMP.jl
 # https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/JuMP.jl#L571-L575
 _moi_mode(::MOI.ModelLike) = DIRECT
 function _moi_mode(model::MOIU.CachingOptimizer)
@@ -106,7 +106,7 @@ function JuMP.set_optimizer(
     return JuMP.set_optimizer(graph_backend(graph), optimizer)
 end
 
-# NOTE: _moi_call_bridge_function copied from JuMP.jl
+# NOTE: _moi_call_bridge_function adapted from JuMP.jl
 # https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/JuMP.jl#L678C1-L699C4
 function _moi_call_bridge_function(::Function, ::MOI.ModelLike, args...)
     return error(
@@ -127,8 +127,8 @@ function _moi_call_bridge_function(
     return _moi_call_bridge_function(f, model.optimizer, args...)
 end
 
-# mostly copied from: https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
-
+# NOTE: optimize! adapted from JuMP
+# https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
 """
     JuMP.optimize!(
         graph::OptiGraph;
@@ -203,8 +203,6 @@ end
 # status results
 #
 
-### termination status
-
 """
     JuMP.termination_status(graph::OptiGraph)
 
@@ -221,16 +219,12 @@ function MOI.get(graph::OptiGraph, attr::MOI.TerminationStatus)
     return MOI.get(graph_backend(graph), attr)
 end
 
-### result_count
-
 function JuMP.result_count(graph::OptiGraph)::Int
     if JuMP.termination_status(graph) == MOI.OPTIMIZE_NOT_CALLED
         return 0
     end
     return MOI.get(graph, MOI.ResultCount())
 end
-
-### raw status
 
 function JuMP.raw_status(graph::OptiGraph)
     if MOI.get(graph, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED

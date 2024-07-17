@@ -220,7 +220,7 @@ function _copy_constraints!(
     new_node::OptiNode,
     source_element::OptiElement,
     ref_map::GraphReferenceMap,
-    index_map #::MOIU.IndexMap,
+    index_map::MOIU.IndexMap,
 )
     # get relevant backends
     src = graph_backend(source_element)
@@ -229,6 +229,7 @@ function _copy_constraints!(
     # copy each constraint by iterating through each type
     constraint_types = JuMP.list_of_constraint_types(source_element)
     for (F, S) in constraint_types
+        # NOTE: I think this fails in julia nightly
         index_map_FS = index_map[F, S]
         for src_cref in JuMP.all_constraints(source_element, F, S)
             # get source constraint data
@@ -271,7 +272,7 @@ function _copy_constraints!(
     new_edge::OptiEdge,
     source_edge::OptiEdge,
     ref_map::GraphReferenceMap,
-    index_map #::MOIU.IndexMap,
+    index_map::MOIU.IndexMap,
 )
     source_element = source_edge
 
