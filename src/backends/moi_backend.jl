@@ -701,7 +701,11 @@ function _copy_subgraph_edges!(backend::GraphMOIBackend, subgraph::OptiGraph)
     end
 end
 
-# TODO: re-implement MOIU._is_variable_function
+# copied from: https://github.com/jump-dev/MathOptInterface.jl/blob/a15b67fe47ad20caf316eb1bba0369a46ceb5a34/src/Utilities/copy.jl#L268-L270
+_is_variable_function(::Type{MOI.VariableIndex}) = true
+_is_variable_function(::Type{MOI.VectorOfVariables}) = true
+_is_variable_function(::Any) = false
+
 function _copy_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
     dest = backend
     index_map = MOIU.IndexMap()
@@ -715,13 +719,13 @@ function _copy_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
     # we try to constrain variables on creation.
     all_constraint_types = MOI.get(node, MOI.ListOfConstraintTypesPresent())
     variable_constraint_types = filter(all_constraint_types) do (F, S)
-        return MOIU._is_variable_function(F)
+        return _is_variable_function(F)
     end
     _copy_element_constraints(dest, node, index_map, variable_constraint_types)
 
     # copy non-variable constraints
     nonvariable_constraint_types = filter(all_constraint_types) do (F, S)
-        return !MOIU._is_variable_function(F)
+        return !_is_variable_function(F)
     end
     _copy_element_constraints(dest, node, index_map, nonvariable_constraint_types)
     return nothing

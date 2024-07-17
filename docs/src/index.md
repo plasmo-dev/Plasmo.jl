@@ -79,7 +79,7 @@ pages = {134--154},
 title = {Graph-based modeling and simulation of complex systems},
 volume = {125},
 year = {2019},
-doi = {https://doi.org/10.1016/j.compchemeng.2019.03.009}
+doi = {10.1016/j.compchemeng.2019.03.009}
 }
 ```
 A pre-print of this paper can also be found [here](https://arxiv.org/abs/1812.04983)

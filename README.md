@@ -21,7 +21,7 @@ The core data structure in Plasmo.jl is the `OptiGraph`. The optigraph contains 
 
 ## License
 
-Plasmo is licensed under the [MPL 2.0 license](https://github.com/plasmo-dev/Plasmo.jl/blob/main/LICENSE.md).
+Plasmo.jl is licensed under the [MPL 2.0 license](https://github.com/plasmo-dev/Plasmo.jl/blob/main/LICENSE.md).
 
 ## Installation
 
@@ -98,8 +98,23 @@ If you find Plasmo.jl useful for your work, you may cite the [manuscript](https:
   journal={Mathematical Programming Computation},
   year={2022},
   volume={14},
-  pages={699 - 747}
+  pages={699 - 747},
+  doi={10.1007/s12532-022-00223-3}
 }
 ```
-There is also a freely available [pre-print](https://arxiv.org/abs/2006.05378).
+You can also access a freely available [pre-print](https://arxiv.org/abs/2006.05378).
 
+There is also an earlier manuscript where we presented the initial ideas behind Plasmo.jl which you can find
+[here](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
+``` sourceCode
+@article{JalvingCaoZavala2019,
+author = {Jalving, Jordan and Cao, Yankai and Zavala, Victor M},
+journal = {Computers {\&} Chemical Engineering},
+pages = {134--154},
+title = {Graph-based modeling and simulation of complex systems},
+volume = {125},
+year = {2019},
+doi = {10.1016/j.compchemeng.2019.03.009}
+}
+```
+A pre-print of this paper can be found [here](https://arxiv.org/abs/1812.04983)
