@@ -114,7 +114,6 @@ function _moi_add_edge_constraint(edge::OptiEdge, con::JuMP.AbstractConstraint)
     )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
     cref = ConstraintRef(edge, constraint_index, JuMP.shape(con))
 
-    # TODO: disentangle backend interface
     # add to each containing optigraph
     for graph in containing_optigraphs(edge)
         MOI.add_constraint(

@@ -161,8 +161,6 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
     for t in f.quadratic_terms
         v1 = JuMP.constraint_ref_with_index(backend, t.variable_1).index
         v2 = JuMP.constraint_ref_with_index(backend, t.variable_2).index
-        # v1 = graph_backend(node).graph_to_element_map[t.variable_1].index
-        # v2 = graph_backend(node).graph_to_element_map[t.variable_2].index
         coef = t.coefficient
         if v1 == v2
             coef /= 2
@@ -193,13 +191,11 @@ function JuMP.GenericQuadExpr{C,NodeVariableRef}(
         end
 
         # variable index 1
-        # node_var_1 = graph_backend(edge).graph_to_element_map[v1]
         node_var_1 = JuMP.constraint_ref_with_index(backend, v1)
         node1 = node_var_1.node
         var_index_1 = node_var_1.index
 
         # variable index 2
-        #node_var_2 = graph_backend(edge).graph_to_element_map[v2]
         node_var_2 = JuMP.constraint_ref_with_index(backend, v2)
         node2 = node_var_2.node
         var_index_2 = node_var_2.index

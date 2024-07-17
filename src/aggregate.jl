@@ -345,7 +345,6 @@ function _copy_edge_to!(
     return nothing
 end
 
-# TODO: aggregate_to_depth will not work until this is implemented
 """
     Aggregate an optiedge `source_edge` into new optinode `new_node`.
 """
