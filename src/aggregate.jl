@@ -251,7 +251,7 @@ function _copy_constraints!(
             ref_map[src_cref] = new_cref
         end
         # pass constraint attributes
-        
+
         cis_src = MOI.get(source_element, MOI.ListOfConstraintIndices{F_moi,S}())
         MOIU.pass_attributes(dest, src, index_map_FS, cis_src)
     end

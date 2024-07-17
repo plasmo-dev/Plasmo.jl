@@ -358,11 +358,7 @@ function test_variable_constraints()
 
     set_normalized_coefficient(n1[:con1], n1[:x], 2)
     @test normalized_coefficient(n1[:con1], n1[:x]) == 2
-    set_normalized_coefficient(
-        [n1[:con1], n1[:con2]],
-        [n1[:x], n1[:x]],
-        [3.0, 2.0]
-    )
+    set_normalized_coefficient([n1[:con1], n1[:con2]], [n1[:x], n1[:x]], [3.0, 2.0])
     @test normalized_coefficient(n1[:con1], n1[:x]) == 3
     @test normalized_coefficient(n1[:con2], n1[:x]) == 2
     set_normalized_coefficient(graph[:link_con2], n1[:y], n2[:x], 2.0)
@@ -371,7 +367,7 @@ function test_variable_constraints()
         [graph[:link_con2], graph[:link_con3]],
         [n1[:y], n1[:y]],
         [n2[:x], n2[:x]],
-        [3.0, 3.0]
+        [3.0, 3.0],
     )
     @test normalized_coefficient(graph[:link_con2], n1[:y], n2[:x]) == 3
     @test normalized_coefficient(graph[:link_con3], n1[:y], n2[:x]) == 3
