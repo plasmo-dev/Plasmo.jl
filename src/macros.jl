@@ -1,4 +1,9 @@
-#macro function helpers
+#  Copyright 2021, Jordan Jalving, Yankai Cao, Victor Zavala, and contributors
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+# macro helpers
 _get_name(c::Symbol) = c
 _get_name(c::Nothing) = ()
 _get_name(c::AbstractString) = c
@@ -58,7 +63,7 @@ Add a group of linking  constraints described by the expression `expr` parametri
 The @linkconstraint macro works the same way as the `JuMP.@constraint` macro.
 """
 macro linkconstraint(graph, args...)
-    args, kw_args, requestedcontainer = Containers._extract_kw_args(args)
+    args, kw_args, = Containers.parse_macro_arguments(error, args)
     macro_code = quote
         @assert isa($graph, OptiGraph)
         refs = JuMP.@constraint($graph, ($(args...)))

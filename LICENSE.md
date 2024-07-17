@@ -1,6 +1,6 @@
 The Plasmo.jl package is licensed under the Mozilla Public License, Version 2.0:
 
-> Copyright (c) 2024:
+> Copyright (c) 2021:
 >  * Jordan Jalving, Yankai Cao, Victor Zavala, and contributors
 >
 > Mozilla Public License, version 2.0
