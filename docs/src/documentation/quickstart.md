@@ -124,6 +124,7 @@ quickstart_graph #local elements  #total elements
 ```
 
 !!! info
+
     You can also create edges implicitly using the [`@linkconstraint`](@ref) macro which takes the exact same input as the `JuMP.@constraint` macro above. 
     The above snippet would correspond to doing:
     ```julia
@@ -131,6 +132,10 @@ quickstart_graph #local elements  #total elements
     ```
     This would create a new edge between nodes `n1`, `n2`, and `n3` (if one does not exist) and add the constraint to it. You can also use the `JuMP.@constraint` macro directly on an optigraph to generate linking constraints, but the syntax displayed here is preferred to help code readability.
 
+!!! warning
+
+    Plasmo.jl no longer supports the legacy nonlinear interface from JuMP.jl. Consequently, `@NLconstraint`, `@NLobjective`, and `@NLexpression` will no longer work. If you have code that 
+    uses these macros, you will need to update to the current interface using `@constraint`, `@objective`, and `@expression`.
 
 ## Solve the OptiGraph and Query the Solution
 
@@ -144,6 +149,7 @@ n1[:y] + n2[:y] + n3[:y]
 ```
 
 !!! info
+
     The graph objective approach would look like:
     ```julia
     @objective(graph, Min, n1[:y] + n2[:y] + n3[:y])
@@ -183,6 +189,7 @@ julia> objective_value(graph)
 ```     
 
 !!! info
+
     It is possible to optimize individual optinodes or different optigraphs that contain the same optinode (nodes can be used in multiple optigraphs). Graph-specific solutions can be accessed using `value(node, variable)` (if optimizing a single node) or `value(graph, variable)` (if optimizing an optigraph). \\
     Note that optimizing a node creates a new graph internally; *the optimizer interface always goes through a graph*. It is also possible to use `value(variable)` without specifying a graph, but this will always return the value corresponding to the graph that created the node (this graph can be queried using `source_graph(node)`). Using `value(node`) is likely fine for most use-cases, but be aware that you should use the `value(graph, variable)` method when dealing with multiple graphs to avoid grabbing a wrong solution.
 
