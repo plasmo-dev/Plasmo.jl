@@ -2,7 +2,7 @@
 
 [![CI](https://github.com/plasmo-dev/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/plasmo-dev/Plasmo.jl/actions)
 [![codecov](https://codecov.io/gh/plasmo-dev/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/plasmo-dev/Plasmo.jl)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/dev/)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/stable/)
 [![DOI](https://zenodo.org/badge/96967382.svg)](https://zenodo.org/badge/latestdoi/96967382)
 
 # Plasmo.jl
@@ -37,7 +37,7 @@ Pkg.add("Plasmo")
 
 ## Documentation
 
-The latest documentation is available through [GitHub Pages](https://plasmo-dev.github.io/Plasmo.jl/dev/).
+The current documentation is available through [GitHub Pages]([https://plasmo-dev.github.io/Plasmo.jl/dev/](https://plasmo-dev.github.io/Plasmo.jl/stable/)).
 Additional examples can be found in the [examples](https://github.com/plasmo-dev/Plasmo.jl/tree/main/examples) folder.
 
 ## Simple Example
