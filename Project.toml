@@ -5,9 +5,7 @@ repo = "https://github.com/plasmo-dev/Plasmo.jl.git"
 version = "0.6.0"
 
 [deps]
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
-Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 GraphOptInterface = "2c3d953e-07eb-42f7-9900-e75950e41d88"
 Graphs = "86223c79-3864-5bf0-83f7-82e725a168b6"
 JuMP = "4076af6c-e467-56ae-b986-b466b2749572"
@@ -23,6 +21,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 Graphs = "1"
 JuMP = "1.2"
 DataStructures = "0.18"
+GraphOptInterface = "0.1
 MathOptInterface = "1.6"
 Reexport = "1"
 Requires = "1"
