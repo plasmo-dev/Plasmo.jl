@@ -9,6 +9,9 @@
 
 (Platform for Scalable Modeling and Optimization)
 
+> [!NOTE]  
+> Plasmo.jl has undergone significant refactorization with the release of version 0.6. While most syntax should still work, we advise checking out the documentation for the latest updates and filing an issue if a v0.5 model produces errors.
+
 Plasmo.jl is a graph-based algebraic modeling framework for building, managing, and solving optimization problems that utilizes graph-theoretic concepts and modular data structures. 
 The package extends JuMP.jl to offer concise syntax, interfaces with MathOptInterface.jl to access standard optimization solvers, and utilizes Graphs.jl to provide 
 graph analysis and processing methods. Plasmo.jl facilitates developing optimization models for networked systems such as supply chains, power systems, industrial 
@@ -18,9 +21,6 @@ processes, or any coupled system that involves multiple components and connectio
 The core object in Plasmo.jl is the `OptiGraph`, a graph data structure that represents optimization problems as a set of optinodes and optiedges. Optinodes encapsulate variables, expressions, and constraints (and objective functions) as modular models and edges encapsulate linking constraints that couple variables across optinodes. Optigraphs can be embedded within other optigraphs to induce nested hierarchical structures, or they can be partitioned using different graph projections and partitioning algorithms to create new decomposition structures.
 
 The core data structure in Plasmo.jl is the `OptiGraph`. The optigraph contains a set of optinodes which represent self-contained optimization problems and optiedges that represent coupling between optinodes (which produces an underlying [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) structure of optinodes and optiedges). Optigraphs can further be embedded within other optigraphs to create nested hierarchical graph structures. The graph structures obtained using Plasmo.jl can be used for simple model and data management, but they can also be used to perform graph partitioning or develop interfaces to structured optimization solvers.
-
-> [!NOTE]  
-> Plasmo.jl has undergone significant refactorization with the release of version 0.6. While most syntax should still work, we advise checking out the documentation for the latest updates and filing an issue if a v0.5 model produces errors.
 
 
 ## License
