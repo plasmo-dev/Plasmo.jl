@@ -1,166 +1,146 @@
+#  Copyright 2021, Jordan Jalving, Yankai Cao, Victor Zavala, and contributors
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#############################################################################
+# Plasmo
+# A graph-based modeling language for optimization
+# See https://github.com/plasmo-dev/Plasmo.jl
+#############################################################################
 module Plasmo
 
 using Requires
 using LinearAlgebra
 using DataStructures
 using SparseArrays
-using LightGraphs
+using Graphs
 using Printf
 
 using MathOptInterface
 const MOI = MathOptInterface
 
+using GraphOptInterface
+const GOI = GraphOptInterface
+
 using Reexport
 @reexport using JuMP
 
-import JuMP: AbstractModel, AbstractConstraint, AbstractJuMPScalar, ConstraintRef
-import Base: ==, show, print, string, getindex, copy
-import LightGraphs: AbstractGraph, AbstractEdge, Graph
-import DataStructures.OrderedDict
-import Base: ==, string, print, show
-
-export
-
-    #################################
-    # OptiGraph
-    ################################
-    AbstractOptiGraph,
-    OptiGraph,
+export OptiGraph,
     OptiNode,
     OptiEdge,
-    LinkConstraint,
-    LinkConstraintRef,
-    Partition,
-    OptiGraphNLPEvaluator,
-    add_node!,
-    optinode,
-    optinodes,
+    NodeVariableRef,
+    graph_backend,
+    graph_index,
+    add_node,
+    get_node,
+    add_edge,
+    add_subgraph,
+    has_edge,
+    get_edge,
+    get_edge_by_index,
+    collect_nodes,
+    local_nodes,
     all_nodes,
-    optinode_by_index,
-    num_nodes,
-    num_all_nodes,
-    optiedge,
-    optiedges,
+    local_edges,
     all_edges,
-    optiedge_by_index,
-    num_edges,
-    num_all_edges,
-    add_subgraph!,
-    subgraph,
-    subgraphs,
+    local_subgraphs,
     all_subgraphs,
-    subgraph_by_index,
+    num_local_nodes,
+    num_nodes,
+    num_local_edges,
+    num_edges,
+    num_local_subgraphs,
     num_subgraphs,
-    num_all_subgraphs,
-    has_subgraphs,
-    optigraph_reference,
-    @optinode,
-    @linkconstraint,
+    local_elements,
+    all_elements,
+    num_local_variables,
+    num_local_constraints,
+    local_constraints,
+    num_local_link_constraints,
+    num_link_constraints,
+    local_link_constraints,
+    all_link_constraints,
+    set_to_node_objectives,
+    containing_optigraphs,
+    source_graph,
+    assemble_optigraph,
 
-    # linkconstraints
-    linkconstraints,
-    all_linkconstraints,
-    num_linkconstraints,
-    num_all_linkconstraints,
-    num_linked_variables,
+    # partition
 
-    # optinode
-    jump_model,
-    set_model,
-    has_model,
-    is_set_to_node,
-    label,
-    set_label,
-    attached_node,
-    set_attached_node,
-    is_node_variable,
-    is_linked_variable,
-
-    # graph processing
-    incident_edges,
-    neighborhood,
-    induced_edges,
-    expand,
-    induced_graph,
+    Partition,
+    apply_partition,
     apply_partition!,
-    cross_edges,
-    cross_edges_not_global,
-    hierarchical_edges,
-    hierarchical_edges_not_global,
-    global_edges,
-    graph_depth,
+    n_subpartitions,
+    all_subpartitions,
+
+    # aggregate
+
     aggregate,
     aggregate!,
+    aggregate_to_depth,
+    aggregate_to_depth!,
 
-    # model functions
-    num_all_variables,
-    num_all_constraints,
-    has_objective,
-    has_nl_objective,
-    has_node_objective,
-    set_node_primals,
-    set_node_duals,
-    set_node_status,
+    # projections
 
-    # hypergraph functions
-    in_degree,
-    out_degree,
+    hyper_projection,
+    edge_hyper_projection,
+    clique_projection,
+    edge_clique_projection,
+    bipartite_projection,
+
+    # topoology
+
     all_neighbors,
+    incident_edges,
+    induced_edges,
+    identify_nodes,
+    identify_edges,
+    neighborhood,
     induced_subgraph,
-    neighbors,
-    adjacency_matrix,
-    incidence_matrix,
+    expand,
 
-    # graph projections
-    bipartite_graph,
-    clique_graph,
-    hyper_graph,
-    edge_graph,
-    edge_hyper_graph
+    # macros
 
-#Abstract Types
-abstract type AbstractOptiGraph <: JuMP.AbstractModel end
-abstract type AbstractOptiEdge end
-abstract type AbstractLinkConstraintRef end
-abstract type AbstractLinkConstraint <: JuMP.AbstractConstraint end
+    @optinode,
+    @nodevariables,
+    @linkconstraint,
 
-include("graph_representations/hypergraph.jl")
+    # other functions
 
-include("graph_representations/bipartitegraph.jl")
+    set_jump_model
 
-include("graph_representations/cliquegraph.jl")
+include("core_types.jl")
 
-include("moi_backend_node.jl")
+include("node_variables.jl")
+
+include("optigraph.jl")
 
 include("optinode.jl")
 
 include("optiedge.jl")
 
-include("moi_backend_graph.jl")
+include("optielement.jl")
 
-include("optigraph.jl")
-
-include("macros.jl")
+include("backends/moi_backend.jl")
 
 include("aggregate.jl")
 
-include("aggregate_utils.jl")
-
 include("optimizer_interface.jl")
 
-include("graph_projections.jl")
+include("jump_interop.jl")
 
-include("graph_functions.jl")
+include("macros.jl")
 
-include("nlp_evaluator.jl")
+include("graph_functions/projections.jl")
 
-include("partition.jl")
+include("graph_functions/topology.jl")
 
-include("structure.jl")
+include("graph_functions/partition.jl")
 
+# extensions
 function __init__()
     @require KaHyPar = "2a6221f6-aa48-11e9-3542-2d9e0ef01880" include(
-        "partition_interface/kahypar.jl"
+        "graph_functions/kahypar.jl"
     )
 end
 

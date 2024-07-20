@@ -1,6 +1,9 @@
-using Base.Meta
+#  Copyright 2021, Jordan Jalving, Yankai Cao, Victor Zavala, and contributors
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#macro function helpers
+# macro helpers
 _get_name(c::Symbol) = c
 _get_name(c::Nothing) = ()
 _get_name(c::AbstractString) = c
@@ -24,36 +27,27 @@ Add a new optinode to `optigraph`. The expression `expr` can either be
 macro optinode(graph, args...)
     #check arguments
     @assert length(args) <= 1
-    #get the name passed into the macro expression
-    if length(args) == 0
-        macro_code = :(add_node!($graph))
+    if isempty(args)
+        macro_code = :(add_node($graph))
     else
-        var = string(_get_name(args[1]))
+        #get the name passed into the macro expression
+        var = Base.string(_get_name(args[1]))
         macro_code = quote
-            container = JuMP.Containers.@container($(args...), add_node!($graph))
-            #set node labels
-            if isa(container, OptiNode)
-                container.label = $var
+            container = JuMP.Containers.@container($(args...), add_node($graph))
+            if isa(container, Plasmo.OptiNode)
+                set_name(container, Symbol($var))
             else
+                #set node labels
                 axs = axes(container)
                 terms = collect(Base.Iterators.product(axs...))[:]
                 for (i, node) in enumerate(container)
-                    node.label = $var * "[$(string(terms[i]...))]"
+                    JuMP.set_name(node, Symbol($var * "[$(string(terms[i]...))]"))
                 end
             end
             $(graph).obj_dict[Symbol($var)] = container
         end
     end
     return esc(macro_code)
-end
-
-#node is deprecated
-macro node(graph, args...)
-    code = quote
-        @warn "@node is deprecated.  Use @optinode for future applications"
-        @optinode($graph, $(args...))
-    end
-    return esc(code)
 end
 
 """
@@ -68,59 +62,30 @@ Add a group of linking  constraints described by the expression `expr` parametri
 
 The @linkconstraint macro works the same way as the `JuMP.@constraint` macro.
 """
-macro linkconstraint(graph_or_edge, args...)
-    args, kw_args, requestedcontainer = Containers._extract_kw_args(args)
-    attached_node_kw_args = filter(kw -> kw.args[1] == :attach, kw_args)
-    #extra_kw_args = filter(kw -> kw.args[1] != :attach, kw_args)
-
-    #check for attached node argumentss
-    if length(attached_node_kw_args) > 0
-        attached_node = attached_node_kw_args[1].args[2]
-    else
-        attached_node = nothing
+macro linkconstraint(graph, args...)
+    args, kw_args, = Containers.parse_macro_arguments(error, args)
+    macro_code = quote
+        @assert isa($graph, OptiGraph)
+        refs = JuMP.@constraint($graph, ($(args...)))
     end
+    return esc(macro_code)
+end
 
-    code = quote
-        @assert isa($graph_or_edge, Union{AbstractOptiGraph,OptiEdge})  #Check the inputs are the correct types.  This needs to throw
+"""
+    @nodevariables(iterable, expr...)
 
-        refs = JuMP.@constraint($graph_or_edge, ($(args...)))
-
-        #BUG: need to unfold attached node arguments.  It isn't grabbing the correct
-        #Set attached node if argument was provided
-        if $attached_node != nothing
-            if isa(refs, LinkConstraintRef)
-                link = LinkConstraint(refs)
-                set_attached_node(link, $attached_node)
-            else
-                links = LinkConstraint.(refs)
-                for link in links
-                    set_attached_node(link, $attached_node)
-                end
+Call the JuMP.@variable macro for each optinode in a given container
+"""
+macro nodevariables(nodes, args...)
+    macro_code = quote
+        for node in $(nodes)
+            begin
+                JuMP.@variable(node, $(args...))
             end
         end
-        refs
     end
-    return esc(code)
+    return esc(macro_code)
 end
 
-"""
-    @NLnodeconstraint(node,args...)
-
-Add a nonlinear constraint to an optinode.  Wraps JuMP.@NLconstraint.  This method will deprecate once optinodes
-extend nonlinear JuMP functionality.
-"""
-macro NLnodeconstraint(node, args...)
-    code = quote
-        @warn "@NLnodeconstraint is deprecated.  Use @NLconstraint for future applications"
-        JuMP.@NLconstraint($node, ($(args...)))
-    end
-    return esc(code)
-end
-
-macro NLnodeobjective(node, args...)
-    code = quote
-        @warn "@NLnodeobjective is deprecated.  Use @NLobjective for future applications"
-        JuMP.@NLobjective($node, ($(args...)))
-    end
-    return esc(code)
-end
+# TODO: @nodeconstraints
+# We would need to intercept variable arguments and lookup the actual node variables

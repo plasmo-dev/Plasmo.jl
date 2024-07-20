@@ -1,96 +1,108 @@
 # Modeling with OptiGraphs
-The primary modeling object in Plasmo.jl is the [`OptiGraph`](@ref). An optigraph is composed of [`OptiNode`](@ref)s (which represent self-contained optimization problems) that are connected by [`OptiEdge`](@ref)s
-(which encapsulate [`LinkConstraint`](@ref)s that couple optinodes). The optigraph is meant to be a standard modular structure to create optimization problems and provide
-graph functions that help develop specialized solvers, visualize problem structure, and perform graph processing tasks such as partitioning.
+The primary data structure in Plasmo.jl is the [`OptiGraph`](@ref), a mathematical model composed of [`OptiNode`](@ref)s (which represent self-contained optimization problems) 
+that are connected by [`OptiEdge`](@ref)s (which encapsulate linking constraints that couple optinodes). The optigraph is meant to offer a modular mechanism to create optimization problems and provide
+methods that can help develop specialized solution strategies, visualize problem structure, or perform graph processing tasks such as partitioning.
 
 The optigraph ultimately describes the following mathematical representation of an optimization problem:
 ```math
 \begin{aligned}
-    \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} & \quad \sum_{n \in \mathcal{N(\mathcal{G})}} f_n(x_n) \quad & (\textrm{Objective}) \\
+    \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} & \quad F(\{f_n(x_n)\}_{n \in \mathcal{N(\mathcal{G})}}) \quad & (\textrm{Objective}) \\
     \textrm{s.t.} & \quad x_n \in \mathcal{X}_n,      \quad n \in \mathcal{N(\mathcal{G})}, \quad & (\textrm{Node Constraints})\\
-    & \quad g_e(\{x_n\}_{n \in \mathcal{N}(e)}) = 0,  \quad e \in \mathcal{E(\mathcal{G})}. &(\textrm{Link Constraints})
+    & \quad g_e(\{x_n\}_{n \in \mathcal{N}(e)}) = 0,  \quad e \in \mathcal{E(\mathcal{G})}. &(\textrm{Edge (Link) Constraints})
 \end{aligned}
 ```
 In this formulation, ``\mathcal{G}`` represents the optigraph, ``{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}`` describes a collection of decision
-variables over the set of nodes (optinodes) ``\mathcal{N}(\mathcal{G})``, and ``x_n`` is the set of
-decision variables on node ``n``. The objective function for the optigraph ``\mathcal{G}`` is given by a linear combination of objective functions on each optinode ``f_n(x_n)``.
-The second equation represents constraints on each optinode ``\mathcal{N}(\mathcal{G})``, and the third equation represents the collection of
-linking constraints associated with optiedges ``\mathcal{E}(\mathcal{G})``. The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints
+variables over the set of optinodes ``\mathcal{N}(\mathcal{G})``, and ``x_n`` is the set of
+decision variables on optinode ``n``. The objective function for the optigraph ``F(\{f_n(x_n)\}_{n \in \mathcal{N(\mathcal{G})}})`` is given as a composition of optinode objective functions ``f_n(x_n)`` (it could be a separable summation of node objectives or any nonlinear function defined over optinode variables). 
+The constraints of an optinode ``n`` are represented by the set ``\mathcal{X}_n`` while the linking constraints
 that correspond to an edge ``e`` are represented by the vector function ``g_e(\{x_n\}_{n \in \mathcal{N}(e)})``.
 
-From an implementation standpoint, an optigraph contains optinode and optiedge objects and extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl).
+From an implementation standpoint, an optigraph extends much of the modeling functionality and syntax from [JuMP](https://github.com/jump-dev/JuMP.jl). 
+We also sometimes drop the 'opti' prefix and refer to objects as graphs, nodes, and edges throughout the documentation, but we note when the 'opti' distincition is important.
 
+!!! info
 
-## Creating an OptiGraph
-An optigraph does not require any arguments to construct:
+     The [`OptiNode`](@ref) and [`OptiGraph`](@ref) each extend a `JuMP.AbstractModel` and support JuMP macros such as 
+     `@variable`, `@constraint`, `@expression`, and `@objective` as well as many other JuMP methods that work on a `JuMP.Model`. 
+     The [`OptiEdge`](@ref) supports most JuMP methods as well but does not support `@variable` or `@objective`.
 
-```@meta
-CurrentModule = Plasmo
-DocTestSetup = quote
-    using Plasmo
-end
-```
+## Creating a New OptiGraph
+An optigraph does not require any arguments to construct but it is recommended to include the optional `name` argument for tracking and model management purposes.
+We begin by creating a new optigraph named `graph1`.
+
 
 ```jldoctest modeling
 julia> using Plasmo
 
-julia> graph1 = OptiGraph()
-      OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     0              (0)
-      OptiEdges:     0              (0)
-LinkConstraints:     0              (0)
- sub-OptiGraphs:     0              (0)
+julia> graph1 = OptiGraph(;name=:graph1)
+An OptiGraph
+          graph1 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                0
+          Edges:         0                0
+      Subgraphs:         0                0
+      Variables:         0                0
+    Constraints:         0                0
 ```
 
-```@meta
-DocTestSetup = nothing
-```
-
-## Adding OptiNodes
-The most effective way to add optinodes to an optigraph is by using the [`@optinode`](@ref) macro.  The below snippet adds the node `n1` to
-the optigraph `graph1`.
+## Add Variables and Constraints using OptiNodes
+Optinodes contain modular groups of optimization variables, constraints, and other model data.
+The typical way to add optinodes to an graph is by using the [`@optinode`](@ref) macro where the below snippet adds the node `n1` to
+`graph1`. 
 
 ```jldoctest modeling
-julia> @optinode(graph1,n1)
-OptiNode w/ 0 Variable(s) and 0 Constraint(s)
-```
-It is also possible to create sets of optinodes with a single call to [`@optinode`](@ref) like shown in the below code snippet.
-Here, we create two more optinodes which returns the reference `nodes`. This macro call produces a `JuMP.DenseAxisArray` which
-allows us to refer to each optinode using the produced index sets.  For example, `nodes[2]` and `nodes[3]` each return the corresponding
-optinode.
-
-```jldoctest modeling
-julia> @optinode(graph1,nodes[2:3])
-1-dimensional DenseAxisArray{OptiNode,1,...} with index sets:
-    Dimension 1, 2:3
-And data, a 2-element Vector{OptiNode}:
- OptiNode w/ 0 Variable(s) and 0 Constraint(s)
- OptiNode w/ 0 Variable(s) and 0 Constraint(s)
-
-julia> nodes[2]
-OptiNode w/ 0 Variable(s) and 0 Constraint(s)
-
-julia> nodes[3]
-OptiNode w/ 0 Variable(s) and 0 Constraint(s)
-```
-
-Each optinode supports adding variables, constraints, and an objective function. Here we loop through each optinode in `graph1` using the [`optinodes`](@ref) function
-and we construct underlying model elements.
-
-```jldoctest modeling
-julia>  for node in optinodes(graph1)
-            @variable(node,x >= 0)
-            @variable(node, y >= 2)
-            @constraint(node, conref, x + y >= 3)
-            @NLconstraint(node, nlconref, x^3 >= 1)
-            @objective(node, Min, x + y)
-        end
+julia> @optinode(graph1, n1)
+n1
 ```
 
 !!! note
 
-     The [`OptiNode`](@ref) extends a `JuMP.AbstractModel` and supports `JuMP` macros such as `@variable`, `@constraint`, `@NLconstraint`, and `@objective`
+    You can also use the [`add_node`](@ref) method to add individual optinodes. In this case, the above snippet would look like:
+    n1 = add_node(graph1)
+
+The [`@optinode`](@ref) macro is more useful for creating containers of optinodes like shown in the below code snippet.
+Here, we create two more optinodes referred to as `nodes1`. This macro returns a `JuMP.DenseAxisArray` which
+allows us to refer to each optinode using the produced index sets. For example, `nodes1[2]` and `nodes1[3]` each return the corresponding
+optinode.
+
+```jldoctest modeling
+julia> @optinode(graph1, nodes1[2:3])
+1-dimensional DenseAxisArray{OptiNode{OptiGraph},1,...} with index sets:
+    Dimension 1, 2:3
+And data, a 2-element Vector{OptiNode{OptiGraph}}:
+ nodes1[2]
+ nodes1[3]
+
+julia> nodes1[2]
+nodes1[2]
+
+julia> nodes1[3]
+nodes1[3]
+```
+
+Each optinode supports adding variables, constraints, expressions, and an objective function. 
+Here we loop through each optinode in `graph1` using the [`local_nodes`](@ref) function and we construct underlying model elements.
+
+```jldoctest modeling
+julia>  for node in all_nodes(graph1)
+            @variable(node,x >= 0)
+            @variable(node, y >= 2)
+            @constraint(node, node_constraint_1, x + y >= 3)
+            @constraint(node, node_constraint_2, x^3 >= 1)
+            @objective(node, Min, x + y)
+        end
+
+julia> graph1
+An OptiGraph
+          graph1 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         0                0
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        12               12
+
+```
 
 Variables within an optinode can be accessed directly by indexing the associated symbol. This enclosed name-space is useful for
 referencing variables on different optinodes when creating linking constraints or optigraph objective functions.
@@ -98,41 +110,59 @@ referencing variables on different optinodes when creating linking constraints o
 julia> n1[:x]
 n1[:x]
 
-julia> nodes[2][:x]
-nodes[2][:x]
+julia> nodes1[2][:x]
+nodes1[2][:x]
 ```
 
-## Adding LinkConstraints
-[`LinkConstraint`](@ref)s are linear constraints that couple variables across optinodes. The simplest way to create a linking constraint
-is to use the [`@linkconstraint`](@ref) macro. This macro accepts the same input as the `@constraint` macro, but it requires variables to be on at least two different optinodes.
+## Add Linking Constraints using Edges
+An [OptiEdge](@ref) can be used to store linking constraints that couple variables across optinodes. The simplest way to create a linking constraint is to use the [`@linkconstraint`](@ref) macro which accepts the same input as the `JuMP.@constraint` macro, but it requires an expression with at least two variables that exists on two different optinodes. The actual constraint is stored on the edge that connects the optinodes referred to in 
+the linking constraint. This optiedge is created if it does not already exist.
 
 ```jldoctest modeling
-julia> @linkconstraint(graph1, linkconref, n1[:x] + nodes[2][:x] + nodes[3][:x] == 3)
-linkconref: n1[:x] + nodes[2][:x] + nodes[3][:x] = 3.0
+julia> @linkconstraint(graph1, link_reference, n1[:x] + nodes1[2][:x] + nodes1[3][:x] == 3)
+n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3
+
 ```
+
 !!! note
 
-    Nonlinear link-constraints are not yet supported.
+    Some users may choose to create the edge manually and add the constraint like following:
+    ```julia
+    edge = add_edge(graph1, n1, nodes1[2], nodes1[3])
+    @constraint(edge, link_reference, n1[:x] + nodes1[2][:x] + nodes1[3][:x] == 3)
+    ```
+    Both approaches are equivalent.
+
+
+## Add an Objective Function
+By default, the graph objective is empty even if objective functions exist on nodes. We leave it up to the user to determine what the objective function for the graph should be 
+given its contained nodes. We provide the convenience function [`set_to_node_objectives`](@ref) which will set the graph objective function to the sum of all the node objectives. 
+We can set the graph objective like following:
+
+```jldoctest modeling
+julia> set_to_node_objectives(graph1)
+
+julia> objective_function(graph1)
+n1[:x] + n1[:y] + nodes1[2][:x] + nodes1[2][:y] + nodes1[3][:x] + nodes1[3][:y]
+
+``` 
 
 ## Solving and Querying Solutions
 
-An optimizer can be specified using the [`set_optimizer`](@ref) function which supports any
-[MathOptInterface.jl](https://github.com/jump-dev/MathOptInterface.jl) optimizer. For example, we could use the `Ipopt.Optimizer` from the [Ipopt.jl](https://github.com/jump-dev/Ipopt.jl) package and solve the optigraph as following:
+An optimizer can be specified using the [`set_optimizer`](@ref) function which supports any [MathOptInterface.jl](https://github.com/jump-dev/MathOptInterface.jl) optimizer. 
+For example, we use the `Ipopt.Optimizer` from the [Ipopt.jl](https://github.com/jump-dev/Ipopt.jl) to solve the optigraph like following:
 
 ```jldoctest modeling
 julia> using Ipopt
 
-julia> set_optimizer(graph1, Ipopt.Optimizer)
+julia> using Suppressor # suppress complete output
 
-julia> set_optimizer_attribute(graph1, "print_level", 0) #suppress Ipopt output
+julia> set_optimizer(graph1, Ipopt.Optimizer);
 
-julia> optimize!(graph1)
+julia> set_optimizer_attribute(graph1, "print_level", 0); #suppress Ipopt output
 
-******************************************************************************
-This program contains Ipopt, a library for large-scale nonlinear optimization.
- Ipopt is released as open source code under the Eclipse Public License (EPL).
-         For more information visit https://github.com/coin-or/Ipopt
-******************************************************************************
+julia> @suppress optimize!(graph1)
+
 ```
 
 The solution of an optigraph is stored directly on its optinodes and optiedges. Variables values, constraint duals, objective function values, and solution status codes can be queried just like in JuMP.
@@ -144,331 +174,381 @@ LOCALLY_SOLVED::TerminationStatusCode = 4
 julia> value(n1[:x])    
 1.0
 
-julia> value(nodes[2][:x])
+julia> value(nodes1[2][:x])
 1.0
 
-julia> value(nodes[3][:x])
+julia> value(nodes1[3][:x])
 1.0
 
 julia> round(objective_value(graph1))
 9.0
 
-julia> round(dual(linkconref), digits = 2)
+julia> round(dual(link_reference), digits = 2)
 -0.25
 
-julia> round(dual(n1[:conref]), digits = 2)
+julia> round(dual(n1[:node_constraint_1]), digits = 2)
 0.5
 
-julia> round(dual(n1[:nlconref]), digits = 2)
+julia> round(dual(n1[:node_constraint_2]), digits = 2)
 0.25
 ```   
 
 ## Plotting OptiGraphs
-We can also plot the graph structure of `graph1` using both graph and matrix layouts from the [PlasmoPlots](https://github.com/plasmo-dev/PlasmoPlots.jl) package.
-
-
-```@setup plot_example1
-    using Plasmo
-    graph1 = OptiGraph()
-    @optinode(graph1,n1)
-    @optinode(graph1,nodes[2:3])
-
-    for node in optinodes(graph1)
-        @variable(node,x >= 0)
-        @variable(node, y >= 2)
-        @constraint(node,x + y >= 3)
-        @objective(node, Min, y)
-    end
-
-    @linkconstraint(graph1, n1[:x] + nodes[2][:x] + nodes[3][:x] == 3)
-```
+We can also plot the structure of `graph1` using both graph and matrix layouts from the [PlasmoPlots](https://github.com/plasmo-dev/PlasmoPlots.jl) package.
 
 ```julia
 using PlasmoPlots
 
-plt_graph = layout_plot(graph1,
-                        node_labels=true,
-                        markersize=30,
-                        labelsize=15,
-                        linewidth=4,
-                        layout_options=Dict(:tol=>0.01,
-                                            :iterations=>2),
-                        plt_options=Dict(:legend=>false,
-                                         :framestyle=>:box,
-                                         :grid=>false,
-                                         :size=>(400,400),
-                                         :axis => nothing))
+plt_graph = layout_plot(
+    graph1,
+    node_labels=true,
+    markersize=30,
+    labelsize=15,
+    linewidth=4,
+    layout_options=Dict(
+        :tol=>0.01,
+        :iterations=>2
+    ),
+    plt_options=Dict(
+        :legend=>false,
+        :framestyle=>:box,
+        :grid=>false,
+        :size=>(400,400),
+        :axis => nothing
+    )
+);
 
 plt_matrix = matrix_layout(graph1, node_labels=true, markersize=15);   
 ```
 
 ![graph_modeling1](../assets/graph1_layout.svg) ![matrix_modeling1](../assets/matrix1_layout.svg)
 
-!!! note
+!!! info
 
-    The `layout_plot` and `matrix_plot` functions return a `Plots.plot` object which can be used for further customization and saving using `Plots.jl`
+    The `layout_plot` and `matrix_plot` functions both return a `Plots.plot` object which can be used for further customization and saving using `Plots.jl`
 
-## Hierarchical Modeling using Subgraphs
-Another fundamental feature of an optigraph is the ability to create subgraphs (i.e. sub-optigraphs). Subgraphs are defined using the [`add_subgraph!`](@ref) function which embeds an
-optigraph as a subgraph within a higher level optigraph. This is demonstrated in the below snippets. First, we create two new optigraphs in the same fashion we did above.
+## Modeling with Subgraphs
+A fundamental feature of modeling with optigraphs is the ability to create nested optimization structures using subgraphs (i.e. sub-optigraphs). 
+Subgraphs are created using the [`add_subgraph`](@ref) method which embeds an optigraph as a subgraph within a higher level optigraph. 
+This is demonstrated in the below snippets. First, we create two new optigraphs in the same fashion as above.
 
 ```jldoctest modeling
-julia> graph2 = OptiGraph();
+# create graph2
+graph2 = OptiGraph(;name=:graph2);
+@optinode(graph2, nodes2[1:3]);
+for node in all_nodes(graph2)
+    @variable(node, x >= 0)
+    @variable(node, y >= 2)
+    @constraint(node,x + y >= 5)
+    @objective(node, Min, y)
+end
+@linkconstraint(graph2, nodes2[1][:x] + nodes2[2][:x] + nodes2[3][:x] == 5);
 
-julia> @optinode(graph2,nodes2[1:3]);
+# create graph3
+graph3 = OptiGraph(;name=:graph3);
+@optinode(graph3, nodes3[1:3]);
+for node in all_nodes(graph3)
+    @variable(node, x >= 0)
+    @variable(node, y >= 2)
+    @constraint(node,x + y >= 5)
+    @objective(node, Min, y)
+end
+@linkconstraint(graph3, nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] == 7);
 
-julia>  for node in optinodes(graph2)
-            @variable(node, x >= 0)
-            @variable(node, y >= 2)
-            @constraint(node,x + y >= 5)
-            @objective(node, Min, y)
-        end
+graph3
 
-julia> @linkconstraint(graph2, nodes2[1][:x] + nodes2[2][:x] + nodes2[3][:x] == 5);
+# output
 
-julia> graph3 = OptiGraph();
+An OptiGraph
+          graph3 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        10               10
 
-julia> @optinode(graph3,nodes3[1:3]);
-
-julia>  for node in optinodes(graph3)
-            @variable(node, x >= 0)
-            @variable(node, y >= 2)
-            @constraint(node,x + y >= 5)
-            @objective(node, Min, y)
-        end
-
-julia> @linkconstraint(graph3, nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] == 7);
 ```
 
 We now have three optigraphs (`graph1`,`graph2`, and `graph3`), each with their own local optinodes and optiedges.  
-These optigraphs can be embedded into a higher level optigraph with the following snippet:
+These three optigraphs can be embedded into a higher level optigraph using the following snippet:
 
 ```jldoctest modeling
-julia> graph0 = OptiGraph()
-      OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     0              (0)
-      OptiEdges:     0              (0)
-LinkConstraints:     0              (0)
- sub-OptiGraphs:     0              (0)
+julia> graph0 = OptiGraph(;name=:root_graph)
+An OptiGraph
+      root_graph #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                0
+          Edges:         0                0
+      Subgraphs:         0                0
+      Variables:         0                0
+    Constraints:         0                0
 
-julia> add_subgraph!(graph0,graph1)
-      OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     0              (3)
-      OptiEdges:     0              (1)
-LinkConstraints:     0              (1)
- sub-OptiGraphs:     1              (1)
 
-julia> add_subgraph!(graph0,graph2)
-      OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     0              (6)
-      OptiEdges:     0              (2)
-LinkConstraints:     0              (2)
- sub-OptiGraphs:     2              (2)
+julia> add_subgraph(graph0, graph1);
 
-julia> add_subgraph!(graph0,graph3)
-      OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     0              (9)
-      OptiEdges:     0              (3)
-LinkConstraints:     0              (3)
- sub-OptiGraphs:     3              (3)
+julia> graph0
+An OptiGraph
+      root_graph #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                3
+          Edges:         0                1
+      Subgraphs:         1                1
+      Variables:         0                6
+    Constraints:         0               13
+
+julia> add_subgraph(graph0, graph2);
+
+julia> graph0
+An OptiGraph
+      root_graph #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                6
+          Edges:         0                2
+      Subgraphs:         2                2
+      Variables:         0               12
+    Constraints:         0               23
+
+
+julia> add_subgraph(graph0, graph3);
+
+julia> graph0
+An OptiGraph
+      root_graph #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                9
+          Edges:         0                3
+      Subgraphs:         3                3
+      Variables:         0               18
+    Constraints:         0               33
 
 ```
 Here, we see the distinction between local and total graph elements. After we add all three subgraphs
 to `graph0`, we see that it contains 0 local optinodes, but contains 9 total optinodes which are elements of its subgraphs. This hierarchical distinction is also
 made for optiedges and nested subgraphs.
 
-Using this hierarchical approach, link-constraints can be expressed both locally and globally. For instance, we can add a link-constraint to `graph0` that
+Using this nested approach, linking constraints can be expressed both locally and globally. For instance, we can add a linking constraint to `graph0` that
 connects optinodes across its subgraphs like following:
 ```jldoctest modeling
-julia> @linkconstraint(graph0,nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] == 10)
-: nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10.0
+julia> @linkconstraint(graph0, nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] == 10)
+nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
 
-julia> println(graph0)
-      OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     0              (9)
-      OptiEdges:     1              (4)
-LinkConstraints:     1              (4)
- sub-OptiGraphs:     3              (3)
+julia> graph0
+An OptiGraph
+      root_graph #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                9
+          Edges:         1                4
+      Subgraphs:         3                3
+      Variables:         0               18
+    Constraints:         1               34
+
 ```
-`graph0` now contains 1 local link-constraint, and 4 total link-constraints (3 from the subgraphs).
-Here, the local link-constraint in `graph0` is a global constraint to the entire optigraph that connects each of its subgraphs.
-This hierarchical construction can be useful for constructing optigraph optimization problems
+`graph0` now contains 1 local edge, and 4 total edges (3 from the subgraphs). The higher level edge linking constraint 
+can be thought of as a global constraint that connects subgraphs. This hierarchical construction can be useful for developing optimization problems
 separately and then coupling them in a higher level optigraph.
 
 We can lastly plot the hierarchical optigraph and see the nested subgraph structure.
 
-```@setup plot_example2
-    using Plasmo
-
-    graph1 = OptiGraph()
-    @optinode(graph1,n1)
-    @optinode(graph1,nodes[2:3])
-
-    for node in optinodes(graph1)
-        @variable(node,x >= 0)
-        @variable(node, y >= 2)
-        @constraint(node,x + y >= 3)
-        @objective(node, Min, y)
-    end
-
-    @linkconstraint(graph1, n1[:x] + nodes[2][:x] + nodes[3][:x] == 3)
-
-    graph2 = OptiGraph();
-
-    @optinode(graph2,nodes2[1:3]);
-
-    for node in optinodes(graph2)
-        @variable(node, x >= 0)
-        @variable(node, y >= 2)
-        @constraint(node,x + y >= 5)
-        @objective(node, Min, y)
-    end
-
-    @linkconstraint(graph2, nodes2[1][:x] + nodes2[2][:x] + nodes2[3][:x] == 5);
-
-    graph3 = OptiGraph();
-
-    @optinode(graph3,nodes3[1:3]);
-
-    for node in optinodes(graph3)
-        @variable(node, x >= 0)
-        @variable(node, y >= 2)
-        @constraint(node,x + y >= 5)
-        @objective(node, Min, y)
-    end
-
-    @linkconstraint(graph3, nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] == 7)
-
-    graph0 = OptiGraph()
-    add_subgraph!(graph0,graph1)
-    add_subgraph!(graph0,graph2)
-    add_subgraph!(graph0,graph3)
-
-    @linkconstraint(graph0,nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] == 10)
-```
-
 ```julia
 using PlasmoPlots
 
-for (i,node) in enumerate(all_nodes(graph0))
-    set_label(node, "n$i")
-end
+plt_graph0 = PlasmoPlots.layoutplot(
+    graph0,
+    node_labels=true,
+    markersize=60,
+    labelsize=30,
+    linewidth=4,
+    subgraph_colors=true,
+    layout_options = Dict(
+        :tol=>0.001,
+        :C=>2,
+        :K=>4,
+        :iterations=>5
+    )
+)
 
-plt_graph0 = PlasmoPlots.layoutplot(graph0,
-                                    node_labels=true,
-                                    markersize=60,
-                                    labelsize=30,
-                                    linewidth=4,
-                                    subgraph_colors=true,
-                                    layout_options = Dict(:tol=>0.001,
-                                                     :C=>2,
-                                                     :K=>4,
-                                                     :iterations=>5))
-
-plt_matrix0 = PlasmoPlots.matrix(graph0,
-                                 node_labels = true,
-                                 subgraph_colors = true,
-                                 markersize = 16)
+plt_matrix0 = PlasmoPlots.matrix_plot(
+    graph0,
+    node_labels = true,
+    subgraph_colors = true,
+    markersize = 16
+)
 ```
 
 ![graph_modeling2](../assets/graph0_layout.svg) ![matrix_modeling2](../assets/matrix0_layout.svg)
 
 
 ## Query OptiGraph Attributes
-There are numerous functions in Plasmo.jl used to query optigraph attributes (see the [API Documentation](@ref) for a full list). We can use [`optinodes`](@ref) to retrieve an array of
-the local optinodes in an optigraph, whereas [`all_nodes`](@ref) will recursively retrieve all of the optinodes in an optigraph, including the optinodes in its subgraphs.
+Plasmo.jl offers various methods to inspect the optigraph data structures (see the [API Documentation](@ref) for a full list). We can use [`local_nodes`](@ref) to retrieve an array of
+the optinodes contained directly within an optigraph, or we can use [`all_nodes`](@ref) to recursively retrieve all of the optinodes in an optigraph (which includes the nodes in its subgraphs).
 
 ```jldoctest modeling
-julia> optinodes(graph1)
-3-element Vector{OptiNode}:
- OptiNode w/ 2 Variable(s) and 2 Constraint(s)
- OptiNode w/ 2 Variable(s) and 2 Constraint(s)
- OptiNode w/ 2 Variable(s) and 2 Constraint(s)
+julia> local_nodes(graph1)
+3-element Vector{OptiNode{OptiGraph}}:
+ n1
+ nodes1[2]
+ nodes1[3]
 
-julia> optinodes(graph0)
-OptiNode[]
+julia> local_nodes(graph0)
+OptiNode{OptiGraph}[]
 
 julia> all_nodes(graph0)
-9-element Vector{OptiNode}:
- OptiNode w/ 2 Variable(s) and 2 Constraint(s)
- OptiNode w/ 2 Variable(s) and 2 Constraint(s)
- OptiNode w/ 2 Variable(s) and 2 Constraint(s)
- OptiNode w/ 2 Variable(s) and 1 Constraint(s)
- OptiNode w/ 2 Variable(s) and 1 Constraint(s)
- OptiNode w/ 2 Variable(s) and 1 Constraint(s)
- OptiNode w/ 2 Variable(s) and 1 Constraint(s)
- OptiNode w/ 2 Variable(s) and 1 Constraint(s)
- OptiNode w/ 2 Variable(s) and 1 Constraint(s)
+9-element Vector{OptiNode{OptiGraph}}:
+ n1
+ nodes1[2]
+ nodes1[3]
+ nodes2[1]
+ nodes2[2]
+ nodes2[3]
+ nodes3[1]
+ nodes3[2]
+ nodes3[3]
+
 ```
 
-It is also possible to query for optiedges in the same way using [`optiedges`](@ref) and [`all_edges`](@ref).
+It is also possible to query for optiedges in the same way using [`local_edges`](@ref) and [`all_edges`](@ref).
 ```jldoctest modeling
-julia> optiedges(graph1)
-1-element Vector{OptiEdge}:
- OptiEdge w/ 1 Constraint(s)
+julia> local_edges(graph1)
+1-element Vector{OptiEdge{OptiGraph}}:
+ graph1.e1
 
-julia> optiedges(graph0)
-1-element Vector{OptiEdge}:
- OptiEdge w/ 1 Constraint(s)
+julia> local_edges(graph0)
+1-element Vector{OptiEdge{OptiGraph}}:
+ root_graph.e1
 
 julia> all_edges(graph0)
-4-element Vector{OptiEdge}:
- OptiEdge w/ 1 Constraint(s)
- OptiEdge w/ 1 Constraint(s)
- OptiEdge w/ 1 Constraint(s)
- OptiEdge w/ 1 Constraint(s)
+4-element Vector{OptiEdge{OptiGraph}}:
+ root_graph.e1
+ graph1.e1
+ graph2.e1
+ graph3.e1
+
 ```
 
-We can query link-constraints using [`linkconstraints`](@ref) and [`all_linkconstraints`](@ref).
+We can query linking constraints using [`local_link_constraints`](@ref) and [`all_link_constraints`](@ref).
 
 ```jldoctest modeling
-julia> linkconstraints(graph1)
-1-element Vector{LinkConstraintRef}:
- linkconref: n1[:x] + nodes[2][:x] + nodes[3][:x] = 3.0
+julia> local_link_constraints(graph1)
+1-element Vector{ConstraintRef}:
+ n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3
 
-julia> linkconstraints(graph0)
-1-element Vector{LinkConstraintRef}:
- : nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10.0
+julia> local_link_constraints(graph0)
+1-element Vector{ConstraintRef}:
+ nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
 
-julia> all_linkconstraints(graph0)
-4-element Vector{LinkConstraintRef}:
- linkconref: n1[:x] + nodes[2][:x] + nodes[3][:x] = 3.0
- : nodes2[1][:x] + nodes2[2][:x] + nodes2[3][:x] = 5.0
- : nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] = 7.0
- : nodes[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10.0
+julia> all_link_constraints(graph0)
+4-element Vector{ConstraintRef}:
+ nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
+ n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3
+ nodes2[1][:x] + nodes2[2][:x] + nodes2[3][:x] = 5
+ nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] = 7
 ```
 
-We can lastly query subgraphs using [`subgraphs`](@ref) and [`all_subgraphs`](@ref)
+We can lastly query subgraphs using [`local_subgraphs`](@ref) and [`all_subgraphs`](@ref) methods.
 
 ```jldoctest modeling
-julia> subgraphs(graph0)
+julia> local_subgraphs(graph0)
 3-element Vector{OptiGraph}:
-       OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     3              (3)
-      OptiEdges:     1              (1)
-LinkConstraints:     1              (1)
- sub-OptiGraphs:     0              (0)
-       OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     3              (3)
-      OptiEdges:     1              (1)
-LinkConstraints:     1              (1)
- sub-OptiGraphs:     0              (0)
-       OptiGraph: # elements (including subgraphs)
--------------------------------------------------------------------
-      OptiNodes:     3              (3)
-      OptiEdges:     1              (1)
-LinkConstraints:     1              (1)
- sub-OptiGraphs:     0              (0)
+ An OptiGraph
+          graph1 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        13               13
+
+ An OptiGraph
+          graph2 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        10               10
+
+ An OptiGraph
+          graph3 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        10               10
+
 ```
 
-## Managing Multiple OptiGraphs
-!!! note
+## Managing Solutions with OptiGraphs
 
-    Documentation Coming Soon!
+While it is common to use an optigraph as a means to build a singular optimization problem that can be solved with standard solvers, it is also possible
+to come up with custom solution strategies that consist of solving smaller subgraphs or use optigraph elements to generate new 
+optigraphs we can solve. To demonstrate, assume we first want to solve each subgraph in `graph0` in isolation. This can be done like following:
+
+```jldoctest modeling
+# optimize each subgraph with Ipopt
+for subgraph in local_subgraphs(graph0)
+    @objective(subgraph, Min, sum(all_variables(subgraph)))
+    set_optimizer(subgraph, Ipopt.Optimizer)
+    set_optimizer_attribute(subgraph, "print_level", 0);
+    optimize!(subgraph)
+end
+
+# check termination status of each solve
+termination_status.(local_subgraphs(graph0))
+
+# output
+
+3-element Vector{MathOptInterface.TerminationStatusCode}:
+ LOCALLY_SOLVED::TerminationStatusCode = 4
+ LOCALLY_SOLVED::TerminationStatusCode = 4
+ LOCALLY_SOLVED::TerminationStatusCode = 4
+```
+
+We can query the value of each solution using [`value`](@ref) like before, but lets instead specify the graph argument for clarity.
+
+```jldoctest modeling
+julia> value(graph1, n1[:x])
+1.0
+
+julia> n2 = graph2[1] # get first node on graph2
+nodes2[1]
+
+julia> round(value(graph2, n2[:x]); digits=2)
+1.67
+
+julia> n3 = graph3[1] # get first node on graph3
+nodes3[1]
+
+julia> round(value(graph3, n3[:x]); digits=2)
+2.33
+```
+
+Now assume we want to use these subgraph solutions to initialize the full graph solution. We could do this using [`JuMP.set_start_value`](@ref) like following:
+
+```jldoctest modeling
+julia> set_start_value.(all_variables(graph1), value.(graph1, all_variables(graph1)));
+
+julia> set_start_value.(all_variables(graph2), value.(graph2, all_variables(graph2)));
+
+julia> set_start_value.(all_variables(graph3), value.(graph3, all_variables(graph3)));
+```
+
+Now that each subgraph has a new initial solution, the total initial solution can be used to optimize `graph0` since all of the subgraph attributes will be copied over.
+
+```jldoctest modeling
+julia> @objective(graph0, Min, sum(all_variables(graph0))); # set graph0 objective
+
+julia> set_optimizer(graph0, Ipopt.Optimizer);
+
+julia> set_optimizer_attribute(graph0, "print_level", 0);
+
+julia> optimize!(graph0);
+
+julia> termination_status(graph0)
+LOCALLY_SOLVED::TerminationStatusCode = 4
+
+```
+
+While somewhat simple, this example shows what kinds of model approaches can be taken with Plasmo.jl. Checkout [Graph Processing and Analysis](@ref) for more advanced functionality 
+that makes use of the optigraph structure to define and solve problems.

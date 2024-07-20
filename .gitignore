@@ -2,10 +2,8 @@
 *.jl.*.cov
 *.jl.mem
 /dev/
-
-
 docs/build/
 _*
-
 Manifest.toml
 docs/Manifest.toml
+examples/notebooks/*ipynb_checkpoints

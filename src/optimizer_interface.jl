@@ -1,432 +1,303 @@
-#Get backends
-JuMP.backend(graph::OptiGraph) = graph.moi_backend
-JuMP.backend(node::OptiNode) = JuMP.backend(jump_model(node))
-JuMP.backend(edge::OptiEdge) = edge.backend
-# JuMP.moi_mode(node_optimizer::NodeBackend) = JuMP.moi_mode(node_optimizer.optimizer)
+#  Copyright 2021, Jordan Jalving, Yankai Cao, Victor Zavala, and contributors
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-#Extend OptiNode and OptiGraph with MOI interface
-MOI.get(node::OptiNode, args...) = MOI.get(jump_model(node), args...)
-MOI.set(node::OptiNode, args...) = MOI.set(jump_model(node), args...)
-MOI.get(graph::OptiGraph, args...) = MOI.get(JuMP.backend(graph), args...)
+#
+# get/set attributes
+#
 
-#Set the optigraph objective to the sum of the nodes
-function _set_graph_objective(graph::OptiGraph)
-    if !has_objective(graph) && has_node_objective(graph)
-        nodes = all_nodes(graph)
-        for node in nodes
-            # TODO: do not modify the nodes
-            if JuMP.objective_sense(node) == MOI.MAX_SENSE
-                JuMP.set_objective_sense(node, MOI.MIN_SENSE)
-                JuMP.set_objective_function(node, -1 * JuMP.objective_function(node))
-            end
-        end
-        JuMP.set_objective(
-            graph, MOI.MIN_SENSE, sum(objective_function(nodes[i]) for i in 1:length(nodes))
-        )
+function JuMP.get_attribute(
+    graph::OptiGraph, attr::AT
+) where {AT<:Union{MOI.AbstractModelAttribute,MOI.AbstractOptimizerAttribute}}
+    return MOI.get(graph, attr)
+end
+
+function JuMP.get_attribute(
+    nvref::NodeVariableRef, attr::AT
+) where {AT<:MOI.AbstractVariableAttribute}
+    return MOI.get(nvref.node, attr, nvref)
+end
+
+function JuMP.get_attribute(graph::OptiGraph, name::String)
+    return JuMP.get_attribute(graph, MOI.RawOptimizerAttribute(name))
+end
+
+# From JuMP: "This method is needed for string types like String15 coming from a DataFrame."
+function JuMP.get_attribute(graph::OptiGraph, name::AbstractString)
+    return JuMP.get_attribute(graph, String(name))
+end
+
+function JuMP.set_attribute(graph::OptiGraph, attr::MOI.AbstractModelAttribute, value::Any)
+    MOI.set(graph, attr, value)
+    return nothing
+end
+
+# NOTE: ConstraintRef covered by JuMP
+function JuMP.set_attribute(
+    nvref::NodeVariableRef, attr::MOI.AbstractVariableAttribute, value::Any
+)
+    MOI.set(nvref.node, attr, nvref, value)
+    return nothing
+end
+
+function JuMP.set_attribute(
+    graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute, value::Any
+)
+    MOI.set(graph, attr, value)
+    return nothing
+end
+
+function JuMP.set_attribute(graph::OptiGraph, name::String, value)
+    JuMP.set_attribute(graph, MOI.RawOptimizerAttribute(name), value)
+    return nothing
+end
+
+function JuMP.set_attribute(graph::OptiGraph, name::AbstractString, value)
+    JuMP.set_attribute(graph, String(name), value)
+    return nothing
+end
+
+function JuMP.set_attributes(destination::Union{OptiGraph,NodeVariableRef}, pairs::Pair...)
+    for (name, value) in pairs
+        JuMP.set_attribute(destination, name, value)
     end
     return nothing
 end
 
-#NOTE: Must hit _aggregate_backends!() first
-#Set the backend objective to the graph objective
-function _set_backend_objective(graph::OptiGraph)
-    obj = objective_function(graph)
-    _set_backend_objective(graph, obj)
-    return nothing
+#
+# set optimizer
+#
+
+# NOTE: _moi_mode adapted from JuMP.jl
+# https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/JuMP.jl#L571-L575
+_moi_mode(::MOI.ModelLike) = DIRECT
+function _moi_mode(model::MOIU.CachingOptimizer)
+    return model.mode == MOIU.AUTOMATIC ? AUTOMATIC : MANUAL
 end
 
-function _set_backend_objective(
-    graph::OptiGraph, obj::JuMP.GenericAffExpr{Float64,VariableRef}
-)
-    graph_backend = JuMP.backend(graph)
-    moi_obj = moi_function(obj)
-    for (i, terms) in enumerate(linear_terms(obj))
-        term = terms[2]
-        moi_term = index(term)
-        node = optinode(term)
-        node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
-        new_moi_idx = node_idx_map[moi_term]
-        moi_obj = _swap_linear_term!(moi_obj, i, new_moi_idx)
-    end
-    MOI.set(graph_backend.optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.set(
-        graph_backend.optimizer,
-        MOI.ObjectiveFunction{MOI.ScalarAffineFunction{Float64}}(),
-        moi_obj,
-    )
-    return nothing
+function JuMP.mode(graph::OptiGraph)
+    return _moi_mode(JuMP.backend(graph_backend(graph)))
 end
 
-function _set_backend_objective(
-    graph::OptiGraph, obj::JuMP.GenericQuadExpr{Float64,VariableRef}
-)
-    graph_backend = JuMP.backend(graph)
-    moi_obj = moi_function(obj)
-    for (i, terms) in enumerate(quad_terms(obj))
-        term1 = terms[2]
-        term2 = terms[3]
-        node = optinode(term1)
-        @assert optinode(term1) == optinode(term2)
-        moi_term1 = index(term1)
-        moi_term2 = index(term2)
-        node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
-        new_moi_idx_1 = node_idx_map[moi_term1]
-        new_moi_idx_2 = node_idx_map[moi_term2]
-        moi_obj = _swap_quad_term!(moi_obj, i, new_moi_idx_1, new_moi_idx_2)
-    end
-
-    for (i, terms) in enumerate(linear_terms(obj))
-        term = terms[2]
-        moi_term = index(term)
-        node = optinode(term)
-        node_idx_map = backend(node).optimizers[graph.id].node_to_optimizer_map
-        new_moi_idx = node_idx_map[moi_term]
-        moi_obj = _swap_linear_term!(moi_obj, i, new_moi_idx)
-    end
-
-    MOI.set(graph_backend.optimizer, MOI.ObjectiveSense(), MOI.MIN_SENSE)
-    MOI.set(
-        graph_backend.optimizer,
-        MOI.ObjectiveFunction{MOI.ScalarQuadraticFunction{Float64}}(),
-        moi_obj,
-    )
-    return nothing
-end
-
-function _swap_linear_term!(
-    moi_obj::MOI.ScalarAffineFunction, idx::Int64, new_moi_idx::MOI.VariableIndex
-)
-    term = moi_obj.terms[idx]
-    coeff = term.coefficient
-    moi_obj.terms[idx] = MOI.ScalarAffineTerm{Float64}(coeff, new_moi_idx)
-    return moi_obj
-end
-
-function _swap_linear_term!(
-    moi_obj::MOI.ScalarQuadraticFunction, idx::Int64, new_moi_idx::MOI.VariableIndex
-)
-    term = moi_obj.affine_terms[idx]
-    coeff = term.coefficient
-    moi_obj.affine_terms[idx] = MOI.ScalarAffineTerm{Float64}(coeff, new_moi_idx)
-    return moi_obj
-end
-
-function _swap_quad_term!(
-    moi_obj::MOI.ScalarQuadraticFunction,
-    idx::Int64,
-    new_moi_idx1::MOI.VariableIndex,
-    new_moi_idx2::MOI.VariableIndex,
-)
-    term = moi_obj.quadratic_terms[idx]
-    coeff = term.coefficient
-    var_idx1 = term.variable_1
-    var_idx2 = term.variable_2
-    moi_obj.quadratic_terms[idx] = MOI.ScalarQuadraticTerm{Float64}(
-        coeff, new_moi_idx1, new_moi_idx2
-    )
-    return moi_obj
-end
-
-function _set_node_results!(graph::OptiGraph)
-    graph_backend = JuMP.backend(graph)
-    id = graph.id
-
-    nodes = all_nodes(graph)
-    srces = JuMP.backend.(nodes)
-    for src in srces
-        src.last_solution_id = graph.id
-        src.result_location[id] = src.optimizers[id]
-    end
-
-    #edges also point to graph backend model
-    for linkref in all_linkconstraints(graph)
-        edge = JuMP.owner_model(linkref)
-        JuMP.backend(edge).last_solution_id = graph.id
-        edge.backend.result_location[id] = edge.backend.optimizers[id]
-    end
-
-    #Set NLP dual solution for node
-    #Nonlinear duals 
-    #TODO: manage node nlp duals on node backend
-    #TODO: Add list of model attributes to graph backend.
-    #if MOI.NLPBlock() in MOI.get(graph_backend,MOI.ListOfModelAttributesSet())
-    try
-        nlp_duals = MOI.get(graph_backend, MOI.NLPBlockDual())
-        for node in nodes
-            if JuMP.nonlinear_model(node) != nothing
-                #if node.nlp_data != nothing
-                src = JuMP.backend(node)
-                nl_idx_map = src.result_location[id].nl_node_to_optimizer_map #JuMP.backend(node).nl_idx_maps[id]
-                nl_duals = node.nlp_duals[id]
-                for (src_index, graph_index) in nl_idx_map
-                    nl_duals[src_index.value] = nlp_duals[graph_index.value] # node.nlp_data.nlconstr_duals[src_index.value] = nlp_duals[graph_index.value]
-                end
-            end
-        end
-    catch err
-        if !isa(err, MathOptInterface.GetAttributeNotAllowed)
-            rethrow(err)
-        end
+function JuMP.error_if_direct_mode(graph::OptiGraph, func::Symbol)
+    if JuMP.mode(graph) == DIRECT
+        error("The `$func` function is not supported in DIRECT mode.")
     end
     return nothing
 end
 
-function MOIU.attach_optimizer(graph::OptiGraph)
-    return MOIU.attach_optimizer(backend(graph))
-end
-
-function MOIU.reset_optimizer(graph::OptiGraph)
-    return MOIU.reset_optimizer(backend(graph))
-end
-
-#################################
-# Optimizer
-#################################
 """
-    JuMP.set_optimizer(graph::OptiGraph, optimizer_constructor::Any)
+    JuMP.set_optimizer(
+        graph::OptiGraph, 
+        JuMP.@nospecialize(optimizer_constructor); 
+        add_bridges::Bool=true
+    )
 
-Set an MOI optimizer onto the optigraph `graph`.  Works exactly the same as using JuMP to set an optimizer.
-
-## Example
-```julia
-graph = OptiGraph()
-set_optimizer(graph, GLPK.Optimizer)
-```
+Set the optimizer on `graph` by passing an `optimizer_constructor`.
 """
 function JuMP.set_optimizer(
-    graph::OptiGraph,
-    optimizer_constructor,
-    add_bridges::Bool=true,
-    bridge_constraints::Union{Nothing,Bool}=nothing,
+    graph::OptiGraph, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
 )
-    if bridge_constraints != nothing
-        @warn("`bridge_constraints` argument is deprecated. Use `add_bridges` instead.")
-        add_bridges = bridge_constraints
-    end
-
+    JuMP.error_if_direct_mode(graph, :set_optimizer)
     if add_bridges
-        optimizer = MOI.instantiate(optimizer_constructor; with_bridge_type=Float64)
-        for bridge_type in graph.bridge_types
-            _moi_add_bridge(optimizer, bridge_type)
+        optimizer = MOI.instantiate(optimizer_constructor)#; with_bridge_type = T)
+        for BT in graph.bridge_types
+            _moi_call_bridge_function(MOI.Bridges.add_bridge, optimizer, BT)
         end
     else
         optimizer = MOI.instantiate(optimizer_constructor)
     end
-
-    graph.moi_backend.optimizer = optimizer
-    graph.moi_backend.state = MOIU.EMPTY_OPTIMIZER
-    return nothing
+    return JuMP.set_optimizer(graph_backend(graph), optimizer)
 end
 
-#TODO: support optimize hooks
-#TODO: support reseting a new optimizer
+# NOTE: _moi_call_bridge_function adapted from JuMP.jl
+# https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/JuMP.jl#L678C1-L699C4
+function _moi_call_bridge_function(::Function, ::MOI.ModelLike, args...)
+    return error(
+        "Cannot use bridge if `add_bridges` was set to `false` in the `Model` ",
+        "constructor.",
+    )
+end
+
+function _moi_call_bridge_function(
+    f::Function, model::MOI.Bridges.LazyBridgeOptimizer, args...
+)
+    return f(model, args...)
+end
+
+function _moi_call_bridge_function(
+    f::Function, model::MOI.Utilities.CachingOptimizer, args...
+)
+    return _moi_call_bridge_function(f, model.optimizer, args...)
+end
+
+# NOTE: optimize! adapted from JuMP
+# https://github.com/jump-dev/JuMP.jl/blob/597ef39c97d713929e8a6819908c341b31cbd8aa/src/optimizer_interface.jl#L409
 """
-    JuMP.optimize!(graph::OptiGraph)
+    JuMP.optimize!(
+        graph::OptiGraph;
+        kwargs...,
+    )
 
-Optimize the optigraph `graph` with the current set optimizer
-
-## Example
-```julia
-graph = OptiGraph()
-set_optimizer(graph, GLPK.Optimizer)
-optimize!(graph)
-```
+Optimize `graph` using the current set optimizer.
 """
-function JuMP.optimize!(graph::OptiGraph)
-    graph_backend = JuMP.backend(graph)
-    if MOIU.state(graph_backend) == MOIU.NO_OPTIMIZER
-        error(
-            "Please set an optimizer on the optigraph before calling `optimize!` by using `set_optimizer(graph,optimizer)`",
-        )
+function JuMP.optimize!(
+    graph::OptiGraph;
+    #ignore_optimize_hook = (graph.optimize_hook === nothing),
+    kwargs...,
+)
+    # TODO: optimize hooks for optigraphs
+    # If the user or an extension has provided an optimize hook, call
+    # that instead of solving the model ourselves
+    # if !ignore_optimize_hook
+    #     return model.optimize_hook(model; kwargs...)
+    # end
+
+    if !isempty(kwargs)
+        error("Unrecognized keyword arguments: $(join([k[1] for k in kwargs], ", "))")
+    end
+    if JuMP.mode(graph) != DIRECT &&
+        MOIU.state(JuMP.backend(graph_backend(graph))) == MOIU.NO_OPTIMIZER
+        throw(JuMP.NoOptimizer())
     end
 
-    if graph_backend.state == MOIU.EMPTY_OPTIMIZER
-        MOIU.attach_optimizer(graph_backend)
-        graph.is_dirty = false
-    elseif graph.is_dirty == true
-        MOI.empty!(graph_backend.optimizer)
-        # MOI.empty!(graph_backend.model_cache)
-        graph_backend.state = MOIU.EMPTY_OPTIMIZER
-        MOIU.attach_optimizer(graph_backend)
-        graph.is_dirty = false
-    end
-
-    # Just like JuMP, NLP data is not kept in sync, so set it up here
-    if has_nlp_data(graph)
-        # NOTE: this also adds the NLPBlock to the graph backend model_cache, not sure we need it there
-        MOI.set(graph_backend, MOI.NLPBlock(), _create_nlp_block_data(graph))
-    end
-
-    # set objective function
-    has_nl_obj = has_nl_objective(graph)
-    if !(has_nl_obj)
-        # TODO: handle graph objective using GraphBackend instead of setting here
-        _set_graph_objective(graph)
-        _set_backend_objective(graph) #sets linear or quadratic objective
-    else
-        #set default sense to minimize if there is a nonlinear objective function
-        MOI.set(graph_backend, MOI.ObjectiveSense(), MOI.MIN_SENSE)
+    # check for node objectives when graph objective is empty
+    if iszero(objective_function(graph))
+        if has_node_objective(graph)
+            @warn """
+            The optigraph objective is empty but objectives exist on optinodes. 
+            If this is not intended, consider using `set_to_node_objectives(graph)` to 
+            set the graph objective function.
+            """
+        end
     end
 
     try
-        MOI.optimize!(graph_backend)
+        # make sure subgraph elements are tracked in parent graph after solve
+        MOI.optimize!(graph_backend(graph))
+
+        # NOTE: we map after the solve because we need better checks on the backend 
+        # (i.e. checks that determine whether we need to aggregate the backends)
+        _map_subgraph_elements!(graph)
     catch err
         if err isa MOI.UnsupportedAttribute{MOI.NLPBlock}
-            error(
-                "The solver does not support nonlinear problems " *
-                "(i.e., @NLobjective and @NLconstraint).",
-            )
+            error("The solver does not support nonlinear problems")
         else
             rethrow(err)
         end
     end
-
-    #populate solutions onto each node backend
-    _set_node_results!(graph)
-    for node in all_nodes(graph)
-        jump_model(node).is_model_dirty = false
-    end
+    graph.is_model_dirty = false
     return nothing
 end
 
-_bound(s::MOI.LessThan) = MOI.NLPBoundsPair(-Inf, s.upper)
-_bound(s::MOI.GreaterThan) = MOI.NLPBoundsPair(s.lower, Inf)
-_bound(s::MOI.EqualTo) = MOI.NLPBoundsPair(s.value, s.value)
-_bound(s::MOI.Interval) = MOI.NLPBoundsPair(s.lower, s.upper)
+### utilities for tracking nodes and edges in subgraphs when optimizing a parent graph.
 
-function _create_nlp_block_data(graph::OptiGraph)
-    @assert has_nlp_data(graph)
-    id = graph.id
-    bounds = MOI.NLPBoundsPair[]
-    for node in all_nodes(graph)
-        nlp = JuMP.nonlinear_model(node)
-        if nlp != nothing
-            src = JuMP.backend(node)
-            nl_idx_map = src.optimizers[id].nl_node_to_optimizer_map
-            for (nl_con_idx, constr) in nlp.constraints
-                bounds_pair = _bound(constr.set)
-                push!(bounds, bounds_pair)
-                # update optinode nl constraint map
-                # NOTE: the graph backend should have ConstraintIndex consistent with length of bounds
-                nl_idx_map[nl_con_idx] = MOI.Nonlinear.ConstraintIndex(length(bounds))
-            end
+function _map_subgraph_elements!(graph::OptiGraph)
+    for subgraph in local_subgraphs(graph)
+        for node in all_nodes(subgraph)
+            _track_node_in_graph(graph, node)
+        end
+        for edge in all_edges(subgraph)
+            _track_edge_in_graph(graph, edge)
         end
     end
-    has_nl_obj = has_nl_objective(graph)
-    return MOI.NLPBlockData(bounds, OptiGraphNLPEvaluator(graph), has_nl_obj)
 end
 
-#######################################################
-#OptiGraph Optimizer Attributes
-#######################################################
-function JuMP.set_optimizer_attribute(graph::OptiGraph, name::String, value)
-    return JuMP.set_optimizer_attribute(graph, MOI.RawOptimizerAttribute(name), value)
+#
+# status results
+#
+
+"""
+    JuMP.termination_status(graph::OptiGraph)
+
+Return the solver termination status of `graph` if a solver has been executed.
+"""
+function JuMP.termination_status(graph::OptiGraph)
+    return MOI.get(graph, MOI.TerminationStatus())::MOI.TerminationStatusCode
 end
 
-function JuMP.set_optimizer_attribute(
-    graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute, value
+function MOI.get(graph::OptiGraph, attr::MOI.TerminationStatus)
+    if graph.is_model_dirty && JuMP.mode(graph) != DIRECT
+        return MOI.OPTIMIZE_NOT_CALLED
+    end
+    return MOI.get(graph_backend(graph), attr)
+end
+
+function JuMP.result_count(graph::OptiGraph)::Int
+    if JuMP.termination_status(graph) == MOI.OPTIMIZE_NOT_CALLED
+        return 0
+    end
+    return MOI.get(graph, MOI.ResultCount())
+end
+
+function JuMP.raw_status(graph::OptiGraph)
+    if MOI.get(graph, MOI.TerminationStatus()) == MOI.OPTIMIZE_NOT_CALLED
+        return "optimize not called"
+    end
+    return MOI.get(graph, MOI.RawStatusString())
+end
+
+function MOI.get(graph::OptiGraph, attr::Union{MOI.PrimalStatus,MOI.DualStatus})
+    if graph.is_model_dirty && JuMP.mode(graph) != DIRECT
+        return MOI.NO_SOLUTION
+    end
+    return MOI.get(graph_backend(graph), attr)
+end
+
+"""
+    JuMP.primal_status(graph::OptiGraph; result::Int=1)
+
+Return the primal status of `graph` if a solver has been executed.
+"""
+function JuMP.primal_status(graph::OptiGraph; result::Int=1)
+    return MOI.get(graph, MOI.PrimalStatus(result))::MOI.ResultStatusCode
+end
+
+"""
+    JuMP.dual_status(graph::OptiGraph; result::Int=1)
+
+Return the dual status of `graph` if a solver has been executed.
+"""
+function JuMP.dual_status(graph::OptiGraph; result::Int=1)
+    return MOI.get(graph, MOI.DualStatus(result))::MOI.ResultStatusCode
+end
+
+#
+# Optinode optimizer
+#
+
+"""
+    JuMP.set_optimizer(
+        node::OptiNode, 
+        JuMP.@nospecialize(optimizer_constructor); 
+        add_bridges::Bool=true
+    )
+
+Set the optimizer for an optinode.This internally creates a new optigraph that is 
+used to optimize the node. Calling this method on a node returns the newly created graph.
+"""
+function JuMP.set_optimizer(
+    node::OptiNode, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
 )
-    return MOI.set(graph, attr, value)
+    # determine the graph to use to optimize the node
+    source_data = source_graph(node).element_data
+    if !haskey(source_data.node_graphs, node)
+        node_graph = assemble_optigraph(node)
+        source_data.node_graphs[node] = node_graph
+    else
+        node_graph = source_data.node_graphs[node]
+    end
+
+    # set objective on node graph
+    JuMP.set_objective(node_graph, objective_sense(node), objective_function(node))
+    JuMP.set_optimizer(node_graph, optimizer_constructor; add_bridges=add_bridges)
+    return node_graph
 end
 
-function JuMP.set_optimizer_attribute(node::OptiNode, name::String, value)
-    return JuMP.set_optimizer_attribute(node, MOI.RawOptimizerAttribute(name), value)
-end
-
-function JuMP.set_optimizer_attribute(
-    node::OptiNode, attr::MOI.AbstractOptimizerAttribute, value
-)
-    return MOI.set(node, attr, value)
-end
-
-function JuMP.get_optimizer_attribute(graph::OptiGraph, name::String)
-    return JuMP.get_optimizer_attribute(graph, MOI.RawOptimizerAttribute(name))
-end
-
-function JuMP.get_optimizer_attribute(
-    graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute
-)
-    return MOI.get(graph, attr)
-end
-
-function JuMP.get_optimizer_attribute(node::OptiNode, name::String)
-    return JuMP.get_optimizer_attribute(node, MOI.RawOptimizerAttribute(name))
-end
-
-function JuMP.get_optimizer_attribute(
-    node::OptiNode, attr::MOI.AbstractOptimizerAttribute
-)
-    return MOI.get(node, attr)
-end
-
-function MOI.get(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute)
-    return MOI.get(backend(graph), attr)
-end
-
-function MOI.get(graph::OptiGraph, attr::MOI.AbstractModelAttribute)
-    return MOI.get(backend(graph), attr)
-end
-
-function MOI.set(graph::OptiGraph, attr::MOI.AbstractOptimizerAttribute, value)
-    return MOI.set(backend(graph), attr, value)
-end
-
-function MOI.set(graph::OptiGraph, attr::MOI.AbstractModelAttribute, value)
-    return MOI.set(backend(graph), attr, value)
-end
-
-function MOI.submit(
-    graph::OptiGraph,
-    cb::MOI.LazyConstraint,
-    con::ScalarConstraint,
-)
-    return MOI.submit(graph.moi_backend.optimizer, cb, moi_function(con.func), con.set)
-end
-
-#######################################################
-#Optinode optimizer interface
-#######################################################
-#OptiNode optimizer.  Hits MOI.optimize!(backend(node))
-function JuMP.set_optimizer(node::OptiNode, optimizer_constructor)
-    JuMP.set_optimizer(jump_model(node), optimizer_constructor)
-    JuMP.backend(node).last_solution_id = node.id
-    JuMP.backend(node).result_location[node.id] = JuMP.backend(node).optimizer
-    return nothing
-end
-
-# NOTE: this resets NLP data on every NodePointer, so graph solutions get cleared
-# This is currently a known limitation in Plasmo.jl. If you solve a node after a graph,
-# it will remove the graph solution.
 function JuMP.optimize!(node::OptiNode; kwargs...)
-    JuMP.optimize!(jump_model(node); kwargs...)
+    source_data = source_graph(node).element_data
+    node_graph = source_data.node_graphs[node]
+    JuMP.optimize!(node_graph; kwargs...)
     return nothing
-end
-
-function JuMP.relax_integrality(graph::OptiGraph)
-    # Returns vector of functions to revert the relaxation. Call via map(x->x()).
-    return [JuMP.relax_integrality(jump_model(node)) for node in all_nodes(graph)]
-end
-
-function set_node_primals(
-    node::OptiNode, vars::Vector{JuMP.VariableRef}, values::Vector{Float64}
-)
-    node_backend = JuMP.backend(node)
-    moi_indices = index.(vars)
-    set_backend_primals!(node_backend, moi_indices, values, node.id)
-    node.model.is_model_dirty = false
-    return nothing
-end
-
-function set_node_duals(node::OptiNode, cons, values::Vector{Float64})
-    node_backend = JuMP.backend(node)
-    moi_indices = index.(cons)
-    set_backend_duals!(node_backend, moi_indices, values, node.id)
-    node.model.is_model_dirty = false
-    return nothing
-end
-
-function set_node_status(node::OptiNode, status::MOI.TerminationStatusCode)
-    node_backend = JuMP.backend(node)
-    set_backend_status!(node_backend, status, node.id)
-    return node.model.is_model_dirty = false
 end
