@@ -218,8 +218,7 @@ function JuMP.set_objective(
     node::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
 )
     # check that all func terms are for this node
-    node_set = unique(collect_nodes(func))
-    (node_set == [node] || length(node_set) == 0) || error("Optinode does not own all variables.")
+    (unique(collect_nodes(func)) == [node] || func == 0) || error("Optinode does not own all variables.")
     d = JuMP.object_dictionary(node)
     d[(node, :objective_sense)] = sense
     d[(node, :objective_function)] = func
@@ -228,8 +227,7 @@ end
 
 function JuMP.set_objective_function(node::OptiNode, func::JuMP.AbstractJuMPScalar)
     # check that all func terms are for this node
-    node_set = unique(collect_nodes(func))
-    (node_set == [node] || length(node_set) == 0) || error("Optinode does not own all variables.")
+    (unique(collect_nodes(func)) == [node] || func == 0) || error("Optinode does not own all variables.")
     d = JuMP.object_dictionary(node)
     d[(node, :objective_function)] = func
     return nothing
