@@ -83,6 +83,17 @@ function aggregate(graph::OptiGraph; name=gensym())
     # setup index_map from the ref_map
     _copy_attributes_to!(new_graph, graph, ref_map)
 
+    if iszero(objective_function(graph))
+        if has_node_objective(graph)
+            @warn """
+            The optigraph objective is empty, but objectives exist on optinodes. 
+            The aggregated graph copies the optigraph objective ONLY (not optinodes).
+            If this is not intended, consider using `set_to_node_objectives(graph)` to 
+            set the graph objective function before calling `aggregate`. 
+            """
+        end
+    end
+
     # TODO: make sure we are correctly copying objective function to node
     JuMP.set_objective(new_node, objective_sense(new_graph), objective_function(new_graph))
     return new_node, ref_map
@@ -126,8 +137,8 @@ function _copy_attributes_to!(
     dest = graph_backend(new_graph)
     index_map = MOIU.IndexMap()
 
-    # NOTE: we use an if statement because the source graph does not necessarily have all 
-    # the variables or constraints. we just want to pass the attributes that would be 
+    # NOTE: we use an if statement because the source graph does not necessarily have all
+    # the variables or constraints. we just want to pass the attributes that would be
     # exposed such as the graph objective function.
     for (source_vref, dest_vref) in ref_map.var_map
         # TODO: use outer method here; don't access data members directly
@@ -444,7 +455,7 @@ function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0; name=gensym())
         # copy optiedges
         for edge in edges
             _copy_edge_to!(new_graph, edge, ref_map)
-            # new_edge, edge_ref_map = 
+            # new_edge, edge_ref_map =
             # ref_map[edge] = new_edge
         end
     end
