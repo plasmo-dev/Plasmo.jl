@@ -26,6 +26,7 @@ makedocs(;
         "Graph Processing and Analysis" => "documentation/graph_processing.md",
         "API Documentation" => "documentation/api_docs.md",
         "Tutorials" => [
+            "Supply Chain Optimization" => "tutorials/supply_chain.md",
             "Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md"
         ],
     ],
