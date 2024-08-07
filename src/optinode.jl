@@ -173,7 +173,9 @@ function JuMP.add_nonlinear_operator(
         )
     end
     MOI.set(node, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
-    registered_name = graph_operator(graph_backend(node), node, name)
+    registered_name = graph_operator(
+        graph_backend(node), node, MOI.UserDefinedFunction(name, dim)
+    )
     return JuMP.NonlinearOperator(f, registered_name)
 end
 
@@ -218,7 +220,8 @@ function JuMP.set_objective(
     node::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
 )
     # check that all func terms are for this node
-    (unique(collect_nodes(func)) == [node] || func == 0) || error("Optinode does not own all variables.")
+    (unique(collect_nodes(func)) == [node] || func == 0) ||
+        error("Optinode does not own all variables.")
     d = JuMP.object_dictionary(node)
     d[(node, :objective_sense)] = sense
     d[(node, :objective_function)] = func
@@ -227,7 +230,8 @@ end
 
 function JuMP.set_objective_function(node::OptiNode, func::JuMP.AbstractJuMPScalar)
     # check that all func terms are for this node
-    (unique(collect_nodes(func)) == [node] || func == 0) || error("Optinode does not own all variables.")
+    (unique(collect_nodes(func)) == [node] || func == 0) ||
+        error("Optinode does not own all variables.")
     d = JuMP.object_dictionary(node)
     d[(node, :objective_function)] = func
     return nothing
