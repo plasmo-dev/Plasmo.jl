@@ -1,120 +1,124 @@
 # API Documentation
 
-## OptiGraph
+## OptiGraph Methods
 ```@docs
 OptiGraph
+OptiNode
+OptiEdge
 @optinode
 @linkconstraint
-optigraph_reference
-add_subgraph!
-subgraph
-subgraphs
+@nodevariables
+set_to_node_objectives
+graph_backend
+graph_index
+source_graph
+add_subgraph
+local_subgraphs
 all_subgraphs
-subgraph_by_index
+num_local_subgraphs
 num_subgraphs
-num_all_subgraphs
-has_subgraphs
-add_node!
-optinode
-optinodes
+add_node
+get_node
+local_nodes
 all_nodes
-optinode_by_index
-Plasmo.add_optiedge!
-optiedge
-optiedges
+collect_nodes
+num_local_nodes
+num_nodes
+num_local_variables
+add_edge
+get_edge
+get_edge_by_index
+Plasmo.has_edge
+local_edges
 all_edges
-optiedge_by_index
-linkconstraints
-all_linkconstraints
-num_linkconstraints
-has_objective
-has_nl_objective
-Base.getindex(::OptiGraph, ::OptiNode)
-Base.getindex(::OptiGraph, ::OptiEdge)
+num_local_edges
+num_edges
+num_local_link_constraints
+num_link_constraints
+local_link_constraints
+all_link_constraints
+num_local_constraints
+local_constraints
+local_elements
+all_elements
+Base.getindex(::OptiGraph, ::Int)
 ```
 
-## OptiNode
+## JuMP.jl Extended Methods
 ```@docs
-OptiNode
-jump_model
-set_model
-label
-set_label
-is_node_variable
-is_set_to_node
-Base.getindex(node::OptiNode, symbol::Symbol)
-Base.setindex(node::OptiNode, value::Any, symbol::Symbol)
-num_linked_variables
-```
-
-## OptiEdge
-```@docs
-OptiEdge
-LinkConstraint
-LinkConstraintRef
-attached_node
-set_attached_node
-```
-
-## Extended Functions
-```@docs
-JuMP.all_variables
-JuMP.set_optimizer
-JuMP.optimize!
-JuMP.objective_function
+JuMP.name
+JuMP.set_name
+JuMP.index
+JuMP.backend
 JuMP.value
-JuMP.dual
-JuMP.num_variables
-JuMP.num_constraints
-JuMP.object_dictionary
 JuMP.add_variable
+JuMP.num_variables
+JuMP.all_variables
+JuMP.start_value
+JuMP.set_start_value
 JuMP.add_constraint
-JuMP.add_nonlinear_constraint
-JuMP.num_nonlinear_constraints
 JuMP.list_of_constraint_types
+JuMP.num_constraints
 JuMP.all_constraints
 JuMP.objective_value
+JuMP.dual_objective_value
 JuMP.objective_sense
+JuMP.objective_function
+JuMP.objective_function_type
+JuMP.objective_bound
 JuMP.set_objective
-JuMP.set_nonlinear_objective
 JuMP.set_objective_function
 JuMP.set_objective_sense
-JuMP.NLPEvaluator
+JuMP.set_objective_coefficient
+JuMP.set_optimizer
+JuMP.add_nonlinear_operator
+JuMP.optimize!
 JuMP.termination_status
+JuMP.primal_status
+JuMP.dual_status
+JuMP.relative_gap
+JuMP.constraint_ref_with_index
+JuMP.object_dictionary
 ```
 
-## Graph Processing and Partitioning
+## Interop with JuMP.jl
 ```@docs
-Plasmo.graph_backend
-Plasmo.HyperGraph
-hyper_graph
-clique_graph
-edge_graph
-edge_hyper_graph
-bipartite_graph
+set_jump_model
+```
+
+## Graph Projections
+```@docs
+Plasmo.GraphProjection
+hyper_projection
+edge_hyper_projection
+clique_projection
+edge_clique_projection
+bipartite_projection
+```
+
+## Partitioning and Aggregation
+```@docs
 Partition
+assemble_optigraph
 apply_partition!
 aggregate
-aggregate!
-all_neighbors
-induced_subgraph
-Plasmo.incident_edges
-Plasmo.induced_edges
-Plasmo.identify_edges
-Plasmo.identify_nodes
-Plasmo.neighborhood
-expand
-Plasmo.local_edges
-Plasmo.global_edges
-Plasmo.hierarchical_edges
-Plasmo.cross_edges
-Plasmo.cross_edges_not_global
-Plasmo.hierarchical_edges_not_global
-Plasmo.graph_depth
+aggregate_to_depth
+aggregate_to_depth!
 ```
 
-## Plotting
+## Graph Topology
 ```@docs
+Graphs.all_neighbors
+Graphs.induced_subgraph
+Graphs.neighborhood
+incident_edges
+induced_edges
+identify_edges
+identify_nodes
+expand
+```
+
+<!--  ```@docs
 PlasmoPlots.layout_plot
 PlasmoPlots.matrix_plot
-```
+``` -->

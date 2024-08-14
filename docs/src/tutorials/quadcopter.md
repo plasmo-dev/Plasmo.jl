@@ -76,7 +76,12 @@ We next combine these vectors into another vector which we call $x^{ref}$, and t
     Q = diagm([1, 0, 1, 0, 1, 0, 1, 1, 1]);
     R = diagm([1/10, 1/10, 1/10, 1/10]);
 
-    xk_ref1 = xk_ref'
+    xk_ref1 = zeros(N,9)
+    for i in (1:N)
+        for j in 1:length(xk_ref)
+            xk_ref1[i,j] = xk_ref[j][i]
+        end
+    end
 ```
 
 We can now begin building the OptiGraph. We now initialize an OptiGraph and set the optimizer. We then define `N` nodes on the OptiGraph `graph`. 
@@ -111,29 +116,20 @@ Next, we loop through the nodes, and define variables on each node. These variab
         @variable(node, wy)
         @variable(node, wz)
 
-        # Define variables for derivatives (these are dummy variables, which are not necessary on v0.6+)
-        
-        @variable(node, d2Xdt2)
-        @variable(node, d2Ydt2)
-        @variable(node, d2Zdt2)
-        @variable(node, dgdt)
-        @variable(node, dbdt)
-        @variable(node, dadt)
+        # These expressions to simplify the linking constraints later
+        @expression(node, d2Xdt2, C_a * (cos(g) * sin(b) * cos(a) + sin(g) * sin(a)))
+        @expression(node, d2Ydt2, C_a * (cos(g) * sin(b) * sin(a) + sin(g) * cos(a)))
+        @expression(node, d2Zdt2, C_a * cos(g) * cos(b) - grav)
 
-        # These variables are dummy variables to create linear linking constraints on the edges.
-        @NLconstraint(node, d2Xdt2 == C_a*(cos(g)*sin(b)*cos(a) + sin(g)*sin(a)))
-        @NLconstraint(node, d2Ydt2 == C_a*(cos(g)*sin(b)*sin(a) + sin(g)*cos(a)))
-        @NLconstraint(node, d2Zdt2 == C_a*cos(g)*cos(b) - grav)
-              
-        @NLconstraint(node, dgdt == (wx*cos(g) + wy*sin(g))/(cos(b)))
-        @NLconstraint(node, dbdt == -wx*sin(g) + wy*cos(g))
-        @NLconstraint(node, dadt == wx*cos(g)*tan(b) + wy*sin(g)*tan(b) + wz)
+        @expression(node, dgdt, (wx * cos(g) + wy * sin(g)) / (cos(b)))
+        @expression(node, dbdt, - wx * sin(g) + wy * cos(g))
+        @expression(node, dadt, wx * cos(g) * tan(b) + wy * sin(g) * tan(b) + wz)
 
         xk = [X, dXdt, Y, dYdt, Z, dZdt, g, b, a] # Array to hold variables
-        xk1 = xk-xk_ref1[i,:] # Array to hold the difference between variable values and their setpoints.
+        xk1 = xk .- xk_ref1[i,:] # Array to hold the difference between variable values and their setpoints.
               
         uk = [C_a, wx, wy, wz]
-        @objective(node, Min, (1/2*(xk1')*Q*(xk1) + 1/2*(uk')*R*(uk)) * dt)
+        @objective(node, Min, (1 / 2 * (xk1') * Q * (xk1) + 1 / 2 * (uk') * R * (uk)) * dt)
     end
 ```
 We also set initial conditions on the first variables (for the differential equations). Note that the variables can be referenced by calling `nodes[1][<variable_reference>]`
@@ -150,7 +146,7 @@ We also set initial conditions on the first variables (for the differential equa
     @constraint(nodes[1], nodes[1][:a] == 0)
 ```            
 
-With the variables defined, we can now add linking constraints between each time point. Note that variables like `d2Xdt2` are the right hand side of the constraints for the derivative of `dXdt`. As this is nonlinear, we use this dummy variable in the linking constraint.
+With the variables defined, we can now add linking constraints between each time point. Note that expressions like `d2Xdt2` are the right hand side of the constraints for the derivative of `dXdt`.
 
 ```julia
     for i in 1:(N-1) # iterate through each node except the last
@@ -171,6 +167,8 @@ With the variables defined, we can now add linking constraints between each time
 We now have all the constraints and variables defined and can call `optimize!` on the graph. 
 
 ```julia
+    set_to_node_objectives(graph)
+    
     optimize!(graph);
 
     return objective_value(graph), graph, xk_ref
@@ -179,9 +177,9 @@ end
 Now that we have created our function to model the behavior of the quadcopter,
 we can test it using some example cases.
 
-### Example:
-- N = 50 time points
-- dt = 0.1 seconds
+### Examples
+First, we will run an example with 50 time points (each represented by a node) with a time discretization size of 0.1 seconds
+
 ```julia
 N = 50
 dt = 0.1
@@ -214,6 +212,7 @@ zarray[1] = zval_array
 zarray[2] = 0:10/(N-1):10
 ```
 Now, let's visualize the position of the quadcopter in relation to its setpoint in each dimension. Below is the code for doing so in the x-dimension, and the code can be adapted for the y and z dimensions. 
+
 ```julia
 plot((1:length(xval_array)), xarray[1:end], 
   title = "X value over time", 
@@ -227,9 +226,7 @@ plot((1:length(xval_array)), xarray[1:end],
 <img src = "../assets/Quadcopter_Ypos.png" alt = "drawing" width = "600"/>
 <img src = "../assets/Quadcopter_Zpos.png" alt = "drawing" width = "600"/>
 
-Now that we have solved for the optimal solution, let's explore some other correlations.
-
-Let's see how increasing the number of nodes changes the objective value of the system
+Now that we have solved for the optimal solution, let's explore a correlation. Let's see how increasing the number of nodes changes the objective value of the system. In the code snippet below, we keep the time horizon the same (10 seconds) while changing the number of nodes (i.e., the discretization intervals)
 ```julia
 time_steps = 2:4:50
 
@@ -255,29 +252,5 @@ Quad_Obj_NN = plot(time_steps, obj_val_N,
 
 <img src = "../assets/Quadcopter_Obj_NN.png" alt = "drawing" width = "600"/>
 
-The plot shows that as you increase the number of nodes, the objective value of the system decreases.
-
-Let's see how changing the dt value changes the objective value of the system.
-
-```julia
-N = 5 # Number of Nodes
-dt_array = .5:.5:5
-obj_val_dt = zeros(length(dt_array))
-
-for (i, dt_val) in enumerate(dt_array)
-    objval, graph, xk_ref = Quad(N, dt_val);
-    obj_val_dt[i] = objval
-end
-
-# use termination_status(graph)
-
-plot((1:length(obj_val_dt))*dt, obj_val_dt, 
-    title = "Objective Value vs dt", 
-    xlabel = "dt value", 
-    ylabel = "Objective Value", 
-    legend = :none, color = :black, 
-    linewidth = 2
-)
-```
 
 

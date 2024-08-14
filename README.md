@@ -2,22 +2,30 @@
 
 [![CI](https://github.com/plasmo-dev/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/plasmo-dev/Plasmo.jl/actions)
 [![codecov](https://codecov.io/gh/plasmo-dev/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/plasmo-dev/Plasmo.jl)
-[![](https://img.shields.io/badge/docs-latest-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/dev/)
+[![](https://img.shields.io/badge/docs-stable-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/stable/)
 [![DOI](https://zenodo.org/badge/96967382.svg)](https://zenodo.org/badge/latestdoi/96967382)
 
 # Plasmo.jl
 
-[Plasmo.jl](https://github.com/plasmo-dev/Plasmo.jl) (Platform for Scalable Modeling and Optimization) is a graph-based algebraic modeling framework that adopts a modular style to
-create mathematical optimization problems and manage distributed and hierarchical structures. The package has been developed as a [JuMP](https://github.com/jump-dev/JuMP.jl) extension and consequently supports 
-most JuMP syntax and functions. 
+(Platform for Scalable Modeling and Optimization)
+
+> [!NOTE]  
+> Plasmo.jl has undergone significant refactorization with the release of version 0.6. While most syntax should still work, we advise checking out the documentation for the latest updates and filing an issue if a v0.5 model produces errors.
+
+Plasmo.jl is a graph-based algebraic modeling framework for building, managing, and solving optimization problems that utilizes graph-theoretic concepts and modular data structures. 
+The package extends JuMP.jl to offer concise syntax, interfaces with MathOptInterface.jl to access standard optimization solvers, and utilizes Graphs.jl to provide 
+graph analysis and processing methods. Plasmo.jl facilitates developing optimization models for networked systems such as supply chains, power systems, industrial 
+processes, or any coupled system that involves multiple components and connections. The package also acts as a high-level platform to develop customized optimization-based decomposition techniques and meta-algorithms to optimize problems over large systems.
 
 ## Overview
+The core object in Plasmo.jl is the `OptiGraph`, a graph data structure that represents optimization problems as a set of optinodes and optiedges. Optinodes encapsulate variables, expressions, and constraints (and objective functions) as modular models and edges encapsulate linking constraints that couple variables across optinodes. Optigraphs can be embedded within other optigraphs to induce nested hierarchical structures, or they can be partitioned using different graph projections and partitioning algorithms to create new decomposition structures.
 
 The core data structure in Plasmo.jl is the `OptiGraph`. The optigraph contains a set of optinodes which represent self-contained optimization problems and optiedges that represent coupling between optinodes (which produces an underlying [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) structure of optinodes and optiedges). Optigraphs can further be embedded within other optigraphs to create nested hierarchical graph structures. The graph structures obtained using Plasmo.jl can be used for simple model and data management, but they can also be used to perform graph partitioning or develop interfaces to structured optimization solvers.
 
+
 ## License
 
-Plasmo is licensed under the [MPL 2.0 license](https://github.com/plasmo-dev/Plasmo.jl/blob/main/LICENSE.md).
+Plasmo.jl is licensed under the [MPL 2.0 license](https://github.com/plasmo-dev/Plasmo.jl/blob/main/LICENSE.md).
 
 ## Installation
 
@@ -29,7 +37,7 @@ Pkg.add("Plasmo")
 
 ## Documentation
 
-The latest documentation is available through [GitHub Pages](https://plasmo-dev.github.io/Plasmo.jl/dev/).
+The current documentation is available through [GitHub Pages]([https://plasmo-dev.github.io/Plasmo.jl/dev/](https://plasmo-dev.github.io/Plasmo.jl/stable/)).
 Additional examples can be found in the [examples](https://github.com/plasmo-dev/Plasmo.jl/tree/main/examples) folder.
 
 ## Simple Example
@@ -45,17 +53,19 @@ graph = OptiGraph()
 @optinode(graph, n1)
 @optinode(graph, n2)
 
-#add variables, constraints, and objective functions to nodes
+#add variables and constraints to nodes
 @variable(n1, 0 <= x <= 2)
 @variable(n1, 0 <= y <= 3)
 @constraint(n1, x+y <= 4)
-@objective(n1, Min, x)
 
 @variable(n2,x)
-@NLconstraint(n2, exp(x) >= 2)
+@constraint(n2, exp(x) >= 2)
 
-#add a linkconstraint to couple nodes
+#add linking constraints that couple nodes
 @linkconstraint(graph, n1[:x] == n2[:x])
+
+# set an optigraph objective
+@objective(graph, Min, n1[:x] + n2[:x])
 
 #optimize with Ipopt
 set_optimizer(graph, Ipopt.Optimizer)
@@ -86,24 +96,29 @@ The primary developer is Jordan Jalving (@jalving) with support from the followi
 
 If you find Plasmo.jl useful for your work, you may cite the [manuscript](https://link.springer.com/article/10.1007/s12532-022-00223-3) as:
 ```
-@article{JalvingShinZavala2022,
+@article{Jalving2022,
   title={A Graph-Based Modeling Abstraction for Optimization: Concepts and Implementation in Plasmo.jl},
   author={Jordan Jalving and Sungho Shin and Victor M. Zavala},
   journal={Mathematical Programming Computation},
   year={2022},
   volume={14},
-  pages={699 - 747}
+  pages={699 - 747},
+  doi={10.1007/s12532-022-00223-3}
 }
 ```
+You can also access a freely available [pre-print](https://arxiv.org/abs/2006.05378).
 
-There is also a freely available [pre-print](https://arxiv.org/abs/2006.05378):
-```
-@misc{JalvingShinZavala2020,
-title = {A Graph-Based Modeling Abstraction for Optimization: Concepts and Implementation in Plasmo.jl},
-author = {Jordan Jalving and Sungho Shin and Victor M. Zavala},
-year = {2020},
-eprint = {2006.05378},
-archivePrefix = {arXiv},
-primaryClass = {math.OC}
+There is also an earlier manuscript where we presented the initial ideas behind Plasmo.jl which you can find
+[here](https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687):
+``` sourceCode
+@article{JalvingCaoZavala2019,
+author = {Jalving, Jordan and Cao, Yankai and Zavala, Victor M},
+journal = {Computers {\&} Chemical Engineering},
+pages = {134--154},
+title = {Graph-based modeling and simulation of complex systems},
+volume = {125},
+year = {2019},
+doi = {10.1016/j.compchemeng.2019.03.009}
 }
 ```
+A pre-print of this paper can be found [here](https://arxiv.org/abs/1812.04983)

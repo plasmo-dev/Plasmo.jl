@@ -1,153 +1,138 @@
-##############################################################################
-# LinkConstraint
-##############################################################################
-"""
-    LinkConstraint{F <: JuMP.AbstractJuMPScalar,S <: MOI.AbstractScalarSet} <: AbstractLinkConstraint
-
-Type inherits JuMP.AbstractConstraint.  Contains a func and set used to describe coupling between optinodes.
-
-    LinkConstraint(con::JuMP.ScalarConstraint)
-
-Creates a linking constraint from a JuMP.ScalarConstraint.
-
-    LinkConstraint(ref::LinkConstraintRef)
-
-Retrieves a linking constraint from a LinkConstraintRef.
-"""
-mutable struct LinkConstraint{F<:JuMP.AbstractJuMPScalar,S<:MOI.AbstractScalarSet} <:
-               AbstractLinkConstraint
-    func::F
-    set::S
-    attached_node::Union{Nothing,OptiNode}
-end
-LinkConstraint(con::JuMP.ScalarConstraint) = LinkConstraint(con.func, con.set, nothing)
-
-"""
-    set_attached_node(con::LinkConstraint,node::OptiNode).
-
-Set the linkconstraint `con` to optinode `node`. Mostly useful for algorithms that need an "owning" node on a linkconstraint
-"""
-function set_attached_node(con::LinkConstraint, node::OptiNode)
-    @assert node in optinodes(con)
-    return con.attached_node = node
-end
-
-"""
-    attached_node(con::LinkConstraint)
-
-Retrieve the attached node on linkconstraint `con`
-"""
-attached_node(con::LinkConstraint) = con.attached_node
-
-##############################################################################
-# OptiEdges
-##############################################################################
-"""
-    OptiEdge
-
-The `OptiEdge` type.  Typically created from [`@linkconstraint`](@ref).  Contains the set of its supporting optionodes, as well as
-references to its underlying linking constraints.
-"""
-mutable struct OptiEdge <: AbstractOptiEdge
-    nodes::OrderedSet{OptiNode}
-    #Link constraint references
-    linkrefs::Vector{AbstractLinkConstraintRef}
-    #Link constraints
-    linkconstraints::OrderedDict{Int64,LinkConstraint}
-    linkconstraint_names::OrderedDict{Int64,String}
-    backend::EdgeBackend
-    #TODO Capture nonlinear linking constraints
-    #nlp_data::Union{Nothing,JuMP._NLPData}
-end
-
-"""
-    LinkConstraintRef
-
-A constraint reference to a linkconstraint. Stores linkconstraint id and the optiedge it belong to.
-"""
-struct LinkConstraintRef <: AbstractLinkConstraintRef
-    idx::Int # index in optiedge
-    optiedge::OptiEdge
-end
-LinkConstraint(ref::LinkConstraintRef) = JuMP.owner_model(ref).linkconstraints[ref.idx]
-
-function OptiEdge()
-    return OptiEdge(
-        OrderedSet{OptiNode}(),
-        Vector{LinkConstraintRef}(),
-        OrderedDict{Int,LinkConstraint}(),
-        OrderedDict{Int64,String}(),
-        EdgeBackend(),
-    )
-end
-
-function OptiEdge(nodes::Vector{OptiNode})
-    optiedge = OptiEdge()
-    optiedge.nodes = OrderedSet(nodes)
-    return optiedge
-end
-
-JuMP.owner_model(cref::LinkConstraintRef) = cref.optiedge
-JuMP.jump_function(constraint::LinkConstraint) = constraint.func
-JuMP.moi_set(constraint::LinkConstraint) = constraint.set
-JuMP.shape(::LinkConstraint) = JuMP.ScalarShape()
-function JuMP.constraint_object(cref::LinkConstraintRef, F::Type, S::Type)
-    con = cref.optiedge.linkconstraints[cref.idx]
-    con.func::F
-    con.set::S
-    return con
-end
-function JuMP.set_name(cref::LinkConstraintRef, s::String)
-    return JuMP.owner_model(cref).linkconstraint_names[cref.idx] = s
-end
-JuMP.name(con::LinkConstraintRef) = JuMP.owner_model(con).linkconstraint_names[con.idx]
-getname(cref::LinkConstraintRef) = JuMP.name(cref)
-
-function MOI.delete!(cref::LinkConstraintRef)
-    delete!(cref.optiedge.linkconstraints, cref.idx)
-    return delete!(cref.optiedge.linkconstraint_names, cref.idx)
-end
-MOI.is_valid(cref::LinkConstraintRef) = haskey(cref.optiedge.linkconstraints, cref.idx)
-
-optinodes(edge::OptiEdge) = edge.nodes
-optinodes(con::JuMP.ScalarConstraint) = [optinode(var) for var in keys(con.func.terms)]
-optinodes(con::LinkConstraint) = [optinode(var) for var in keys(con.func.terms)]
-optinodes(cref::LinkConstraintRef) = optinodes(cref.optiedge.linkconstraints[cref.idx])
-num_nodes(con::LinkConstraint) = length(optinodes(con))
-function JuMP.constraint_object(linkref::LinkConstraintRef)
-    return linkref.optiedge.linkconstraints[linkref.idx]
-end
-
-function JuMP.dual(linkref::LinkConstraintRef)
-    optiedge = JuMP.owner_model(linkref)
-    # this grabs the last solution
-    return MOI.get(optiedge.backend, MOI.ConstraintDual(), linkref)
-end
-
-num_linkconstraints(edge::OptiEdge) = length(edge.linkconstraints)
-linkconstraints(edge::OptiEdge) = values(edge.linkconstraints)
-@deprecate getlinkconstraints linkconstraints
+#  Copyright 2021, Jordan Jalving, Yankai Cao, Victor Zavala, and contributors
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 function Base.string(edge::OptiEdge)
-    return "OptiEdge w/ $(length(edge.linkconstraints)) Constraint(s)"
+    return "$(edge.label)"
 end
-Base.print(io::IO, edge::OptiEdge) = print(io, string(edge))
-Base.show(io::IO, edge::OptiEdge) = print(io, edge)
+Base.print(io::IO, edge::OptiEdge) = Base.print(io, Base.string(edge))
+Base.show(io::IO, edge::OptiEdge) = Base.print(io, edge)
 
-function Base.string(con::AbstractLinkConstraint)
-    return "LinkConstraint: $(con.func), $(con.set)"
-end
-Base.print(io::IO, con::AbstractLinkConstraint) = print(io, string(con))
-Base.show(io::IO, con::AbstractLinkConstraint) = print(io, con)
-
-function JuMP.constraint_string(mode::Any, ref::LinkConstraintRef)
-    con = JuMP.constraint_object(ref)
-    return "$(getname(ref)): $(con.func) $(JuMP.in_set_string(mode,con.set))"
+function Base.setindex!(edge::OptiEdge, value::Any, name::Symbol)
+    t = (edge, name)
+    source_graph(edge).edge_obj_dict[t] = value
+    return nothing
 end
 
-function Base.show(io::IO, ref::LinkConstraintRef)
-    return print(io, JuMP.constraint_string(MIME("text/plain"), ref))
+function Base.getindex(edge::OptiEdge, name::Symbol)
+    t = (edge, name)
+    return edge.source_graph.edge_obj_dict[t]
 end
-function Base.show(io::IO, ::MIME"text/latex", ref::LinkConstraintRef)
-    return print(io, JuMP.constraint_string(MIME("text/latex"), ref))
+
+"""
+    graph_backend(edge::OptiEdge)
+
+Return the `GraphMOIBackend` that holds the associated edge model attributes
+"""
+function graph_backend(edge::OptiEdge)
+    return graph_backend(source_graph(edge))
+end
+
+"""
+    source_graph(edge::OptiEdge)
+
+Return the optigraph that contains the optiedge. This is the optigraph that 
+defined said edge and stores edge object dictionary data.
+"""
+function source_graph(edge::OptiEdge)
+    return edge.source_graph.x
+end
+
+function containing_optigraphs(edge::OptiEdge)
+    source = source_graph(edge)
+    source_data = source.element_data
+    graphs = [source]
+    if haskey(source_data.edge_to_graphs, edge)
+        graphs = [graphs; source_data.edge_to_graphs[edge]]
+    end
+    return graphs
+end
+
+function all_nodes(edge::OptiEdge)
+    return collect(edge.nodes)
+end
+
+function edge_object_dictionary(edge::OptiEdge)
+    d = source_graph(edge).element_data.edge_obj_dict
+    return filter(p -> p.first[1] == edge, d)
+end
+
+function JuMP.object_dictionary(edge::OptiEdge)
+    d = source_graph(edge).element_data.edge_obj_dict
+    return d
+    # return filter(p -> p.first[1] == edge, d)
+end
+
+function JuMP.backend(edge::OptiEdge)
+    return graph_backend(edge)
+end
+
+### Edge Variables
+
+function JuMP.all_variables(edge::OptiEdge)
+    con_refs = JuMP.all_constraints(edge)
+    vars = vcat(_extract_variables.(con_refs)...)
+    return unique(vars)
+end
+
+### Edge Constraints
+
+# NOTE: could use one method for node and edge
+function next_constraint_index(
+    edge::OptiEdge, ::Type{F}, ::Type{S}
+)::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    source_data = source_graph(edge).element_data
+    if !haskey(source_data.last_constraint_index, edge)
+        source_data.last_constraint_index[edge] = 0
+    end
+    source_data.last_constraint_index[edge] += 1
+    return MOI.ConstraintIndex{F,S}(source_data.last_constraint_index[edge])
+end
+
+function _num_moi_constraints(
+    edge::OptiEdge, ::Type{F}, ::Type{S}
+)::Int64 where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    return MOI.get(edge, MOI.NumberOfConstraints{F,S}())
+end
+
+function JuMP.add_constraint(edge::OptiEdge, con::JuMP.AbstractConstraint, name::String="")
+    con = JuMP.model_convert(edge, con)
+    cref = _moi_add_edge_constraint(edge, con)
+    return cref
+end
+
+function _moi_add_edge_constraint(edge::OptiEdge, con::JuMP.AbstractConstraint)
+    # get moi function and set
+    jump_func = JuMP.jump_function(con)
+    moi_func = JuMP.moi_function(con)
+    moi_set = JuMP.moi_set(con)
+
+    # create constraint index and reference
+    constraint_index = next_constraint_index(
+        edge, typeof(moi_func), typeof(moi_set)
+    )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
+    cref = ConstraintRef(edge, constraint_index, JuMP.shape(con))
+
+    # add to each containing optigraph
+    for graph in containing_optigraphs(edge)
+        MOI.add_constraint(
+            graph_backend(graph), cref, jump_func, moi_set; add_variables=true
+        )
+    end
+    return cref
+end
+
+function JuMP.is_valid(edge::OptiEdge, cref::ConstraintRef)
+    return edge === JuMP.owner_model(cref) && MOI.is_valid(graph_backend(edge), cref)
+end
+
+"""
+    JuMP.dual(cref::EdgeConstraintRef; result::Int=1)
+
+Return the dual for an `EdgeConstraintRef`. This returns the dual for the source graph that
+corresponds to the constraint reference.
+"""
+function JuMP.dual(cref::EdgeConstraintRef; result::Int=1)
+    return MOI.get(graph_backend(cref.model), MOI.ConstraintDual(result), cref)
 end

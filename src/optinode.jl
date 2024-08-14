@@ -1,459 +1,439 @@
-##############################################################################
-# OptiNode
-##############################################################################
+#  Copyright 2021, Jordan Jalving, Yankai Cao, Victor Zavala, and contributors
+#  This Source Code Form is subject to the terms of the Mozilla Public
+#  License, v. 2.0. If a copy of the MPL was not distributed with this
+#  file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
+function Base.string(node::OptiNode)
+    return string(JuMP.name(node))
+end
+Base.print(io::IO, node::OptiNode) = Base.print(io, Base.string(node))
+Base.show(io::IO, node::OptiNode) = Base.print(io, node)
+
+function Base.setindex!(node::OptiNode, value::Any, name::Symbol)
+    t = (node, name)
+    source_graph(node).element_data.node_obj_dict[t] = value
+    return nothing
+end
+
+function Base.getindex(node::OptiNode, name::Symbol)
+    t = (node, name)
+    return source_graph(node).element_data.node_obj_dict[t]
+end
+
+function JuMP.name(node::OptiNode)
+    return node.label.x
+end
+
+function JuMP.set_name(node::OptiNode, label::Symbol)
+    node.label.x = label
+    return nothing
+end
+
 """
-    OptiNode()
+    source_graph(node::OptiNode)
 
-Creates an empty `OptiNode`.  Does not add it to an `OptiGraph`.
+Return the optigraph that contains the optinode. This is the optigraph that 
+defined said node and stores node object dictionary data.
 """
-mutable struct OptiNode <: JuMP.AbstractModel
-    model::JuMP.AbstractModel
-    label::String                                               #what gets printed
-    partial_linkconstraints::Dict{Int64,AbstractLinkConstraint} #local node contribution to link constraint
+function source_graph(node::OptiNode)
+    return node.source_graph.x
+end
 
-    # nlp_data is a reference to `model.nlp_data`
-    #nlp_data::Union{Nothing,JuMP._NLPData}
-    nlp_duals::DefaultDict{Symbol,OrderedDict{Int64,Float64}}
+function containing_optigraphs(node::OptiNode)
+    source = source_graph(node)
+    source_data = source.element_data
+    graphs = [source]
+    if haskey(source_data.node_to_graphs, node)
+        graphs = [graphs; source_data.node_to_graphs[node]]
+    end
+    return graphs
+end
 
-    # extension data
-    ext::Dict{Symbol,Any}
+function containing_backends(node::OptiNode)
+    return graph_backend.(containing_optigraphs(node))
+end
 
-    # unique identifier
-    id::Symbol
+"""
+    next_variable_index(node::OptiNode)
 
-    function OptiNode()
-        model = JuMP.Model()
-        id = gensym()
-        node_backend = NodeBackend(JuMP.backend(model), id)
-        model.moi_backend = node_backend
-        node = new(
-            model,
-            "node",
-            Dict{Int64,AbstractLinkConstraint}(),
-            #nothing,
-            DefaultDict{Symbol,OrderedDict{Int64,Float64}}(OrderedDict()),
-            Dict{Symbol,Any}(),
-            id,
+Return the next variable index that would be created on this node.
+"""
+function next_variable_index(node::OptiNode)
+    source_data = source_graph(node).element_data
+    if !haskey(source_data.last_variable_index, node)
+        source_data.last_variable_index[node] = 0
+    end
+    source_data.last_variable_index[node] += 1
+    return MOI.VariableIndex(source_data.last_variable_index[node])
+end
+
+"""
+    graph_backend(node::OptiNode)
+
+Return the `GraphMOIBackend` that holds the associated node model attributes
+"""
+function graph_backend(node::OptiNode)
+    return graph_backend(source_graph(node))
+end
+
+"""
+    Filter the object dictionary for values that belong to node. Keep in mind that 
+this function is slow for optigraphs with many nodes.
+"""
+function node_object_dictionary(node::OptiNode)
+    d = JuMP.object_dictionary(node::OptiNode)
+    return filter(p -> p.first[1] == node, d)
+end
+
+function next_constraint_index(
+    node::OptiNode, ::Type{F}, ::Type{S}
+)::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
+    source = source_graph(node)
+    source_data = source.element_data
+    if !haskey(source_data.last_constraint_index, node)
+        source_data.last_constraint_index[node] = 0
+    end
+    source_data.last_constraint_index[node] += 1
+    return MOI.ConstraintIndex{F,S}(source_data.last_constraint_index[node])
+end
+
+#
+# JuMP Methods
+#
+
+function JuMP.object_dictionary(node::OptiNode)
+    d = source_graph(node).element_data.node_obj_dict
+    return d
+end
+
+function JuMP.backend(node::OptiNode)
+    return JuMP.backend(source_graph(node))
+end
+
+### Variables
+
+function JuMP.num_variables(node::OptiNode)
+    return MOI.get(graph_backend(node), MOI.NumberOfVariables(), node)
+end
+
+function JuMP.all_variables(node::OptiNode)
+    gb = graph_backend(node)
+    graph_indices = gb.node_variables[node]
+    return getindex.(Ref(gb.graph_to_element_map), graph_indices)
+end
+
+function JuMP.delete(node::OptiNode, cref::ConstraintRef)
+    if node !== JuMP.owner_model(cref)
+        error(
+            "The constraint reference you are trying to delete does not " *
+            "belong to the model.",
         )
-        node.model.ext[:optinode] = node
-        return node
     end
+    _set_dirty(node)
+    MOI.delete(node, cref)
+    return nothing
 end
 
-#############################################
-# OptiNode Management
-############################################
-"""
-    jump_model(node::OptiNode)
-
-Get the underlying `JuMP.Model` from the optinode `node`.
-"""
-jump_model(node::OptiNode) = node.model
-@deprecate getmodel jump_model
+### Duals
 
 """
-    setlabel(node::OptiNode, label::Symbol)
+    JuMP.dual(cref::NodeConstraintRef; result::Int=1)
 
-Set the label for optinode `node` to `label`. This is what gets printed.
+Return the dual for a `NodeConstraintRef`. This returns the dual for the source graph that
+corresponds to the constraint reference.
 """
-set_label(node::OptiNode, label::String) = node.label = label
-
-"""
-    label(node::OptiNode)
-
-Get the label for optinode `node`.
-"""
-label(node::OptiNode) = node.label
-
-"""
-    JuMP.all_variables(node::OptiNode)::Vector{JuMP.VariableRef}
-
-Retrieve all of the variables on the optinode `node`.
-"""
-JuMP.all_variables(node::OptiNode) = JuMP.all_variables(jump_model(node))
-
-"""
-    JuMP.value(node::OptiNode, vref::VariableRef)
-
-Get the variable value of `vref` on the optinode `node`. This value is always the
-local node value, not the value the node variable takes when solved as part of a
-larger `OptiGraph`.
-"""
-function JuMP.value(node::OptiNode, vref::VariableRef)
-    return MOI.get(
-        JuMP.backend(node).result_location[node.id], MOI.VariablePrimal(), JuMP.index(vref)
-    )
+function JuMP.dual(cref::NodeConstraintRef; result::Int=1)
+    return MOI.get(graph_backend(cref.model), MOI.ConstraintDual(result), cref)
 end
 
-"""
-    JuMP.dual(c::JuMP.ConstraintRef{OptiNode,NonlinearConstraintIndex})
-
-Get the dual value on a nonlinear constraint on an `OptiNode`
-"""
-function JuMP.dual(c::JuMP.ConstraintRef{OptiNode,NonlinearConstraintIndex})
-    node = c.model
-    node_backend = JuMP.backend(node)
-    return node.nlp_duals[node_backend.last_solution_id][c.index.value]
-end
+### Constraints
 
 """
-    is_node_variable(node::OptiNode, vref::JuMP.AbstractVariableRef)
+    JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, name::String="")
 
-Checks whether the variable reference `vref` belongs to the optinode `node`.
+Add a constraint `con` to optinode `node`. This function supports use of the @constraint 
+JuMP macro.
 """
-function is_node_variable(node::OptiNode, vref::JuMP.AbstractVariableRef)
-    return jump_model(node) == vref.model
-end
-
-"""
-    is_node_variable(vref::JuMP.AbstractVariableRef)
-
-Checks whether the variable reference `vref` belongs to any `OptiNode`.
-"""
-is_node_variable(var::JuMP.AbstractVariableRef) = haskey(var.model.ext, :optinode)
-
-"""
-    is_set_to_node(m::JuMP.AbstractModel)
-
-Checks whether the JuMP model `m` is set to any `OptiNode`
-"""
-function is_set_to_node(m::JuMP.AbstractModel)
-    if haskey(m.ext, :optinode)
-        return isa(m.ext[:optinode], OptiNode)
-    else
-        return false
-    end
-end
-
-"""
-    set_model(node::OptiNode, m::AbstractModel)
-
-Set the JuMP model `m` to optinode `node`.
-"""
-function set_model(node::OptiNode, m::JuMP.AbstractModel)#; preserve_links=false)
-    !(is_set_to_node(m) && jump_model(node) == m) ||
-        error("Model $m is already asigned to another node")
-    node.model = m
-    m.ext[:optinode] = node
-    node_backend = NodeBackend(JuMP.backend(m), node.id)
-    return m.moi_backend = node_backend
-    #TODO: handle link constraints on node
-end
-@deprecate setmodel set_model
-
-#############################################
-# JuMP Extension Functions
-############################################
-"""
-    Base.getindex(node::OptiNode, symbol::Symbol)
-
-Support retrieving node attributes via symbol lookup. (e.g. node[:x])
-"""
-Base.getindex(node::OptiNode, symbol::Symbol) = jump_model(node)[symbol]
-
-"""
-    Base.setindex(node::OptiNode, value::Any, symbol::Symbol)
-
-Support retrieving node attributes via symbol lookup. (e.g. node[:x])
-"""
-function Base.setindex(node::OptiNode, value::Any, symbol::Symbol)
-    return JuMP.object_dictionary(node)[symbol] = value
-end
-
-"""
-    JuMP.object_dictionary(node::OptiNode)
-
-Get the underlying object dictionary of optinode `node`
-"""
-JuMP.object_dictionary(node::OptiNode) = JuMP.object_dictionary(jump_model(node))
-
-"""
-    JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
-
-Add variable `v` to optinode `node`. This function supports use of the `@variable` JuMP macro.
-Optionally add a `base_name` to the variable for printing.
-"""
-function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, base_name::String="")
-    jump_vref = JuMP.add_variable(node.model, v, base_name)
-    JuMP.set_name(jump_vref, "$(node.label)[:$(JuMP.name(jump_vref))]")
-    return jump_vref
-end
-
-"""
-    JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, base_name::String="")
-
-Add a constraint `con` to optinode `node`. This function supports use of the @constraint JuMP macro.
-"""
-function JuMP.add_constraint(
-    node::OptiNode, con::JuMP.AbstractConstraint, base_name::String=""
-)
-    cref = JuMP.add_constraint(jump_model(node), con, base_name)
+function JuMP.add_constraint(node::OptiNode, con::JuMP.AbstractConstraint, name::String="")
+    con = JuMP.model_convert(node, con)
+    cref = _moi_add_node_constraint(node, con)
     return cref
 end
 
-"""
-    JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
-
-Add a non-linear constraint to an optinode using a Julia expression.
-"""
-function JuMP.add_nonlinear_constraint(node::OptiNode, expr::Expr)
-    cref = JuMP.add_nonlinear_constraint(jump_model(node), expr)
-    node_cref = ConstraintRef(node, cref.index, JuMP.ScalarShape())
-    return node_cref
-end
-
-function JuMP.add_nonlinear_parameter(node::OptiNode, p::Real)
-    return JuMP.add_nonlinear_parameter(jump_model(node), p)
-end
-
-function JuMP.add_nonlinear_expression(node::OptiNode, expr::Any)
-    return JuMP.add_nonlinear_expression(jump_model(node), expr)
-end
-
-"""
-    JuMP.num_variables(node::OptiNode)
-
-Get the number of variables on optinode `node`
-"""
-JuMP.num_variables(node::OptiNode) = JuMP.num_variables(jump_model(node))
-
-"""
-    num_linked_variables(node::OptiNode)
-
-Return the number of node variables on `node` that are linked to other nodes
-"""
-function num_linked_variables(node::OptiNode)
-    partial_link_cons = node.partial_linkconstraints
-    num_linked = 0
-    vars = []
-    for (idx, link) in partial_link_cons
-        for var in keys(link.func.terms)
-            if !(var in vars)
-                push!(vars, var)
-                num_linked += 1
-            end
-        end
-    end
-    return num_linked
-end
-
-# constraints
-"""
-    JuMP.num_constraints(node::OptiNode)
-
-Get the number of constraints on optinode `node`
-"""
-function JuMP.num_constraints(node::OptiNode)
-    m = jump_model(node)
-    num_cons = 0
-    for (func, set) in JuMP.list_of_constraint_types(m)
-        if func != JuMP.VariableRef
-            num_cons += JuMP.num_constraints(m, func, set)
-        end
-    end
-    num_cons += JuMP.num_nonlinear_constraints(m)
-    return num_cons
-end
-
-"""
-    JuMP.num_nonlinear_constraints(node::OptiNode)
-
-Get the number of nonlinear constraints on optinode `node`
-"""
-JuMP.num_nonlinear_constraints(node::OptiNode) = JuMP.num_nonlinear_constraints(node.model)
-
-"""
-    JuMP.list_of_constraint_types(node::OptiNode)
-
-Get a list of constraint types on optinode `node`
-"""
-function JuMP.list_of_constraint_types(node::OptiNode)
-    return JuMP.list_of_constraint_types(jump_model(node))
-end
-
-"""
-    JuMP.all_constraints(node::OptiNode,F::DataType,S::DataType)
-
-Get all constraints on optinode `node` of function type `F` and set `S`
-"""
-function JuMP.all_constraints(node::OptiNode, F::DataType, S::DataType)
-    return JuMP.all_constraints(jump_model(node), F, S)
-end
-
-"""
-    num_linkconstraints(node::OptiNode)
-
-Return the number of link-constraints incident to optinode `node`
-"""
-function num_linkconstraints(node::OptiNode)
-    return length(node.partial_linkconstraints)
-end
-@deprecate num_link_constraints num_linkconstraints
-
-"""
-    has_objective(node::OptiNode)
-
-Check whether optinode `node` has a non-empty linear or quadratic objective function
-"""
-function has_objective(node::OptiNode)
-    return objective_function(node) != zero(JuMP.AffExpr) &&
-           objective_function(node) != zero(JuMP.QuadExpr)
-end
-
-JuMP.nonlinear_model(node::OptiNode) = JuMP.nonlinear_model(jump_model(node))
-
-"""
-    has_nl_objective(node::OptiNode)
-
-Check whether optinode `node` has a nonlinear objective function
-"""
-function has_nl_objective(node::OptiNode)
-    nlp_model = JuMP.nonlinear_model(node)
-    if nlp_model != nothing
-        if nlp_model.objective != nothing
-            return true
-        end
-    end
-    return false
-end
-
-#NOTE: we could probably loop through JuMP Model methods and define the OptiNode ones
-
-# objective function
-"""
-    JuMP.objective_function(node::OptiNode)
-
-Retrieve the objective function on optinode `node`
-"""
-JuMP.objective_function(node::OptiNode) = JuMP.objective_function(jump_model(node))
-JuMP.objective_value(node::OptiNode) = JuMP.objective_value(jump_model(node))
-JuMP.objective_sense(node::OptiNode) = JuMP.objective_sense(jump_model(node))
-
-function JuMP.set_objective(
-    optinode::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
-)
-    return JuMP.set_objective(jump_model(optinode), sense, func)
-end
-
-"""
-    JuMP.set_nonlinear_objective(optinode::OptiNode, sense::MOI.OptimizationSense, obj::Any)
-
-Set a nonlinear objective on optinode `node`
-"""
-function JuMP.set_nonlinear_objective(
-    optinode::OptiNode, sense::MOI.OptimizationSense, obj::Any
-)
-    return JuMP.set_nonlinear_objective(optinode.model, sense, obj)
-end
-
-function JuMP.set_objective_function(optinode::OptiNode, func::JuMP.AbstractJuMPScalar)
-    return JuMP.set_objective_function(optinode.model, func)
-end
-
-function JuMP.set_objective_function(optinode::OptiNode, real::Real)
-    return JuMP.set_objective_function(optinode.model, real)
-end
-
-function JuMP.set_objective_sense(optinode::OptiNode, sense::MOI.OptimizationSense)
-    return JuMP.set_objective_sense(optinode.model, sense)
-end
-
-# NLP evaluator
-"""
-    JuMP.NLPEvaluator(node::OptiNode)
-
-Retrieve the underlying JuMP NLP evaluator on optinode `node`
-"""
-function JuMP.NLPEvaluator(node::OptiNode; kwargs...)
-    return JuMP.NLPEvaluator(jump_model(node); kwargs...)
-end
-
-# status functions
-"""
-    JuMP.termination_status(node::OptiNode)
-
-Return the termination status on optinode `node`
-"""
-JuMP.termination_status(node::OptiNode) = JuMP.termination_status(jump_model(node))
-JuMP.raw_status(node::OptiNode) = JuMP.raw_status(jump_model(node))
-JuMP.primal_status(node::OptiNode) = JuMP.primal_status(jump_model(node))
-JuMP.dual_status(node::OptiNode) = JuMP.dual_status(jump_model(node))
-JuMP.solver_name(node::OptiNode) = JuMP.solver_name(jump_model(node))
-JuMP.mode(node::OptiNode) = JuMP.mode(jump_model(node))
-JuMP._moi_mode(node_backend::NodeBackend) = node_backend.optimizer.mode
-JuMP._init_NLP(node::OptiNode) = JuMP._init_NLP(jump_model(node))
-
-##############################################
-# Get optinode from other objects
-# Note that `optinode` does a lot of type piracy here. Hopefully this is ok but
-# JuMP or other extensions defining `optinode` could cause problems
-##############################################
-"""
-    optinode(m::JuMP.Model)
-
-Retrieve the optinode corresponding to JuMP model `m`
-"""
-optinode(m::JuMP.Model) = m.ext[:optinode]
-
-#Get the corresponding node for a JuMP variable reference
-"""
-    optinode(var::JuMP.VariableRef)
-
-Retrieve the optinode corresponding to JuMP `VariableRef`
-"""
-function optinode(var::JuMP.VariableRef)
-    if haskey(var.model.ext, :optinode)
-        return optinode(var.model)
-    else
+function JuMP.add_nonlinear_operator(
+    node::OptiNode, dim::Int, f::Function, args::Vararg{Function,N}; name::Symbol=Symbol(f)
+) where {N}
+    nargs = 1 + N
+    if !(1 <= nargs <= 3)
         error(
-            "variable $var does not belong to a optinode.  If you're trying to create a linkconstraint, make sure
-      the owning model has been set to a node.",
+            "Unable to add operator $name: invalid number of functions " *
+            "provided. Got $nargs, but expected 1 (if function only), 2 (if " *
+            "function and gradient), or 3 (if function, gradient, and " *
+            "hesssian provided)",
         )
     end
+    MOI.set(node, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
+    registered_name = graph_operator(
+        graph_backend(node), node, MOI.UserDefinedFunction(name, dim)
+    )
+    return JuMP.NonlinearOperator(f, registered_name)
 end
 
-"""
-    optinode(var::JuMP.VariableRef)::OptiNode
-
-Retrieve the optinode corresponding to JuMP `ConstraintRef`
-"""
-function optinode(con::JuMP.ConstraintRef)
-    if haskey(con.model.ext, :optinode)
-        return optinode(con.model)
-    else
-        error("constraint $con does not belong to a node")
+function _set_dirty(node::OptiNode)
+    for graph in containing_optigraphs(node)
+        graph.is_model_dirty = true
     end
+    return nothing
 end
 
-###############################################
-# Printing
-###############################################
-function string(node::OptiNode)
-    return "OptiNode w/ $(JuMP.num_variables(node)) Variable(s) and $(JuMP.num_constraints(node)) Constraint(s)"
-end
-print(io::IO, node::OptiNode) = print(io, string(node))
-show(io::IO, node::OptiNode) = print(io, node)
+function _moi_add_node_constraint(node::OptiNode, con::JuMP.AbstractConstraint)
+    # get moi function and set
+    jump_func = JuMP.jump_function(con)
+    _check_node_variables(node, jump_func)
+    moi_func = JuMP.moi_function(con)
+    moi_set = JuMP.moi_set(con)
 
-function JuMP.nonlinear_constraint_string(
-    node::OptiNode, mode::MIME, c::MOI.Nonlinear.ConstraintIndex
+    # create constraint index and reference
+    constraint_index = next_constraint_index(
+        node, typeof(moi_func), typeof(moi_set)
+    )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
+    cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
+    # add to each containing optigraph
+    for graph in containing_optigraphs(node)
+        MOI.add_constraint(graph_backend(graph), cref, jump_func, moi_set)
+    end
+    return cref
+end
+
+function _check_node_variables(
+    node::OptiNode,
+    jump_func::Union{
+        NodeVariableRef,JuMP.GenericAffExpr,JuMP.GenericQuadExpr,JuMP.GenericNonlinearExpr
+    },
 )
-    return JuMP.nonlinear_constraint_string(jump_model(node), mode, c)
+    return isempty(setdiff(_extract_variables(jump_func), JuMP.all_variables(node)))
 end
 
-const NonlinearOptiNodeConstraintRef = ConstraintRef{OptiNode,MOI.Nonlinear.ConstraintIndex}# where T <: OptiObject
-function Base.show(io::IO, c::ConstraintRef{OptiNode,MOI.Nonlinear.ConstraintIndex})
-    return print(
-        io, JuMP.nonlinear_constraint_string(c.model, MIME("text/plain"), JuMP.index(c))
+### Objective
+
+function JuMP.set_objective(
+    node::OptiNode, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
+)
+    # check that all func terms are for this node
+    (unique(collect_nodes(func)) == [node] || func == 0) ||
+        error("Optinode does not own all variables.")
+    d = JuMP.object_dictionary(node)
+    d[(node, :objective_sense)] = sense
+    d[(node, :objective_function)] = func
+    return nothing
+end
+
+function JuMP.set_objective_function(node::OptiNode, func::JuMP.AbstractJuMPScalar)
+    # check that all func terms are for this node
+    (unique(collect_nodes(func)) == [node] || func == 0) ||
+        error("Optinode does not own all variables.")
+    d = JuMP.object_dictionary(node)
+    d[(node, :objective_function)] = func
+    return nothing
+end
+
+function JuMP.set_objective_sense(node::OptiNode, sense::MOI.OptimizationSense)
+    d = JuMP.object_dictionary(node)
+    d[(node, :objective_sense)] = sense
+    return nothing
+end
+
+function JuMP.objective_function(node::OptiNode)
+    return JuMP.object_dictionary(node)[(node, :objective_function)]
+end
+
+function JuMP.objective_sense(node::OptiNode)
+    return JuMP.object_dictionary(node)[(node, :objective_sense)]
+end
+
+function JuMP.objective_value(graph::OptiGraph, node::OptiNode)
+    return JuMP.value(graph, JuMP.objective_function(node))
+end
+
+function has_objective(node::OptiNode)
+    return haskey(JuMP.object_dictionary(node), (node, :objective_function))
+end
+
+#
+# Relax Integrality
+#
+
+function JuMP.relax_integrality(node::OptiNode)
+    return _relax_or_fix_integrality(nothing, node)
+end
+
+# adapted from: https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/variables.jl#L2602-L2689
+function JuMP.fix_discrete_variables(var_value::Function, node::OptiNode)
+    return _relax_or_fix_integrality(var_value, node)
+end
+
+function JuMP.fix_discrete_variables(node::OptiNode)
+    return fix_discrete_variables(value, node)
+end
+
+function _relax_or_fix_integrality(var_value::Union{Nothing,Function}, node::OptiNode)
+    if JuMP.num_constraints(node, NodeVariableRef, MOI.Semicontinuous{Float64}) > 0
+        error(
+            "Support for relaxing semicontinuous constraints is not " * "yet implemented."
+        )
+    end
+    if JuMP.num_constraints(node, NodeVariableRef, MOI.Semiinteger{Float64}) > 0
+        error("Support for relaxing semi-integer constraints is not " * "yet implemented.")
+    end
+
+    discrete_variable_constraints = vcat(
+        JuMP.all_constraints(node, NodeVariableRef, MOI.ZeroOne),
+        JuMP.all_constraints(node, NodeVariableRef, MOI.Integer),
+    )
+    # We gather the info first because we cannot modify-then-query.
+    info_pre_relaxation = map(discrete_variable_constraints) do c
+        v = NodeVariableRef(c)
+        solution = var_value === nothing ? nothing : var_value(v)
+        return (v, solution, _info_from_variable(v))
+    end
+    # Now we can modify.
+    for (v, solution, info) in info_pre_relaxation
+        if info.integer
+            JuMP.unset_integer(v)
+        elseif info.binary
+            JuMP.unset_binary(v)
+            if !info.has_fix
+                JuMP.set_lower_bound(v, max(zero(T), info.lower_bound))
+                JuMP.set_upper_bound(v, min(one(T), info.upper_bound))
+            elseif info.fixed_value < 0 || info.fixed_value > 1
+                error(
+                    "The model has no valid relaxation: binary variable " *
+                    "fixed out of bounds.",
+                )
+            end
+        end
+        if solution !== nothing
+            fix(v, solution; force=true)
+        end
+    end
+    function unrelax()
+        for (v, solution, info) in info_pre_relaxation
+            if solution !== nothing
+                JuMP.unfix(v)
+            end
+            if info.has_lb
+                JuMP.set_lower_bound(v, info.lower_bound)
+            end
+            if info.has_ub
+                JuMP.set_upper_bound(v, info.upper_bound)
+            end
+            if info.integer
+                JuMP.set_integer(v)
+            end
+            if info.binary
+                JuMP.set_binary(v)
+            end
+            # Now a special case: when binary variables are relaxed, we add
+            # [0, 1] bounds, but only if the variable was not previously fixed
+            # and we did not provide a fixed value, and a bound did not already
+            # exist. In this case, delete the new bounds that we added.
+            if solution === nothing && info.binary && !info.has_fix
+                if !info.has_lb
+                    JuMP.delete_lower_bound(v)
+                end
+                if !info.has_ub
+                    JuMP.delete_upper_bound(v)
+                end
+            end
+        end
+        return nothing
+    end
+    return unrelax
+end
+
+function _info_from_variable(nvref::NodeVariableRef)
+    has_lb = JuMP.has_lower_bound(nvref)
+    lb = has_lb ? JuMP.lower_bound(nvref) : -Inf
+    has_ub = JuMP.has_upper_bound(nvref)
+    ub = has_ub ? JuMP.upper_bound(nvref) : Inf
+    has_fix = JuMP.is_fixed(nvref)
+    fixed_value = has_fix ? JuMP.fix_value(nvref) : NaN
+    has_start, start = false, NaN
+    if MOI.supports(
+        JuMP.backend(JuMP.owner_model(nvref)), MOI.VariablePrimalStart(), MOI.VariableIndex
+    )
+        start = JuMP.start_value(nvref)
+        has_start = start !== nothing
+    end
+    binary = JuMP.is_binary(nvref)
+    integer = JuMP.is_integer(nvref)
+    return JuMP.VariableInfo(
+        has_lb, lb, has_ub, ub, has_fix, fixed_value, has_start, start, binary, integer
     )
 end
 
-function Base.show(
-    io::IO, ::MIME"text/latex", c::ConstraintRef{OptiNode,MOI.Nonlinear.ConstraintIndex}
-)
-    return print(
-        io,
-        JuMP._wrap_in_math_mode(
-            JuMP.nonlinear_constraint_string(c.model, MIME"text/latex", JuMP.index(c))
-        ),
-    )
+#
+# Set a JuMP.Model to an OptiNode
+#
+
+"""
+    Set a JuMP.Model to `node`. This copies the model data over and does not mutate
+the `model` in any way. 
+"""
+function set_jump_model(node::OptiNode, model::JuMP.Model)
+    return _copy_model_to!(node, model)
+end
+@deprecate set_model set_jump_model
+
+function _copy_model_to!(node::OptiNode, model::JuMP.Model)
+    if !(num_variables(node) == 0 && num_constraints(node) == 0)
+        error("An optinode must be empty to set a JuMP Model.")
+    end
+    # get backends
+    src = JuMP.backend(model)
+    dest = graph_backend(node)
+    index_map = MOIU.IndexMap()
+
+    # copy variables
+    source_variables = all_variables(model)
+    new_vars = NodeVariableRef[]
+    for vref in source_variables
+        new_variable_index = next_variable_index(node)
+        new_vref = NodeVariableRef(node, new_variable_index)
+        MOI.add_variable(dest, new_vref)
+        index_map[JuMP.index(vref)] = graph_index(new_vref)
+    end
+
+    # pass variable attributes
+    vis_src = JuMP.index.(source_variables)
+    MOIU.pass_attributes(dest.moi_backend, src, index_map, vis_src)
+
+    # copy constraints
+    constraint_types = MOI.get(src, MOI.ListOfConstraintTypesPresent())
+    for (F, S) in constraint_types
+        cis_src = MOI.get(model, MOI.ListOfConstraintIndices{F,S}())
+        index_map_FS = index_map[F, S]
+        for ci in cis_src
+            src_func = MOI.get(JuMP.backend(model), MOI.ConstraintFunction(), ci)
+            src_set = MOI.get(JuMP.backend(model), MOI.ConstraintSet(), ci)
+            con = JuMP.constraint_object(JuMP.constraint_ref_with_index(model, ci))
+            constraint_index = next_constraint_index(node, F, S)
+
+            # new optinode cref
+            new_cref = ConstraintRef(node, constraint_index, JuMP.shape(con))
+            new_func = MOIU.map_indices(index_map, src_func)
+            dest_index = MOI.add_constraint(dest, new_cref, new_func, src_set)
+            index_map_FS[ci] = dest_index
+        end
+        # pass constraint attributes
+        MOIU.pass_attributes(dest.moi_backend, src, index_map_FS, cis_src)
+    end
+
+    # copy objective to node
+    F = JuMP.moi_function_type(JuMP.objective_function_type(model))
+    obj_func = MOI.get(JuMP.backend(model), MOI.ObjectiveFunction{F}())
+    new_moi_obj_func = MOIU.map_indices(index_map, obj_func)
+    new_obj_func = JuMP.jump_function(node, new_moi_obj_func)
+    JuMP.set_objective(node, JuMP.objective_sense(model), new_obj_func)
+    return nothing
 end
