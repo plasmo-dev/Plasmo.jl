@@ -14,17 +14,17 @@ The input variables at time $t$ are $\boldsymbol{u}_t = (a, \omega_x, \omega_y, 
 
 The quadcopter control problem can be written as an optimization problem as:
 
-$$
+```math
 \begin{align*}
     \min &\; \phi(t) := \int_{0}^T \frac{1}{2} (\boldsymbol{x}(t) - \boldsymbol{x}(t)^{ref})^\top Q (\boldsymbol{x}(t) - \boldsymbol{x}(t)^{ref}) + \boldsymbol{u}(t)^\top R \boldsymbol{u}(t) dt \\
-    \textrm{s.t.} &\; \frac{d^2x}{dt^2} = a (\cos\gamma \sin \beta \cos \alpha  + \sin \gamma \sin \alpha) \\
-&\; \frac{d^2 y}{dt^2} = a (\cos \gamma \sin \beta \sin \alpha - \sin \gamma \cos \alpha) \\
-&\; \frac{d^2 z}{dt^2} = a \cos \gamma \cos \beta - g \\
-&\; \frac{d\gamma}{dt} = (\omega_x \cos \gamma + \omega_y \sin \gamma) / \cos \beta\\
-&\;\frac{d\beta}{dt} = -\omega_x \sin \gamma + \omega_y \cos \gamma \\
-&\;\frac{d\alpha}{dt} = \omega_x \cos \gamma \tan \beta + \omega_y \sin \gamma \tan \beta + \omega_z
+    \textrm{s.t.} &\; \frac{d^2x}{dt^2} = a (\cos(\gamma) \sin( \beta) \cos (\alpha)  + \sin (\gamma) \sin (\alpha)) \\
+&\; \frac{d^2 y}{dt^2} = a (\cos (\gamma) \sin (\beta) \sin (\alpha) - \sin (\gamma) \cos (\alpha)) \\
+&\; \frac{d^2 z}{dt^2} = a \cos (\gamma) \cos (\beta) - g \\
+&\; \frac{d\gamma}{dt} = (\omega_x \cos (\gamma) + \omega_y \sin (\gamma)) / \cos (\beta)\\
+&\;\frac{d\beta}{dt} = -\omega_x \sin (\gamma) + \omega_y \cos (\gamma) \\
+&\;\frac{d\alpha}{dt} = \omega_x \cos (\gamma) \tan (\beta) + \omega_y \sin (\gamma) \tan (\beta) + \omega_z
 \end{align*}
-$$
+```
 
 We will model this problem in Plasmo by discretizing the problem into finite time points and representing each time point with a node. 
 
