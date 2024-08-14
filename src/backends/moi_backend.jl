@@ -691,20 +691,10 @@ function _copy_subgraph_backends!(backend::GraphMOIBackend)
         _copy_subgraph_nodes!(backend, subgraph)
         _copy_subgraph_edges!(backend, subgraph)
 
-        # TODO: pass model attributes we may need
-        # Need to copy nonlinar operators defined on the graph
+        # TODO: pass other model attributes we may need
         sub_backend = graph_backend(subgraph)
         for ((element, attr), registered_name) in sub_backend.operator_map
             _copy_operator(sub_backend, backend, element, attr, registered_name)
-            # operator = MOI.get(
-            #     graph_backend(subgraph), 
-            #     MOI.UserDefinedFunction(registered_name, attr.arity)
-            # )
-            # # set operator on new graph backend
-            # attr_register = MOI.UserDefinedFunction(registered_name, attr.arity)
-            # MOI.set(backend, attr_register, element, operator)
-            # backend.element_attributes[(element, attr)] = tuple(args...)
-            # backend.operator_map[(element, attr)] = registered_name
         end
     end
 end
@@ -720,7 +710,6 @@ function _copy_operator(
     # set operator on new graph backend
     attr_register = MOI.UserDefinedFunction(registered_name, attr.arity)
     MOI.set(dest_backend.moi_backend, attr_register, operator)
-    # dest_backend.element_attributes[(element, attr)] = operator
     dest_backend.operator_map[(element, attr)] = registered_name
     return nothing
 end
