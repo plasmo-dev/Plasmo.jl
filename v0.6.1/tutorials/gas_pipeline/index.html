@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Optimal Control of a Natural Gas Network · Plasmo.jl</title><meta name="title" content="Optimal Control of a Natural Gas Network · Plasmo.jl"/><meta property="og:title" content="Optimal Control of a Natural Gas Network · Plasmo.jl"/><meta property="twitter:title" content="Optimal Control of a Natural Gas Network · Plasmo.jl"/><meta name="description" content="Documentation for Plasmo.jl."/><meta property="og:description" content="Documentation for Plasmo.jl."/><meta property="twitter:description" content="Documentation for Plasmo.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Plasmo.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Plasmo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../documentation/quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../documentation/modeling/">Modeling with OptiGraphs</a></li><li><a class="tocitem" href="../../documentation/graph_processing/">Graph Processing and Analysis</a></li><li><a class="tocitem" href="../../documentation/api_docs/">API Documentation</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../supply_chain/">Supply Chain Optimization</a></li><li class="is-active"><a class="tocitem" href>Optimal Control of a Natural Gas Network</a><ul class="internal"><li><a class="tocitem" href="#Problem-Description"><span>Problem Description</span></a></li><li><a class="tocitem" href="#Sets-used-for-optimization-problem"><span>Sets used for optimization problem</span></a></li><li><a class="tocitem" href="#Junction-OptiGraph"><span>Junction OptiGraph</span></a></li><li><a class="tocitem" href="#Compressor-OptiGraph"><span>Compressor OptiGraph</span></a></li><li><a class="tocitem" href="#Pipeline-OptiGraph"><span>Pipeline OptiGraph</span></a></li><li><a class="tocitem" href="#Network-OptiGraph"><span>Network OptiGraph</span></a></li><li><a class="tocitem" href="#Partitioning"><span>Partitioning</span></a></li><li><a class="tocitem" href="#Querying-Solutions"><span>Querying Solutions</span></a></li></ul></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Optimal Control of a Natural Gas Network</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Optimal Control of a Natural Gas Network</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl/blob/main/docs/src/tutorials/gas_pipeline.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Optimal-Control-of-a-Natural-Gas-Network"><a class="docs-heading-anchor" href="#Optimal-Control-of-a-Natural-Gas-Network">Optimal Control of a Natural Gas Network</a><a id="Optimal-Control-of-a-Natural-Gas-Network-1"></a><a class="docs-heading-anchor-permalink" href="#Optimal-Control-of-a-Natural-Gas-Network" title="Permalink"></a></h1><p>This tutorial shows how to model a natural-gas network optimal control problem by constructing a hierarchical optigraph. We show the resulting structure of the optimization problem and demonstrate how to use Plasmo.jl to partition and decompose the problem. The details of this model and a description of its parameters can be found in <a href="https://www.sciencedirect.com/science/article/abs/pii/S0098135418312687">this manuscript</a>. The actual implementation of this tutorial can be found in <a href="https://github.com/plasmo-dev/PlasmoExamples">this git repository</a>.</p><h2 id="Problem-Description"><a class="docs-heading-anchor" href="#Problem-Description">Problem Description</a><a id="Problem-Description-1"></a><a class="docs-heading-anchor-permalink" href="#Problem-Description" title="Permalink"></a></h2><p>We consider the system of connected pipelines in series shown in the below figure. This linear network includes a gas supply at one end, a time-varying demand at the other end, and twelve compressor stations. The gas junctions connect thirteen pipelines which forms an optigraph with a linear topology.</p><p><img src="../../assets/13_pipe_sketch_control.svg" alt="13pipeline_sketch"/></p><p>We seek to solve an optimal control problem that maximizes revenue over a 24 hour time period given a forecast of gas demand profiles. That is, we wish to obtain a compressor control policy that will meet the gas demand at junction <span>$j_{25}$</span>, whilst simultaneously minimizing compressor costs and meeting operational constraints. In the formulation below, <span>$\alpha_{\ell}$</span> and <span>$P_{\ell,t}$</span> are the compression cost (<span>$</span>/kW), and compression power for each compressor <span>$\ell$</span> at time <span>$t$</span>, and <span>$\alpha_{d}$</span> and <span>$f^{target}_{d,t}$</span> are the demand price and target demand flow for each demand <span>$d$</span> at time <span>$t$</span>. This formulation includes physical equations and constraints that describe the network junctions, the pipeline dynamics, and compressors. The network link equations describe how the devices within the topology are coupled together such as conservation of mass and boundary conditions. The sets that describe the elements of the optimization problem are also presented here.</p><p class="math-container">\[\begin{aligned}
+    \min_{ \substack{ \{ \eta_{\ell,t},f_{j,d,t} \} \\ \ell \in \mathcal{L}_c, d \in \mathcal{D}_j, j \in \mathcal{J}, t \in \mathcal{T}}} \quad &amp;
+    \sum_{\substack{\ell \in \mathcal{L}_c \\ t \in \mathcal{T}}} \alpha_{\ell} P_{\ell,t} -
+    \sum_{\substack{d \in \mathcal{D}_j, j \in \mathcal{J}, \\  t \in \mathcal{T}}} \alpha_{j,d} f_{j,d,t} &amp;\\
+     s.t. \quad &amp; \text{Junction Limits} &amp;  \\
+     &amp; \text{Pipeline Dynamics}  &amp;  \\
+     &amp; \text{Compressor Equations} &amp;  \\
+     &amp; \text{Network Link Equations} &amp;
+\end{aligned}\]</p><h2 id="Sets-used-for-optimization-problem"><a class="docs-heading-anchor" href="#Sets-used-for-optimization-problem">Sets used for optimization problem</a><a id="Sets-used-for-optimization-problem-1"></a><a class="docs-heading-anchor-permalink" href="#Sets-used-for-optimization-problem" title="Permalink"></a></h2><table><tr><th style="text-align: right">Set</th><th style="text-align: right">Description</th><th style="text-align: right">Elements</th></tr><tr><td style="text-align: right"><span>$\mathcal{J}$</span></td><td style="text-align: right">Set of gas network nodes</td><td style="text-align: right"><span>$j \in \mathcal{J}$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{S}$</span></td><td style="text-align: right">Set of gas supplies</td><td style="text-align: right"><span>$s \in \mathcal{S}$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{D}$</span></td><td style="text-align: right">Set of gas demands</td><td style="text-align: right"><span>$d \in \mathcal{D}$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{D}_j$</span></td><td style="text-align: right">Set of gas demands on junction <span>$j$</span></td><td style="text-align: right"><span>$d \in \mathcal{D}_j$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{S}_j$</span></td><td style="text-align: right">Set of gas supplies on junction <span>$j$</span></td><td style="text-align: right"><span>$s \in \mathcal{S}_j$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{L}$</span></td><td style="text-align: right">Set of gas network links</td><td style="text-align: right"><span>$\ell \in \mathcal{L}$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{L}_p$</span></td><td style="text-align: right">Set of network pipeline links</td><td style="text-align: right"><span>$\mathcal{L}_p \subseteq \mathcal{L}$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{L}_c$</span></td><td style="text-align: right">Set of network compressor links</td><td style="text-align: right"><span>$\mathcal{L}_c \subseteq \mathcal{L}$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{X}$</span></td><td style="text-align: right">Set of spatial discretization points</td><td style="text-align: right"><span>$k \in \mathcal{X}$</span></td></tr><tr><td style="text-align: right"><span>$\mathcal{T}$</span></td><td style="text-align: right">Set of temporal discretization points</td><td style="text-align: right"><span>$t \in \mathcal{T}$</span></td></tr></table><p>The following sections describe each component of the network in further detail.</p><h2 id="Junction-OptiGraph"><a class="docs-heading-anchor" href="#Junction-OptiGraph">Junction OptiGraph</a><a id="Junction-OptiGraph-1"></a><a class="docs-heading-anchor-permalink" href="#Junction-OptiGraph" title="Permalink"></a></h2><p>The gas junctions in a gas network describe the connection points between pipelines and compressors.  The junction model is described by the below equations, where <span>$\theta_{j,t}$</span> is the pressure at junction <span>$j$</span> and time <span>$t$</span>. <span>$\underline{\theta}_j$</span> is the lower pressure bound for the junction, <span>$\overline{\theta}_j$</span> is the upper pressure bound, <span>$f_{j,d,t}^{target}$</span> is the target demand flow for demand <span>$d$</span> on junction <span>$j$</span> and <span>$\overline{f}_{j,s}$</span> is the available gas generation from supply <span>$s$</span> on junction <span>$j$</span>.</p><p class="math-container">\[\begin{aligned}
+    &amp; \underline{\theta}_j \le \theta_{j,t} \le \overline{\theta}_j , \quad j \in \mathcal{J}, \ t \in \mathcal{T} \\
+    &amp;0 \le f_{j,d,t} \le f_{j,d,t}^{target}, \quad d \in \mathcal{D}_j, \ j \in \mathcal{J}, \ t \in \mathcal{T} \\
+    &amp;0 \le f_{j,s,t} \le \overline{f}_{j,s}, \quad s \in \mathcal{S}_j, \ j \in \mathcal{J}, \ t \in \mathcal{T}
+\end{aligned}\]</p><p>The optigraph that is used to create the junction model is given by the following julia function.  We define the function <code>create_junction_model</code> which accepts junction specific data and the number of time periods <code>nt</code>.  We create the optigraph <code>graph</code>, add an optignode for each time interval (using <code>@optinode</code>), and then create the variables and constraints for each node in a loop.  We also use the <code>JuMP</code> specific <code>@expression</code> macro to refer to expressions for total gas supplied, total gas delivered, and total cost for convenience.  The junction optigraph is finally returned from the function</p><pre><code class="language-julia hljs">#Define function to create junction model-graph
+function create_junction_model(data,nt)
+    graph = OptiGraph()
+
+    #Add model-node for each time interval
+    @optinode(graph, nodes[1:nt])
+
+    #query number of supply and demands on the junction
+    n_demands = length(data[:demand_values])
+    n_supplies = length(data[:supplies])
+
+    #Loop and create variables, constraints, and objective for each model-node
+    for (i,node) in enumerate(nodes)
+        @variable(node, data[:pmin] &lt;= pressure &lt;= data[:pmax], start=60)
+        @variable(node, 0 &lt;= fgen[1:n_supplies] &lt;= 200, start=10)
+        @variable(node, fdeliver[1:n_demands] &gt;= 0)
+        @variable(node, fdemand[1:n_demands] &gt;= 0)
+
+        @constraint(node,[d = 1:n_demands],fdeliver[d] &lt;= fdemand[d])
+
+        @expression(node, total_supplied, sum(fgen[s] for s = 1:n_supplies))
+        @expression(node, total_delivered,sum(fdeliver[d] for d = 1:n_demands))
+        @expression(node, total_delivercost,sum(1000*fdeliver[d] for d = 1:n_demands))
+
+        @objective(node,Min,total_delivercost)
+    end
+
+    #Return the junction graph
+    return graph
+end</code></pre><h2 id="Compressor-OptiGraph"><a class="docs-heading-anchor" href="#Compressor-OptiGraph">Compressor OptiGraph</a><a id="Compressor-OptiGraph-1"></a><a class="docs-heading-anchor-permalink" href="#Compressor-OptiGraph" title="Permalink"></a></h2><p>Compressors constitute the primary control decisions in the optimal control problem and are described by the following simple formulation. We use an ideal isentropic compressor model where <span>$\eta_{\ell,t}$</span>, <span>$p_{\ell,t}^{in}$</span>, and <span>$p_{\ell,t}^{out}$</span> are the compression ratio, suction pressure, and discharge pressure at time <span>$t$</span>, and <span>$P_{\ell,t}$</span> is power at time <span>$t$</span>. We also introduceduce the dummy variables <span>$f_{\ell,t}^{in}$</span> and <span>$f_{\ell,t}^{out}$</span> to be consistent with the pipeline model in the next section.</p><p class="math-container">\[\begin{aligned}
+    &amp;p_{\ell,t}^{out} = \eta_{\ell,t} p_{\ell,t}^{in}, \quad \ell \in \mathcal{L}_c,\quad t \in \mathcal{T} \\
+    &amp;P_{\ell,t} = c_p \cdot T \cdot f_{\ell,t} \left(\left(\frac{p_{\ell,t}^{out}}{p_{\ell,t}^{in}}\right)^{\frac{\gamma-1}{\gamma}}-1\right),
+    \quad \ell \in \mathcal{L}_c,\quad t \in \mathcal{T}\\
+    &amp;f_{\ell,t} = f_{\ell,t}^{in} = f_{\ell,t}^{out}, \quad \ell \in \mathcal{L}_c,\quad t \in \mathcal{T}
+\end{aligned}\]</p><p>The compressor optigraph construction is straightforward as shown by the following Julia code. Like the above model, we define a function called <code>create_compressor_model</code> to create a compressor optigraph given <code>data</code> and number of time periods <code>nt</code>. We create the compressor optigraph by creating nodes, variables, and constraints, as well as expressions to refer to flow in and out of each compressor. We lastly return the created optigraph from the function.</p><pre><code class="language-julia hljs">function create_compressor_model(data,nt)
+    #Create compressor model-graph
+    graph = OptiGraph()
+    @optinode(graph,nodes[1:nt])
+
+    #Setup variables, constraints, and objective
+    for node in nodes
+        @variable(node, 1 &lt;= psuction &lt;= 100)
+        @variable(node, 1 &lt;= pdischarge &lt;= 100)
+        @variable(node, 0 &lt;= power &lt;= 1000)
+        @variable(node, flow &gt;= 0)
+        @variable(node, 1 &lt;= eta &lt;= 2.5)
+        @constraint(node, pdischarge == eta*psuction)
+        @constraint(node, power == c4*flow*((pdischarge/psuction)^om-1) )
+        @objective(node, Min, cost*power*(dt/3600.0))
+    end
+
+    #Create references for flow in and out
+    @expression(graph, fin[t=1:nt], nodes[t][:flow])
+    @expression(graph, fout[t=1:nt], nodes[t][:flow])
+
+    #Return compressor graph
+    return graph
+end</code></pre><h2 id="Pipeline-OptiGraph"><a class="docs-heading-anchor" href="#Pipeline-OptiGraph">Pipeline OptiGraph</a><a id="Pipeline-OptiGraph-1"></a><a class="docs-heading-anchor-permalink" href="#Pipeline-OptiGraph" title="Permalink"></a></h2><p>We now implement the pipeline equations to describe the dynamic transport throughout the gas network. For each pipeline model we assume isothermal flow through horizontal segments with constant pipe friction.  We ultimately produce the following discretized pipeline model.</p><p class="math-container">\[\begin{aligned}
+    &amp; \frac{p_{\ell,t+1,k} - p_{\ell,t,k}}{\Delta t} = -c_{1,\ell} \frac{f_{\ell,t+1,k+1} - f_{\ell,t+1,k}}{\Delta x_\ell}, \ell \in \mathcal{L}_p,t \in \mathcal{T}, k \in \mathcal{X}_{\ell} \\
+    &amp; \frac{f_{\ell,t+1,k} - f_{\ell,t,k}}{\Delta t} = -c_{2,\ell}\frac{p_{\ell,t+1,k+1} - p_{\ell,t+1,k}}{\Delta x_\ell} - c_{3,\ell}\frac{f_{\ell,t+1,k} |f_{\ell,t+1,k}|}{p_{\ell,t+1,k}} \ell \in \mathcal{L}_p, t \in \mathcal{T}, k \in \mathcal{X}_{\ell}  \\
+    &amp; f_{\ell,t,N_x} = f_{\ell,t}^{out},\quad \ell \in \mathcal{L}_p, \quad t \in \mathcal{T} \\
+    &amp; f_{\ell,t,1} = f_{\ell,t}^{in},\quad \ell \in \mathcal{L}_p, \quad t \in \mathcal{T}    \\
+    &amp; p_{\ell,t,N_x} = p_{\ell,t}^{out},\quad \ell \in \mathcal{L}_p, \quad t \in \mathcal{T} \\
+    &amp; p_{\ell,t,1} = p_{\ell,t}^{in},\quad \ell \in \mathcal{L}_p, \quad t \in \mathcal{T}
+\end{aligned}\]</p><p>The model contains the transport equations defined in terms of pressure and mass flow rate.  It also contains dummy flows and pressures which represent in the inlet and outlet flow and pressure into each pipeline segment.  We also express a steady-state initial condition which is typical for this control problem and is given by the following equations.</p><p class="math-container">\[\begin{aligned}
+    &amp; \frac{f_{\ell,1,k+1} - f_{\ell,1,k}}{\Delta x} = 0,  \quad \ell \in \mathcal{L}_{p}, k \in \mathcal{X}_{\ell} \\
+    &amp; c_{2,\ell}\frac{p_{\ell,1,k} - p_{\ell,1,k}}{\Delta x} + c_3\frac{f_{\ell,1,k} |f_{\ell,1,k}|}{p_{\ell,1,k}} = 0,
+    \quad \ell \in \mathcal{L}_p, k \in \mathcal{X}_{\ell}
+\end{aligned}\]</p><p>Lastly, we require the total line-pack in each segment (i.e. the inventory of gas) to be refilled at the end of the planning horizon. This is represented by the following approximation of line-pack and constraint for refilling it.</p><p class="math-container">\[\begin{aligned}
+    &amp; m_{\ell,t} = \frac{A_\ell}{c^2} \sum_{k=1}^{N_{x}} p_{\ell,t,k} \Delta x_{\ell},\quad \ell \in \mathcal{L}_p, t \in \mathcal{T} \\
+    &amp; m_{\ell,N_t} \ge m_{\ell,1}, \quad \ell \in \mathcal{L}_p.
+\end{aligned}\]</p><p>We express the pipeline model with optinodes distributed on a space-time grid. Specifically, the nodes of each pipeline optigraph form a <code>nt x nx</code>  grid wherein pressure and flow variables are assigned to each node. Flow dynamics within pipelines are then expressed with linking constraints that describe the discretized PDE equations for mass and momentum using finite differences. We lastly include linking constraints that represent the initial steady-state condition and line-pack constraint.</p><pre><code class="language-julia hljs">function create_pipeline_model(data, nt, nx)
+    #unpack data
+    c1 = data[:c1]; c2 = data[:c2]; c3 = data[:c3]
+    dx = data[:pipe_length] / (nx - 1)
+
+    #Create pipeline model-graph
+    graph = OptiGraph()
+
+    #Create grid of optinodes
+    @optinode(graph, grid[1:nt,1:nx])
+
+    #Create variables on each node in the grid
+    for node in grid
+        @variable(node, 1 &lt;= px &lt;= 100)
+        @variable(node, 0 &lt;= fx &lt;= 100)
+        @variable(node, slack &gt;= 0)
+        @constraint(node, slack*px - c3*fx*fx == 0)
+    end
+
+    # setup useful expressions
+    @expression(graph, fin[t=1:nt], grid[:,1][t][:fx])
+    @expression(graph, fout[t=1:nt], grid[:,end][t][:fx])
+    @expression(graph, pin[t=1:nt], grid[:,1][t][:px])
+    @expression(graph, pout[t=1:nt], grid[:,end][t][:px])
+    @expression(graph, linepack[t=1:nt], c2/A*sum(grid[t,x][:px]*dx for x in 1:nx-1))
+
+    # finite differencing.  Backward difference in time from t, forward difference in space from x.
+    @linkconstraint(
+        graph, 
+        press[t=2:nt,x=1:nx-1],
+        (grid[t,x][:px]-grid[t-1,x][:px])/dt + c1*(grid[t,x+1][:fx] - grid[t,x][:fx])/dx == 0
+    )
+
+    @linkconstraint(
+        graph, 
+        flow[t=2:nt,x=1:nx-1], 
+        (grid[t,x][:fx] - grid[t-1,x][:fx])/dt == -c2*(grid[t,x+1][:px] - grid[t,x][:px])/dx - grid[t,x][:slack]
+    )
+
+    # initially at steady state
+    @linkconstraint(graph, ssflow[x=1:nx-1], grid[1,x+1][:fx] - grid[1,x][:fx] == 0)
+    @linkconstraint(
+        graph, 
+        sspress[x = 1:nx-1], 
+        -c2*(grid[1,x+1][:px] - grid[1,x][:px])/dx - grid[1,x][:slack] == 0
+    )
+
+    # refill pipeline linepack
+    @linkconstraint(graph, linepack[end] &gt;= linepack[1])
+    return graph
+end</code></pre><h2 id="Network-OptiGraph"><a class="docs-heading-anchor" href="#Network-OptiGraph">Network OptiGraph</a><a id="Network-OptiGraph-1"></a><a class="docs-heading-anchor-permalink" href="#Network-OptiGraph" title="Permalink"></a></h2><p>The network connections define the topology that connect junctions and equipment links (i.e. pipelines and compressors). Specifically, the network equations express mass conservation around each junction and boundary conditions for pipelines and compressors. Mass conservation around each junction <code>j</code> is given by the following equation.</p><p class="math-container">\[\begin{aligned}
+    &amp; \sum_{\ell\in\mathcal{L}_{rec}(j)} f^{out}_{\ell,t} - \sum_{\ell \in\mathcal{L}_{snd}(j)} f^{in}_{\ell,t} +
+    \sum_{s\in\mathcal{S}_j}f_{j,s,t} - \sum_{d\in \mathcal{D}_j}f_{j,d,t} = 0, \quad j \in\mathcal{J}
+\end{aligned}\]</p><p>where we define <span>$\mathcal{L}_{rec}(j)$</span> and <span>$\mathcal{L}_{snd}(j)$</span> as the set of receiving and sending links to each junction <code>j</code> respectively.</p><p>The next equations define pipeline and compressor link boundary conditions.</p><p class="math-container">\[\begin{aligned}
+    &amp; p_{\ell,t}^{in} =  \theta_{rec(\ell),t}, \quad \ell \in \mathcal{L},  t \in \mathcal{T} \\
+    &amp; p_{\ell,t}^{out} = \theta_{snd(\ell),t}, \quad \ell \in \mathcal{L},  t \in \mathcal{T}
+\end{aligned}\]</p><p>Here, <span>$\theta_{rec(\ell),t}$</span> and <span>$\theta_{snd(\ell),t}$</span> are the receiving and sending junction pressure for each link <span>$\ell \in \mathcal{L}$</span> at time <span>$t$</span>.</p><p>The Julia code required to create the network optigraph is a bit more involved, but mostly because we have to define some data structures to capture the network topology. The below piece of code defines the function <code>create_gas_network</code> which accepts a dictionary of network data and calls the above defined functions to create the hierarchical optigraph. That is, the below code creates junction, compressor, and pipeline optigraphs, adds these optigraphs as subgraphs within a higher level network optigraph, and then creates linking constraints that couple the subgraphs to eachother in the form of mass conservation and boundary conditions.</p><pre><code class="language-julia hljs">function create_gas_network(net_data)
+    pipe_data = net_data[:pipeline_data]
+    comp_data = net_data[:comp_data]
+    junc_data = net_data[:junc_data]
+    pipe_map = net_data[:pipe_map]; comp_map = net_data[:comp_map]
+
+    #Create OptiGraph for entire gas network
+    network = OptiGraph()
+    network[:pipelines] = [];network[:compressors] = [];network[:junctions] = []
+    j_map = Dict()
+
+    #Create device OptiGraphs and setup data structures
+    for j_data in junc_data
+        junc= create_junction_optigraph(j_data)
+        add_subgraph(network,junc); push!(network[:junctions],junc)
+        j_map[j_data[:id]] = junc
+        junc[:devices_in] = []; junc[:devices_out] = []
+    end
+    for p_data in pipe_data
+        pipe = create_pipeline_optigraph(p_data); push!(network[:pipelines],pipe)
+        add_subgraph(network,pipe);
+        pipe[:junc_from] = j_map[p_data[:junc_from]]
+        pipe[:junc_to] = j_map[p_data[:junc_to]]
+        push!(pipe[:junc_from][:devices_out],pipe); push!(pipe[:junc_to][:devices_in],pipe)
+    end
+    for c_data in comp_data
+        comp = create_compressor_optigraph(c_data)
+        add_subgraph(gas_network,comp); comp[:data] = c_data
+        comp[:junc_from] = j_map[c_data[:junc_from]]
+        comp[:junc_to] = j_map[c_data[:junc_to]]
+        push!(comp[:junc_from][:devices_out],comp); push!(comp[:junc_to][:devices_in],comp)
+    end
+
+    # link pipelines in gas network
+    for pipe in network[:pipelines]
+        junc_from,junc_to = [pipe[:junc_from],pipe[:junc_to]]
+        @linkconstraint(network,[t = 1:nt],pipe[:pin][t] == junc_from[:pressure][t])
+        @linkconstraint(gas_network,[t = 1:nt],pipe[:pout][t] == junc_to[:pressure][t])
+    end
+
+    # link compressors in gas network
+    for comp in network[:compressors]
+        junc_from,junc_to = [comp[:junc_from].comp[:junc_to]]
+        @linkconstraint(network,[t = 1:nt],comp[:pin][t] == junc_from[:pressure][t])
+        @linkconstraint(network,[t = 1:nt],comp[:pout][t]  == junc_to[:pressure][t])
+    end
+
+    # link junctions in gas network
+    for junc in network[:junctions]
+        devices_in = junc[:devices_in]; devices_out = junc[:devices_out]
+
+        flow_in = [sum(device[:fout][t] for device in devices_in) for t = 1:nt]
+        flow_out = [sum(device[:fin][t] for device in devices_out) for t = 1:nt]
+
+        total_supplied = [junction[:total_supplied][t] for t = 1:nt]
+        total_delivered = [junction[:total_delivered][t] for t = 1:nt]
+
+        @linkconstraint(
+            gas_network,
+            [t = 1:nt], 
+            flow_in[t] - flow_out[t] + total_supplied[t] - total_delivered[t] == 0
+        )
+    end
+    return gas_network
+end</code></pre><p>Using the above function, we can obtain a complete optigraph representation of the optimal control problem. It is now possible to plot the graph layout using <a href>Plotting</a> functions or export the graph structure and use another graph visualization tool. <code>Gephi</code> was used to produce the below figure. Here, the green colors correspond to compressor nodes, blue corresponds to junctions, and grey corresponds to pipelines. Notice that the optigraph captures the space-time structure of the optimization problem. We also observe a cylindrical shape to the problem which results from the line-pack constraint which couples the initial and final time optinodes for each pipeline.</p><p><img src="../../assets/13_pipeline_space_time.svg" alt="space_time"/></p><h2 id="Partitioning"><a class="docs-heading-anchor" href="#Partitioning">Partitioning</a><a id="Partitioning-1"></a><a class="docs-heading-anchor-permalink" href="#Partitioning" title="Permalink"></a></h2><p>Now that we have an optigraph representation of our optimal control problem, we can use <a href="https://en.wikipedia.org/wiki/Hypergraph#Partitions">hypergraph partitioning</a> to decompose the space-time structure. To do so, we use <a href="https://github.com/kahypar/KaHyPar.jl">KaHyPar</a> and the functions described in <a href>Graph Partitioning and Processing</a>. the below code creates a hypergraph representation of the optigraph, sets up node and edge weights, partitions the problem, and forms new subgraphs based on the partitions. We also aggregate the subgraphs to produce solvable optinode subproblems which will communicate to our solver.</p><pre><code class="language-julia hljs"># import the KaHyPar interface
+using KaHyPar
+
+# get the hypergraph representation of the gas network
+projection = hyper_projection(gas_network)
+
+# setup node and edge weights
+n_vertices = length(vertices(hgraph))
+node_weights = [num_variables(node) for node in all_nodes(gas_network)]
+edge_weights = [num_constraints(edge) for edge in all_edges(gas_network)]
+
+#Use KaHyPar to partition the hypergraph
+node_vector = KaHyPar.partition(
+    projection,
+    13,
+    configuration=:edge_cut,
+    imbalance=0.01,
+    node_weights=node_weights,
+    edge_weights=edge_weights
+)
+
+# create a Partition object
+partition = Partition(projection, node_vector)
+
+# setup subgraphs based on the partition
+apply_partition!(gas_network, partition)</code></pre><p>The partitioned optimal control problem is visualized in the below figure and depicts the optimization problem partitioned into 13 distinct partitions.</p><p><img src="../../assets/13_pipeline_space_time_partition.svg" alt="partition"/></p><h2 id="Querying-Solutions"><a class="docs-heading-anchor" href="#Querying-Solutions">Querying Solutions</a><a id="Querying-Solutions-1"></a><a class="docs-heading-anchor-permalink" href="#Querying-Solutions" title="Permalink"></a></h2><p>The modular construction of an OptiGraph often results in variables with the same names being stored on different subgraphs or nodes, and accessing variables in OptiGraphs with multiple nodes or subgraphs is not always as simple as calling the symbol for the variable. Variable references for variables in a graph can be thought of as being &quot;nested&quot; on nodes that are &quot;nested&quot; on subgraphs. The &quot;owning&quot; subgraph can be accessed by calling <code>getsubgraphs(::OptiGraph)</code>. In addition, in the above code, each pipeline, junction, and compressor subgraph was saved on the OptiGraph <code>gas_network</code> using the symbols <code>:pipeline</code>, <code>:junction</code>, and <code>:compressor</code>, respectively. Thus, the subgraphs for each of these objects can be called by using these symbols, such as using <code>gas_network[:pipeline]</code> to get the vector of all pipeline subgraphs. <em>Importantly, the vectors of subgraphs are not in the order they appear in the network because they were formed by iterating through entries to dictionaries, which are order-free</em>. In other words, the pipelines are not in order from 1 - 13. To identify the order the pipelines, junctions, and compressors appear in their respective vectors, the user will have to track the order to which these are added in the for loop.</p><p>As an example of the &quot;nested&quot; nature of the variables, we can consider the problem above. There is a set of nodes called <code>grid</code> (that contain <code>nt</code> <span>$\times$</span> <code>nx</code> nodes) for each <code>pipeline</code> OptiGraph, and each of these nodes contain a variable called <code>px</code> and <code>fx</code>. To access the <code>px</code> variable at <span>$t = 1$</span> and <span>$x = 2$</span> on the first pipeline subgraph of the vector, we can call <code>gas_network[:pipelines][1][:grid][1, 2][:px]</code>. Here, <code>[:pipelines]</code> acesses the vector of pipelines, <code>[1]</code> accesses the first subgraph of that vector, <code>[:grid]</code> accesses the set of nodes called &quot;grid&quot;, <code>[1, 2]</code> accesses the node at time <span>$t = 1$</span> and <span>$x = 2$</span>, and <code>[:px]</code> accesses the variable called <code>px</code>. Alternatively, instead of calling <code>gas_network[:pipelines][1]</code>, the same pipeline subgraph could be accessed by calling <code>getsubgraphs(gas_network)[26]</code>. Subgraphs appear in <code>getsubgraphs(::OptiGraph)</code> in the order they were added to the OptiGraph; as the junctions are added to <code>gas_network</code> first, followed by pipelines and then compressors in the above code, the first 25 entries of <code>getsubgraphs(gas_network)</code> will correspond to junctions and entries 26 - 38 will contain the pipelines. With the variable references, a user can query solutions to these variables after calling <code>optimize!(gas_network)</code> by using <code>JuMP.value</code>, such as calling <code>value(gas_network[:pipelines][1][:grid][1, 2][:px])</code>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../supply_chain/">« Supply Chain Optimization</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.5.0 on <span class="colophon-date" title="Wednesday 14 August 2024 18:34">Wednesday 14 August 2024</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
