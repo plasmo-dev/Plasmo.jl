@@ -1056,7 +1056,10 @@ function JuMP.add_nonlinear_operator(
         )
     end
     MOI.set(graph, MOI.UserDefinedFunction(name, dim), tuple(f, args...))
-    return JuMP.NonlinearOperator(f, name)
+    registered_name = graph_operator(
+        graph_backend(graph), graph, MOI.UserDefinedFunction(name, dim)
+    )
+    return JuMP.NonlinearOperator(f, registered_name)
 end
 
 ### Objective function
@@ -1213,7 +1216,6 @@ end
 function _moi_set_objective_function(graph::OptiGraph, expr::JuMP.AbstractJuMPScalar)
     # add variables to backend if using subgraphs
     _add_backend_variables(graph_backend(graph), expr)
-
     # get the moi function made from local node variable indices
     func_type = JuMP.moi_function_type(typeof(expr))
     MOI.set(graph_backend(graph), MOI.ObjectiveFunction{func_type}(), expr)

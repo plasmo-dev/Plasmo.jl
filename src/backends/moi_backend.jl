@@ -94,8 +94,8 @@ mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     # map of nodes and edges to variables and constraints.
     node_variables::OrderedDict{OptiNode,Vector{MOI.VariableIndex}}
     element_constraints::OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}
-    element_attributes::OrderedDict{Tuple{OptiElement,MOI.AbstractModelAttribute},Any}
-    operator_map::OrderedDict{Tuple{OptiElement,Symbol},Symbol}
+    element_attributes::OrderedDict{Tuple{OptiObject,MOI.AbstractModelAttribute},Any}
+    operator_map::OrderedDict{Tuple{OptiObject,MOI.UserDefinedFunction},Symbol}
 end
 
 """
@@ -115,7 +115,7 @@ function GraphMOIBackend(graph::OptiGraph)
         OrderedDict{OptiNode,Vector{MOI.VariableIndex}}(),
         OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}(),
         OrderedDict{Tuple{OptiElement,MOI.AbstractModelAttribute},Any}(),
-        OrderedDict{Tuple{OptiElement,Symbol},Symbol}(),
+        OrderedDict{Tuple{OptiElement,MOI.UserDefinedFunction},Symbol}(),
     )
 end
 
@@ -153,8 +153,10 @@ end
 Return the name of the registered nonlinear operator in the graph backend 
 corresponding to the name in the element. 
 """
-function graph_operator(backend::GraphMOIBackend, element::OptiElement, name::Symbol)
-    return backend.operator_map[(element, name)]
+function graph_operator(
+    backend::GraphMOIBackend, element::OptiObject, attr::MOI.UserDefinedFunction
+)
+    return backend.operator_map[(element, attr)]
 end
 
 function add_node(backend::GraphMOIBackend, node::OptiNode)
@@ -269,12 +271,21 @@ end
 function MOI.set(
     backend::GraphMOIBackend, attr::MOI.UserDefinedFunction, node::OptiNode, args...
 )
-    registered_name = Symbol(node.label, ".", attr.name)
+    registered_name = Symbol(gensym(), node.label, ".", attr.name)
     MOI.set(
         backend.moi_backend, MOI.UserDefinedFunction(registered_name, attr.arity), args...
     )
     backend.element_attributes[(node, attr)] = tuple(args...)
-    return backend.operator_map[(node, attr.name)] = registered_name
+    return backend.operator_map[(node, attr)] = registered_name
+end
+
+# TODO: set operator on graph directly
+function MOI.set(backend::GraphMOIBackend, attr::MOI.UserDefinedFunction, args...)
+    registered_name = Symbol(gensym(), backend.optigraph.label, ".", attr.name)
+    MOI.set(
+        backend.moi_backend, MOI.UserDefinedFunction(registered_name, attr.arity), args...
+    )
+    return backend.operator_map[(backend.optigraph, attr)] = registered_name
 end
 
 ### variable attributes
@@ -652,7 +663,7 @@ function _add_backend_variables(
     vars = NodeVariableRef[]
     for i in 1:length(jump_func.args)
         jump_arg = jump_func.args[i]
-        if typeof(jump_arg) == JuMP.GenericNonlinearExpr
+        if jump_arg isa JuMP.GenericNonlinearExpr
             _add_backend_variables(backend, jump_arg)
         elseif typeof(jump_arg) == NodeVariableRef
             push!(vars, jump_arg)
@@ -679,8 +690,28 @@ function _copy_subgraph_backends!(backend::GraphMOIBackend)
     for subgraph in local_subgraphs(graph)
         _copy_subgraph_nodes!(backend, subgraph)
         _copy_subgraph_edges!(backend, subgraph)
-        # TODO: pass non-objective graph attributes we may need (use an MOI Filter?)
+
+        # TODO: pass other model attributes we may need
+        sub_backend = graph_backend(subgraph)
+        for ((element, attr), registered_name) in sub_backend.operator_map
+            _copy_operator(sub_backend, backend, element, attr, registered_name)
+        end
     end
+end
+
+function _copy_operator(
+    src_backend::GraphMOIBackend,
+    dest_backend::GraphMOIBackend,
+    element::OptiObject,
+    attr::MOI.UserDefinedFunction,
+    registered_name::Symbol,
+)
+    operator = MOI.get(src_backend, MOI.UserDefinedFunction(registered_name, attr.arity))
+    # set operator on new graph backend
+    attr_register = MOI.UserDefinedFunction(registered_name, attr.arity)
+    MOI.set(dest_backend.moi_backend, attr_register, operator)
+    dest_backend.operator_map[(element, attr)] = registered_name
+    return nothing
 end
 
 function _copy_subgraph_nodes!(backend::GraphMOIBackend, subgraph::OptiGraph)
