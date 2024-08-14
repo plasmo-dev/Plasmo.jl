@@ -23,10 +23,7 @@ makedocs(;
         "Introduction" => "index.md",
         "Quickstart" => "documentation/quickstart.md",
         "Modeling with OptiGraphs" => "documentation/modeling.md",
-        "Graph Partitioning and Processing" => "documentation/partitioning.md",
-        "Tutorials" =>
-            ["Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md",
-            "Optimal Control of a Quadcopter" => "tutorials/quadcopter.md"],
+        "Graph Processing and Analysis" => "documentation/graph_processing.md",
         "API Documentation" => "documentation/api_docs.md",
         "Tutorials" => [
             "Supply Chain Optimization" => "tutorials/supply_chain.md",
