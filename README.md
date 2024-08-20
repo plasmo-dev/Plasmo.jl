@@ -37,7 +37,7 @@ Pkg.add("Plasmo")
 
 ## Documentation
 
-The current documentation is available through [GitHub Pages]([https://plasmo-dev.github.io/Plasmo.jl/dev/](https://plasmo-dev.github.io/Plasmo.jl/stable/)).
+The current documentation is available through [GitHub Pages](https://plasmo-dev.github.io/Plasmo.jl/stable/).
 Additional examples can be found in the [examples](https://github.com/plasmo-dev/Plasmo.jl/tree/main/examples) folder.
 
 ## Simple Example
