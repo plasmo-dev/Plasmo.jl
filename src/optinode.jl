@@ -117,9 +117,8 @@ function JuMP.num_variables(node::OptiNode)
 end
 
 function JuMP.all_variables(node::OptiNode)
-    gb = graph_backend(node)
-    graph_indices = gb.node_variables[node]
-    return getindex.(Ref(gb.graph_to_element_map), graph_indices)
+    var_inds = MOI.get(node, MOI.ListOfVariableIndices(), node)
+    return NodeVariableRef.(Ref(node), var_inds)
 end
 
 function JuMP.delete(node::OptiNode, cref::ConstraintRef)
@@ -211,7 +210,13 @@ function _check_node_variables(
         NodeVariableRef,JuMP.GenericAffExpr,JuMP.GenericQuadExpr,JuMP.GenericNonlinearExpr
     },
 )
-    return isempty(setdiff(_extract_variables(jump_func), JuMP.all_variables(node)))
+    extract_vars = _extract_variables(jump_func)
+    for var in extract_vars
+        if var.node != node
+            error("Variable $var does not belong to node $node")
+        end
+    end
+    return nothing
 end
 
 ### Objective

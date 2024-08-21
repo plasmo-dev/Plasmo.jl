@@ -235,6 +235,15 @@ function MOI.get(backend::GraphMOIBackend, attr::MOI.NumberOfVariables, node::Op
     return length(backend.node_variables[node])
 end
 
+function MOI.get(backend::GraphMOIBackend, attr::MOI.ListOfVariableIndices, node::OptiNode)
+    graph_indices = backend.node_variables[node]
+    var_indices = MOI.VariableIndex[]
+    for graph_index in graph_indices
+        push!(var_indices, backend.graph_to_element_map[graph_index].index)
+    end
+    return var_indices
+end
+
 function MOI.get(
     backend::GraphMOIBackend, attr::MOI.ListOfConstraintTypesPresent, element::OptiElement
 )
