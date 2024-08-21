@@ -94,6 +94,10 @@ function JuMP.delete(graph::OptiGraph, cref::ConstraintRef)
     #TODO: Probably need to delete the edge altogether if it is the only constraint on the edge
 end
 
+function JuMP.unregister(graph::OptiGraph, key::Symbol)
+    delete!(object_dictionary(graph), key)
+end
+
 ### Edge Constraints
 
 # NOTE: could use one method for node and edge
