@@ -133,6 +133,10 @@ function JuMP.delete(node::OptiNode, cref::ConstraintRef)
     return nothing
 end
 
+function JuMP.unregister(node::OptiNode, key::Symbol)
+    delete!(object_dictionary(node), (node, key))
+end
+
 ### Duals
 
 """
