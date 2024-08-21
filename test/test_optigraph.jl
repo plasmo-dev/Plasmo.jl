@@ -293,6 +293,11 @@ function test_variable_constraints()
     set_start_value(n2[:x], 3.0)
     @test start_value(n2[:x]) == 3.0
 
+    # variable not owned
+    @test_throws ErrorException("Variable $(n1[:x]) does not belong to node $n2") @constraint(
+        n2, n1[:x] >= 0
+    )
+
     # bounds
     @test has_lower_bound(n1[:x]) == true
     @test has_upper_bound(n1[:x]) == false
