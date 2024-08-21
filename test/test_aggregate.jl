@@ -41,8 +41,8 @@ function _create_test_model()
     model = Model()
     @variable(model, x[1:10] >= 0)
     @variable(model, y[1:5] >= 2)
-    @constraint(model, [j = 1:5], x[j] + y[j] <= 10)
-    @constraint(model, sum(x) <= y[1]^4)
+    @constraint(model, cons[j=1:5], x[j] + y[j] <= 10)
+    @constraint(model, sum_con_ref, sum(x) <= y[1]^4)
     @objective(model, Min, sum(x) + sum(y)^3)
     return model
 end
@@ -79,6 +79,12 @@ function test_set_model()
 
     @test objective_value(m) == objective_value(graph, n1)
     @test value.(all_variables(m)) == value.(graph, all_variables(n1))
+
+    node_vars = all_variables(n1)
+    @test n1[:x] == node_vars[1:10]
+    @test n1[:y] == node_vars[11:15]
+    @test (n1, :cons) in keys(Plasmo.node_object_dictionary(n1))
+    @test (n1, :sum_con_ref) in keys(Plasmo.node_object_dictionary(n1))
 end
 
 function test_aggregate_to_depth()
