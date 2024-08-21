@@ -4,7 +4,7 @@ By: Rishi Mandyam
 
 This tutorial notebook is an introduction to the graph-based modeling framework 
 Plasmo.jl (Platform for Scalable Modeling and Optimization) for JuMP 
-(Julia for Mathematical Programming). The code below as a single Julia file can be found [here](https://github.com/plasmo-dev/Plasmo.jl/tree/main/examples/quadcopter_example.jl).
+(Julia for Mathematical Programming).
 
 The following problem comes from the paper of Na, Shin,  Anitescu, and Zavala (available [here](https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=9840913)).
 
