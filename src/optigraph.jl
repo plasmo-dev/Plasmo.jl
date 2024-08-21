@@ -1423,3 +1423,7 @@ function _set_objective_coefficient(
     )
     return nothing
 end
+
+function _set_dirty(graph::OptiGraph)
+    graph.is_model_dirty = true
+end
