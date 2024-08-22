@@ -39,7 +39,6 @@ using Plots
 using LinearAlgebra
 ```
 
-
 ### 2. Function Design
 
 We will define a function called `build_quadcopter_graph` that will take arguments for the number of nodes and the discretization size (i.e., $\Delta t$), optimize the model, and return the graph and reference values $x^{ref}$.  
@@ -164,7 +163,6 @@ function add_objective!(nodes, N, dt)
         ]
 
         xk1 = xk .- xk_ref1[i, :] # Array to hold the difference between variable values and their setpoints.
-
         uk = [node[:C_a], node[:wx], node[:wy], node[:wz]]
         @objective(node, Min, (1 / 2 * (xk1') * Q * (xk1) + 1 / 2 * (uk') * R * (uk)) * dt)
     end
@@ -232,11 +230,13 @@ zarray[2] = 0:10/(N-1):10
 Now, let's visualize the position of the quadcopter in relation to its setpoint in each dimension. Below is the code for doing so in the x-dimension, and the code can be adapted for the y and z dimensions. 
 
 ```julia
-plot((1:length(xval_array)), xarray[1:end], 
-  title = "X value over time", 
-  xlabel = "Node (N)", 
-  ylabel = "X Value", 
-  label = ["Current X position" "X Setpoint"]
+plot(
+    1:length(xval_array),
+    xarray[1:end], 
+    title = "X value over time", 
+    xlabel = "Node (N)", 
+    ylabel = "X Value", 
+    label = ["Current X position" "X Setpoint"]
 )
 ```
 
@@ -252,7 +252,6 @@ N = length(time_steps)
 dt = .5
 obj_val_N = zeros(N)
 
-
 for i in 1:length(time_steps)
     timing = @elapsed begin
     objval, graph, xk_ref = build_quadcopter_graph(time_steps[i], 10 / time_steps[i]);
@@ -261,11 +260,14 @@ for i in 1:length(time_steps)
     println("Done with iteration $i after ", timing, " seconds")
 end
 
-Quad_Obj_NN = plot(time_steps, obj_val_N, 
-    title = "Objective Value vs Number of Nodes (N)", 
-    xlabel = "Number of Nodes (N)", 
-    ylabel = "Objective Value",
-    label  = "Objective Value")
+Quad_Obj_NN = plot(
+    time_steps,
+    obj_val_N, 
+    title="Objective Value vs Number of Nodes (N)", 
+    xlabel="Number of Nodes (N)", 
+    ylabel="Objective Value",
+    label="Objective Value"
+)
 ```
 
 <img src = "../assets/Quadcopter_Obj_NN.png" alt = "drawing" width = "600"/>
