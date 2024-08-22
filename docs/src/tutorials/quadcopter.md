@@ -49,8 +49,8 @@ The function inputs are:
 - time discretization (number of seconds between nodes `dt`)
 
 The function outputs are:
-- The graph
 - The objective value of the discretized form of $\phi$
+- The graph
 - An array with the reference values on each node ($x^{ref}$)
 
 The `build_quadcopter_graph` function will use three supporting functions that will add variables, add constraints (both local and linking) and add the objectives to the nodes. These functions will be detailed below before they are used to build the full quadcopter graph. 
