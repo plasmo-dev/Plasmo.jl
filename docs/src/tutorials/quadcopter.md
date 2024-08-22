@@ -173,7 +173,7 @@ end
 ```
 
 We can now define the function for building the optigraph. We initialize an OptiGraph and set the optimizer. We then define `N` nodes on the OptiGraph `graph`. We then call the three functions above and call `set_to_node_objectives` to set the graph's objective to the nodes' objectives we have defined. We can then call `optimize` and return the objective value, the graph, and the reference points. 
-```Julia
+```julia
 function build_quadcopter_graph(N, dt)
     graph = OptiGraph()
     solver = optimizer_with_attributes(Ipopt.Optimizer, "max_iter" => 100)
