@@ -1423,3 +1423,7 @@ function _set_objective_coefficient(
     )
     return nothing
 end
+
+function JuMP.unregister(graph::OptiGraph, key::Symbol)
+    delete!(object_dictionary(graph), key)
+end

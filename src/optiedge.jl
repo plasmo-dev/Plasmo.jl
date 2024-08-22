@@ -76,6 +76,13 @@ function JuMP.all_variables(edge::OptiEdge)
     return unique(vars)
 end
 
+function _set_dirty(edge::OptiEdge)
+    for graph in containing_optigraphs(edge)
+        graph.is_model_dirty = true
+    end
+    return nothing
+end
+
 ### Edge Constraints
 
 # NOTE: could use one method for node and edge

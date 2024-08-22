@@ -440,6 +440,26 @@ function test_nlp_exceptions()
     @test_throws Exception @NLconstraint(graph, graph[1][:x]^3 >= 0)
 end
 
+function test_delete_extensions()
+    graph = OptiGraph()
+    @optinode(graph, nodes[1:2])
+
+    @variable(nodes[1], x >= 1)
+    @variable(nodes[2], x >= 2)
+    @constraint(nodes[1], n_con, nodes[1][:x]^2 >= 1)
+    @linkconstraint(graph, l_con, nodes[1][:x] + nodes[2][:x] == 4)
+
+    edge = JuMP.owner_model(l_con)
+
+    @test_throws ErrorException JuMP.delete(edge, n_con)
+    @test_throws ErrorException JuMP.delete(nodes[1], l_con)
+
+    JuMP.delete(nodes[1], n_con)
+    @test !(n_con in all_constraints(nodes[1]))
+    JuMP.delete(edge, l_con)
+    @test !(l_con in all_link_constraints(graph))
+end
+
 function run_tests()
     for name in names(@__MODULE__; all=true)
         if !startswith("$(name)", "test_")

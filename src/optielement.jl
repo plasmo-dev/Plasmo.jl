@@ -144,3 +144,15 @@ function JuMP.all_constraints(
     end
     return constraints
 end
+
+function JuMP.delete(element::OptiElement, cref::ConstraintRef)
+    if element !== JuMP.owner_model(cref)
+        error(
+            "The constraint reference you are trying to delete does not " *
+            "belong to the model.",
+        )
+    end
+    _set_dirty(element)
+    MOI.delete(element, cref)
+    return nothing
+end
