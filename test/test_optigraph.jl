@@ -449,12 +449,14 @@ function test_delete_extensions()
     @constraint(nodes[1], n_con, nodes[1][:x]^2 >= 1)
     @linkconstraint(graph, l_con, nodes[1][:x] + nodes[2][:x] == 4)
 
-    @test_throws ErrorException JuMP.delete(graph, n_con)
+    edge = JuMP.owner_model(l_con)
+
+    @test_throws ErrorException JuMP.delete(edge, n_con)
     @test_throws ErrorException JuMP.delete(nodes[1], l_con)
 
     JuMP.delete(nodes[1], n_con)
     @test !(n_con in all_constraints(nodes[1]))
-    JuMP.delete(graph, l_con)
+    JuMP.delete(edge, l_con)
     @test !(l_con in all_link_constraints(graph))
 end
 

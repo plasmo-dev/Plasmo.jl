@@ -76,26 +76,11 @@ function JuMP.all_variables(edge::OptiEdge)
     return unique(vars)
 end
 
-function JuMP.delete(graph::OptiGraph, cref::ConstraintRef)
-    if typeof(JuMP.owner_model(cref)) == OptiNode{OptiGraph}
-        error(
-            "You have passed a node constraint but specified an OptiGraph." *
-            "Use `JuMP.delete(::OptiNode, ::ConstraintRef)` instead",
-        )
+function _set_dirty(edge::OptiEdge)
+    for graph in containing_optigraphs(edge)
+        graph.is_model_dirty = true
     end
-    if graph !== source_graph(JuMP.owner_model(cref))
-        error(
-            "The constraint reference you are trying to delete does not" *
-            "belong to the specified graph",
-        )
-    end
-    _set_dirty(graph)
-    MOI.delete(JuMP.owner_model(cref), cref)
-    #TODO: Probably need to delete the edge altogether if it is the only constraint on the edge
-end
-
-function JuMP.unregister(graph::OptiGraph, key::Symbol)
-    delete!(object_dictionary(graph), key)
+    return nothing
 end
 
 ### Edge Constraints

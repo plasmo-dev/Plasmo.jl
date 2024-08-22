@@ -121,18 +121,6 @@ function JuMP.all_variables(node::OptiNode)
     return NodeVariableRef.(Ref(node), var_inds)
 end
 
-function JuMP.delete(node::OptiNode, cref::ConstraintRef)
-    if node !== JuMP.owner_model(cref)
-        error(
-            "The constraint reference you are trying to delete does not " *
-            "belong to the model.",
-        )
-    end
-    _set_dirty(node)
-    MOI.delete(node, cref)
-    return nothing
-end
-
 function JuMP.unregister(node::OptiNode, key::Symbol)
     delete!(object_dictionary(node), (node, key))
 end
