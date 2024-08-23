@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Supply Chain Optimization · Plasmo.jl</title><meta name="title" content="Supply Chain Optimization · Plasmo.jl"/><meta property="og:title" content="Supply Chain Optimization · Plasmo.jl"/><meta property="twitter:title" content="Supply Chain Optimization · Plasmo.jl"/><meta name="description" content="Documentation for Plasmo.jl."/><meta property="og:description" content="Documentation for Plasmo.jl."/><meta property="twitter:description" content="Documentation for Plasmo.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Plasmo.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Plasmo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../documentation/quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../documentation/modeling/">Modeling with OptiGraphs</a></li><li><a class="tocitem" href="../../documentation/graph_processing/">Graph Processing and Analysis</a></li><li><a class="tocitem" href="../../documentation/api_docs/">API Documentation</a></li><li><span class="tocitem">Tutorials</span><ul><li class="is-active"><a class="tocitem" href>Supply Chain Optimization</a></li><li><a class="tocitem" href="../quadcopter/">Optimal Control of a Quadcopter</a></li><li><a class="tocitem" href="../gas_pipeline/">Optimal Control of a Natural Gas Network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Supply Chain Optimization</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Supply Chain Optimization</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl/blob/main/docs/src/tutorials/supply_chain.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Supply-Chain-Optimization"><a class="docs-heading-anchor" href="#Supply-Chain-Optimization">Supply Chain Optimization</a><a id="Supply-Chain-Optimization-1"></a><a class="docs-heading-anchor-permalink" href="#Supply-Chain-Optimization" title="Permalink"></a></h1><p>This tutorial shows how to model a supply chain using Plasmo.jl. This problem has a natural graph representation which we will follow in constructing the problem. Code for this problem is also available <a href="https://github.com/zavalab/JuliaBox/blob/master/CBE_Chapter/Supply_Chain.jl">here</a>. This example is from the textbook <em>Introduction to Software for Chemical Engineers</em> (3rd edition) in Chapter 22, &quot;Optimization in Chemical and Biological Engineering using Julia.&quot;</p><h3 id="Mathematical-Formulation"><a class="docs-heading-anchor" href="#Mathematical-Formulation">Mathematical Formulation</a><a id="Mathematical-Formulation-1"></a><a class="docs-heading-anchor-permalink" href="#Mathematical-Formulation" title="Permalink"></a></h3><p>The supply chain being modeled includes a set of suppliers and consumers, where the suppliers ship products to technologies (for product conversion) or directly to the consumers. Suppliers, consumers, and technologies are located at specific locations (represented by nodes) with varying transportation capacity and costs between nodes. This problem includes the following sets: </p><ul><li><p class="math-container">\[P\]</p><ul><li>Products</li></ul></li><li><p class="math-container">\[S\]</p><ul><li>Suppliers</li></ul></li><li><p class="math-container">\[D\]</p><ul><li>Demands</li></ul></li><li><p class="math-container">\[L\]</p><ul><li>Lines (for transporting products)</li></ul></li><li><p class="math-container">\[T\]</p><ul><li>Technologies</li></ul></li><li><p class="math-container">\[N\]</p><ul><li>Nodes (locations)</li></ul></li></ul><p>Each supplier and consumer only sells or consumes a single product. In addition <span>$L$</span> connects two nodes in <span>$N$</span> and has an associated direction (i.e., this is a directed graph). As each supplier, consumer, and technology are located at a specific node, we will denote these objects at a given node <span>$n \in N$</span> by <span>$S(n)$</span>, <span>$D(n)$</span>, and <span>$T(n)$</span>, and we will denote the set of all lines originating at node <span>$n$</span> as <span>$L_{in}(n)$</span> and the set of all lines ending at at node <span>$n$</span> as <span>$L_{out}(n)$</span>. We will also add superscripts to these sets for specific products when applicable (e.g., <span>$D^p(n)$</span> represents the consumers at node <span>$n \in N$</span> that consume product <span>$p \in P$</span>). Mathematically, this multi-product supply chain problem is given by:</p><p class="math-container">\[\begin{align*} 
+    \max &amp;\; \sum_{n \in N} \left( \sum_{i \in D(n)} \alpha^d_i d_i - \sum_{i \in S(n)} \alpha^s_i s_i - \sum_{i \in T(n)} \alpha^t_i \xi_i \right) - \sum_{i \in L} \alpha^f_i f_i\\
+    \textrm{s.t.} &amp;\; \sum_{i \in S^p(n)}s_i - \sum_{i \in D^p(n)} d_i + \sum_{i \in L_{in}^p(n)} f_i - \sum_{i \in L_{out}^p(n)} f_i + \sum_{i \in T(n)} \gamma_{i, p} \xi_i = 0 \quad n \in N, p \in P\\
+    &amp;\; 0 \le s_i \le \overline{s}_i, \quad i \in S(n),  n \in N \\
+    &amp;\; 0 \le d_i \le \overline{d}_i, \quad i \in D(n), n \in N \\
+    &amp;\; 0 \le \xi_i \le \overline{\xi}_i, \quad i \in T(n), n \in N \\
+    &amp;\; 0 \le f_i \le \overline{f}_i, \quad i \in L
+\end{align*}\]</p><p>Here, <span>$s_i$</span> is the amount of product supplied by supplier <span>$i$</span>, <span>$d_i$</span> is the amount of product purchased by consumer <span>$i$</span>, <span>$\xi_i$</span> is the amount of product used to produce a new product by technology <span>$i$</span>, and <span>$f_i$</span> is the amount of product transported by line <span>$i \in L$</span>. Since each supplier, consumer, and line only handle a single product, these variables do not include the product notation. The technologies consume certain products to produce other products, and the ratio of consumption to generation is captured by the parameter <span>$\gamma_{i,p}, i \in T, p \in P$</span>, where <span>$\gamma_{i, p}$</span> is negative if product <span>$p$</span> is consumed by technology <span>$i$</span>, positive if product <span>$p$</span> is produced by technology <span>$i$</span>, and <span>$0$</span> otherwise. <span>$\alpha^d_i$</span> is the price paid by consumer <span>$i$</span> for each unit of product, <span>$\alpha^s_i$</span> is the cost for supplier <span>$i$</span> to supply each unit of product, <span>$\alpha^t_i$</span> is the cost to operate technology <span>$i$</span> to consume one unit of product, and <span>$\alpha^f_i$</span> is the cost to ship one unit of product on line <span>$i$</span>. The parameters <span>$\overline{s}_i$</span>, <span>$\overline{d}_i$</span>, <span>$\overline{\xi}_i$</span>, and <span>$\overline{f}_i$</span> are the upper bounds on their respective variables. </p><p>The objective function seeks to maximize profit by providing product to consumers while being penalized for the costs from supply, technology, and transport. Each node includes a balance on each product (defined by the first constraint) which requires that the units of product supplied, produced, transported, or consumed (by consumers or by technologies) at each node must be equal to zero. </p><h3 id="Defining-the-Data"><a class="docs-heading-anchor" href="#Defining-the-Data">Defining the Data</a><a id="Defining-the-Data-1"></a><a class="docs-heading-anchor-permalink" href="#Defining-the-Data" title="Permalink"></a></h3><p>The data for the supply chain is given below. Here, we have two nodes, <span>$n_1$</span> and <span>$n_2$</span>, with two suppliers, one consumer, and two technologies located at <span>$n_1$</span> and two other consumers located at node <span>$n_2$</span>. There are three different products, <span>$p_1$</span>, <span>$p_2$</span>, and <span>$p_3$</span>, and each supplier only produces <span>$p_1$</span>. One technology can produce <span>$p_2$</span> and the other can produce <span>$p_3$</span>. There are two lines between the nodes; one transfers <span>$p_2$</span> and the other transfers <span>$p_3$</span>. </p><p>First, we define the sets in Julia:</p><pre><code class="language-julia hljs"># Data sets
+N = [&quot;n1&quot;, &quot;n2&quot;]; P = [&quot;p1&quot;, &quot;p2&quot;, &quot;p3&quot;];
+S = [&quot;s1(p1)&quot;, &quot;s2(p1)&quot;]; D = [&quot;n1(p2)&quot;, &quot;n2(p2)&quot;, &quot;n2(p3)&quot;];
+L = [&quot;n1-&gt;n2(p2)&quot;, &quot;n1-&gt;n2(p3)&quot;]; T = [&quot;p1-p2&quot;, &quot;p1-p3&quot;];</code></pre><p>We next define data for the suppliers, including mapping each node to a set of suppliers and mapping each supplier to a product, upper bound, and cost of supply. </p><pre><code class="language-julia hljs"># Map nodes to supplies
+sloc = Dict(&quot;n1&quot; =&gt; [S[1], S[2]], &quot;n2&quot; =&gt; [])
+
+# Map supplies to products they supply
+sprod = [&quot;p1&quot;,&quot;p1&quot;]; sprod = Dict(zip(S,sprod));
+
+# Define upper bounds on supplies
+sub = [1000,500]; sub = Dict(zip(S,sub)); # unit
+
+# Define cost of supplying one unit of a supply&#39;s product
+sbid = [3,2.5]; sbid = Dict(zip(S, sbid)); # $/unit</code></pre><p>Next, we define the consumers and similarly map each node to a set of consumers and map each consumer to a product, upper bound, and price for the products. </p><pre><code class="language-julia hljs"># Map nodes to demands
+dloc = Dict(&quot;n1&quot; =&gt; [D[1]], &quot;n2&quot; =&gt; [D[2], D[3]])
+
+# Map demands to the products they require
+dprod = [&quot;p2&quot;,&quot;p2&quot;,&quot;p3&quot;]; dprod = Dict(zip(D,dprod));
+
+# Define upper bounds on demands
+dub = [100,200,500]; dub = Dict(zip(D,dub)); # unit
+
+# Define price for one unit of the demand&#39;s product
+dbid = [300,300,15]; dbid = Dict(zip(D,dbid)) # $/unit</code></pre><p>Next, we define the set of technologies, again mapping the nodes to a set of technologies and mapping the technologies to upper bounds on production and the cost of conversion. We also define the <span>$\gamma$</span> variable which contains the conversion rates for the products. </p><pre><code class="language-julia hljs"># Map nodes to technologies
+ξloc = Dict(&quot;n1&quot; =&gt; [T[1], T[2]], &quot;n2&quot; =&gt; [])
+
+# Define upper bounds on technology conversions
+ξub = [1000,1000]; ξub = Dict(zip(T,ξub)); # unit
+
+# Define cost of converting one unit of product
+ξbid = [1,0.5]; ξbid = Dict(zip(T,ξbid)); # $/unit
+
+# Product conversion matrices; rows are technologies, columns are products
+γ = [-1.0 0.9 0.0;
+     -1.0 0.0 0.3]
+γ = Dict((T[i], P[j]) =&gt; γ[i, j] for j in eachindex(P), i in eachindex(T));</code></pre><p>Finally, we define data for the transportation lines. Here, <code>flocs</code> is a mapping of the source node and <code>flocr</code> is a mapping of the destination nodes for each line. Finally, we set upper bounds on each line, define the products the lines can transport, and define the cost of transportation. </p><pre><code class="language-julia hljs"># Map transport data (flocs = supplying node; flocr = receiving node)
+flocs = [&quot;n1&quot;,&quot;n1&quot;]; flocs = Dict(zip(L,flocs));
+flocr = [&quot;n2&quot;,&quot;n2&quot;]; flocr = Dict(zip(L,flocr));
+
+# Define upper bounds on transport
+fub = [1000,1000]; fub = Dict(zip(L,fub)); # unit
+
+# Map transport flows to the product they support
+fprod = [[&quot;p2&quot;], [&quot;p3&quot;]]; fprod = Dict(zip(L,fprod));
+
+# Define cost of transporting a unit of product
+fbid = [0.1,0.1]; fbid = Dict(zip(L,fbid)); # $/unit</code></pre><h3 id="Modeling-in-Plasmo.jl"><a class="docs-heading-anchor" href="#Modeling-in-Plasmo.jl">Modeling in Plasmo.jl</a><a id="Modeling-in-Plasmo.jl-1"></a><a class="docs-heading-anchor-permalink" href="#Modeling-in-Plasmo.jl" title="Permalink"></a></h3><p>With the data defined, we can now model the supply chain with Plasmo. Because variables must be placed on nodes, we will create OptiNodes for each node in <span>$N$</span> and for each line in <span>$L$</span>. We first load in the required packages, instantiate the OptiGraph, and define OptiNodes:</p><pre><code class="language-julia hljs">using Plasmo, HiGHS
+graph = OptiGraph()
+
+@optinode(graph, nodes[N])
+@optinode(graph, transport[L])</code></pre><p>Next, we loop through the set of nodes, <span>$N$</span>, and add variables for the suppliers (<span>$s_i$</span>), consumers (<span>$d_i$</span>), and technology production (<span>$\xi_i$</span>). We then define upper bounds on the variables and we define expressions that sum the supplies, demands, and technologies on each node. We next define expressions for the costs and finally set the objective on the node, which is maximizing a summation of the profit from selling a product minus the cost of supply and the cost of technology conversion.</p><pre><code class="language-julia hljs">for n in N
+    # Define variables based on above mappings
+    @variable(nodes[n], s[sloc[n]]&gt;=0)
+    @variable(nodes[n], d[dloc[n]]&gt;=0)
+    @variable(nodes[n], ξ[ξloc[n]]&gt;=0)
+
+    # Define upper bounds on variables
+    @constraint(nodes[n], [i in sloc[n]], s[i] &lt;= sub[i])
+    @constraint(nodes[n], [j in dloc[n]], d[j] &lt;= dub[j])
+    @constraint(nodes[n], [t in ξloc[n]], ξ[t] &lt;= ξub[t])
+
+    # Define expressions for summing supplies, demands, techs on a node
+    @expression(nodes[n], sum_supplies[p in P],
+        sum(s[i] for i in sloc[n] if sprod[i] == p)
+    )
+    @expression(nodes[n], sum_demands[p in P],
+        sum(d[j] for j in dloc[n] if dprod[j] == p)
+    )
+    @expression(nodes[n], sum_techs[p in P], sum(ξ[t] * γ[t, p] for t in ξloc[n]))
+
+    # Define cost expressions for a node
+    scost = @expression(nodes[n], sum(sbid[i] * s[i] for i in sloc[n]))
+    dcost = @expression(nodes[n], sum(dbid[j] * d[j] for j in dloc[n]))
+    ξcost = @expression(nodes[n], sum(ξbid[t] * ξ[t] for t in ξloc[n]))
+
+    # Set objective on each node
+    @objective(nodes[n], Max, dcost - scost - ξcost)
+end</code></pre><p>Next, we similarly loop through the set of lines, <span>$L$</span>, and define a variable for the flow of product (<span>$f_i$</span>). We then set the upper bound and define an expression for the flow in and out for the line for each product (this is to simplify the product mass balances later). We also set an objective on these nodes. </p><pre><code class="language-julia hljs"># Define variables/constraints/objectives for transport nodes
+for l in L
+    # Define flow variable
+    @variable(transport[l], f[fprod[l]] &gt;= 0)
+
+    # Set upper bound on flow variable
+    @constraint(transport[l], [j in fprod[l]], f[j] &lt;= fub[l])
+
+    # Define flow in and out of nodes
+    @expression(transport[l], flow_in[p in P, n in N],
+        sum(f[i] for i in fprod[l] if flocr[l] == n &amp;&amp; i == p)
+    )
+    @expression(transport[l], flow_out[p in P, n in N],
+        sum(f[i] for i in fprod[l] if flocs[l] == n &amp;&amp; i == p)
+    )
+
+    # Set objective (penalizing transport costs)
+    @objective(transport[l], Max, - sum(fbid[l] * f[j] for j in fprod[l]))
+end</code></pre><p>With the nodes defined, we can now set the linking constraints for each product. Here, we define a node balance for each product, where, for each product, we have a mass balance (supply - consumption - flow out + flow in - technology consumption). </p><pre><code class="language-julia hljs"># For each node, do a product balance for each product
+for n in N
+    for p in P
+        # Node balance must be equal to zero
+        node_balance = (nodes[n][:sum_supplies][p] - nodes[n][:sum_demands][p] +
+            nodes[n][:sum_techs][p] + sum(transport[l][:flow_in][p, n] for l in L) -
+            sum(transport[l][:flow_out][p, n] for l in L)
+        )
+        if node_balance != 0
+            @linkconstraint(graph, node_balance == 0)
+        end
+    end
+end</code></pre><p>The form of this graph network is visualized below, where the (hyper)edges contain the flow constraints defined above: </p><p><img src="../../assets/sc_optigraph.png" alt="sc_optigraph"/></p><p>Finally, we set the optimizer on the graph and the overall objective on the graph. </p><blockquote><p>[!NOTE]  After the changes made between Plasmo v0.5.4 and v0.6.0, we must now include the function <code>set_to_node_objectives(graph)</code> in the script below to set the graph&#39;s objective to use the individual node objectives. In former versions of Plasmo, the graph used the node objectives automatically. </p></blockquote><pre><code class="language-julia hljs">set_optimizer(graph, HiGHS.Optimizer)
+set_to_node_objectives(graph)</code></pre><p>Finally, we can call <code>optimize!</code> and then query the solutions on each node. </p><pre><code class="language-julia hljs">optimize!(graph)
+println(objective_value(graph))
+println(&quot;Node 1 demand solutions = &quot;, value.(graph[:nodes][&quot;n1&quot;][:d]))
+println(&quot;Node 2 demand solutions = &quot;, value.(graph[:nodes][&quot;n2&quot;][:d]))
+println(&quot;Technology conversion = &quot;, value.(graph[:nodes][&quot;n1&quot;][:ξ]))</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../documentation/api_docs/">« API Documentation</a><a class="docs-footer-nextpage" href="../quadcopter/">Optimal Control of a Quadcopter »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.6.0 on <span class="colophon-date" title="Friday 23 August 2024 04:17">Friday 23 August 2024</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
