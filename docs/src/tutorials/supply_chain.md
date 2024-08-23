@@ -6,12 +6,12 @@ This tutorial shows how to model a supply chain using Plasmo.jl. This problem ha
 
 The supply chain being modeled includes a set of suppliers and consumers, where the suppliers ship products to technologies (for product conversion) or directly to the consumers. Suppliers, consumers, and technologies are located at specific locations (represented by nodes) with varying transportation capacity and costs between nodes. This problem includes the following sets: 
 
- * $P$ - Products
- * $S$ - Suppliers
- * $D$ - Demands
- * $L$ - Lines (for transporting products)
- * $T$ - Technologies
- * $N$ - Nodes (locations)
+ * Products ($P$)
+ * Suppliers ($S$)
+ * Demands ($D$)
+ * Lines for transporting products ($L$)
+ * Technologies ($T$)
+ * Nodes/Locations ($N$)
 
 Each supplier and consumer only sells or consumes a single product. In addition $L$ connects two nodes in $N$ and has an associated direction (i.e., this is a directed graph). As each supplier, consumer, and technology are located at a specific node, we will denote these objects at a given node $n \in N$ by $S(n)$, $D(n)$, and $T(n)$, and we will denote the set of all lines originating at node $n$ as $L_{in}(n)$ and the set of all lines ending at at node $n$ as $L_{out}(n)$. We will also add superscripts to these sets for specific products when applicable (e.g., $D^p(n)$ represents the consumers at node $n \in N$ that consume product $p \in P$). Mathematically, this multi-product supply chain problem is given by:
 
@@ -188,8 +188,9 @@ The form of this graph network is visualized below, where the (hyper)edges conta
 ![sc_optigraph](../assets/sc_optigraph.png)
 
 Finally, we set the optimizer on the graph and the overall objective on the graph. 
-> [!NOTE] 
-> After the changes made between Plasmo v0.5.4 and v0.6.0, we must now include the function `set_to_node_objectives(graph)` in the script below to set the graph's objective to use the individual node objectives. In former versions of Plasmo, the graph used the node objectives automatically. 
+
+!!! note
+    After the changes made between Plasmo v0.5.4 and v0.6.0, we must now include the function `set_to_node_objectives(graph)` in the script below to set the graph's objective to use the individual node objectives. In former versions of Plasmo, the graph used the node objectives automatically. 
 
 ```julia
 set_optimizer(graph, HiGHS.Optimizer)
