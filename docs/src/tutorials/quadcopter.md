@@ -239,10 +239,9 @@ plot(
     label = ["Current X position" "X Setpoint"]
 )
 ```
-
-<img src = "../assets/Quadcopter_Xpos.png" alt = "drawing" width = "600"/>
-<img src = "../assets/Quadcopter_Ypos.png" alt = "drawing" width = "600"/>
-<img src = "../assets/Quadcopter_Zpos.png" alt = "drawing" width = "600"/>
+![QuadcopterXpos](../assets/Quadcopter_Xpos.png)
+![QuadcopterYpos](../assets/Quadcopter_Ypos.png)
+![QuadcopterZpos](../assets/Quadcopter_Zpos.png)
 
 Now that we have solved for the optimal solution, let's explore a correlation. Let's see how increasing the number of nodes changes the objective value of the system. In the code snippet below, we keep the time horizon the same (10 seconds) while changing the number of nodes (i.e., the discretization intervals)
 ```julia
@@ -270,7 +269,4 @@ Quad_Obj_NN = plot(
 )
 ```
 
-<img src = "../assets/Quadcopter_Obj_NN.png" alt = "drawing" width = "600"/>
-
-
-
+![Quadcopter_Ojb](../assets/Quadcopter_Obj_NN.png)
