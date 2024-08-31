@@ -104,12 +104,10 @@ end
 Initialize an empty backend given an optigraph.
 By default we use a `CachingOptimizer` to store the underlying optimizer just like JuMP.
 """
-function GraphMOIBackend(graph::OptiGraph)
-    inner = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
-    cache = MOI.Utilities.CachingOptimizer(inner, MOI.Utilities.AUTOMATIC)
+function GraphMOIBackend(graph::OptiGraph, backend::MOI.ModelLike)
     return GraphMOIBackend(
         graph,
-        cache,
+        backend,
         ElementToGraphMap(),
         GraphToElementMap(),
         OrderedDict{OptiNode,Vector{MOI.VariableIndex}}(),
@@ -119,10 +117,72 @@ function GraphMOIBackend(graph::OptiGraph)
     )
 end
 
-function graph_index(
-    backend::GraphMOIBackend, ref::RT
-) where {RT<:Union{NodeVariableRef,ConstraintRef}}
-    return backend.element_to_graph_map[ref]
+function cached_moi_backend(graph::OptiGraph)
+    inner = MOI.Utilities.UniversalFallback(MOI.Utilities.Model{Float64}())
+    cache = MOI.Utilities.CachingOptimizer(inner, MOI.Utilities.AUTOMATIC)
+    return GraphMOIBackend(graph, cache)
+end
+
+function direct_moi_backend(graph::OptiGraph, backend::MOI.ModelLike;)
+    @assert MOI.is_empty(backend)
+    return GraphMOIBackend(graph, backend)
+end
+
+function direct_moi_backend(graph::OptiGraph, factory::MOI.OptimizerWithAttributes)
+    optimizer = MOI.instantiate(factory)
+    return direct_moi_backend(graph, optimizer)
+end
+
+# NOTE: _moi_mode adapted from JuMP.jl
+# https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/JuMP.jl#L571-L575
+_moi_mode(::MOI.ModelLike) = DIRECT
+function _moi_mode(model::MOIU.CachingOptimizer)
+    return model.mode == MOIU.AUTOMATIC ? AUTOMATIC : MANUAL
+end
+
+function _moi_mode(backend::GraphMOIBackend)
+    return _moi_mode(backend.moi_backend)
+end
+
+function JuMP.error_if_direct_mode(backend::GraphMOIBackend, func::Symbol)
+    if _moi_mode(backend) == DIRECT
+        error("The `$func` function is not supported in DIRECT mode.")
+    end
+    return nothing
+end
+
+# MOI Utilities
+
+function MOIU.state(backend::GraphMOIBackend)
+    return MOIU.state(JuMP.backend(backend))
+end
+
+function MOIU.reset_optimizer(
+    backend::GraphMOIBackend, optimizer::MOI.AbstractOptimizer, ::Bool=true
+)
+    JuMP.error_if_direct_mode(backend, :reset_optimizer)
+    MOIU.reset_optimizer(JuMP.backend(backend), optimizer)
+    return nothing
+end
+
+function MOIU.reset_optimizer(backend::GraphMOIBackend)
+    JuMP.error_if_direct_mode(backend, :reset_optimizer)
+    if MOI.Utilities.state(JuMP.backend(backend)) == MOI.Utilities.ATTACHED_OPTIMIZER
+        MOIU.reset_optimizer(JuMP.backend(backend))
+    end
+    return nothing
+end
+
+function MOIU.drop_optimizer(backend::GraphMOIBackend)
+    JuMP.error_if_direct_mode(backend, :drop_optimizer)
+    MOIU.drop_optimizer(JuMP.backend(backend))
+    return nothing
+end
+
+function MOIU.attach_optimizer(backend::GraphMOIBackend)
+    JuMP.error_if_direct_mode(backend, :attach_optimizer)
+    MOIU.attach_optimizer(JuMP.backend(backend))
+    return nothing
 end
 
 # JuMP Methods
@@ -145,6 +205,21 @@ in `backend`. Returns a `JuMP.ConstraintRef` (or `NodeVariableRef`) object.
 """
 function JuMP.constraint_ref_with_index(backend::GraphMOIBackend, idx::MOI.Index)
     return backend.graph_to_element_map[idx]
+end
+
+"""
+    graph_index(
+        backend::GraphMOIBackend, 
+        ref::RT
+    ) where {RT<:Union{NodeVariableRef,ConstraintRef}}
+
+Return the actual variable or constraint index of the backend model that corresponds to the
+local index of a node or edge.
+"""
+function graph_index(
+    backend::GraphMOIBackend, ref::RT
+) where {RT<:Union{NodeVariableRef,ConstraintRef}}
+    return backend.element_to_graph_map[ref]
 end
 
 """
@@ -645,7 +720,6 @@ end
 function _add_backend_variables(backend::GraphMOIBackend, vars::Vector{NodeVariableRef})
     vars_to_add = setdiff(vars, keys(backend.element_to_graph_map.var_map))
     for var in vars_to_add
-        # _add_variable_to_backend(backend, var)
         MOI.add_variable(backend, var)
     end
     return nothing

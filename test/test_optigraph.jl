@@ -20,7 +20,48 @@ function test_simple_graph()
     @linkconstraint(graph, nodes[1][:x] + nodes[2][:x] == 4)
     @objective(graph, Max, nodes[1][:x] + 2 * nodes[2][:x])
 
+    @test MOIU.state(graph) == MOIU.NO_OPTIMIZER
     set_optimizer(graph, HiGHS.Optimizer)
+    @test MOIU.state(graph) == MOIU.EMPTY_OPTIMIZER
+    @suppress optimize!(graph)
+    @test MOIU.state(graph) == MOIU.ATTACHED_OPTIMIZER
+
+    @test objective_value(graph) == 7.0
+    @test value(nodes[1][:x]) == 1.0
+    @test value(nodes[2][:x]) == 3.0
+    @test value(nodes[1][:x] + nodes[2][:x]) == value(graph, nodes[1][:x] + nodes[2][:x])
+    @test value(nodes[1][:x]^2 + nodes[2][:x]^2) ==
+        value(graph, nodes[1][:x]^2 + nodes[2][:x]^2)
+    @test value(nodes[1][:x]^3 + nodes[2][:x]^3) ==
+        value(graph, nodes[1][:x]^3 + nodes[2][:x]^3)
+
+    @test JuMP.termination_status(graph) == MOI.OPTIMAL
+    @test JuMP.primal_status(graph) == MOI.FEASIBLE_POINT
+    @test JuMP.dual_status(graph) == MOI.FEASIBLE_POINT
+    @test JuMP.result_count(graph) == 1
+    @test JuMP.raw_status(graph) == "kHighsModelStatusOptimal"
+
+    constraints = all_constraints(graph)
+    @test JuMP.dual(constraints[1]) == 1.0
+    @test JuMP.dual(constraints[2]) == 0.0
+    @test JuMP.dual(constraints[3]) == -2.0
+
+    MOIU.reset_optimizer(graph)
+    @test MOIU.state(graph) == MOIU.EMPTY_OPTIMIZER
+    MOIU.attach_optimizer(graph)
+    @test MOIU.state(graph) == MOIU.ATTACHED_OPTIMIZER
+    MOIU.drop_optimizer(graph)
+    @test MOIU.state(graph) == MOIU.NO_OPTIMIZER
+end
+
+function test_direct_moi_graph()
+    graph = direct_moi_graph(HiGHS.Optimizer())
+    @optinode(graph, nodes[1:2])
+
+    @variable(nodes[1], x >= 1)
+    @variable(nodes[2], x >= 2)
+    @linkconstraint(graph, nodes[1][:x] + nodes[2][:x] == 4)
+    @objective(graph, Max, nodes[1][:x] + 2 * nodes[2][:x])
     @suppress optimize!(graph)
 
     @test objective_value(graph) == 7.0
