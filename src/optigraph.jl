@@ -3,7 +3,7 @@
 #  License, v. 2.0. If a copy of the MPL was not distributed with this
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
+function _initialize_optigraph(name::Symbol)
     graph = OptiGraph(
         name,
         OrderedSet{OptiNode}(),
@@ -18,9 +18,22 @@ function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
         Set{Any}(),
         false,
     )
+    return graph
+end
 
-    # default is MOI backend
-    graph.backend = GraphMOIBackend(graph)
+function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
+    graph = _initialize_optigraph(name)
+    # default is to use a CachingOptimizer backend
+    graph.backend = cached_moi_backend(graph)
+    return graph
+end
+
+function direct_moi_graph(
+    backend::Union{MOI.ModelLike,MOI.OptimizerWithAttributes};
+    name::Symbol=Symbol(:g, gensym()),
+)
+    graph = _initialize_optigraph(name)
+    graph.backend = direct_moi_backend(graph, backend)
     return graph
 end
 
@@ -1425,5 +1438,5 @@ function _set_objective_coefficient(
 end
 
 function JuMP.unregister(graph::OptiGraph, key::Symbol)
-    delete!(object_dictionary(graph), key)
+    return delete!(object_dictionary(graph), key)
 end

@@ -122,7 +122,7 @@ function JuMP.all_variables(node::OptiNode)
 end
 
 function JuMP.unregister(node::OptiNode, key::Symbol)
-    delete!(object_dictionary(node), (node, key))
+    return delete!(object_dictionary(node), (node, key))
 end
 
 ### Duals

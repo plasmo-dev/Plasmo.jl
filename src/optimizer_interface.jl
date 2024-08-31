@@ -65,25 +65,41 @@ function JuMP.set_attributes(destination::Union{OptiGraph,NodeVariableRef}, pair
     return nothing
 end
 
+function JuMP.time_limit_sec(graph::OptiGraph)
+    return MOI.get(graph, MOI.TimeLimitSec())
+end
+
 #
 # set optimizer
 #
 
-# NOTE: _moi_mode adapted from JuMP.jl
-# https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/JuMP.jl#L571-L575
-_moi_mode(::MOI.ModelLike) = DIRECT
-function _moi_mode(model::MOIU.CachingOptimizer)
-    return model.mode == MOIU.AUTOMATIC ? AUTOMATIC : MANUAL
-end
-
 function JuMP.mode(graph::OptiGraph)
-    return _moi_mode(JuMP.backend(graph_backend(graph)))
+    return _moi_mode(JuMP.backend(graph))
 end
 
-function JuMP.error_if_direct_mode(graph::OptiGraph, func::Symbol)
-    if JuMP.mode(graph) == DIRECT
-        error("The `$func` function is not supported in DIRECT mode.")
-    end
+function MOIU.state(graph)
+    return MOIU.state(JuMP.backend(graph))
+end
+
+function MOIU.reset_optimizer(
+    graph::OptiGraph, optimizer::MOI.AbstractOptimizer, ::Bool=true
+)
+    MOIU.reset_optimizer(JuMP.backend(graph), optimizer)
+    return nothing
+end
+
+function MOIU.reset_optimizer(graph::OptiGraph)
+    MOIU.reset_optimizer(JuMP.backend(graph))
+    return nothing
+end
+
+function MOIU.drop_optimizer(graph::OptiGraph)
+    MOIU.drop_optimizer(JuMP.backend(graph))
+    return nothing
+end
+
+function MOIU.attach_optimizer(graph::OptiGraph)
+    MOIU.attach_optimizer(JuMP.backend(graph))
     return nothing
 end
 
@@ -99,7 +115,7 @@ Set the optimizer on `graph` by passing an `optimizer_constructor`.
 function JuMP.set_optimizer(
     graph::OptiGraph, JuMP.@nospecialize(optimizer_constructor); add_bridges::Bool=true
 )
-    JuMP.error_if_direct_mode(graph, :set_optimizer)
+    JuMP.error_if_direct_mode(JuMP.backend(graph), :set_optimizer)
     if add_bridges
         optimizer = MOI.instantiate(optimizer_constructor)#; with_bridge_type = T)
         for BT in graph.bridge_types
