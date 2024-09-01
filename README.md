@@ -1,7 +1,7 @@
 <img src="https://github.com/plasmo-dev/Plasmo.jl/blob/main/docs/plasmo_logo.svg?raw=true"/>
 
 [![CI](https://github.com/plasmo-dev/Plasmo.jl/workflows/CI/badge.svg)](https://github.com/plasmo-dev/Plasmo.jl/actions)
-[![codecov](https://codecov.io/gh/plasmo-dev/Plasmo.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/plasmo-dev/Plasmo.jl)
+[![codecov](https://codecov.io/gh/jalving/Plasmo.jl/branch/main/graph/badge.svg?token=W5Ubgq4n7z)](https://codecov.io/gh/jalving/Plasmo.jl)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/stable/)
 [![DOI](https://zenodo.org/badge/96967382.svg)](https://zenodo.org/badge/latestdoi/96967382)
 
