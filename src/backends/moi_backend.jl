@@ -889,7 +889,6 @@ function _copy_node_variables(
     # add new MOI variables to the destination MOI backend
     # note that existing node variables are not copied per-se; the references
     # now point to multiple MOI backends.
-    vars_to_add = setdiff(node_variables, keys(dest.element_to_graph_map.var_map))
     for var in node_variables
         if !(var in keys(dest.element_to_graph_map))
             src_graph_index = graph_index(var)
