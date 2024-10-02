@@ -592,7 +592,7 @@ end
 # Graph MOI Utilities
 #
 
-# NOTE: These utilities are meant to take model expressions defined over optinodes and 
+# NOTE: These utilities are meant to take model expressions defined over optinodes and
 # map them to the underlying optigraph backend indices. This way, nodes and edges
 # can be mapped to multiple possible optigraph backends.
 
@@ -718,9 +718,10 @@ function _add_backend_variables(backend::GraphMOIBackend, var::NodeVariableRef)
 end
 
 function _add_backend_variables(backend::GraphMOIBackend, vars::Vector{NodeVariableRef})
-    vars_to_add = setdiff(vars, keys(backend.element_to_graph_map.var_map))
-    for var in vars_to_add
-        MOI.add_variable(backend, var)
+    for var in vars
+        if !(var in keys(backend.element_to_graph_map.var_map))
+            MOI.add_variable(backend, var)
+        end
     end
     return nothing
 end
@@ -760,8 +761,8 @@ end
 # Aggregate MOI backends
 #
 
-# Note that these methods do not create copies of nodes or edges; they create model 
-# data for new backends. The nodes and edges will then reference data for multiple backends. 
+# Note that these methods do not create copies of nodes or edges; they create model
+# data for new backends. The nodes and edges will then reference data for multiple backends.
 
 """
     _copy_subgraph_backends!(graph::OptiGraph)
@@ -888,11 +889,12 @@ function _copy_node_variables(
     # add new MOI variables to the destination MOI backend
     # note that existing node variables are not copied per-se; the references
     # now point to multiple MOI backends.
-    vars_to_add = setdiff(node_variables, keys(dest.element_to_graph_map.var_map))
-    for var in vars_to_add
-        src_graph_index = graph_index(var)
-        dest_graph_index = MOI.add_variable(dest, var)
-        index_map[src_graph_index] = dest_graph_index
+    for var in node_variables
+        if !(var in keys(dest.element_to_graph_map.var_map))
+            src_graph_index = graph_index(var)
+            dest_graph_index = MOI.add_variable(dest, var)
+            index_map[src_graph_index] = dest_graph_index
+        end
     end
 
     # pass variable attributes
