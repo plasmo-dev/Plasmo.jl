@@ -528,22 +528,54 @@ end
 # MOI variables and constraints
 #
 
-function MOI.add_variable(graph_backend::GraphMOIBackend, vref::NodeVariableRef)
+function MOI.add_variable(backend::GraphMOIBackend, vref::NodeVariableRef)
     # return if variable already exists in backend
-    vref in keys(graph_backend.element_to_graph_map.var_map) && return nothing
+    vref in keys(backend.element_to_graph_map.var_map) && return nothing
 
     # add the variable
-    graph_var_index = MOI.add_variable(graph_backend.moi_backend)
+    graph_var_index = MOI.add_variable(backend.moi_backend)
 
     # map reference to index
-    graph_backend.element_to_graph_map[vref] = graph_var_index
-    graph_backend.graph_to_element_map[graph_var_index] = vref
+    backend.element_to_graph_map[vref] = graph_var_index
+    backend.graph_to_element_map[graph_var_index] = vref
 
     # create key for node if necessary
-    if !haskey(graph_backend.node_variables, vref.node)
-        graph_backend.node_variables[vref.node] = MOI.VariableIndex[]
+    if !haskey(backend.node_variables, vref.node)
+        backend.node_variables[vref.node] = MOI.VariableIndex[]
     end
-    push!(graph_backend.node_variables[vref.node], graph_var_index)
+    push!(backend.node_variables[vref.node], graph_var_index)
+    return graph_var_index
+end
+
+function MOI.add_constrained_variable(
+    backend::GraphMOIBackend,
+    vref::NodeVariableRef,
+    cref::NodeConstraintRef,
+    set::MOI.AbstractScalarSet,
+)
+    # return if variable already exists in backend
+    vref in keys(backend.element_to_graph_map.var_map) && return nothing
+
+    # add the variable and parameter constraint
+    graph_var_index, graph_con_index = MOI.add_constrained_variable(
+        backend.moi_backend, set
+    )
+
+    # map reference to index
+    backend.element_to_graph_map[vref] = graph_var_index
+    backend.graph_to_element_map[graph_var_index] = vref
+    backend.element_to_graph_map[cref] = graph_con_index
+    backend.graph_to_element_map[graph_con_index] = cref
+
+    # create key for node if necessary
+    if !haskey(backend.node_variables, vref.node)
+        backend.node_variables[vref.node] = MOI.VariableIndex[]
+    end
+    if !haskey(backend.element_constraints, vref.node)
+        graph_backend.element_constraints[vref.node] = MOI.ConstraintIndex[]
+    end
+    push!(backend.node_variables[vref.node], graph_var_index)
+    push!(backend.element_constraints[vref.node], graph_con_index)
     return graph_var_index
 end
 
@@ -879,6 +911,7 @@ function _copy_node_variables(
 
     # map existing variables in the index_map
     # existing variables may come from linking constraints added between graphs
+    # TODO: could be slow...
     existing_vars = intersect(node_variables, keys(dest.element_to_graph_map.var_map))
     for var in existing_vars
         src_graph_index = graph_index(var)

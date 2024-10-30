@@ -11,13 +11,13 @@ Base.show(io::IO, edge::OptiEdge) = Base.print(io, edge)
 
 function Base.setindex!(edge::OptiEdge, value::Any, name::Symbol)
     t = (edge, name)
-    source_graph(edge).edge_obj_dict[t] = value
+    source_graph(edge).element_data.edge_obj_dict[t] = value
     return nothing
 end
 
 function Base.getindex(edge::OptiEdge, name::Symbol)
     t = (edge, name)
-    return edge.source_graph.edge_obj_dict[t]
+    return source_graph(edge).element_data.edge_obj_dict[t]
 end
 
 """
@@ -72,7 +72,7 @@ end
 
 function JuMP.all_variables(edge::OptiEdge)
     con_refs = JuMP.all_constraints(edge)
-    vars = vcat(_extract_variables.(con_refs)...)
+    vars = vcat(extract_variables.(con_refs)...)
     return unique(vars)
 end
 
@@ -132,6 +132,10 @@ end
 
 function JuMP.is_valid(edge::OptiEdge, cref::ConstraintRef)
     return edge === JuMP.owner_model(cref) && MOI.is_valid(graph_backend(edge), cref)
+end
+
+function get_edge(cref::EdgeConstraintRef)
+    return JuMP.owner_model(cref)
 end
 
 """

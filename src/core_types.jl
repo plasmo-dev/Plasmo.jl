@@ -69,8 +69,6 @@ struct ElementData{GT<:AbstractOptiGraph}
     # track constraint indices
     last_constraint_index::OrderedDict{OptiElement,Int}
 end
-
-# default is OptiGraph
 function ElementData(GT::Type{<:AbstractOptiGraph})
     return ElementData{GT}(
         OrderedDict{OptiNode{GT},Vector{GT}}(),

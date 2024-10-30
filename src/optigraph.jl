@@ -199,7 +199,7 @@ Add an existing optinode (created in another optigraph) to `graph`. This copies 
 from the other graph to the new graph.
 """
 function add_node(graph::OptiGraph, node::OptiNode)
-    node in all_nodes(graph) && error("Node already exists within graph")
+    # node in all_nodes(graph) && error("Node already exists within graph")
     push!(graph.optinodes, node)
     add_node(graph_backend(graph), node)
     _track_node_in_graph(graph, node)
@@ -232,7 +232,7 @@ end
 Retrieve the optinodes contained in a JuMP expression.
 """
 function collect_nodes(jump_func::T where {T<:JuMP.AbstractJuMPScalar})
-    vars = _extract_variables(jump_func)
+    vars = extract_variables(jump_func)
     nodes = JuMP.owner_model.(vars)
     return collect(nodes)
 end
@@ -319,7 +319,7 @@ Add an existing optiedge (created in another optigraph) to `graph`. This copies 
 from the other graph to the new graph.
 """
 function add_edge(graph::OptiGraph, edge::OptiEdge)
-    edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
+    # edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
     push!(graph.optiedges, edge)
     add_edge(graph_backend(graph), edge)
     _track_edge_in_graph(graph, edge)

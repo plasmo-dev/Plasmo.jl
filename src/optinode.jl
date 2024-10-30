@@ -202,7 +202,7 @@ function _check_node_variables(
         NodeVariableRef,JuMP.GenericAffExpr,JuMP.GenericQuadExpr,JuMP.GenericNonlinearExpr
     },
 )
-    extract_vars = _extract_variables(jump_func)
+    extract_vars = extract_variables(jump_func)
     for var in extract_vars
         if var.node != node
             error("Variable $var does not belong to node $node")

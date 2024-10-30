@@ -3,7 +3,7 @@
 #  License, v. 2.0. If a copy of the MPL was not distributed with this
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-# TODO: parameterize on precision
+# TODO: parameterize variables on precision
 
 struct NodeVariableRef <: JuMP.AbstractVariableRef
     node::OptiNode
@@ -70,23 +70,20 @@ function MOI.delete(node::OptiNode, vref::NodeVariableRef)
     return nothing
 end
 
+# add variable
+
 """
     JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
 
 Add variable `v` to optinode `node`. This function supports use of the `@variable` JuMP macro.
 Optionally add a `base_name` to the variable for printing.
 """
-function JuMP.add_variable(node::OptiNode, v::JuMP.AbstractVariable, name::String="")
-    vref = _moi_add_node_variable(node, v)
-    if !isempty(name) && MOI.supports(
-        JuMP.backend(graph_backend(node)), MOI.VariableName(), MOI.VariableIndex
-    )
-        JuMP.set_name(vref, "$(JuMP.name(node))[:$(name)]")
-    end
-    return vref
+function JuMP.add_variable(node::OptiNode, v::JuMP.ScalarVariable, name::String="")
+    nvref = _moi_add_node_variable(node, v, name)
+    return nvref
 end
 
-function _moi_add_node_variable(node::OptiNode, v::JuMP.AbstractVariable)
+function _moi_add_node_variable(node::OptiNode, v::JuMP.ScalarVariable, name::String)
     # get a new variable index and create a reference
     variable_index = next_variable_index(node)
     nvref = NodeVariableRef(node, variable_index)
@@ -98,6 +95,11 @@ function _moi_add_node_variable(node::OptiNode, v::JuMP.AbstractVariable)
 
     # constrain node variable (hits all graph backends)
     _moi_constrain_node_variable(nvref, v.info, Float64)
+
+    if !isempty(name) &&
+        MOI.supports(JuMP.backend(node), MOI.VariableName(), MOI.VariableIndex)
+        JuMP.set_name(nvref, "$(JuMP.name(node))[:$(name)]")
+    end
     return nvref
 end
 
@@ -127,6 +129,64 @@ function _moi_constrain_node_variable(nvref::NodeVariableRef, info, ::Type{T}) w
         MOI.set(nvref.node, MOI.VariablePrimalStart(), nvref, convert(T, info.start))
     end
 end
+
+# add variable constrained on creation
+
+function JuMP.add_variable(
+    node::OptiNode, variable::VariableConstrainedOnCreation, name::String
+)
+    nvref = _moi_add_constrained_node_variable(
+        node, variable.scalar_variable, variable.set, name, Float64
+    )
+    return nvref
+end
+
+function JuMP.add_variable(
+    node::OptiNode,
+    variables::AbstractArray{<:VariableConstrainedOnCreation},
+    names::AbstractArray{<:String},
+)
+    return JuMP.add_variable.(node, variables, names)
+end
+
+function JuMP.add_variable(
+    node::OptiNode, variables::AbstractArray{<:VariableConstrainedOnCreation}, name::String
+)
+    return JuMP.add_variable.(node, variables, Ref(name))
+end
+
+function _moi_add_constrained_node_variable(
+    node::OptiNode,
+    scalar_variable::ScalarVariable,
+    set::MOI.AbstractScalarSet,
+    name::String,
+    ::Type{T},
+) where {T}
+    # get a new variable index and create a reference
+    variable_index = next_variable_index(node)
+    nvref = NodeVariableRef(node, variable_index)
+
+    # get a new constraint index and create a reference
+    constraint_index = next_constraint_index(
+        node, MOI.VariableIndex, typeof(set)
+    )::MOI.ConstraintIndex{MOI.VariableIndex,typeof(set)}
+    cref = ConstraintRef(node, constraint_index, JuMP.ScalarShape())
+
+    # add variable to all containing optigraphs
+    for graph in containing_optigraphs(node)
+        MOI.add_constrained_variable(JuMP.backend(graph), nvref, cref, set)
+    end
+
+    _moi_constrain_node_variable(nvref, scalar_variable.info, T)
+
+    if !isempty(name) &&
+        MOI.supports(JuMP.backend(node), MOI.VariableName(), MOI.VariableIndex)
+        JuMP.set_name(nvref, "$(JuMP.name(node))[:$(name)]")
+    end
+    return nvref
+end
+
+# variable methods
 
 function JuMP.delete(node::OptiNode, nvref::NodeVariableRef)
     if node !== JuMP.owner_model(nvref)
@@ -167,7 +227,7 @@ function JuMP.index(vref::NodeVariableRef)
     return vref.index
 end
 
-### variable values
+# variable primal values
 
 function JuMP.value(nvref::NodeVariableRef; result::Int=1)
     return MOI.get(graph_backend(nvref.node), MOI.VariablePrimal(result), nvref)
@@ -177,7 +237,43 @@ function JuMP.value(var_value::Function, vref::NodeVariableRef)
     return var_value(vref)
 end
 
-### variable start values
+# parameters
+
+function JuMP.ParameterRef(nvref::NodeVariableRef)
+    if !JuMP.is_parameter(nvref)
+        error("Variable $x is not a parameter.")
+    end
+    return ConstraintRef(JuMP.owner_model(nvref), _parameter_index(nvref), ScalarShape())
+end
+
+function JuMP.is_parameter(nvref::NodeVariableRef)
+    return MOI.is_valid(
+        JuMP.backend(JuMP.owner_model(nvref)), _parameter_index(nvref)
+    )::Bool
+end
+
+function JuMP.parameter_value(nvref::NodeVariableRef)
+    set = MOI.get(
+        JuMP.owner_model(nvref), MOI.ConstraintSet(), ParameterRef(nvref)
+    )::MOI.Parameter{JuMP.value_type(typeof(nvref))}
+    return set.value
+end
+
+function JuMP.set_parameter_value(nvref::NodeVariableRef, value)
+    node = JuMP.owner_model(nvref)
+    T = JuMP.value_type(typeof(nvref))
+    _set_dirty(node)
+    set = MOI.Parameter{T}(convert(T, value))
+    MOI.set(node, MOI.ConstraintSet(), ParameterRef(nvref), set)
+    return nothing
+end
+
+function _parameter_index(nvref::NodeVariableRef)
+    F, S = MOI.VariableIndex, MOI.Parameter{JuMP.value_type(typeof(nvref))}
+    return MOI.ConstraintIndex{F,S}(JuMP.index(nvref).value)
+end
+
+# variable start values
 
 function JuMP.start_value(nvref::NodeVariableRef)
     return MOI.get(graph_backend(nvref.node), MOI.VariablePrimalStart(), nvref)
@@ -192,7 +288,14 @@ function JuMP.set_start_value(nvref::NodeVariableRef, value::Union{Nothing,Real}
     )
 end
 
-### node variable bounds
+# variable bounds - lower bound
+
+function JuMP.LowerBoundRef(nvref::NodeVariableRef)
+    if !JuMP.has_lower_bound(nvref)
+        error("Variable $(nvref) does not have a lower bound.")
+    end
+    return _nv_lower_bound_ref(nvref)
+end
 
 function JuMP.has_lower_bound(nvref::NodeVariableRef)
     return _moi_nv_has_lower_bound(nvref)
@@ -218,13 +321,6 @@ end
 function JuMP.delete_lower_bound(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.LowerBoundRef(nvref))
     return nothing
-end
-
-function JuMP.LowerBoundRef(nvref::NodeVariableRef)
-    if !JuMP.has_lower_bound(nvref)
-        error("Variable $(nvref) does not have a lower bound.")
-    end
-    return _nv_lower_bound_ref(nvref)
 end
 
 function _moi_nv_has_lower_bound(nvref::NodeVariableRef)
@@ -258,6 +354,15 @@ function _moi_nv_set_lower_bound(nvref::NodeVariableRef, lower::Number)
     return nothing
 end
 
+# variable bounds - upper bound
+
+function JuMP.UpperBoundRef(nvref::NodeVariableRef)
+    if !JuMP.has_upper_bound(nvref)
+        error("Variable $(nvref) does not have an upper bound.")
+    end
+    return _nv_upper_bound_ref(nvref)
+end
+
 function JuMP.has_upper_bound(nvref::NodeVariableRef)
     return _moi_nv_has_upper_bound(nvref)
 end
@@ -282,13 +387,6 @@ end
 function JuMP.delete_upper_bound(nvref::NodeVariableRef)
     JuMP.delete(JuMP.owner_model(nvref), JuMP.UpperBoundRef(nvref))
     return nothing
-end
-
-function JuMP.UpperBoundRef(nvref::NodeVariableRef)
-    if !JuMP.has_upper_bound(nvref)
-        error("Variable $(nvref) does not have an upper bound.")
-    end
-    return _nv_upper_bound_ref(nvref)
 end
 
 function _moi_nv_has_upper_bound(nvref::NodeVariableRef)
@@ -322,7 +420,7 @@ function _moi_nv_set_upper_bound(nvref::NodeVariableRef, upper::Number)
     return nothing
 end
 
-### fix/unfix variable
+# fix/unfix variable
 
 function JuMP.FixRef(nvref::NodeVariableRef)
     if !JuMP.is_fixed(nvref)
@@ -404,7 +502,7 @@ function JuMP.unfix(nvref::NodeVariableRef)
     return nothing
 end
 
-### node variable integer
+# variable integer
 
 function JuMP.IntegerRef(nvref::NodeVariableRef)
     if !JuMP.is_integer(nvref)
@@ -460,7 +558,7 @@ function JuMP.unset_integer(nvref::NodeVariableRef)
     return nothing
 end
 
-### node variable binary
+# variable binary
 
 function JuMP.BinaryRef(nvref::NodeVariableRef)
     if !JuMP.is_binary(nvref)
@@ -516,7 +614,9 @@ function JuMP.unset_binary(nvref::NodeVariableRef)
     return nothing
 end
 
-# Extended from https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/variables.jl#L2721
+# normalized coefficient
+
+## Extended from https://github.com/jump-dev/JuMP.jl/blob/301d46e81cb66c74c6e22cd89fb89ced740f157b/src/variables.jl#L2721
 function JuMP.set_normalized_coefficient(
     con_ref::S, variable::NodeVariableRef, value::Number
 ) where {S<:Union{NodeConstraintRef,EdgeConstraintRef}}
@@ -646,40 +746,4 @@ function JuMP.set_normalized_coefficient(
     )
     graph.is_model_dirty = true
     return nothing
-end
-
-### Utilities for querying variables used in constraints
-
-function _extract_variables(func::NodeVariableRef)
-    return [func]
-end
-
-function _extract_variables(ref::ConstraintRef)
-    func = JuMP.jump_function(JuMP.constraint_object(ref))
-    return _extract_variables(func)
-end
-
-function _extract_variables(func::JuMP.GenericAffExpr)
-    return collect(keys(func.terms))
-end
-
-function _extract_variables(func::JuMP.GenericQuadExpr)
-    quad_vars = vcat([[term[2]; term[3]] for term in JuMP.quad_terms(func)]...)
-    aff_vars = _extract_variables(func.aff)
-    return union(quad_vars, aff_vars)
-end
-
-function _extract_variables(func::JuMP.GenericNonlinearExpr)
-    vars = NodeVariableRef[]
-    for i in 1:length(func.args)
-        func_arg = func.args[i]
-        if func_arg isa Number
-            continue
-        elseif typeof(func_arg) == NodeVariableRef
-            push!(vars, func_arg)
-        else
-            append!(vars, _extract_variables(func_arg))
-        end
-    end
-    return vars
 end

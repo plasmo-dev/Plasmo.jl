@@ -29,6 +29,7 @@ export OptiGraph,
     OptiNode,
     OptiEdge,
     NodeVariableRef,
+    EdgeConstraintRef,
     direct_moi_graph,
     graph_backend,
     graph_index,
@@ -108,7 +109,8 @@ export OptiGraph,
 
     # other functions
 
-    set_jump_model
+    set_jump_model,
+    extract_variables
 
 include("core_types.jl")
 
@@ -137,6 +139,8 @@ include("graph_functions/projections.jl")
 include("graph_functions/topology.jl")
 
 include("graph_functions/partition.jl")
+
+include("utilities.jl")
 
 # extensions
 function __init__()
