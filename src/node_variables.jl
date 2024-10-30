@@ -243,7 +243,10 @@ function JuMP.ParameterRef(nvref::NodeVariableRef)
     if !JuMP.is_parameter(nvref)
         error("Variable $x is not a parameter.")
     end
-    return ConstraintRef(JuMP.owner_model(nvref), _parameter_index(nvref), ScalarShape())
+    backend = JuMP.backend(nvref.node)
+    ci = _parameter_index(nvref)
+    cref = JuMP.constraint_ref_with_index(backend, ci)
+    return cref
 end
 
 function JuMP.is_parameter(nvref::NodeVariableRef)
@@ -270,7 +273,7 @@ end
 
 function _parameter_index(nvref::NodeVariableRef)
     F, S = MOI.VariableIndex, MOI.Parameter{JuMP.value_type(typeof(nvref))}
-    return MOI.ConstraintIndex{F,S}(JuMP.index(nvref).value)
+    return MOI.ConstraintIndex{F,S}(graph_index(nvref).value)
 end
 
 # variable start values

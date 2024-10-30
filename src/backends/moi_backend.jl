@@ -269,11 +269,13 @@ function _add_edge(backend::GraphMOIBackend, edge::OptiEdge)
     return nothing
 end
 
-#
 # MOI Methods
-#
 
-### graph attributes
+## graph attributes
+
+function MOI.supports(backend::GraphMOIBackend, attr::MOI.AnyAttribute, args...)
+    return MOI.supports(JuMP.backend(backend), attr, args...)
+end
 
 function MOI.get(
     backend::GraphMOIBackend, attr::AT

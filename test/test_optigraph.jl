@@ -333,6 +333,10 @@ function test_variable_constraints()
     # parameter
     @variable(n1, p in Parameter(1.0))
 
+    @test parameter_value(p) == 1.0
+    set_parameter_value(p, 2.0)
+    @test parameter_value(p) == 2.0
+
     # start value
     set_start_value(n2[:x], 3.0)
     @test start_value(n2[:x]) == 3.0
