@@ -117,7 +117,7 @@ function JuMP.set_optimizer(
 )
     JuMP.error_if_direct_mode(JuMP.backend(graph), :set_optimizer)
     if add_bridges
-        optimizer = MOI.instantiate(optimizer_constructor)#; with_bridge_type = T)
+        optimizer = MOI.instantiate(optimizer_constructor; with_bridge_type=Float64)
         for BT in graph.bridge_types
             _moi_call_bridge_function(MOI.Bridges.add_bridge, optimizer, BT)
         end

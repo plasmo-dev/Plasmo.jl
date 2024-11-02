@@ -202,7 +202,7 @@ function _check_node_variables(
         NodeVariableRef,JuMP.GenericAffExpr,JuMP.GenericQuadExpr,JuMP.GenericNonlinearExpr
     },
 )
-    extract_vars = _extract_variables(jump_func)
+    extract_vars = extract_variables(jump_func)
     for var in extract_vars
         if var.node != node
             error("Variable $var does not belong to node $node")
@@ -241,7 +241,15 @@ function JuMP.set_objective_sense(node::OptiNode, sense::MOI.OptimizationSense)
 end
 
 function JuMP.objective_function(node::OptiNode)
-    return JuMP.object_dictionary(node)[(node, :objective_function)]
+    if haskey(JuMP.object_dictionary(node), (node, :objective_function))
+        return JuMP.object_dictionary(node)[(node, :objective_function)]
+    else
+        return nothing
+    end
+end
+
+function JuMP.objective_function_type(node::OptiNode)
+    return typeof(objective_function(node))
 end
 
 function JuMP.objective_sense(node::OptiNode)

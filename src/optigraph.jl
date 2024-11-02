@@ -90,9 +90,7 @@ Base.broadcastable(graph::OptiGraph) = Ref(graph)
 # TODO: parameterize on numerical precision like JuMP Models do
 JuMP.value_type(::Type{OptiGraph}) = Float64
 
-#
-# Optigraph methods
-#
+# optigraph methods
 
 """
     graph_backend(graph::OptiGraph)
@@ -105,7 +103,7 @@ function graph_backend(graph::OptiGraph)
     return graph.backend
 end
 
-### Graph Index
+# graph index
 
 """
     graph_index(ref::RT) where {RT<:Union{NodeVariableRef,ConstraintRef}}
@@ -121,7 +119,7 @@ function graph_index(
     return graph_index(graph_backend(graph), ref)
 end
 
-### Assemble OptiGraph
+# assemble optiGraph
 
 function _assemble_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge})
     graph = OptiGraph()
@@ -171,7 +169,7 @@ function is_valid_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge}
     return isempty(setdiff(edge_nodes, nodes)) ? true : false
 end
 
-### Manage OptiNodes
+# manage optinodes
 
 """
     add_node(
@@ -199,7 +197,7 @@ Add an existing optinode (created in another optigraph) to `graph`. This copies 
 from the other graph to the new graph.
 """
 function add_node(graph::OptiGraph, node::OptiNode)
-    node in all_nodes(graph) && error("Node already exists within graph")
+    # node in all_nodes(graph) && error("Node already exists within graph")
     push!(graph.optinodes, node)
     add_node(graph_backend(graph), node)
     _track_node_in_graph(graph, node)
@@ -232,7 +230,7 @@ end
 Retrieve the optinodes contained in a JuMP expression.
 """
 function collect_nodes(jump_func::T where {T<:JuMP.AbstractJuMPScalar})
-    vars = _extract_variables(jump_func)
+    vars = extract_variables(jump_func)
     nodes = JuMP.owner_model.(vars)
     return collect(nodes)
 end
@@ -284,7 +282,7 @@ function num_nodes(graph::OptiGraph)
     return n_nodes
 end
 
-### Manage OptiEdges
+# manage optiEdges
 
 """
     add_edge(
@@ -319,7 +317,7 @@ Add an existing optiedge (created in another optigraph) to `graph`. This copies 
 from the other graph to the new graph.
 """
 function add_edge(graph::OptiGraph, edge::OptiEdge)
-    edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
+    # edge in all_edges(graph) && error("Cannot add the same edge to a graph multiple times")
     push!(graph.optiedges, edge)
     add_edge(graph_backend(graph), edge)
     _track_edge_in_graph(graph, edge)
@@ -460,7 +458,7 @@ function all_elements(graph::OptiGraph)
     return [all_nodes(graph); all_edges(graph)]
 end
 
-### Manage subgraphs
+# manage subgraphs
 
 """
     add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
@@ -549,7 +547,7 @@ function num_subgraphs(graph::OptiGraph)
     return n_subs
 end
 
-### Link Constraints
+# link constraints
 
 """
     num_local_link_constraints(
@@ -664,7 +662,7 @@ function all_link_constraints(graph::OptiGraph)
     return vcat(all_constraints.(all_edges(graph))...)
 end
 
-### Local Constraints
+# local constraints
 
 """
     num_local_constraints(
@@ -732,13 +730,7 @@ function local_constraints(graph::OptiGraph)
     return vcat(all_constraints.(local_elements(graph))...)
 end
 
-# TODO Methods
-# num_linked_variables(graph)
-# linked_variables(graph)
-
-#
-# MOI Methods
-#
+# MOI methods
 
 function MOI.get(
     graph::OptiGraph, attr::AT
@@ -752,9 +744,7 @@ function MOI.set(
     return MOI.set(graph_backend(graph), attr, args...)
 end
 
-#
-# JuMP Methods
-#
+# JuMP methods
 
 """
     JuMP.name(graph::OptiGraph)
@@ -775,7 +765,7 @@ function JuMP.set_name(graph::OptiGraph, name::Symbol)
     return nothing
 end
 
-### Variables
+# variable methods
 
 """
     JuMP.all_variables(graph::OptiGraph)
@@ -896,7 +886,7 @@ function JuMP.dual(graph::OptiGraph, cref::EdgeConstraintRef; result::Int=1)
     return MOI.get(graph_backend(graph), MOI.ConstraintDual(result), cref)
 end
 
-### Constraints
+# constraint methods
 
 """
     JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, name::String="")
@@ -1003,7 +993,7 @@ function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraint
     return num_cons
 end
 
-### Other Methods
+# other methods
 
 """
     JuMP.backend(graph::OptiGraph)
@@ -1039,7 +1029,7 @@ function JuMP.relax_integrality(graph::OptiGraph)
     return unrelax
 end
 
-### Nonlinear Operators
+# nonlinear operators
 
 """
     JuMP.add_nonlinear_operator(
@@ -1075,7 +1065,7 @@ function JuMP.add_nonlinear_operator(
     return JuMP.NonlinearOperator(f, registered_name)
 end
 
-### Objective function
+# objective function
 
 """
     has_node_objective(graph::OptiGraph)
@@ -1092,23 +1082,82 @@ function has_node_objective(graph::OptiGraph)
 end
 
 """
+    node_objective_type(graph::OptiGraph)
+
+Return the most complex objective type among nodes in the given `graph`. The order of
+complexity is: Nonlinear, Quadratic, Linear.
+"""
+function node_objective_type(graph::OptiGraph)
+    if !(has_node_objective(graph))
+        return nothing
+    end
+
+    obj_types = JuMP.objective_function_type.(all_nodes(graph))
+    if JuMP.GenericNonlinearExpr{NodeVariableRef} in obj_types
+        return JuMP.GenericNonlinearExpr{NodeVariableRef}
+    elseif JuMP.GenericQuadExpr{Float64,NodeVariableRef} in obj_types
+        return JuMP.GenericQuadExpr{Float64,NodeVariableRef}
+    elseif JuMP.GenericAffExpr{Float64,NodeVariableRef} in obj_types
+        return JuMP.GenericAffExpr{Float64,NodeVariableRef}
+    elseif NodeVariableRef in obj_types
+        return JuMP.GenericAffExpr{Float64,NodeVariableRef}
+    else
+        error("Could not determine node objective type")
+    end
+end
+
+"""
     set_to_node_objectives(graph::OptiGraph)
 
 Set the `graph` objective to the summation of all of its optinode objectives. Assumes the 
-objective sense is an MOI.MIN_SENSE and adjusts the signs of node objective functions 
-accordingly.
+objective sense is an MOI.MIN_SENSE and accounts for the sense of node objectives 
+accordingly. 
+
+Note that building nonlinear objective functions is much slower than 
+linear or quadratic because nonlienar expressions cannot be updated in place.
 """
 function set_to_node_objectives(graph::OptiGraph)
-    obj = 0
+    if has_node_objective(graph)
+        node_obj_type = node_objective_type(graph)
+        _set_to_node_objectives(graph, node_obj_type)
+    end
+    return nothing
+end
+
+function _set_to_node_objectives(
+    graph::OptiGraph,
+    obj_type::Type{
+        T
+    } where {
+        T<:Union{
+            JuMP.GenericAffExpr{Float64,NodeVariableRef},
+            JuMP.GenericQuadExpr{Float64,NodeVariableRef},
+        },
+    },
+)
+    objective = zero(obj_type)
     for node in all_nodes(graph)
         if has_objective(node)
             sense = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
-            obj += sense * JuMP.objective_function(node)
+            JuMP.add_to_expression!(objective, JuMP.objective_function(node), sense)
         end
     end
-    if obj != 0
-        @objective(graph, Min, obj)
+    @objective(graph, Min, objective)
+    return nothing
+end
+
+function _set_to_node_objectives(
+    graph::OptiGraph,
+    obj_type::Type{T} where {T<:JuMP.GenericNonlinearExpr{NodeVariableRef}},
+)
+    objective = zero(obj_type)
+    for node in all_nodes(graph)
+        if has_objective(node)
+            sense = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
+            objective += *(sense, objective_function(node))
+        end
     end
+    @objective(graph, Min, objective)
     return nothing
 end
 
@@ -1235,7 +1284,7 @@ function _moi_set_objective_function(graph::OptiGraph, expr::JuMP.AbstractJuMPSc
     return nothing
 end
 
-### objective coefficient - linear
+# objective coefficient - linear
 
 """
     JuMP.set_objective_coefficient(
@@ -1282,7 +1331,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-### objective coefficient - linear - vector
+# objective coefficient - linear - vector
 
 function JuMP.set_objective_coefficient(
     graph::OptiGraph,
@@ -1330,7 +1379,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-### objective coefficient - quadratic
+# objective coefficient - quadratic
 
 function JuMP.set_objective_coefficient(
     graph::OptiGraph, variable_1::NodeVariableRef, variable_2::NodeVariableRef, coeff::Real
@@ -1356,7 +1405,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-# if existing objective is quadratic
+## if existing objective is quadratic
 function _set_objective_coefficient(
     graph::OptiGraph,
     variable_1::NodeVariableRef,
@@ -1377,7 +1426,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-### objective coefficient - quadratic - vector
+# objective coefficient - quadratic - vector
 
 function JuMP.set_objective_coefficient(
     graph::OptiGraph,
@@ -1397,7 +1446,7 @@ function JuMP.set_objective_coefficient(
     return nothing
 end
 
-# if existing objective is not quadratic
+## if existing objective is not quadratic
 function _set_objective_coefficient(
     graph::OptiGraph,
     variables_1::AbstractVector{<:NodeVariableRef},
@@ -1414,7 +1463,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-# if existing objective is quadratic
+## if existing objective is quadratic
 function _set_objective_coefficient(
     graph::OptiGraph,
     variables_1::AbstractVector{<:NodeVariableRef},
@@ -1440,3 +1489,25 @@ end
 function JuMP.unregister(graph::OptiGraph, key::Symbol)
     return delete!(object_dictionary(graph), key)
 end
+
+# TODO Methods
+# num_linked_variables(graph)
+# linked_variables(graph)
+
+# TODO
+"""
+    set_node_objectives_from_graph(graph::OptiGraph)
+
+Set the objective of each node within `graph` by parsing and separating the graph objective
+function. Note this only works if the objective function is separable over the nodes in 
+`graph`.
+"""
+# function set_node_objectives_from_graph(graph::OptiGraph)
+#     obj = objective_function(graph)
+#     if !(is_separable(obj))
+#         error("Cannot set node objectives from graph. It is not separable across nodes.")
+#     end
+#     sense = objective_sense(graph)
+#     _set_node_objectives_from_graph(obj, sense)
+#     return nothing
+# end
