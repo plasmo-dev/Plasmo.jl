@@ -5,6 +5,8 @@
 [![](https://img.shields.io/badge/docs-dev-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/dev/)
 [![](https://img.shields.io/badge/docs-stable-blue.svg)](https://plasmo-dev.github.io/Plasmo.jl/stable/)
 [![DOI](https://zenodo.org/badge/96967382.svg)](https://zenodo.org/badge/latestdoi/96967382)
+[![Code Style: Blue](https://img.shields.io/badge/code%20style-blue-4495d1.svg)](https://github.com/invenia/BlueStyle)
+
 
 # Plasmo.jl
 
