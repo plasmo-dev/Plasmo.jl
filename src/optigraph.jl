@@ -90,9 +90,7 @@ Base.broadcastable(graph::OptiGraph) = Ref(graph)
 # TODO: parameterize on numerical precision like JuMP Models do
 JuMP.value_type(::Type{OptiGraph}) = Float64
 
-#
-# Optigraph methods
-#
+# optigraph methods
 
 """
     graph_backend(graph::OptiGraph)
@@ -105,7 +103,7 @@ function graph_backend(graph::OptiGraph)
     return graph.backend
 end
 
-### Graph Index
+# graph index
 
 """
     graph_index(ref::RT) where {RT<:Union{NodeVariableRef,ConstraintRef}}
@@ -121,7 +119,7 @@ function graph_index(
     return graph_index(graph_backend(graph), ref)
 end
 
-### Assemble OptiGraph
+# assemble optiGraph
 
 function _assemble_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge})
     graph = OptiGraph()
@@ -171,7 +169,7 @@ function is_valid_optigraph(nodes::Vector{<:OptiNode}, edges::Vector{<:OptiEdge}
     return isempty(setdiff(edge_nodes, nodes)) ? true : false
 end
 
-### Manage OptiNodes
+# manage optinodes
 
 """
     add_node(
@@ -284,7 +282,7 @@ function num_nodes(graph::OptiGraph)
     return n_nodes
 end
 
-### Manage OptiEdges
+# manage optiEdges
 
 """
     add_edge(
@@ -460,7 +458,7 @@ function all_elements(graph::OptiGraph)
     return [all_nodes(graph); all_edges(graph)]
 end
 
-### Manage subgraphs
+# manage subgraphs
 
 """
     add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
@@ -549,7 +547,7 @@ function num_subgraphs(graph::OptiGraph)
     return n_subs
 end
 
-### Link Constraints
+# link constraints
 
 """
     num_local_link_constraints(
@@ -664,7 +662,7 @@ function all_link_constraints(graph::OptiGraph)
     return vcat(all_constraints.(all_edges(graph))...)
 end
 
-### Local Constraints
+# local constraints
 
 """
     num_local_constraints(
@@ -732,13 +730,7 @@ function local_constraints(graph::OptiGraph)
     return vcat(all_constraints.(local_elements(graph))...)
 end
 
-# TODO Methods
-# num_linked_variables(graph)
-# linked_variables(graph)
-
-#
-# MOI Methods
-#
+# MOI methods
 
 function MOI.get(
     graph::OptiGraph, attr::AT
@@ -752,9 +744,7 @@ function MOI.set(
     return MOI.set(graph_backend(graph), attr, args...)
 end
 
-#
-# JuMP Methods
-#
+# JuMP methods
 
 """
     JuMP.name(graph::OptiGraph)
@@ -775,7 +765,7 @@ function JuMP.set_name(graph::OptiGraph, name::Symbol)
     return nothing
 end
 
-### Variables
+# variable methods
 
 """
     JuMP.all_variables(graph::OptiGraph)
@@ -896,7 +886,7 @@ function JuMP.dual(graph::OptiGraph, cref::EdgeConstraintRef; result::Int=1)
     return MOI.get(graph_backend(graph), MOI.ConstraintDual(result), cref)
 end
 
-### Constraints
+# constraint methods
 
 """
     JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, name::String="")
@@ -1003,7 +993,7 @@ function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraint
     return num_cons
 end
 
-### Other Methods
+# other methods
 
 """
     JuMP.backend(graph::OptiGraph)
@@ -1039,7 +1029,7 @@ function JuMP.relax_integrality(graph::OptiGraph)
     return unrelax
 end
 
-### Nonlinear Operators
+# nonlinear operators
 
 """
     JuMP.add_nonlinear_operator(
@@ -1075,7 +1065,7 @@ function JuMP.add_nonlinear_operator(
     return JuMP.NonlinearOperator(f, registered_name)
 end
 
-### Objective function
+# objective function
 
 """
     has_node_objective(graph::OptiGraph)
@@ -1101,7 +1091,7 @@ function node_objective_type(graph::OptiGraph)
     if !(has_node_objective(graph))
         return nothing
     end
-    
+
     obj_types = JuMP.objective_function_type.(all_nodes(graph))
     if JuMP.GenericNonlinearExpr{NodeVariableRef} in obj_types
         return JuMP.GenericNonlinearExpr{NodeVariableRef}
@@ -1128,18 +1118,22 @@ linear or quadratic because nonlienar expressions cannot be updated in place.
 """
 function set_to_node_objectives(graph::OptiGraph)
     if has_node_objective(graph)
-        node_obj_type =  node_objective_type(graph)
+        node_obj_type = node_objective_type(graph)
         _set_to_node_objectives(graph, node_obj_type)
     end
     return nothing
 end
 
 function _set_to_node_objectives(
-    graph::OptiGraph, 
-    obj_type::Type{T} where T <: Union{
-        JuMP.GenericAffExpr{Float64, NodeVariableRef},
-        JuMP.GenericQuadExpr{Float64, NodeVariableRef}
-    }
+    graph::OptiGraph,
+    obj_type::Type{
+        T
+    } where {
+        T<:Union{
+            JuMP.GenericAffExpr{Float64,NodeVariableRef},
+            JuMP.GenericQuadExpr{Float64,NodeVariableRef},
+        },
+    },
 )
     objective = zero(obj_type)
     for node in all_nodes(graph)
@@ -1149,12 +1143,12 @@ function _set_to_node_objectives(
         end
     end
     @objective(graph, Min, objective)
-    return
+    return nothing
 end
 
 function _set_to_node_objectives(
-    graph::OptiGraph, 
-    obj_type::Type{T} where T <: JuMP.GenericNonlinearExpr{NodeVariableRef}
+    graph::OptiGraph,
+    obj_type::Type{T} where {T<:JuMP.GenericNonlinearExpr{NodeVariableRef}},
 )
     objective = zero(obj_type)
     for node in all_nodes(graph)
@@ -1164,26 +1158,8 @@ function _set_to_node_objectives(
         end
     end
     @objective(graph, Min, objective)
-    return
+    return nothing
 end
-
-# TODO
-"""
-    set_node_objectives_from_graph(graph::OptiGraph)
-
-Set the objective of each node within `graph` by parsing and separating the graph objective
-function. Note this only works if the objective function is separable over the nodes in 
-`graph`.
-"""
-# function set_node_objectives_from_graph(graph::OptiGraph)
-#     obj = objective_function(graph)
-#     if !(is_separable(obj))
-#         error("Cannot set node objectives from graph. It is not separable across nodes.")
-#     end
-#     sense = objective_sense(graph)
-#     _set_node_objectives_from_graph(obj, sense)
-#     return nothing
-# end
 
 """
     JuMP.objective_function(graph::OptiGraph)
@@ -1308,7 +1284,7 @@ function _moi_set_objective_function(graph::OptiGraph, expr::JuMP.AbstractJuMPSc
     return nothing
 end
 
-### objective coefficient - linear
+# objective coefficient - linear
 
 """
     JuMP.set_objective_coefficient(
@@ -1355,7 +1331,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-### objective coefficient - linear - vector
+# objective coefficient - linear - vector
 
 function JuMP.set_objective_coefficient(
     graph::OptiGraph,
@@ -1403,7 +1379,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-### objective coefficient - quadratic
+# objective coefficient - quadratic
 
 function JuMP.set_objective_coefficient(
     graph::OptiGraph, variable_1::NodeVariableRef, variable_2::NodeVariableRef, coeff::Real
@@ -1429,7 +1405,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-# if existing objective is quadratic
+## if existing objective is quadratic
 function _set_objective_coefficient(
     graph::OptiGraph,
     variable_1::NodeVariableRef,
@@ -1450,7 +1426,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-### objective coefficient - quadratic - vector
+# objective coefficient - quadratic - vector
 
 function JuMP.set_objective_coefficient(
     graph::OptiGraph,
@@ -1470,7 +1446,7 @@ function JuMP.set_objective_coefficient(
     return nothing
 end
 
-# if existing objective is not quadratic
+## if existing objective is not quadratic
 function _set_objective_coefficient(
     graph::OptiGraph,
     variables_1::AbstractVector{<:NodeVariableRef},
@@ -1487,7 +1463,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-# if existing objective is quadratic
+## if existing objective is quadratic
 function _set_objective_coefficient(
     graph::OptiGraph,
     variables_1::AbstractVector{<:NodeVariableRef},
@@ -1513,3 +1489,25 @@ end
 function JuMP.unregister(graph::OptiGraph, key::Symbol)
     return delete!(object_dictionary(graph), key)
 end
+
+# TODO Methods
+# num_linked_variables(graph)
+# linked_variables(graph)
+
+# TODO
+"""
+    set_node_objectives_from_graph(graph::OptiGraph)
+
+Set the objective of each node within `graph` by parsing and separating the graph objective
+function. Note this only works if the objective function is separable over the nodes in 
+`graph`.
+"""
+# function set_node_objectives_from_graph(graph::OptiGraph)
+#     obj = objective_function(graph)
+#     if !(is_separable(obj))
+#         error("Cannot set node objectives from graph. It is not separable across nodes.")
+#     end
+#     sense = objective_sense(graph)
+#     _set_node_objectives_from_graph(obj, sense)
+#     return nothing
+# end

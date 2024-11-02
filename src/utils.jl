@@ -51,7 +51,7 @@ function _first_variable(func::JuMP.GenericNonlinearExpr)
         else
             return _first_variable(func_arg)
         end
-    end 
+    end
 end
 
 """
@@ -128,17 +128,17 @@ function extract_separable_terms(func::JuMP.AbstractJuMPScalar, graph::OptiGraph
 end
 
 function _extract_separable_terms(
-    func::Union{Number,Plasmo.NodeVariableRef},
-    graph::OptiGraph
+    func::Union{Number,Plasmo.NodeVariableRef}, graph::OptiGraph
 )
     return func
 end
 
 function _extract_separable_terms(
-    func::JuMP.GenericAffExpr{<:Number,NodeVariableRef},
-    graph::OptiGraph
+    func::JuMP.GenericAffExpr{<:Number,NodeVariableRef}, graph::OptiGraph
 )
-    node_terms = OrderedDict{OptiNode,Vector{JuMP.GenericAffExpr{<:Number,NodeVariableRef}}}()
+    node_terms = OrderedDict{
+        OptiNode,Vector{JuMP.GenericAffExpr{<:Number,NodeVariableRef}}
+    }()
     nodes = Plasmo.collect_nodes(func)
     nodes = intersect(nodes, all_nodes(graph))
     for node in nodes
@@ -147,17 +147,18 @@ function _extract_separable_terms(
 
     for term in Plasmo.linear_terms(func)
         node = get_node(term[2])
-        push!(node_terms[node], term[1]*term[2])
+        push!(node_terms[node], term[1] * term[2])
     end
 
     return node_terms
 end
 
 function _extract_separable_terms(
-    func::JuMP.GenericQuadExpr{<:Number,NodeVariableRef},
-    graph::OptiGraph
+    func::JuMP.GenericQuadExpr{<:Number,NodeVariableRef}, graph::OptiGraph
 )
-    node_terms = OrderedDict{OptiNode,Vector{JuMP.GenericQuadExpr{<:Number,NodeVariableRef}}}()
+    node_terms = OrderedDict{
+        OptiNode,Vector{JuMP.GenericQuadExpr{<:Number,NodeVariableRef}}
+    }()
     nodes = collect_nodes(func)
     nodes = intersect(nodes, all_nodes(graph))
     for node in nodes
@@ -166,12 +167,12 @@ function _extract_separable_terms(
 
     for term in JuMP.quad_terms(func)
         node = get_node(term[2])
-        push!(node_terms[node], term[1]*term[2]*term[3])
+        push!(node_terms[node], term[1] * term[2] * term[3])
     end
 
     for term in JuMP.linear_terms(func)
         node = get_node(term[2])
-        push!(node_terms[node], term[1]*term[2])
+        push!(node_terms[node], term[1] * term[2])
     end
 
     return node_terms
@@ -179,8 +180,7 @@ end
 
 # NOTE: method needs improvement. does not cover all separable cases.
 function _extract_separable_terms(
-    func::JuMP.GenericNonlinearExpr{NodeVariableRef},
-    graph::OptiGraph
+    func::JuMP.GenericNonlinearExpr{NodeVariableRef}, graph::OptiGraph
 )
     node_terms = OrderedDict{OptiNode,Vector{JuMP.GenericNonlinearExpr{NodeVariableRef}}}()
     nodes = collect_nodes(func)
@@ -195,8 +195,8 @@ function _extract_separable_terms(
 end
 
 function _extract_separable_terms(
-    func::JuMP.GenericNonlinearExpr{NodeVariableRef}, 
-    node_terms::OrderedDict{OptiNode,Vector{JuMP.GenericNonlinearExpr{NodeVariableRef}}}
+    func::JuMP.GenericNonlinearExpr{NodeVariableRef},
+    node_terms::OrderedDict{OptiNode,Vector{JuMP.GenericNonlinearExpr{NodeVariableRef}}},
 )
     # check for a constant multiplier
     multiplier = 1.0
@@ -210,7 +210,7 @@ function _extract_separable_terms(
     if func.head != :+ && func.head != :-
         var = _first_variable(func)
         node = get_node(var)
-        push!(node_terms[node], multiplier*func)
+        push!(node_terms[node], multiplier * func)
     else
         # check each argument
         for arg in func.args

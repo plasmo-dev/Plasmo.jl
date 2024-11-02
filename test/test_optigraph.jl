@@ -331,7 +331,7 @@ function test_variable_constraints()
     @variable(n2, 0 <= x <= 2)
 
     # parameter
-    @variable(n1, p in Parameter(1.0))
+    @variable(n2, p in Parameter(1.0))
 
     @test parameter_value(p) == 1.0
     set_parameter_value(p, 2.0)
