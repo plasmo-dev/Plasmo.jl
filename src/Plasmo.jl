@@ -110,7 +110,9 @@ export OptiGraph,
     # other functions
 
     set_jump_model,
-    extract_variables
+    extract_variables,
+    is_separable,
+    extract_separable_terms
 
 include("core_types.jl")
 
@@ -140,7 +142,7 @@ include("graph_functions/topology.jl")
 
 include("graph_functions/partition.jl")
 
-include("utilities.jl")
+include("utils.jl")
 
 # extensions
 function __init__()

@@ -1092,25 +1092,98 @@ function has_node_objective(graph::OptiGraph)
 end
 
 """
+    node_objective_type(graph::OptiGraph)
+
+Return the most complex objective type among nodes in the given `graph`. The order of
+complexity is: Nonlinear, Quadratic, Linear.
+"""
+function node_objective_type(graph::OptiGraph)
+    if !(has_node_objective(graph))
+        return nothing
+    end
+    
+    obj_types = JuMP.objective_function_type.(all_nodes(graph))
+    if JuMP.GenericNonlinearExpr{NodeVariableRef} in obj_types
+        return JuMP.GenericNonlinearExpr{NodeVariableRef}
+    elseif JuMP.GenericQuadExpr{Float64,NodeVariableRef} in obj_types
+        return JuMP.GenericQuadExpr{Float64,NodeVariableRef}
+    elseif JuMP.GenericAffExpr{Float64,NodeVariableRef} in obj_types
+        return JuMP.GenericAffExpr{Float64,NodeVariableRef}
+    elseif NodeVariableRef in obj_types
+        return JuMP.GenericAffExpr{Float64,NodeVariableRef}
+    else
+        error("Could not determine node objective type")
+    end
+end
+
+"""
     set_to_node_objectives(graph::OptiGraph)
 
 Set the `graph` objective to the summation of all of its optinode objectives. Assumes the 
-objective sense is an MOI.MIN_SENSE and adjusts the signs of node objective functions 
-accordingly.
+objective sense is an MOI.MIN_SENSE and accounts for the sense of node objectives 
+accordingly. 
+
+Note that building nonlinear objective functions is much slower than 
+linear or quadratic because nonlienar expressions cannot be updated in place.
 """
 function set_to_node_objectives(graph::OptiGraph)
-    obj = 0
-    for node in all_nodes(graph)
-        if has_objective(node)
-            sense = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
-            obj += sense * JuMP.objective_function(node)
-        end
-    end
-    if obj != 0
-        @objective(graph, Min, obj)
+    if has_node_objective(graph)
+        node_obj_type =  node_objective_type(graph)
+        _set_to_node_objectives(graph, node_obj_type)
     end
     return nothing
 end
+
+function _set_to_node_objectives(
+    graph::OptiGraph, 
+    obj_type::Type{T} where T <: Union{
+        JuMP.GenericAffExpr{Float64, NodeVariableRef},
+        JuMP.GenericQuadExpr{Float64, NodeVariableRef}
+    }
+)
+    objective = zero(obj_type)
+    for node in all_nodes(graph)
+        if has_objective(node)
+            sense = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
+            JuMP.add_to_expression!(objective, JuMP.objective_function(node), sense)
+        end
+    end
+    @objective(graph, Min, objective)
+    return
+end
+
+function _set_to_node_objectives(
+    graph::OptiGraph, 
+    obj_type::Type{T} where T <: JuMP.GenericNonlinearExpr{NodeVariableRef}
+)
+    objective = zero(obj_type)
+    for node in all_nodes(graph)
+        if has_objective(node)
+            sense = JuMP.objective_sense(node) == MOI.MAX_SENSE ? -1 : 1
+            objective += *(sense, objective_function(node))
+        end
+    end
+    @objective(graph, Min, objective)
+    return
+end
+
+# TODO
+"""
+    set_node_objectives_from_graph(graph::OptiGraph)
+
+Set the objective of each node within `graph` by parsing and separating the graph objective
+function. Note this only works if the objective function is separable over the nodes in 
+`graph`.
+"""
+# function set_node_objectives_from_graph(graph::OptiGraph)
+#     obj = objective_function(graph)
+#     if !(is_separable(obj))
+#         error("Cannot set node objectives from graph. It is not separable across nodes.")
+#     end
+#     sense = objective_sense(graph)
+#     _set_node_objectives_from_graph(obj, sense)
+#     return nothing
+# end
 
 """
     JuMP.objective_function(graph::OptiGraph)

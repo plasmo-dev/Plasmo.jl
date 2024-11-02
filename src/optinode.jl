@@ -241,7 +241,15 @@ function JuMP.set_objective_sense(node::OptiNode, sense::MOI.OptimizationSense)
 end
 
 function JuMP.objective_function(node::OptiNode)
-    return JuMP.object_dictionary(node)[(node, :objective_function)]
+    if haskey(JuMP.object_dictionary(node), (node,:objective_function))
+        return JuMP.object_dictionary(node)[(node, :objective_function)]
+    else
+        return nothing
+    end
+end
+
+function JuMP.objective_function_type(node::OptiNode)
+    return typeof(objective_function(node))
 end
 
 function JuMP.objective_sense(node::OptiNode)
