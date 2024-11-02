@@ -52,6 +52,30 @@ function test_simple_graph()
     @test MOIU.state(graph) == MOIU.ATTACHED_OPTIMIZER
     MOIU.drop_optimizer(graph)
     @test MOIU.state(graph) == MOIU.NO_OPTIMIZER
+
+    # test separable
+    @test is_separable(objective_function(graph))
+    sep_terms = extract_separable_terms(objective_function(graph), graph)
+    @test sep_terms[nodes[1]][1] == 1 * nodes[1][:x]
+    @test sep_terms[nodes[2]][1] == 2 * nodes[2][:x]
+
+    @objective(graph, Min, nodes[1][:x]^2 + nodes[2][:x]^2)
+    @test is_separable(objective_function(graph))
+    sep_terms = extract_separable_terms(objective_function(graph), graph)
+    @test sep_terms[nodes[1]][1] == 1 * nodes[1][:x]^2
+    @test sep_terms[nodes[2]][1] == 1 * nodes[2][:x]^2
+
+    @objective(graph, Min, nodes[1][:x]^3 + nodes[2][:x]^3)
+    @test is_separable(objective_function(graph))
+    sep_terms = extract_separable_terms(objective_function(graph), graph)
+    @test sep_terms[nodes[1]][1] isa JuMP.GenericNonlinearExpr{NodeVariableRef}
+    @test sep_terms[nodes[2]][1] isa JuMP.GenericNonlinearExpr{NodeVariableRef}
+
+    @objective(graph, Min, nodes[1][:x]^2 + nodes[2][:x]^2 + nodes[1][:x] * nodes[2][:x])
+    @test is_separable(objective_function(graph)) == false
+
+    @objective(graph, Min, nodes[1][:x]^3 * nodes[2][:x]^2)
+    @test is_separable(objective_function(graph)) == false
 end
 
 function test_direct_moi_graph()
