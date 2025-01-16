@@ -217,9 +217,7 @@ ylabel!("Air Flowrate")
 
 The resulting figures can be seen below:
 
-![ULayer_Results_T](../assets/MPC_example1.png)
-
-![ULayer_Results_u](../assets/MPC_example1_u.png)
+![ULayer_Results](../assets/MPC_example1.png)
 
 ## Hierarchical Implementation
 
@@ -381,7 +379,7 @@ plt_graph = layout_plot(
 )
 ```
 
-The resulting structure can be seen below. 
+The resulting structure can be seen below, where the yellow nodes represent the upper level graph and the other three colors are each a subgraph for the individual rooms. 
 
 ![HMPC_Structure](../assets/MPC_Example2_Graph.png)
 
