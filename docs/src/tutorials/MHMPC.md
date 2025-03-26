@@ -15,7 +15,7 @@ Multi-Horizon Model Predictive Control (MH-MPC) addresses this limitation by div
 
 In this problem, MH-MPC is applied to a linear mass-spring-damper system, demonstrating its effectiveness in handling dynamic control tasks. 
 
-![room_figure](../assets/Spring%20mass%20damper.png) 
+![room_figure](../assets/spring_mass_damper.png) 
 
 Figure taken from Behrunani, et al.
 
@@ -28,11 +28,11 @@ This problem includes the following sets:
 * Input cost matrices ($R_i$)
 * System cost matrices ($A_i, B_i$)
 
-Each sub-interval of MH-MPC is labeled using $i \isin H$. The cost matrices are defined for each sub-interval. Let $\mathbb{K}$ be the set of all time steps $k$ within each sub-interval $i$ and $N_i$ be the cardinality of set $\mathbb{K}_i$. Also, the control invariant set $\mathbb{X}_{CI} \subseteq \mathbb{X}$.
+Each sub-interval of MH-MPC is labeled using $i \in H$. The cost matrices are defined for each sub-interval. Let $\mathbb{K}$ be the set of all time steps $k$ within each sub-interval $i$ and $N_i$ be the cardinality of set $\mathbb{K}_i$. Also, the control invariant set $\mathbb{X}_{CI} \subseteq \mathbb{X}$.
 
-An important distinction for MH-MPC is the dual time horizon that is used in the optimization problem. This is encapsulated in a time horizon uses a diffusing-horizon (available here: https://ieeexplore.ieee.org/document/9658150). To define these time steps in the MH-MPC problem, the sampling time of the $i^\text{th}$ sub-interval is $t_i = \alpha_i t_1 (\alpha_1 = 1)$ where $\alpha_i \isin \mathbb{Z}_{\geq1}$ and increasing such that $\alpha_1 \lt \alpha_2 \lt ... \lt \alpha_{H-1} \lt \alpha_{H}$. Visually, this is described below.
+An important distinction for MH-MPC is the dual time horizon that is used in the optimization problem. This is encapsulated in a time horizon uses a diffusing-horizon (available here: https://ieeexplore.ieee.org/document/9658150). To define these time steps in the MH-MPC problem, the sampling time of the $i^\text{th}$ sub-interval is $t_i = \alpha_i t_1 (\alpha_1 = 1)$ where $\alpha_i \in \mathbb{Z}_{\geq1}$ and increasing such that $\alpha_1 \lt \alpha_2 \lt ... \lt \alpha_{H-1} \lt \alpha_{H}$. Visually, this is described below.
 
-![room_figure](../assets/mhmpc.png) 
+![room_figure](../assets/behrunani_mhmpc.png) 
 Figure taken from Behrunani et al.
 
 
@@ -40,11 +40,11 @@ The MH-MPC optimization problem can be written as:
 
 ```math
 \begin{aligned}
-    \min_{\{ x_k, u_k\}^N_{k=0}} \quad & \sum_{i \isin \mathbb{H}} \left( \sum_{k \isin \mathbb{K}_i} \left( x_k^\intercal Q_i x_k + u_k^\intercal R_i u_k \right) \right) + x_N^\intercal Q_H x_N\\
-    \textrm{s.t.} \quad & x_{k+1} = A_i x_k + B_i u_k, \quad\forall k \isin \mathbb{K}_i, \forall i \isin \mathbb{H} \\
-    & x_k \isin \mathbb{X}, \forall k \isin \mathbb{Z}_{0:N} \\
-    & u_k \isin \mathbb{U}, \forall k \isin \mathbb{Z}_{0:N-1} \\
-    & x_N \isin \mathbb{X}_{CI}
+    \min_{\{ x_k, u_k\}^N_{k=0}} \quad & \sum_{i \in \mathbb{H}} \left( \sum_{k \in \mathbb{K}_i} \left( x_k^\intercal Q_i x_k + u_k^\intercal R_i u_k \right) \right) + x_N^\intercal Q_H x_N\\
+    \textrm{s.t.} \quad & x_{k+1} = A_i x_k + B_i u_k, \quad\forall k \in \mathbb{K}_i, \forall i \in \mathbb{H} \\
+    & x_k \in \mathbb{X}, \forall k \in \mathbb{Z}_{0:N} \\
+    & u_k \in \mathbb{U}, \forall k \in \mathbb{Z}_{0:N-1} \\
+    & x_N \in \mathbb{X}_{CI}
 \end{aligned}
 ```
 
@@ -53,7 +53,6 @@ The MH-MPC optimization problem can be written as:
 The general idea is to use a graph-based approach to model the sub-intervals as sub-graphs with each node is a specific time point. This will all be encapsulated under one master graph. This implementation is shown below.
 
 ![room_figure](../assets/PlasmoGraphic.svg) 
-
 
 ### 1. Import packages and define constants
 
@@ -82,7 +81,7 @@ NU = 1 # Number of u variables [force]
 
 ### 2. Make graph structure
 
-We define our graph and subgraph structure. This encapsulates the MH-MPC approach for each $H$ sub-interval  $i \isin H$. Here $H = 5$
+We define our graph and subgraph structure. This encapsulates the MH-MPC approach for each $H$ sub-interval  $i \in H$. Here $H = 5$
 
 ```julia
 graph_master = OptiGraph() # This will contain all subgraphs
