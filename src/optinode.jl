@@ -308,8 +308,8 @@ function _relax_or_fix_integrality(var_value::Union{Nothing,Function}, node::Opt
         elseif info.binary
             JuMP.unset_binary(v)
             if !info.has_fix
-                JuMP.set_lower_bound(v, max(zero(T), info.lower_bound))
-                JuMP.set_upper_bound(v, min(one(T), info.upper_bound))
+                JuMP.set_lower_bound(v, max(zero(Float64), info.lower_bound))
+                JuMP.set_upper_bound(v, min(one(Float64), info.upper_bound))
             elseif info.fixed_value < 0 || info.fixed_value > 1
                 error(
                     "The model has no valid relaxation: binary variable " *
