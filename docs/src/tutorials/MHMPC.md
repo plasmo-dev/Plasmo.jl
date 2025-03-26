@@ -15,7 +15,7 @@ Multi-Horizon Model Predictive Control (MH-MPC) addresses this limitation by div
 
 In this problem, MH-MPC is applied to a linear mass-spring-damper system, demonstrating its effectiveness in handling dynamic control tasks. 
 
-<img src='Spring%20mass%20damper.png' alt="drawing" width="400" class="center"/>
+![room_figure](../assets/Spring%20mass%20damper.png) 
 
 Figure taken from Behrunani, et al.
 
@@ -32,8 +32,7 @@ Each sub-interval of MH-MPC is labeled using $i \isin H$. The cost matrices are 
 
 An important distinction for MH-MPC is the dual time horizon that is used in the optimization problem. This is encapsulated in a time horizon uses a diffusing-horizon (available here: https://ieeexplore.ieee.org/document/9658150). To define these time steps in the MH-MPC problem, the sampling time of the $i^\text{th}$ sub-interval is $t_i = \alpha_i t_1 (\alpha_1 = 1)$ where $\alpha_i \isin \mathbb{Z}_{\geq1}$ and increasing such that $\alpha_1 \lt \alpha_2 \lt ... \lt \alpha_{H-1} \lt \alpha_{H}$. Visually, this is described below.
 
-<img src='mhmpc.png' alt="drawing"  class="center"/>
-
+![room_figure](../assets/mhmpc.png) 
 Figure taken from Behrunani et al.
 
 
@@ -53,7 +52,7 @@ The MH-MPC optimization problem can be written as:
 
 The general idea is to use a graph-based approach to model the sub-intervals as sub-graphs with each node is a specific time point. This will all be encapsulated under one master graph. This implementation is shown below.
 
-<img src='PlasmoGraphic.svg' alt="drawing" class="center"/>
+![room_figure](../assets/PlasmoGraphic.svg) 
 
 
 ### 1. Import packages and define constants
@@ -206,4 +205,4 @@ end
 ```
 
 Now, plotting the values of $x$ from our program:
-<img src='plasmo_mhmpc.png' alt="drawing" width="500" class="center"/>
+![room_figure](../assets/plasmo_mhmpc.png) 
