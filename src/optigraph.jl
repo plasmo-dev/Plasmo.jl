@@ -1490,6 +1490,28 @@ function JuMP.unregister(graph::OptiGraph, key::Symbol)
     return delete!(object_dictionary(graph), key)
 end
 
+"""
+    write_to_file(graph::OptiGraph, filename::string)
+
+Write the model stored in `graph` to `filename.` See [`MOI.FileFormats.FileFormat`](@ref) 
+for a list of supported formats. Format is determined automatically based on given file
+extension (e.g., .mps, .lp, .mof.json, .sdpa).
+
+Plasmo does not support loading the file back into Julia as an OptiGraph.
+"""
+function JuMP.write_to_file(graph::OptiGraph, filename::String)
+    m = MOI.FileFormats.Model(filename=filename)
+    f = () -> MOI.FileFormats.Model(filename=filename)
+
+    inner = MOI.instantiate(f)
+    moi_graph_model = graph.backend.moi_backend.model_cache.model
+
+    innter_map = MOI.copy_to(inner, moi_graph_model)
+    inner_backend = JuMP.unsafe_backend(inner)
+
+    MOI.write_to_file(inner_backend, filename)
+end
+
 # TODO Methods
 # num_linked_variables(graph)
 # linked_variables(graph)
