@@ -1495,7 +1495,8 @@ end
 
 Write the model stored in `graph` to `filename.` See [`MOI.FileFormats.FileFormat`](@ref) 
 for a list of supported formats. Format is determined automatically based on given file
-extension (e.g., .mps, .lp, .mof.json, .sdpa).
+extension (e.g., .mps, .lp, .mof.json, .sdpa). Note that this output does not explicitly
+include any graph structure information. 
 
 Plasmo does not support loading the file back into Julia as an OptiGraph.
 """
