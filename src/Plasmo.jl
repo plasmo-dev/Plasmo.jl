@@ -15,6 +15,8 @@ using DataStructures
 using SparseArrays
 using Graphs
 using Printf
+using Distributed
+using DistributedArrays
 
 using MathOptInterface
 const MOI = MathOptInterface
@@ -143,6 +145,8 @@ include("graph_functions/topology.jl")
 include("graph_functions/partition.jl")
 
 include("utils.jl")
+
+include("distributed/core_types.jl")
 
 # extensions
 function __init__()
