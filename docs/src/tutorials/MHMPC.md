@@ -204,4 +204,5 @@ end
 ```
 
 Now, plotting the values of $x$ from our program:
+
 ![room_figure](../assets/plasmo_mhmpc.png) 
