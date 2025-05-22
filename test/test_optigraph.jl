@@ -422,6 +422,13 @@ function test_variable_constraints()
     @test is_binary(n1[:x]) == true
     @test is_integer(n2[:x]) == true
 
+    # relax and unrelax integrality for entire graph, unfixing x variables first
+    JuMP.unfix(n1[:x])
+    unrelax_graph = JuMP.relax_integrality(graph)
+    @test is_binary(n1[:x]) == false
+    unrelax_graph()
+    @test is_binary(n1[:x]) == true
+
     graph = OptiGraph()
 
     @optinode(graph, nodes[1:2])
