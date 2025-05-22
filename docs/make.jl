@@ -27,6 +27,7 @@ makedocs(;
         "API Documentation" => "documentation/api_docs.md",
         "Tutorials" => [
             "Supply Chain Optimization" => "tutorials/supply_chain.md",
+            "Multi-Horizon Model Predictive Control" => "tutorials/MHMPC.md",
             "Optimal Control of a Quadcopter" => "tutorials/quadcopter.md",
             "Hierarchical HVAC Optimization" => "tutorials/HVAC.md",
             "Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md"
