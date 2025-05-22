@@ -84,9 +84,7 @@ NU = 1 # Number of u variables [force]
 We define our graph and subgraph structure. This encapsulates the MH-MPC approach for each $H$ sub-interval  $i \in H$. Here $H = 5$. To run the entire optimization over a set time period, we will wrap the model construction and optimization (steps 2 through 5) in a function called ``MHMPC``.
 
 ```julia
-function MHMPC(x0)
-    graph_master = OptiGraph() # This will contain all subgraphs
-    
+function add_horizon_subgraphs()
     # All of the subgraphs
     graph_SG1 = OptiGraph()
     graph_SG2 = OptiGraph()
@@ -104,7 +102,8 @@ function MHMPC(x0)
     @optinode(graph_SG5, nodes5[1:N_i[5]])
     
     nodes_all = [graph_SG1[:nodes1], graph_SG2[:nodes2], graph_SG3[:nodes3], graph_SG4[:nodes4], graph_SG5[:nodes5]]
-...
+    return subgraphs_all, nodes_all
+end
 ```
 
 The second parameter of ``@optinode`` will initialize $N_i$ nodes. They can be referenced (as seen later) by calling the name and the subsequent index of that specific node (e.g. ``nodes2[1]`` for the first node of the second subgraph.). The arrays ``subgraphs_all`` and ``nodes_all`` are used for easier, ordered indexing.
@@ -118,6 +117,7 @@ This step is necessary for initializing the state and input variables. Recall, e
 Additionally, the initial condition for this problem is defined for $t=0$, where $x_0 = [18\quad \mathord{-} 14]$. The ``fix`` function will fix a specified variable.
 
 ```julia
+function add_variables!(subgraphs_all, t_i, x0)
     for (subgraph, t_step) in zip(subgraphs_all, t_i)
         # Instantiate x,u for each node (time point)
         for node in all_nodes(subgraph)
@@ -129,14 +129,14 @@ Additionally, the initial condition for this problem is defined for $t=0$, where
             A = [1 dt; -dt (1-dt/2)]
             B = [0 ; 2*dt]
     
-            @expression(node, Ax_Bu[i = 1:NX],  A[i, 1] * node[:x][1] 
-            + A[i, 2] * node[:x][2] + B[i] * node[:u][1])
+            @expression(node, Ax_Bu[i = 1:NX],  A[i, 1] * node[:x][1] + A[i, 2] * node[:x][2] + B[i] * node[:u][1])
         end
     end
-    
+
     # Set initial condition for t1
-    fix.(nodes1[1][:x][1], x0[1]; force=true)
-    fix.(nodes1[1][:x][2], x0[2]; force=true)
+    fix.(subgraphs_all[1][:nodes1][1][:x][1], x0[1]; force=true)
+    fix.(subgraphs_all[1][:nodes1][1][:x][2], x0[2]; force=true)
+end
 ```
 
 ### 4. Adding linking constraints
@@ -148,12 +148,13 @@ An important tip for using the `@linkconstraint` macro is using the loop in the 
 In order to connect nodes between the subgraphs, you must reference the `graph_master` due to the scope of the variables. `graph_master` has access to all variables from all subgraphs, after all subgraphs were added  to the master graph. The `@linkconstraint` structure here is the same as connecting between individual subgraphs; taking the expression from the last node in the subgraph then setting it equal to the first $x$ value of the next node.
 
 ```julia
+function add_constraints!(graph_master, subgraphs_all, nodes_all)
     # Adding linking constraints between nodes in individual SG's
     for (subgraph, cardinality, node) in zip(subgraphs_all, N_i, nodes_all)   
         @linkconstraint(subgraph, [j = 1:(cardinality-1)], node[j+1][:x][1] == node[j][:Ax_Bu][1])
         @linkconstraint(subgraph, [j = 1:(cardinality-1)], node[j+1][:x][2] == node[j][:Ax_Bu][2])
     end
-    
+
     # Add subgraphs to master graph
     for subgraph in subgraphs_all
         add_subgraph(graph_master, subgraph)
@@ -162,7 +163,7 @@ In order to connect nodes between the subgraphs, you must reference the `graph_m
     # Add linking constraint between subgraphs
     @linkconstraint(graph_master, [n = 1:(length(subgraphs_all)-1)], nodes_all[n+1][1][:x][1] == nodes_all[n][N_i[n]][:Ax_Bu][1])
     @linkconstraint(graph_master, [n = 1:(length(subgraphs_all)-1)], nodes_all[n+1][1][:x][2] == nodes_all[n][N_i[n]][:Ax_Bu][2])
-      
+end
 ```
 
 ### 5. Setting objective and running optimization
@@ -172,6 +173,7 @@ The final step is to set the objective and run the optimization. This step is wr
 The resulting output is the optimal values for $x, u$. For plotting and running this optimization over a long time period, we return the arrays of state variables and input variables. Recall, the code from step 2 to this step is wrapped in a function.
 
 ```julia
+function add_objective!(graph_master)
     # Set objective
     @objective(
         graph_master, 
@@ -179,25 +181,33 @@ The resulting output is the optimal values for $x, u$. For plotting and running 
         sum(node[:u]' * R * node[:u] for node in all_nodes(graph_master)) +
         sum(node[:x]' * Q * node[:x] for node in all_nodes(graph_master)),
     )
+end
     
+function MHMPC(x0)
+    graph_master = OptiGraph() # This will contain all subgraphs
+    set_optimizer(graph_master, Ipopt.Optimizer)
+
+    subgraphs_all, nodes_all = add_horizon_subgraphs()
+    add_variables!(subgraphs_all, t_i, x0)
+    add_constraints!(graph_master, subgraphs_all, nodes_all)
+    add_objective!(graph_master)
+
     # Run optimization
     set_to_node_objectives(graph_master)
-    set_optimizer(graph_master, Ipopt.Optimizer)
-    set_optimizer_attribute(graph_master, "print_level", 0) # Silence the optimization output
+    set_optimizer_attribute(graph_master, "print_level", 0)
     optimize!(graph_master)
 
-    # Get output values
-    vals_x1 = []
-    vals_x2 = []
+    vals_x = []
+    vals_y = []
     vals_u = []
 
     for node in all_nodes(graph_master)
-        push!(vals_x1, value(graph_master, node[:x][1]))
-        push!(vals_x2, value(graph_master, node[:x][2]))
+        push!(vals_x, value(graph_master, node[:x][1]))
+        push!(vals_y, value(graph_master, node[:x][2]))
         push!(vals_u, value(graph_master, node[:u][1]))
     end
 
-    return vals_x1, vals_x2, vals_u
+    return vals_x, vals_y, vals_u
 end
 ```
 
@@ -222,6 +232,9 @@ function run_sim(T::Int = 401)
 
     return x_arr, u_arr
 end
+
+
+x_sim, u_sim = run_sim()
 ```
 
 Now, plotting the values of $x$ from our program:
