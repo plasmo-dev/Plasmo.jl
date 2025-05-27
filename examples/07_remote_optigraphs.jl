@@ -57,7 +57,7 @@ rg3 = Plasmo.add_subgraph(rg, worker = 2)
 @optinode(rg3, n5)
 @variable(n5, x5)
 
-@linkconstraint(rg, x + x3 + rg3[:n5][:x] == 0);
+@linkconstraint(rg, x + x3 + rg3[:n5][:x5] == 0);
 
 println("Success")
 
