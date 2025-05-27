@@ -36,6 +36,8 @@ macro optinode(graph, args...)
             container = JuMP.Containers.@container($(args...), add_node($graph))
             if isa(container, Plasmo.OptiNode)
                 set_name(container, Symbol($var))
+            elseif isa(container, Plasmo.RemoteNodeRef)
+                set_name(container, Symbol($var))
             else
                 #set node labels
                 axs = axes(container)
@@ -44,7 +46,9 @@ macro optinode(graph, args...)
                     JuMP.set_name(node, Symbol($var * "[$(string(terms[i]...))]"))
                 end
             end
-            $(graph).obj_dict[Symbol($var)] = container
+            if isa($(graph), Plasmo.OptiGraph)
+                $(graph).obj_dict[Symbol($var)] = container
+            end
         end
     end
     return esc(macro_code)

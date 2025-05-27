@@ -40,7 +40,8 @@ end
 struct RemoteEdgeRef <: AbstractRemoteEdgeRef
     remote_graph::Plasmo.RemoteOptiGraph #TODO: Decide if this should be `remote_graph` or just `graph`
     nodes::OrderedSet{Plasmo.RemoteNodeRef}
-    constraints::OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
+    constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
+    constraints::OrderedDict{Plasmo.RemoteEdgeConstraintRef, JuMP.AbstractConstraint}
     label::Symbol
 end
 
@@ -107,15 +108,6 @@ function add_subgraph(rgraph::RemoteOptiGraph, rsubgraph::RemoteOptiGraph)
     return nothing
 end 
 
-function run_function_remotely(rgraph::RemoteOptiGraph, func::Function) #TODO: Fix this function; it doesn't work; maybe check internals of @everywhere to see how they send things to remote workers
-    #remotecall_wait(rgraph.worker) do
-    @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        func(lg)
-    end
-    return nothing
-end
-
 function add_node(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         n = add_node(localpart(rgraph.graph)[1])
@@ -142,7 +134,7 @@ function add_edge(
     if has_edge(rgraph, Set(rnodes))
         redge = get_edge(rgraph, Set(rnodes))
     else
-        redge = RemoteEdgeRef(rgraph, OrderedSet(collect(rnodes)), OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef}(), label)
+        redge = RemoteEdgeRef(rgraph, OrderedSet(collect(rnodes)), OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef}(), OrderedDict{Plasmo.RemoteEdgeConstraintRef, JuMP.AbstractConstraint}(), label)
         push!(rgraph.optiedges, redge)
         rgraph.edge_data.optiedge_map[Set(collect(rnodes))] = redge
     end
@@ -184,7 +176,8 @@ function _build_constraint_ref(redge::RemoteEdgeRef, con::JuMP.AbstractConstrain
     )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
     cref = ConstraintRef(redge, constraint_index, JuMP.shape(con))
 
-    redge.constraints[constraint_index] = cref
+    redge.constraint_refs[constraint_index] = cref
+    redge.constraints[cref] = con
 
     #TODO: define `containing_optigraphs` function like Plasmo does for OptiGraphs
     return cref
@@ -196,6 +189,17 @@ end
 
 function get_edge(cref::RemoteEdgeConstraintRef)
     return JuMP.owner_model(cref)
+end
+
+function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
+    rgraph = rnode.remote_graph
+
+    f = @spawnat rgraph.worker begin
+        lnode = get_node(rgraph, rnode)
+        lnode.label.x = label
+    end
+
+    rnode.node_label.x = label
 end
 
 
@@ -241,6 +245,27 @@ function get_node(rgraph::RemoteOptiGraph, node::RemoteNodeRef)
         end
     end
     error("Node $node not detected in RemoteGraph $rgraph")
+end
+
+function JuMP.add_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable, name::String="")
+    rvref = _add_remote_node_variable(rnode, v, name)
+    return rvref
+end
+
+function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable, name::String="")
+    rgraph = rnode.remote_graph
+    sym = Symbol(name)
+
+    f = @spawnat rgraph.worker begin
+        lg = local_graph(rgraph)
+        lnode = get_node(rgraph, rnode)
+        nvref = JuMP.add_variable(lnode, v, name)
+        lg.element_data.node_obj_dict[(lnode, sym)] = nvref
+        nvref.index
+    end
+    moi_idx = fetch(f)
+
+    return RemoteVariableRef(rnode, moi_idx, sym)
 end
 
 function add_variable(node::RemoteNodeRef, name::Symbol=Symbol(""))
@@ -293,26 +318,26 @@ function Base.getindex(rnode::RemoteNodeRef, sym::Symbol)
     return RemoteVariableRef(rnode, moi_idx, sym)
 end
 
-# Need this to work for @variable macro; this currently does not work
-function JuMP.add_variable(node::RemoteNodeRef, v::JuMP.AbstractVariable, name::String="")
-    rgraph = node.remote_graph
+# # Need this to work for @variable macro; this currently does not work
+# function JuMP.add_variable(node::RemoteNodeRef, v::JuMP.AbstractVariable, name::String="")
+#     rgraph = node.remote_graph
 
-    f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        remote_node = get_node(rgraph, node)
-        new_var = @variable(remote_node)
-        new_var.index
-    end
-    moi_idx = fetch(f)
-    return RemoteVariableRef(node, moi_idx, Symbol(name))
-    # find node on remote; 
-    # send (fetch) name from local to remote
-    # send (fetch) v from local to remote
-    # do JuMP.add_variable with this to node
-    # fetch MOI index for new var
-    # return remote_var_ref
-    #TODO: Make sure this works for vector of variables
-end
+#     f = @spawnat rgraph.worker begin
+#         lg = local_graph(rgraph)
+#         remote_node = get_node(rgraph, node)
+#         new_var = @variable(remote_node)
+#         new_var.index
+#     end
+#     moi_idx = fetch(f)
+#     return RemoteVariableRef(node, moi_idx, Symbol(name))
+#     # find node on remote; 
+#     # send (fetch) name from local to remote
+#     # send (fetch) v from local to remote
+#     # do JuMP.add_variable with this to node
+#     # fetch MOI index for new var
+#     # return remote_var_ref
+#     #TODO: Make sure this works for vector of variables
+# end
 
 function JuMP.all_variables(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
@@ -393,6 +418,10 @@ function JuMP.is_valid(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
     else
         return false
     end
+end
+
+function Base.setindex!(rnode::RemoteNodeRef, value, name::Symbol) #TODO: Consider whether we should do this differently without an object dictionary
+    return nothing
 end
 
 #= #TODO: Figure out displaying constraints
@@ -526,6 +555,10 @@ function JuMP.jump_function(graph::RemoteOptiGraph, f::MOI.ScalarNonlinearFuncti
         end
     end
     return ret
+end
+
+function JuMP._error_if_cannot_register(rnode::RemoteNodeRef, name::Symbol)
+    return nothing
 end
 
 
