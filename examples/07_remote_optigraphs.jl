@@ -7,15 +7,8 @@ using JuMP
 # Instantiate optigraph
 rg = Plasmo.RemoteOptiGraph()
 
-# Optional second argument for node name; improves display and makes querying easier
-# Next week I will work on enabling the @optinode macro
-
 @optinode(rg, n1)
 @optinode(rg, n2)
-
-# Add variables; easiest to access if the symbol is passed for a name
-# Next week I will work on enabling the @variable macro
-# These return RemoteVariableRefs
 
 @variable(n1, x)
 @variable(n1, y)
@@ -32,6 +25,8 @@ JuMP.add_to_expression!(a, x + y)
 # @linkconstraint works for adding edges; however, this display does not work correctly
 lc = @linkconstraint(rg, x + rg[:n2][:z] <= 1);
 
+@constraint(n1, x + y <= 2);
+
 if nprocs() == 1
     addprocs(1)
 end
@@ -43,6 +38,7 @@ end
 
 # Define another graph and add nodes
 rg2 = Plasmo.RemoteOptiGraph(worker = 2)
+
 @optinode(rg2, n3)
 @optinode(rg2, n4)
 
@@ -62,5 +58,5 @@ rg3 = Plasmo.add_subgraph(rg, worker = 2)
 println("Success")
 
 # TODO: Need to define the objective on remotes
-# TODO: Need to fix macros so that @variable, @constraint, @optinode, and @objective work; 
+# TODO: Need to get @constraint and @objective to work; 
 # TODO: Need to figure out a way to port a function to a separate worker to add to an optigraph
