@@ -81,46 +81,74 @@ function JuMP.set_optimizer_attribute(rgraph::RemoteOptiGraph, pairs::Pair...)
 end #TODO: go through and decide if all my functions should be using `remotecall_wait` or `@spawnat`
 
 function JuMP.set_objective(
-    rnode::RemoteNodeRef, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
+    rgraph::RemoteOptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
 )
-
+    f = @spawnat rgraph.worker begin
+        lg = local_graph(rgraph)
+        new_func = _convert_remote_to_local(rgraph, func)
+        JuMP.set_objective(lg, sense, new_func)
+    end
     return nothing
 end
 
 function JuMP.set_objective(
-    rgraph::RemoteOptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
+    rnode::RemoteNodeRef, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
 )
+    rgraph = rnode.remote_graph
+    f = @spawnat rgraph.worker begin
+        new_func = _convert_remote_to_local(rnode, func)
+        lnode = get_node(rgraph, rnode)
+        JuMP.set_objective(lnode, sense, new_func)
+    end
+    return nothing
+end
 
+function JuMP.set_objective_function(
+    rgraph::RemoteOptiGraph, func::JuMP.AbstractJuMPScalar
+)
+    f = @spawnat rgraph.worker begin
+        lg = local_graph(rgraph)
+        new_func = _convert_remote_to_local(rgraph, func)
+        JuMP.set_objective_function(lg, new_func)
+    end
     return nothing
 end
 
 function JuMP.set_objective_function(
     rnode::RemoteNodeRef, func::JuMP.AbstractJuMPScalar
 )
-
-    return nothing
-end
-
-function JuMP.set_objective_function(
-    rnode::RemoteOptiGraph, func::JuMP.AbstractJuMPScalar
-)
-
-    return nothing
-end
-
-function JuMP.set_objective_sense(
-    rnode::RemoteNodeRef, sense::MOI.OptimizationSense
-)
-
+    rgraph = rnode.remote
+    f = @spawnat rgraph.worker begin
+        new_func = _convert_remote_to_local(rnode, func)
+        lnode = get_node(rgraph, rnode)
+        JuMP.set_objective_function(lnode, new_func)
+    end
     return nothing
 end
 
 function JuMP.set_objective_sense(
     rgraph::RemoteOptiGraph, sense::MOI.OptimizationSense
 )
-
+    f = @spawnat rgraph.worker begin
+        lg = local_graph(rgraph)
+        JuMP.set_objective_sense(lg, sense)
+    end
     return nothing
 end
+
+function JuMP.set_objective_sense(
+    rnode::RemoteNodeRef, sense::MOI.OptimizationSense
+)
+    rgraph = rnode.remote
+    f = @spawnat rgraph.worker begin
+        lnode = get_node(rgraph, rnode)
+        JuMP.set_objective_sense(lnode, sense)
+    end
+    return nothing
+end
+
+#TODO: set_to_node_objectives
+#TODO: objective_function
 
 
 ################################### Indexing and Printing #######################################
@@ -264,9 +292,26 @@ function JuMP.add_constraint(
     rnodes = collect_nodes(JuMP.jump_function(con))
     @assert length(rnodes) > 0
     length(rnodes) > 1 || error("Cannot create a linking constraint on a single node")
-    redge = add_edge(rgraph, rnodes...)
-    con = JuMP.model_convert(redge, con)
-    cref = _build_constraint_ref(redge, con)
+
+    if all(n -> n.remote_graph == rgraph, rnodes)
+        _build_constraint_ref(rgraph, con, name=name)
+    else
+        redge = add_edge(rgraph, rnodes...)
+        con = JuMP.model_convert(redge, con)
+        _build_constraint_ref(redge, con)
+    end
+    return nothing
+end #TODO: Decide if JuMP.add_constraint should return a constraintref like the macros normally do; I don't think we want to fetch the cref from the remote though, so should decide if this should create a new remote ref or something like that
+
+function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstraint; name::String="")
+    f = @spawnat rgraph.worker begin
+        lg = local_graph(rgraph)
+        new_expr = _convert_remote_to_local(rgraph, con.func)
+        lcon = JuMP.ScalarConstraint(new_expr, con.set)
+        cref = JuMP.add_constraint(lg, lcon, name)
+        cref
+    end
+    return nothing
 end
 
 function _build_constraint_ref(redge::RemoteEdgeRef, con::JuMP.AbstractConstraint)
@@ -285,15 +330,15 @@ function _build_constraint_ref(redge::RemoteEdgeRef, con::JuMP.AbstractConstrain
     redge.constraints[cref] = con
 
     #TODO: define `containing_optigraphs` function like Plasmo does for OptiGraphs
-    return cref
+    return nothing
 end
 
 function JuMP.add_constraint(
     rnode::RemoteNodeRef, con::JuMP.AbstractConstraint, name::String=""
 )
     JuMP.model_convert(rnode, con)
-    cref = _build_constraint_ref(rnode, con)
-    # convert con to local con, then 
+    _build_constraint_ref(rnode, con)
+    return nothing
 end
 
 function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.VectorConstraint)
@@ -308,7 +353,7 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
 
     f = @spawnat rgraph.worker begin
         node = get_node(rgraph, rnode)
-        new_expr = _convert_remote_expr_to_local(con.func, node)
+        new_expr = _convert_remote_to_local(rnode, con.func)
         lcon = JuMP.ScalarConstraint(new_expr, con.set)
 
         jump_func = JuMP.jump_function(lcon)
@@ -324,27 +369,8 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
         for graph in containing_optigraphs(node)
             MOI.add_constraint(graph_backend(graph), cref, jump_func, moi_set)
         end
-        cref
     end
-    return fetch(f)
-end
-
-function _check_node_variables(rnode::RemoteNodeRef, jump_func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
-    for var in keys(jump_func.terms)
-        if var.node != rnode
-            error("Variable $var belongs to node $(var.node) but $rnode was specified")
-        end
-    end
-    return nothing
-end
-
-function _convert_remote_expr_to_local(func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef}, lnode::OptiNode)
-    new_func = GenericAffExpr{Float64, Plasmo.NodeVariableRef}(func.constant)
-    for var in keys(func.terms)
-        local_var = remote_ref_to_var(var, lnode)
-        new_func.terms[local_var] = func.terms[var]
-    end
-    return new_func
+    return nothing#fetch(f)
 end
 
 function JuMP.is_valid(edge::RemoteEdgeRef, cref::ConstraintRef)

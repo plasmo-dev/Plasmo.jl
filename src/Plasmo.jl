@@ -148,6 +148,8 @@ include("utils.jl")
 
 include("distributed/core_types.jl")
 
+include("distributed/expressions.jl")
+
 include("distributed/utils.jl")
 
 include("distributed/jump_interop.jl")

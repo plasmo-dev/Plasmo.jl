@@ -27,12 +27,13 @@ function _extract_variables(func::JuMP.GenericQuadExpr)
 end
 
 function _extract_variables(func::JuMP.GenericNonlinearExpr)
-    vars = NodeVariableRef[]
+    V = typeof(func).parameters[1]
+    vars = V[]
     for i in 1:length(func.args)
         func_arg = func.args[i]
         if func_arg isa Number
             continue
-        elseif typeof(func_arg) == NodeVariableRef
+        elseif typeof(func_arg) == V
             push!(vars, func_arg)
         else
             append!(vars, _extract_variables(func_arg))
@@ -42,11 +43,12 @@ function _extract_variables(func::JuMP.GenericNonlinearExpr)
 end
 
 function _first_variable(func::JuMP.GenericNonlinearExpr)
+    V = typeof(func).parameters[1]
     for i in 1:length(func.args)
         func_arg = func.args[i]
         if func_arg isa Number
             continue
-        elseif typeof(func_arg) == NodeVariableRef
+        elseif typeof(func_arg) == V
             return func_arg
         else
             return _first_variable(func_arg)

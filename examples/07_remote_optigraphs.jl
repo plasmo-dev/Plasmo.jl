@@ -3,9 +3,20 @@ using Revise
 using Plasmo
 using Distributed
 using JuMP
+using HiGHS
+using Ipopt
+
+if nprocs() == 1
+    addprocs(1)
+end
+
+@everywhere begin
+    using Revise
+    using Plasmo, JuMP, Distributed, HiGHS, Ipopt
+end
 
 # Instantiate optigraph
-rg = Plasmo.RemoteOptiGraph()
+rg = Plasmo.RemoteOptiGraph(worker=2)
 
 @optinode(rg, n1)
 @optinode(rg, n2)
@@ -26,15 +37,15 @@ JuMP.add_to_expression!(a, x + y)
 lc = @linkconstraint(rg, x + rg[:n2][:z] <= 1);
 
 @constraint(n1, x + y <= 2);
+@constraint(n1, x^2 + y <= 4);
+@constraint(n1, sin(x) + y^2*x >= 1);
 
-if nprocs() == 1
-    addprocs(1)
-end
+@objective(n1, Min, x)
+@objective(rg, Min, x + sin(y) + z^2)
 
-@everywhere begin
-    using Revise
-    using Plasmo, JuMP, Distributed
-end
+set_optimizer(rg, Ipopt.Optimizer)
+
+optimize!(rg)
 
 # Define another graph and add nodes
 rg2 = Plasmo.RemoteOptiGraph(worker = 2)
