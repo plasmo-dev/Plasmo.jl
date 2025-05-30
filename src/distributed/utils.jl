@@ -16,6 +16,7 @@ end
 function add_subgraph(rgraph::RemoteOptiGraph; worker::Int=1)
     new_rgraph = RemoteOptiGraph(worker=worker)
     push!(rgraph.subgraphs, new_rgraph)
+    new_rgraph.parent_graph = rgraph
     return new_rgraph
 end
 
@@ -25,6 +26,7 @@ function add_subgraph(rgraph::RemoteOptiGraph, rsubgraph::RemoteOptiGraph)
         println("$rsubgraph is already a subgraph of $rgraph")
     else
         push!(subgraphs, rsubgraph)
+        rsubgraph.parent_graph = rgraph
     end
     return nothing
 end 
@@ -40,6 +42,34 @@ function all_nodes(rgraph::RemoteOptiGraph)
         append!(nodes, all_nodes(g))
     end
     return nodes
+end
+
+function all_subgraphs(rgraph::RemoteOptiGraph)
+    subs = collect(rgraph.subgraphs)
+    for subgraph in rgraph.subgraphs
+        subs = [subs; all_subgraphs(subgraph)]
+    end
+    return subs
+end
+
+function num_local_subgraphs(rgraph::RemoteOptiGraph)
+    return length(rgraph.subgraphs) 
+end
+
+function num_subgraphs(rgraph::RemoteOptiGraph)
+    n_subs = num_local_subgraphs(rgraph)
+    for subgraph in rgraph.subgraphs
+        n_subs += num_subgraphs(subgraph)
+    end
+end
+
+function containing_optigraphs(robj::RemoteOptiObject)
+    sg = source_graph(robj)
+    if isnothing(sg.parent_graph)
+        return [sg]
+    else
+        return [sg; containing_optigraphs(sg)]
+    end    
 end
 
 function JuMP.all_variables(rgraph::RemoteOptiGraph)
@@ -147,7 +177,11 @@ function JuMP.set_objective_sense(
     return nothing
 end
 
-#TODO: set_to_node_objectives
+function set_to_node_objectives(rgraph::RemoteOptiGraph)
+    @spawnat rgraph.worker set_to_node_objectives(local_graph(rgraph))
+    return nothing
+end
+
 #TODO: objective_function
 
 
@@ -179,6 +213,16 @@ end
 Base.print(io::IO, rvar::RemoteVariableRef) = Base.print(io, Base.string(rvar))
 Base.show(io::IO, rvar::RemoteVariableRef) = Base.print(io, rvar)
 
+function Base.string(rcon::RemoteEdgeConstraintRef)
+    redge = rcon.model
+    rcon = redge.constraints[rcon]
+    mode = JuMP.MIME("text/plain")
+    return JuMP.function_string(mode, rcon) * " " * JuMP.in_set_string(mode, rcon)
+end
+
+Base.print(io::IO, rcon::RemoteEdgeConstraintRef) = Base.print(io, Base.string(rcon))
+Base.show(io::IO, rcon::RemoteEdgeConstraintRef) = Base.print(io, Base.string(rcon))
+
 function JuMP.index(rvar::RemoteVariableRef) return rvar.index end
 
 function JuMP.owner_model(rvar::RemoteVariableRef) return rvar.node end
@@ -186,6 +230,8 @@ function JuMP.owner_model(rvar::RemoteVariableRef) return rvar.node end
 function JuMP.name(rvar::RemoteVariableRef) return Base.string(rvar) end
 
 function source_graph(redge::RemoteEdgeRef) return redge.remote_graph end
+function source_graph(rnode::RemoteNodeRef) return rnode.remote_graph end
+function source_graph(rgraph::RemoteOptiGraph) return rgraph.parent_graph end
 
 function JuMP.is_valid(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
     if rvar.node == rnode
@@ -200,10 +246,10 @@ function Base.setindex!(rnode::RemoteNodeRef, value, name::Symbol) #TODO: Consid
 end
 
 #TODO: Figure out displaying constraints
-
 function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
+        #new_sym = Symbol(rgraph.label, ".", sym)
         local_node = Plasmo.get_node(lg, sym)
         (local_node.idx, local_node.label)
     end
@@ -267,6 +313,11 @@ function add_edge(
     if has_edge(rgraph, Set(rnodes))
         redge = get_edge(rgraph, Set(rnodes))
     else
+        subgraphs = [rgraph; all_subgraphs(rgraph)]
+        if !(all(x -> x.remote_graph in subgraphs, rnodes))
+            error("Remote Nodes do not belong to the remote graph or its subgrpahs")
+        end
+
         redge = RemoteEdgeRef(rgraph, OrderedSet(collect(rnodes)), OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef}(), OrderedDict{Plasmo.RemoteEdgeConstraintRef, JuMP.AbstractConstraint}(), label)
         push!(rgraph.optiedges, redge)
         rgraph.edge_data.optiedge_map[Set(collect(rnodes))] = redge
@@ -391,7 +442,6 @@ function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
 
     rnode.node_label.x = label
 end
-
 
 #TODO: set_objective (node and graph)
 #TODO: set_objective_sense (node and graph)

@@ -542,7 +542,7 @@ Retrieve the total number of subgraphs in `graph`. Include subgraphs within subg
 function num_subgraphs(graph::OptiGraph)
     n_subs = num_local_subgraphs(graph)
     for subgraph in graph.subgraphs
-        n_subs += num_local_subgraphs(subgraph)
+        n_subs += num_subgraphs(subgraph)
     end
     return n_subs
 end
