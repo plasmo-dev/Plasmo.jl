@@ -1,18 +1,26 @@
 # A remote graph tracks its worker and a DistributedArray as a persistent reference to the graph on the worker
 # The remote graph can also have a subset of other, nested remote graphs that are distributed on other workers
 
+abstract type AbstractRemoteOptiEdge <: JuMP.AbstractModel end
 abstract type AbstractRemoteEdgeRef <: JuMP.AbstractModel end
 abstract type AbstractRemoteNodeRef <: JuMP.AbstractModel end
+
+const RemoteOptiEdgeConstraintRef = JuMP.ConstraintRef{
+    <:AbstractRemoteOptiEdge,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
+} where {FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}
 
 const RemoteEdgeConstraintRef = JuMP.ConstraintRef{
     <:AbstractRemoteEdgeRef,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
 } where {FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}
 
+const RemoteConstraintRef = JuMP.ConstraintRef{
+    <:R,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
+} where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef,AbstractRemoteOptiEdge},FT<:MOI.AbstractFunction,ST<:AbstractSet}
 # or should this be it's own mutable struct that is an abstractlinkconstraint
 
 mutable struct RemoteEdgeData #TODO: merge the `constraints` attribute of the RemoteEdgeRef with this struct; I think the crefs should live on the graph, not on the edge structure
-    optiedge_map::OrderedDict{Set{<:AbstractRemoteNodeRef}, AbstractRemoteEdgeRef}
-    last_constraint_index::OrderedDict{AbstractRemoteEdgeRef, Int64}
+    optiedge_map::OrderedDict{Set{<:AbstractRemoteNodeRef}, AbstractRemoteOptiEdge}
+    last_constraint_index::OrderedDict{AbstractRemoteOptiEdge, Int64}
 end
 
 mutable struct RemoteOptiGraph <: AbstractOptiGraph
@@ -20,7 +28,7 @@ mutable struct RemoteOptiGraph <: AbstractOptiGraph
     graph::DArray{OptiGraph, 1, Vector{OptiGraph}} # I think this should only be allowed to be a length one vector. If it is anymore, than the user should just create a new RemoteOptiGraph object
     parent_graph::Union{Nothing, RemoteOptiGraph}
     subgraphs::Vector{RemoteOptiGraph} # These are nested remote optigraph objects; all remote optigraphs live on the main worker, but they contain a distributed optigraph that does not have to live on the main worker
-    optiedges::Vector{<:AbstractRemoteEdgeRef}
+    optiedges::Vector{<:AbstractRemoteOptiEdge}
     edge_data::RemoteEdgeData
     label::Symbol
     ext::Dict{Symbol, Any}
@@ -39,6 +47,14 @@ struct RemoteVariableRef <: JuMP.AbstractVariableRef
 end
 
 struct RemoteEdgeRef <: AbstractRemoteEdgeRef
+    remote_graph::Plasmo.RemoteOptiGraph #TODO: Decide if this should be `remote_graph` or just `graph`
+    nodes::OrderedSet{Plasmo.RemoteNodeRef}
+    constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
+    constraints::OrderedDict{Plasmo.RemoteEdgeConstraintRef, JuMP.AbstractConstraint}
+    label::Symbol
+end
+
+struct RemoteOptiEdge <: AbstractRemoteOptiEdge
     remote_graph::Plasmo.RemoteOptiGraph #TODO: Decide if this should be `remote_graph` or just `graph`
     nodes::OrderedSet{Plasmo.RemoteNodeRef}
     constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct

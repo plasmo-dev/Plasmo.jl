@@ -115,10 +115,13 @@ function JuMP.set_objective(
 )
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
+        println(func)
         new_func = _convert_remote_to_local(rgraph, func)
+        println(typeof(new_func))
+        println(new_func)
         JuMP.set_objective(lg, sense, new_func)
     end
-    return nothing
+    return func
 end
 
 function JuMP.set_objective(
@@ -130,18 +133,19 @@ function JuMP.set_objective(
         lnode = get_node(rgraph, rnode)
         JuMP.set_objective(lnode, sense, new_func)
     end
-    return nothing
+    return func
 end
 
 function JuMP.set_objective_function(
     rgraph::RemoteOptiGraph, func::JuMP.AbstractJuMPScalar
 )
+    println(func)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         new_func = _convert_remote_to_local(rgraph, func)
         JuMP.set_objective_function(lg, new_func)
     end
-    return nothing
+    return func
 end
 
 function JuMP.set_objective_function(
@@ -153,7 +157,7 @@ function JuMP.set_objective_function(
         lnode = get_node(rgraph, rnode)
         JuMP.set_objective_function(lnode, new_func)
     end
-    return nothing
+    return func
 end
 
 function JuMP.set_objective_sense(
@@ -182,7 +186,40 @@ function set_to_node_objectives(rgraph::RemoteOptiGraph)
     return nothing
 end
 
-#TODO: objective_function
+function JuMP.objective_value(rgraph::RemoteOptiGraph)
+    f = @spawnat rgraph.worker JuMP.objective_value(local_graph(rgraph))
+    return fetch(f)
+end
+
+function JuMP.objective_value(rnode::RemoteNodeRef)
+    rgraph = rnode.remote_graph
+    f = @spawnat rgraph.worker begin
+        lnode = get_node(rgraph, rnode)
+        JuMP.objective_value(local_graph(lnode))
+    end
+    return fetch(f)
+end
+
+function JuMP.objective_function(rgraph::RemoteOptiGraph)
+    f = @spawnat rgraph.worker begin
+        lg = local_graph(rgraph)
+        lobj_func = JuMP.objective_function(lg)
+        robj_func = _convert_local_to_remote(rgraph, lobj_func)
+        robj_func
+    end
+    return fetch(f)
+end
+
+function JuMP.objective_function(rnode::RemoteNodeRef)
+    rgraph = rnode.remote_graph
+    f = @spawnat rgraph.worker begin
+        lnode = get_node(rgraph, rnode)
+        lobj_func = JuMP.objective_function(lnode)
+        robj_func = _convert_local_to_remote(rgraph, lobj_func)
+        robj_func
+    end
+    return fetch(f)
+end
 
 
 ################################### Indexing and Printing #######################################
@@ -200,6 +237,12 @@ end
 Base.print(io::IO, redge::RemoteEdgeRef) = Base.print(io, Base.string(redge))
 Base.show(io::IO, redge::RemoteEdgeRef) = Base.print(io, redge)
 
+function Base.string(redge::RemoteOptiEdge)
+    return String(redge.label)
+end
+Base.print(io::IO, redge::RemoteOptiEdge) = Base.print(io, Base.string(redge))
+Base.show(io::IO, redge::RemoteOptiEdge) = Base.print(io, redge)
+
 function Base.string(rgraph::RemoteOptiGraph)
     return "RemoteOptiGraph"
 end
@@ -213,15 +256,15 @@ end
 Base.print(io::IO, rvar::RemoteVariableRef) = Base.print(io, Base.string(rvar))
 Base.show(io::IO, rvar::RemoteVariableRef) = Base.print(io, rvar)
 
-function Base.string(rcon::RemoteEdgeConstraintRef)
+function Base.string(rcon::RemoteOptiEdgeConstraintRef)
     redge = rcon.model
     rcon = redge.constraints[rcon]
     mode = JuMP.MIME("text/plain")
     return JuMP.function_string(mode, rcon) * " " * JuMP.in_set_string(mode, rcon)
 end
 
-Base.print(io::IO, rcon::RemoteEdgeConstraintRef) = Base.print(io, Base.string(rcon))
-Base.show(io::IO, rcon::RemoteEdgeConstraintRef) = Base.print(io, Base.string(rcon))
+Base.print(io::IO, rcon::RemoteOptiEdgeConstraintRef) = Base.print(io, Base.string(rcon))
+Base.show(io::IO, rcon::RemoteOptiEdgeConstraintRef) = Base.print(io, Base.string(rcon))
 
 function JuMP.index(rvar::RemoteVariableRef) return rvar.index end
 
@@ -229,6 +272,7 @@ function JuMP.owner_model(rvar::RemoteVariableRef) return rvar.node end
 
 function JuMP.name(rvar::RemoteVariableRef) return Base.string(rvar) end
 
+function source_graph(redge::RemoteOptiEdge) return redge.remote_graph end
 function source_graph(redge::RemoteEdgeRef) return redge.remote_graph end
 function source_graph(rnode::RemoteNodeRef) return rnode.remote_graph end
 function source_graph(rgraph::RemoteOptiGraph) return rgraph.parent_graph end
@@ -277,6 +321,18 @@ end
 ################################### Internals and Macros #######################################
 
 
+function get_node(rgraph::RemoteOptiGraph, node::RemoteNodeRef)
+    lg = local_graph(rgraph)
+
+    #TODO: Make this more efficient
+    for n in all_nodes(lg)
+        if n.idx == node.node_idx
+            return n
+        end
+    end
+    error("Node $node not detected in RemoteGraph $rgraph")
+end
+
 function get_node(graph::OptiGraph, sym::Symbol)
     for n in all_nodes(graph)
         if n.label.x == sym
@@ -285,6 +341,28 @@ function get_node(graph::OptiGraph, sym::Symbol)
     end
     error("Symbol $sym not saved on remotegraph")
 end
+
+function node_to_remote_ref(rgraph::RemoteOptiGraph, node::OptiNode) #ISSUE: can go from node to graph, but graph to node is hard
+    return RemoteNodeRef(rgraph, node.idx, node.label)
+end
+
+function var_to_remote_ref(rgraph::RemoteOptiGraph, var::NodeVariableRef)
+    rnode = node_to_remote_ref(rgraph, var.node)
+    return RemoteVariableRef(rnode, var.index, Symbol(name(var)))
+    #TODO: decide if the name should be a string or a symbol; I think I am switching between these a lot
+end
+
+function remote_ref_to_var(var::RemoteVariableRef)
+    rnode = var.node
+    rgraph = rnode.remote_graph
+    lnode = get_node(rgraph, rnode)
+    return NodeVariableRef(lnode, var.index)
+end
+
+function remote_ref_to_var(var::RemoteVariableRef, lnode::Plasmo.OptiNode)
+    return NodeVariableRef(lnode, var.index)
+end
+
 
 function add_node(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
@@ -318,7 +396,7 @@ function add_edge(
             error("Remote Nodes do not belong to the remote graph or its subgrpahs")
         end
 
-        redge = RemoteEdgeRef(rgraph, OrderedSet(collect(rnodes)), OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef}(), OrderedDict{Plasmo.RemoteEdgeConstraintRef, JuMP.AbstractConstraint}(), label)
+        redge = RemoteOptiEdge(rgraph, OrderedSet(collect(rnodes)), OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteOptiEdgeConstraintRef}(), OrderedDict{Plasmo.RemoteOptiEdgeConstraintRef, JuMP.AbstractConstraint}(), label)
         push!(rgraph.optiedges, redge)
         rgraph.edge_data.optiedge_map[Set(collect(rnodes))] = redge
     end
@@ -365,7 +443,7 @@ function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstr
     return nothing
 end
 
-function _build_constraint_ref(redge::RemoteEdgeRef, con::JuMP.AbstractConstraint)
+function _build_constraint_ref(redge::RemoteOptiEdge, con::JuMP.AbstractConstraint)
     # get moi function and set
     jump_func = JuMP.jump_function(con)
     moi_func = JuMP.moi_function(con)
@@ -424,11 +502,11 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
     return nothing#fetch(f)
 end
 
-function JuMP.is_valid(edge::RemoteEdgeRef, cref::ConstraintRef)
+function JuMP.is_valid(edge::RemoteOptiEdge, cref::ConstraintRef)
     return edge === JuMP.owner_model(cref)# && MOI.is_valid(graph_backend(edge), cref)
 end
 
-function get_edge(cref::RemoteEdgeConstraintRef)
+function get_edge(cref::RemoteOptiEdgeConstraintRef)
     return JuMP.owner_model(cref)
 end
 
@@ -449,7 +527,7 @@ end
 #TODO: Define constraint_object for edgerefs so that we can extend PlasmoBenders
 
 function next_constraint_index(
-    redge::RemoteEdgeRef, ::Type{F}, ::Type{S}
+    redge::RemoteOptiEdge, ::Type{F}, ::Type{S}
 )::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
     source_data = source_graph(redge).edge_data
     if !haskey(source_data.last_constraint_index, redge)
@@ -457,41 +535,6 @@ function next_constraint_index(
     end
     source_data.last_constraint_index[redge] += 1
     return MOI.ConstraintIndex{F,S}(source_data.last_constraint_index[redge])
-end
-
-function node_to_remote_ref(rgraph::RemoteOptiGraph, node::OptiNode) #ISSUE: can go from node to graph, but graph to node is hard
-    return RemoteNodeRef(rgraph, node.idx, node.label)
-end
-
-function var_to_remote_ref(rgraph::RemoteOptiGraph, var::NodeVariableRef)
-    rnode = node_to_remote_ref(rgraph, var.node)
-    local_node = var.node
-    graph = local_node.source_graph.x
-    return RemoteVariableRef(rnode, var.index, Symbol(name(var)))
-    #TODO: decide if the name should be a string or a symbol; I think I am switching between these a lot
-end
-
-function remote_ref_to_var(var::RemoteVariableRef)
-    rnode = var.node
-    rgraph = rnode.remote_graph
-    lnode = get_node(rgraph, rnode)
-    return NodeVariableRef(lnode, var.index)
-end
-
-function remote_ref_to_var(var::RemoteVariableRef, lnode::Plasmo.OptiNode)
-    return NodeVariableRef(lnode, var.index)
-end
-
-function get_node(rgraph::RemoteOptiGraph, node::RemoteNodeRef)
-    lg = local_graph(rgraph)
-
-    #TODO: Make this more efficient
-    for n in all_nodes(lg)
-        if n.idx == node.node_idx
-            return n
-        end
-    end
-    error("Node $node not detected in RemoteGraph $rgraph")
 end
 
 function JuMP.add_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable, name::String="")

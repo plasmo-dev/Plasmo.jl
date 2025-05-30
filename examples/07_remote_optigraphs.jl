@@ -47,6 +47,8 @@ set_optimizer(rg, Ipopt.Optimizer)
 
 optimize!(rg)
 
+remote_obj = JuMP.objective_function(rg)
+
 # Define another graph and add nodes
 rg2 = Plasmo.RemoteOptiGraph(worker = 2)
 
@@ -71,3 +73,16 @@ println("Success")
 # TODO: Need to define the objective on remotes
 # TODO: Need to get @constraint and @objective to work; 
 # TODO: Need to figure out a way to port a function to a separate worker to add to an optigraph
+
+a = z * z
+
+for v in keys(a.terms)
+    println(a.terms[v])
+end
+b = collect(keys(a.terms))
+a.terms[UnorderedPair(z, z)]
+a.terms[b[1]]
+
+for (p, v) in a.terms
+    println(p, "   ", v)
+end

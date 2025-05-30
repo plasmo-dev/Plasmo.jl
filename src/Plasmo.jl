@@ -152,6 +152,8 @@ include("distributed/expressions.jl")
 
 include("distributed/utils.jl")
 
+include("distributed/remote_variables.jl")
+
 include("distributed/jump_interop.jl")
 
 # extensions
