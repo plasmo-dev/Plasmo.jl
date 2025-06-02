@@ -1,19 +1,41 @@
+function Base.string(rvar::RemoteVariableRef)
+    return Base.string(rvar.node) * "[" * String(rvar.name) * "]"
+end
+
+Base.print(io::IO, rvar::RemoteVariableRef) = Base.print(io, Base.string(rvar))
+Base.show(io::IO, rvar::RemoteVariableRef) = Base.print(io, rvar)
+
+function JuMP.index(rvar::RemoteVariableRef) return rvar.index end
+function JuMP.owner_model(rvar::RemoteVariableRef) return rvar.node end
+function JuMP.name(rvar::RemoteVariableRef) return Base.string(rvar) end
+
+function remote_graph(rvar::RemoteVariableRef)
+    return rvar.node.remote_graph
+end
+
+function JuMP.is_valid(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
+    if rvar.node == rnode
+        return true
+    else
+        return false
+    end
+end
+
 function JuMP.all_variables(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         all_vars = JuMP.all_variables(lg)
-        [var_to_remote_ref(rgraph, var) for var in all_vars] #TODO: Move the var_to_remote_ref outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
+        [local_var_to_remote(rgraph, var) for var in all_vars] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
     end
     
     return fetch(f)
 end
 
-
-function JuMP.value(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+function JuMP.value(rgraph::RemoteOptiGraph, rvar::RemoteVariableRef)
     f = @spawnat rgraph.worker begin
+        lgraph = local_graph(rgraph)
         lvar = remote_ref_to_var(rvar)
-        JuMP.value(lvar)
+        JuMP.value(lgraph, lvar)
     end
     return fetch(f)
 end
@@ -150,19 +172,9 @@ function JuMP.FixRef(rvar::RemoteVariableRef)
         lvar = remote_ref_to_var
         cref = JuMP.FixRef(lvar)
         lnode = JuMP.owner_model(cref)
-        rnode = node_to_remote_ref(rgraph, lnode)
+        rnode = local_node_to_remote(rgraph, lnode)
         rcref = ConstraintRef(rnode, cref.index, cref.shape)
         rcref
     end
-    return rcref
+    return fetch(f)
 end
-
-
-
-# Add other JuMP functions including dual
-
-# need incident edges
-
-# need to refactor utils.jl
-
-# Add export statements

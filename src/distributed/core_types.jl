@@ -13,6 +13,10 @@ const RemoteEdgeConstraintRef = JuMP.ConstraintRef{
     <:AbstractRemoteEdgeRef,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
 } where {FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}
 
+const RemoteNodeConstraintRef = JuMP.ConstraintRef{
+    <:AbstractRemoteNodeRef,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
+} where {FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}
+
 const RemoteConstraintRef = JuMP.ConstraintRef{
     <:R,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
 } where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef,AbstractRemoteOptiEdge},FT<:MOI.AbstractFunction,ST<:AbstractSet}

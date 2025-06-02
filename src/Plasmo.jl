@@ -116,6 +116,13 @@ export OptiGraph,
     is_separable,
     extract_separable_terms
 
+    # distributed functions
+
+    local_graph
+    print_local_graph
+    get_local_graph
+
+
 include("core_types.jl")
 
 include("node_variables.jl")
@@ -148,9 +155,13 @@ include("utils.jl")
 
 include("distributed/core_types.jl")
 
-include("distributed/expressions.jl")
+include("distributed/conversions.jl")
 
-include("distributed/utils.jl")
+include("distributed/optigraph.jl")
+
+include("distributed/optinode.jl")
+
+include("distributed/optiedge.jl")
 
 include("distributed/remote_variables.jl")
 

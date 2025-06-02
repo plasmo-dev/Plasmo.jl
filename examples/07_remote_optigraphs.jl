@@ -23,7 +23,7 @@ rg = Plasmo.RemoteOptiGraph(worker=2)
 
 @variable(n1, x)
 @variable(n1, y)
-@variable(n2, z)
+@variable(n2, z >= 0)
 
 # can query all variables on a graph
 all_vars = JuMP.all_variables(rg)
@@ -38,10 +38,12 @@ lc = @linkconstraint(rg, x + rg[:n2][:z] <= 1);
 
 @constraint(n1, x + y <= 2);
 @constraint(n1, x^2 + y <= 4);
-@constraint(n1, sin(x) + y^2*x >= 1);
+@constraint(n1, cos(x) + y^2*x >= 1);
+
+fix(x, 0)
 
 @objective(n1, Min, x)
-@objective(rg, Min, x + sin(y) + z^2)# + 2)
+@objective(rg, Min, x + sin(y) + z^2)
 
 set_optimizer(rg, Ipopt.Optimizer)
 
@@ -70,6 +72,4 @@ rg3 = Plasmo.add_subgraph(rg, worker = 2)
 
 println("Success")
 
-# TODO: Need to define the objective on remotes
-# TODO: Need to get @constraint and @objective to work; 
 # TODO: Need to figure out a way to port a function to a separate worker to add to an optigraph
