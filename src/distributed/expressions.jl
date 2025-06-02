@@ -1,9 +1,9 @@
 function _convert_remote_to_local(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
     new_func = GenericAffExpr{Float64, Plasmo.NodeVariableRef}(func.constant)
-    for var in keys(func.terms)
+    for (var, val) in func.terms
         lnode = get_node(rgraph, var.node)
         local_var = remote_ref_to_var(var, lnode)
-        new_func.terms[local_var] = func.terms[var]
+        new_func.terms[local_var] = val
     end
     return new_func
 end
@@ -11,9 +11,9 @@ end
 function _convert_remote_to_local(rnode::RemoteNodeRef, func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
     lnode = get_node(rnode.remote_graph, rnode)
     new_func = GenericAffExpr{Float64, Plasmo.NodeVariableRef}(func.constant)
-    for var in keys(func.terms)
+    for (var, val) in func.terms
         local_var = remote_ref_to_var(var, lnode)
-        new_func.terms[local_var] = func.terms[var]
+        new_func.terms[local_var] = val
     end
     return new_func
 end
@@ -36,11 +36,11 @@ function _convert_remote_to_local(rnode::RemoteNodeRef, func::GenericQuadExpr{Fl
     lnode = get_node(rnode.remote_graph, rnode)
     new_aff = _convert_remote_to_local(rnode, func.aff)
     new_terms = OrderedDict{UnorderedPair{NodeVariableRef}, Float64}()
-    for pair in keys(func.terms)
+    for (pair, val) in func.terms
         local_var1 = remote_ref_to_var(pair.a, lnode)
         local_var2 = remote_ref_to_var(pair.b, lnode)
         new_pair = UnorderedPair(local_var1, local_var2)
-        new_terms[new_pair] = func.terms[pair]
+        new_terms[new_pair] = val
     end
     return GenericQuadExpr{Float64, Plasmo.NodeVariableRef}(new_aff, new_terms)
 end
@@ -83,6 +83,18 @@ function _convert_remote_to_local(robj::R, func::NodeVariableRef) where {R <: Un
 end
 
 function _convert_remote_to_local(robj::R, func::Float64) where {R <: Union{RemoteNodeRef, RemoteOptiGraph}}
+    return func
+end
+
+function _convert_remote_to_local(robj::R, func::GenericNonlinearExpr{NodeVariableRef}) where {R <: Union{RemoteNodeRef, RemoteOptiGraph}}
+    return func
+end
+
+function _convert_remote_to_local(robj::R, func::GenericAffExpr{Float64, NodeVariableRef}) where {R <: Union{RemoteNodeRef, RemoteOptiGraph}}
+    return func
+end
+
+function _convert_remote_to_local(robj::R, func::GenericQuadExpr{Float64, NodeVariableRef}) where {R <: Union{RemoteNodeRef, RemoteOptiGraph}}
     return func
 end
 

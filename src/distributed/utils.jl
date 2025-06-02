@@ -72,16 +72,9 @@ function containing_optigraphs(robj::RemoteOptiObject)
     end    
 end
 
-function JuMP.all_variables(rgraph::RemoteOptiGraph)
-    f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        all_vars = JuMP.all_variables(lg)
-        [var_to_remote_ref(rgraph, var) for var in all_vars] #TODO: Move the var_to_remote_ref outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
-    end
-    
-    return fetch(f)
+function remote_graph(rvar::RemoteVariableRef)
+    return rvar.node.remote_graph
 end
-
 
 ################################### Optimizer and Objective #######################################
 
@@ -115,10 +108,7 @@ function JuMP.set_objective(
 )
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
-        println(func)
         new_func = _convert_remote_to_local(rgraph, func)
-        println(typeof(new_func))
-        println(new_func)
         JuMP.set_objective(lg, sense, new_func)
     end
     return func
@@ -342,6 +332,16 @@ function get_node(graph::OptiGraph, sym::Symbol)
     error("Symbol $sym not saved on remotegraph")
 end
 
+function get_edge(rgraph::RemoteOptiGraph, ledge::Plasmo.OptiEdge)
+    rnodes = OrderedSet{Plasmo.RemoteNodeRef}()
+    lnodes = ledge.nodes
+    for node in lnodes
+        rnode = node_to_remote_ref(rgraph, node)
+        push!(rnodes, rnode)
+    end
+    return RemoteEdgeRef(rgraph, rnodes, ledge.label)
+end
+
 function node_to_remote_ref(rgraph::RemoteOptiGraph, node::OptiNode) #ISSUE: can go from node to graph, but graph to node is hard
     return RemoteNodeRef(rgraph, node.idx, node.label)
 end
@@ -423,13 +423,13 @@ function JuMP.add_constraint(
     length(rnodes) > 1 || error("Cannot create a linking constraint on a single node")
 
     if all(n -> n.remote_graph == rgraph, rnodes)
-        _build_constraint_ref(rgraph, con, name=name)
+        rcref = _build_constraint_ref(rgraph, con, name=name)
     else
         redge = add_edge(rgraph, rnodes...)
         con = JuMP.model_convert(redge, con)
-        _build_constraint_ref(redge, con)
+        rcref = _build_constraint_ref(redge, con)
     end
-    return nothing
+    return rcref
 end #TODO: Decide if JuMP.add_constraint should return a constraintref like the macros normally do; I don't think we want to fetch the cref from the remote though, so should decide if this should create a new remote ref or something like that
 
 function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstraint; name::String="")
@@ -438,14 +438,16 @@ function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstr
         new_expr = _convert_remote_to_local(rgraph, con.func)
         lcon = JuMP.ScalarConstraint(new_expr, con.set)
         cref = JuMP.add_constraint(lg, lcon, name)
-        cref
+        ledge = JuMP.owner_model(cref)
+        redge = get_edge(rgraph, ledge)
+        rcref = ConstraintRef(redge, cref.index, cref.shape)
+        rcref
     end
-    return nothing
+    return fetch(f)
 end
 
 function _build_constraint_ref(redge::RemoteOptiEdge, con::JuMP.AbstractConstraint)
     # get moi function and set
-    jump_func = JuMP.jump_function(con)
     moi_func = JuMP.moi_function(con)
     moi_set = JuMP.moi_set(con)
 
@@ -458,15 +460,14 @@ function _build_constraint_ref(redge::RemoteOptiEdge, con::JuMP.AbstractConstrai
     redge.constraint_refs[constraint_index] = cref
     redge.constraints[cref] = con
 
-    #TODO: define `containing_optigraphs` function like Plasmo does for OptiGraphs
-    return nothing
+    return cref
 end
 
 function JuMP.add_constraint(
     rnode::RemoteNodeRef, con::JuMP.AbstractConstraint, name::String=""
 )
     JuMP.model_convert(rnode, con)
-    _build_constraint_ref(rnode, con)
+    cref = _build_constraint_ref(rnode, con)
     return nothing
 end
 
@@ -498,15 +499,29 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
         for graph in containing_optigraphs(node)
             MOI.add_constraint(graph_backend(graph), cref, jump_func, moi_set)
         end
+        rcref = ConstraintRef(rnode, cref.index, cref.shape)
+        rcref
     end
-    return nothing#fetch(f)
+    return fetch(f)
 end
 
 function JuMP.is_valid(edge::RemoteOptiEdge, cref::ConstraintRef)
     return edge === JuMP.owner_model(cref)# && MOI.is_valid(graph_backend(edge), cref)
 end
 
+function JuMP.is_valid(edge::RemoteEdgeRef, cref::ConstraintRef)
+    return edge === JuMP.owner_model(cref)# && MOI.is_valid(graph_backend(edge), cref)
+end
+
+function JuMP.is_valid(node::RemoteNodeRef, cref::ConstraintRef)
+    return edge === JuMP.owner_model(cref)# && MOI.is_valid(graph_backend(edge), cref)
+end
+
 function get_edge(cref::RemoteOptiEdgeConstraintRef)
+    return JuMP.owner_model(cref)
+end
+
+function get_edge(cref::RemoteEdgeConstraintRef)
     return JuMP.owner_model(cref)
 end
 

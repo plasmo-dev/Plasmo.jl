@@ -49,16 +49,14 @@ end
 struct RemoteEdgeRef <: AbstractRemoteEdgeRef
     remote_graph::Plasmo.RemoteOptiGraph #TODO: Decide if this should be `remote_graph` or just `graph`
     nodes::OrderedSet{Plasmo.RemoteNodeRef}
-    constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
-    constraints::OrderedDict{Plasmo.RemoteEdgeConstraintRef, JuMP.AbstractConstraint}
     label::Symbol
 end
 
 struct RemoteOptiEdge <: AbstractRemoteOptiEdge
     remote_graph::Plasmo.RemoteOptiGraph #TODO: Decide if this should be `remote_graph` or just `graph`
     nodes::OrderedSet{Plasmo.RemoteNodeRef}
-    constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
-    constraints::OrderedDict{Plasmo.RemoteEdgeConstraintRef, JuMP.AbstractConstraint}
+    constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteOptiEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
+    constraints::OrderedDict{Plasmo.RemoteOptiEdgeConstraintRef, JuMP.AbstractConstraint}
     label::Symbol
 end
 
@@ -80,7 +78,7 @@ function RemoteOptiGraph(; name::Symbol=Symbol(:rg, gensym()), worker::Int=1)
         darray, 
         nothing,
         Vector{RemoteOptiGraph}(), 
-        Vector{Plasmo.RemoteEdgeRef}(), 
+        Vector{Plasmo.RemoteOptiEdge}(), 
         RemoteEdgeData(),
         name, #not sure yet whether the remote and local should have the same name, but doing that for now
         Dict{Symbol, Any}()
