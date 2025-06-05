@@ -39,9 +39,9 @@ function add_node(rgraph::RemoteOptiGraph)
     return RemoteNodeRef(rgraph, node_tuple[1], Symbol[node_tuple[2]])
 end
 
-function add_node(rgraph::RemoteOptiGraph, sym::Symbol) # TODO: Rethink whether this can be merged with previous function; the problem is that I want to keep the kwarg default of add_node(graph::OptiGraph), which also calls length(graph.optinodes); trying to use that same default argument in the add_node(rgraph::RemoteOptiGraph) means having to query the subgraph and get the number of nodes; probably not a big deal, but might require an extra fetch
+function add_node(rgraph::RemoteOptiGraph, label::Symbol) # TODO: Rethink whether this can be merged with previous function; the problem is that I want to keep the kwarg default of add_node(graph::OptiGraph), which also calls length(graph.optinodes); trying to use that same default argument in the add_node(rgraph::RemoteOptiGraph) means having to query the subgraph and get the number of nodes; probably not a big deal, but might require an extra fetch
     f = @spawnat rgraph.worker begin
-        n = add_node(localpart(rgraph.graph)[1], label=sym)
+        n = add_node(localpart(rgraph.graph)[1], label=label)
         (n.idx, n.label.x)
     end
     node_tuple = fetch(f)

@@ -27,16 +27,14 @@ Add a new optinode to `optigraph`. The expression `expr` can either be
 macro optinode(graph, args...)
     #check arguments
     @assert length(args) <= 1
+    kwargs = Dict{Symbol, Any}()
     if isempty(args)
         macro_code = :(add_node($graph))
-    else
-        #get the name passed into the macro expression
-        var = Base.string(_get_name(args[1]))
+        return esc(macro_code)
+    elseif isa(graph, Plasmo.OptiGraph)
         macro_code = quote
             container = JuMP.Containers.@container($(args...), add_node($graph))
             if isa(container, Plasmo.OptiNode)
-                set_name(container, Symbol($var))
-            elseif isa(container, Plasmo.RemoteNodeRef)
                 set_name(container, Symbol($var))
             else
                 #set node labels
@@ -46,12 +44,26 @@ macro optinode(graph, args...)
                     JuMP.set_name(node, Symbol($var * "[$(string(terms[i]...))]"))
                 end
             end
-            if isa($(graph), Plasmo.OptiGraph)
-                $(graph).obj_dict[Symbol($var)] = container
-            end
+            $(graph).obj_dict[Symbol($var)] = container
         end
+        return esc(macro_code)
+    else
+        #get the name passed into the macro expression
+        error_fn = JuMP.Containers.build_error_fn(:optinode, args, __source__)
+        name, index_vars, indices = Containers.parse_ref_sets(error_fn, args[1])
+        graph = esc(graph)
+        name_expr = JuMP.Containers.build_name_expr(name, index_vars, kwargs)
+
+        macro_code = JuMP.Containers.container_code(
+            index_vars,
+            indices,
+            quote
+                add_node($graph, Symbol($name_expr))
+            end,
+            kwargs,
+        )
+        return macro_code
     end
-    return esc(macro_code)
 end
 
 """
