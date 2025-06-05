@@ -31,6 +31,23 @@ function JuMP.all_variables(rgraph::RemoteOptiGraph)
     return fetch(f)
 end
 
+function num_local_variables(rgraph::RemoteOptiGraph)
+    f = @spawnat rgraph.worker begin
+        lg = local_graph(rgraph)
+        JuMP.num_variables(lg)
+    end
+    return fetch(f)
+end
+
+function JuMP.num_variables(rgraph::RemoteOptiGraph)
+    num_vars = num_local_variables(rgraph)
+    subgraphs = all_subgraphs(rgraph)
+    for sub in subgraphs
+        num_vars += num_local_variables(sub)
+    end
+    return num_vars    
+end
+
 function JuMP.value(rgraph::RemoteOptiGraph, rvar::RemoteVariableRef)
     f = @spawnat rgraph.worker begin
         lgraph = local_graph(rgraph)
@@ -41,7 +58,7 @@ function JuMP.value(rgraph::RemoteOptiGraph, rvar::RemoteVariableRef)
 end
 
 function JuMP.has_upper_bound(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.has_upper_bound(lvar)
@@ -50,7 +67,7 @@ function JuMP.has_upper_bound(rvar::RemoteVariableRef)
 end
 
 function JuMP.has_lower_bound(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.has_lower_bound(lvar)
@@ -59,7 +76,7 @@ function JuMP.has_lower_bound(rvar::RemoteVariableRef)
 end
 
 function JuMP.upper_bound(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.upper_bound(lvar)
@@ -68,7 +85,7 @@ function JuMP.upper_bound(rvar::RemoteVariableRef)
 end
 
 function JuMP.lower_bound(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.lower_bound(lvar)
@@ -77,7 +94,7 @@ function JuMP.lower_bound(rvar::RemoteVariableRef)
 end
 
 function JuMP.fix_value(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.fix_value(lvar)
@@ -86,7 +103,7 @@ function JuMP.fix_value(rvar::RemoteVariableRef)
 end
 
 function JuMP.is_binary(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.is_binary(lvar)
@@ -95,7 +112,7 @@ function JuMP.is_binary(rvar::RemoteVariableRef)
 end
 
 function JuMP.is_integer(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.is_integer(lvar)
@@ -104,7 +121,7 @@ function JuMP.is_integer(rvar::RemoteVariableRef)
 end
 
 function JuMP.is_fixed(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.is_fixed(lvar)
@@ -113,7 +130,7 @@ function JuMP.is_fixed(rvar::RemoteVariableRef)
 end
 
 function JuMP.set_binary(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.set_binary(lvar)
@@ -121,8 +138,17 @@ function JuMP.set_binary(rvar::RemoteVariableRef)
     return fetch(f)
 end
 
+function JuMP.unset_binary(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
+        JuMP.unset_binary(lvar)
+    end
+    return fetch(f)
+end
+
 function JuMP.set_integer(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.set_integer(lvar)
@@ -130,8 +156,17 @@ function JuMP.set_integer(rvar::RemoteVariableRef)
     return fetch(f)
 end
 
+function JuMP.unset_integer(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
+        JuMP.unset_integer(lvar)
+    end
+    return fetch(f)
+end
+
 function JuMP.fix(rvar::RemoteVariableRef, value::Number; force::Bool = false)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.fix(lvar, value; force = force)
@@ -140,7 +175,7 @@ function JuMP.fix(rvar::RemoteVariableRef, value::Number; force::Bool = false)
 end
 
 function JuMP.unfix(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.unfix(lvar)
@@ -149,7 +184,7 @@ function JuMP.unfix(rvar::RemoteVariableRef)
 end
 
 function JuMP.set_upper_bound(rvar::RemoteVariableRef, upper::Number)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.set_upper_bound(lvar, upper)
@@ -158,7 +193,7 @@ function JuMP.set_upper_bound(rvar::RemoteVariableRef, upper::Number)
 end
 
 function JuMP.set_lower_bound(rvar::RemoteVariableRef, lower::Number)
-    rgraph = rvar.node.remote_graph
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
         lvar = remote_ref_to_var(rvar)
         JuMP.set_lower_bound(lvar, lower)
@@ -166,11 +201,99 @@ function JuMP.set_lower_bound(rvar::RemoteVariableRef, lower::Number)
     return fetch(f)
 end
 
-function JuMP.FixRef(rvar::RemoteVariableRef)
-    rgraph = rvar.node.remote_graph
+function JuMP.start_value(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_ref_to_var
+        lvar = remote_ref_to_var(rvar)
+        JuMP.start_value(lvar)
+    end
+    return fetch(f)
+end
+
+function JuMP.set_start_value(rvar::RemoteVariableRef, value::Union{Nothing, Real})
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
+        JuMP.set_start_value(lvar, value)
+    end
+    return fetch(f)
+end
+
+function JuMP.FixRef(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
         cref = JuMP.FixRef(lvar)
+        lnode = JuMP.owner_model(cref)
+        rnode = local_node_to_remote(rgraph, lnode)
+        rcref = ConstraintRef(rnode, cref.index, cref.shape)
+        rcref
+    end
+    return fetch(f)
+end
+
+function JuMP.LowerBoundRef(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin #TODO: Decide if this should test if there is a lower bound fist; doing so results in a second call to the remote, rather than doing it all within the same @spawnat call
+        lvar = remote_ref_to_var(rvar)
+        cref = JuMP.LowerBoundRef(lvar)
+        lnode = JuMP.owner_model(cref)
+        rnode = local_node_to_remote(rgraph, lnode)
+        rcref = ConstraintRef(rnode, cref.index, cref.shape)
+        rcref
+    end
+    return fetch(f)
+end
+
+function JuMP.UpperBoundRef(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
+        cref = JuMP.UpperBoundRef(lvar)
+        lnode = JuMP.owner_model(cref)
+        rnode = local_node_to_remote(rgraph, lnode)
+        rcref = ConstraintRef(rnode, cref.index, cref.shape)
+        rcref
+    end
+    return fetch(f)
+end
+
+function JuMP.delete_lower_bound(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
+        JuMP.delete_lower_bound(lvar)
+    end
+    return fetch(f)
+end
+
+function JuMP.delete_upper_bound(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
+        JuMP.delete_upper_bound(lvar)
+    end
+    return fetch(f)
+end
+
+function JuMP.IntegerRef(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
+        cref = JuMP.IntegerRef(lvar)
+        lnode = JuMP.owner_model(cref)
+        rnode = local_node_to_remote(rgraph, lnode)
+        rcref = ConstraintRef(rnode, cref.index, cref.shape)
+        rcref
+    end
+    return fetch(f)
+end
+
+function JuMP.BinaryRef(rvar::RemoteVariableRef)
+    rgraph = remote_graph(rvar)
+    f = @spawnat rgraph.worker begin
+        lvar = remote_ref_to_var(rvar)
+        cref = JuMP.BinaryRef(lvar)
         lnode = JuMP.owner_model(cref)
         rnode = local_node_to_remote(rgraph, lnode)
         rcref = ConstraintRef(rnode, cref.index, cref.shape)

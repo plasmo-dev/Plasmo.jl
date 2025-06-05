@@ -36,13 +36,12 @@ JuMP.add_to_expression!(a, x + y)
 # @linkconstraint works for adding edges; however, this display does not work correctly
 lc = @linkconstraint(rg, x + rg[:n2][:z] <= 1);
 
-@constraint(n1, x + y <= 2);
-@constraint(n1, x^2 + y <= 4);
-@constraint(n1, cos(x) + y^2*x >= 1);
+@constraint(n1, x + y <= 2); #linear constraint
+@constraint(n1, x^2 + y <= 4); # quadratic constraint
+@constraint(n1, cos(x) + y^2*x >= 1); #nonlinear constraint
 
 fix(x, 0)
 
-@objective(n1, Min, x)
 @objective(rg, Min, x + sin(y) + z^2)
 
 set_optimizer(rg, Ipopt.Optimizer)
