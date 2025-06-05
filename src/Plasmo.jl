@@ -114,13 +114,18 @@ export OptiGraph,
     set_jump_model,
     extract_variables,
     is_separable,
-    extract_separable_terms
+    extract_separable_terms,
 
     # distributed functions
 
-    local_graph
-    print_local_graph
-    get_local_graph
+    local_graph,
+    print_local_graph,
+    get_local_graph,
+    RemoteOptiGraph, 
+    RemoteVariableRef,
+    RemoteNodeRef,
+    RemoteOptiEdge,
+    RemoteEdgeRef
 
 
 include("core_types.jl")

@@ -115,11 +115,3 @@ end
 function JuMP._error_if_cannot_register(rnode::RemoteNodeRef, name::Symbol)
     return nothing
 end
-
-function variable_type(rgraph::RemoteOptiGraph)
-    return RemoteVariableRef
-end
-
-function variable_type(graph::OptiGraph)
-    return NodeVariableRef
-end

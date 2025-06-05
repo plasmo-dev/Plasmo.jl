@@ -12,11 +12,11 @@ function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
         lg = local_graph(rgraph)
         #new_sym = Symbol(rgraph.label, ".", sym)
         local_node = Plasmo.get_node(lg, sym)
-        (local_node.idx, local_node.label)
+        (local_node.idx, local_node.label.x)
     end
     node_tuple = fetch(f)
 
-    return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
+    return RemoteNodeRef(rgraph, node_tuple[1], Symbol[node_tuple[2]])
 end
 #TODO: Each call will create a new RemoteNodeRef; need to figure out how to not duplicate these; maybe we have a dictionary of node symbols to node refs in the RemoteOptiGraph? 
 # Need to double check this. If I try to set two of the above functions equal to each other for different calls of the same node (even using ===), it says it is true; looking online,it looks like this might result in different allocations in memory but you cannot tell on the Julia language level
@@ -57,9 +57,11 @@ function all_nodes(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         nodes = Plasmo.all_nodes(lg)
-        [local_node_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
+        [(node.idx, node.label.x) for node in nodes]
+        #[local_node_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
     end
-    nodes = fetch(f)
+    node_tuples = fetch(f)
+    nodes = [RemoteNodeRef(rgraph, idx, Symbol[label]) for (idx, label) in node_tuples]
     for g in rgraph.subgraphs
         append!(nodes, all_nodes(g))
     end
@@ -72,6 +74,10 @@ function all_subgraphs(rgraph::RemoteOptiGraph)
         subs = [subs; all_subgraphs(subgraph)]
     end
     return subs
+end
+
+function local_subgraphs(rgraph::RemoteOptiGraph)
+    return rgraph.subgraphs
 end
 
 function num_local_subgraphs(rgraph::RemoteOptiGraph)
@@ -117,11 +123,17 @@ function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstr
         lcon = JuMP.ScalarConstraint(new_expr, con.set)
         cref = JuMP.add_constraint(lg, lcon, name)
         ledge = JuMP.owner_model(cref)
-        redge = local_edge_to_remote(rgraph, ledge)
-        rcref = ConstraintRef(redge, cref.index, cref.shape)
-        rcref
+        lnodes = ledge.nodes
+        node_tuples = [(node.idx, node.label.x) for node in lnodes]
+        #redge = local_edge_to_remote(rgraph, ledge)
+        #rcref = ConstraintRef(redge, cref.index, cref.shape)
+        #rcref
+        (cref.index, cref.shape, node_tuples, ledge.label)
     end
-    return fetch(f)
+    cref_data = fetch(f)
+    rnodes = OrderedSet([RemoteNodeRef(rgraph, idx, Symbol[label]) for (idx, label) in cref_data[3]])
+    redge = RemoteEdgeRef(rgraph, rnodes, cref_data[4])
+    return ConstraintRef(redge, cref_data[1], cref_data[2])
 end
 
 function _build_constraint_ref(redge::RemoteOptiEdge, con::JuMP.AbstractConstraint)
@@ -179,7 +191,6 @@ end
 function JuMP.set_objective_function(
     rgraph::RemoteOptiGraph, func::JuMP.AbstractJuMPScalar
 )
-    println(func)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         new_func = _convert_remote_to_local(rgraph, func)
@@ -214,7 +225,7 @@ function JuMP.objective_function(rgraph::RemoteOptiGraph)
         lobj_func = JuMP.objective_function(lg)
         robj_func = _convert_local_to_remote(rgraph, lobj_func)
         robj_func
-    end
+    end # TODO: Make sure the references are correct here
     return fetch(f)
 end
 

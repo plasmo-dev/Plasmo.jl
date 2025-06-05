@@ -1,5 +1,5 @@
 function Base.string(rnode::RemoteNodeRef)
-    return String(rnode.node_label.x)
+    return String(rnode.node_label[1])
 end
 Base.print(io::IO, rnode::RemoteNodeRef) = Base.print(io, Base.string(rnode))
 Base.show(io::IO, rnode::RemoteNodeRef) = Base.print(io, rnode)
@@ -33,19 +33,19 @@ function add_node(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         n = add_node(lg)
-        (n.idx, n.label)
+        (n.idx, n.label.x)
     end
     node_tuple = fetch(f)
-    return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
+    return RemoteNodeRef(rgraph, node_tuple[1], Symbol[node_tuple[2]])
 end
 
 function add_node(rgraph::RemoteOptiGraph, sym::Symbol) # TODO: Rethink whether this can be merged with previous function; the problem is that I want to keep the kwarg default of add_node(graph::OptiGraph), which also calls length(graph.optinodes); trying to use that same default argument in the add_node(rgraph::RemoteOptiGraph) means having to query the subgraph and get the number of nodes; probably not a big deal, but might require an extra fetch
     f = @spawnat rgraph.worker begin
         n = add_node(localpart(rgraph.graph)[1], label=sym)
-        (n.idx, n.label)
+        (n.idx, n.label.x)
     end
     node_tuple = fetch(f)
-    return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
+    return RemoteNodeRef(rgraph, node_tuple[1], Symbol[node_tuple[2]])
 end
 
 function JuMP.add_constraint(
@@ -102,7 +102,8 @@ function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
         lnode.label.x = label
     end
 
-    rnode.node_label.x = label
+    rnode.node_label[1] = label
+    #return RemoteVariableRef(rgraph, rnode.node_idx, label)
 end
 
 function JuMP.add_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable, name::String="")
@@ -217,4 +218,12 @@ function JuMP.dual(rcref::RemoteNodeConstraintRef)
         JuMP.dual(cref)
     end
     return fetch(f)
+end
+
+function node_type(rgraph::RemoteOptiGraph)
+    return RemoteNodeRef
+end
+
+function node_type(graph::OptiGraph)
+    return OptiNode
 end

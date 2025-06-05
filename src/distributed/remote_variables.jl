@@ -25,10 +25,14 @@ function JuMP.all_variables(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         all_vars = JuMP.all_variables(lg)
-        [local_var_to_remote(rgraph, var) for var in all_vars] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
+        [(var.node.idx, var.node.label.x, var.index, Symbol(name(var))) for var in all_vars] #Note: Building the remote ref on the remote does not keep the rgraph or rnode the same as before 
     end
+    var_tuples = fetch(f)
+    vars = [
+        RemoteVariableRef(RemoteNodeRef(rgraph, t[1], Symbol[t[2]]), t[3], t[4]) for t in var_tuples
+    ]
     
-    return fetch(f)
+    return vars
 end
 
 function num_local_variables(rgraph::RemoteOptiGraph)
@@ -300,4 +304,12 @@ function JuMP.BinaryRef(rvar::RemoteVariableRef)
         rcref
     end
     return fetch(f)
+end
+
+function variable_type(rgraph::RemoteOptiGraph)
+    return RemoteVariableRef
+end
+
+function variable_type(graph::OptiGraph)
+    return NodeVariableRef
 end

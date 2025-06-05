@@ -44,7 +44,7 @@ function add_edge(
     else
         subgraphs = [rgraph; all_subgraphs(rgraph)]
         if !(all(x -> x.remote_graph in subgraphs, rnodes))
-            error("Remote Nodes do not belong to the remote graph or its subgrpahs")
+            error("Remote nodes do not belong to the remote graph or its subgraphs")
         end
 
         redge = RemoteOptiEdge(rgraph, OrderedSet(collect(rnodes)), OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteOptiEdgeConstraintRef}(), OrderedDict{Plasmo.RemoteOptiEdgeConstraintRef, JuMP.AbstractConstraint}(), label)
@@ -101,7 +101,7 @@ function incident_edges(rgraph::RemoteOptiGraph)
     for edge in parent_edges
         for node in edge.nodes
             if rgraph in containing_optigraphs(node) #TODO: Make this function faster
-                push!(edge, assigned_edges)
+                push!(assigned_edges, edge)
             end
         end
     end
@@ -132,4 +132,12 @@ function JuMP.dual(rcref::RemoteEdgeConstraintRef)
         JuMP.dual(cref)
     end
     return fetch(f)
+end
+
+function edge_type(rgraph::RemoteOptiGraph)
+    return RemoteOptiEdge
+end
+
+function edge_type(rgraph::OptiGraph)
+    return OptiEdge
 end
