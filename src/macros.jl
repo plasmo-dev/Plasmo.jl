@@ -15,48 +15,6 @@ function _get_name(c::Expr)
     end
 end
 
-function _plasmo_finalize_macro(
-    model::Expr,
-    code::Any,
-    source::LineNumberNode;
-    register_name::Union{Nothing,Symbol} = nothing,
-    wrap_let::Bool = false,
-    time_it::Union{Nothing,String} = nothing,
-)
-    @assert Meta.isexpr(model, :escape)
-    ret = gensym()
-    code = if wrap_let && model.args[1] isa Symbol
-        quote
-            $ret = let $model = $model
-                $code
-            end
-        end
-    else
-        :($ret = $code)
-    end
-    if register_name !== nothing
-        sym_name = Meta.quot(register_name)
-        code = quote
-            $code
-        end
-    end
-    if time_it !== nothing
-        code = quote
-            start_time = time()
-            $code
-            JuMP._add_or_set_macro_time(
-                $model,
-                ($(QuoteNode(source)), $time_it),
-                time() - start_time,
-            )
-            $ret
-        end
-    end
-    is_valid_code = :()
-    return Expr(:block, source, is_valid_code, code)
-end
-
-
 """
     @optinode(optigraph, expr...)
 
@@ -69,14 +27,16 @@ Add a new optinode to `optigraph`. The expression `expr` can either be
 macro optinode(graph, args...)
     #check arguments
     @assert length(args) <= 1
-    kwargs = Dict{Symbol, Any}()
     if isempty(args)
         macro_code = :(add_node($graph))
-        return esc(macro_code)
-    elseif isa(graph, Plasmo.OptiGraph)
+    else
+        #get the name passed into the macro expression
+        var = Base.string(_get_name(args[1]))
         macro_code = quote
             container = JuMP.Containers.@container($(args...), add_node($graph))
             if isa(container, Plasmo.OptiNode)
+                set_name(container, Symbol($var))
+            elseif isa(container, Plasmo.RemoteNodeRef)
                 set_name(container, Symbol($var))
             else
                 #set node labels
@@ -86,38 +46,12 @@ macro optinode(graph, args...)
                     JuMP.set_name(node, Symbol($var * "[$(string(terms[i]...))]"))
                 end
             end
-            $(graph).obj_dict[Symbol($var)] = container
+            if isa($(graph), Plasmo.OptiGraph)
+                $(graph).obj_dict[Symbol($var)] = container
+            end
         end
-        return esc(macro_code)
-    else
-        #get the name passed into the macro expression
-        error_fn = JuMP.Containers.build_error_fn(:optinode, args, __source__)
-        name, index_vars, indices = Containers.parse_ref_sets(error_fn, args[1])
-        graph = esc(graph)
-        name_expr = JuMP.Containers.build_name_expr(name, index_vars, kwargs)
-
-        macro_code = JuMP.Containers.container_code(
-            index_vars,
-            indices,
-            quote
-                add_node($graph, Symbol($name_expr))
-            end,
-            kwargs,
-        )
-        println(typeof(macro_code))
-        macro_expr = _plasmo_finalize_macro(
-            graph, 
-            macro_code, 
-            __source__, 
-            register_name = name, 
-            wrap_let = false,
-            time_it = Containers.build_macro_expression_string(
-                :optinode,
-                args,
-            )
-        )
-        return esc(macro_expr)
     end
+    return esc(macro_code)
 end
 
 """

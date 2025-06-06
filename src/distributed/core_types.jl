@@ -41,7 +41,7 @@ end #TODO: Maybe add an obj_dict and node_obj_dict for saving and referencing re
 struct RemoteNodeRef <: AbstractRemoteNodeRef
     remote_graph::Plasmo.RemoteOptiGraph
     node_idx::NodeIndex
-    node_label::Symbol
+    node_label::Base.RefValue{Symbol}
 end
 
 struct RemoteVariableRef <: JuMP.AbstractVariableRef

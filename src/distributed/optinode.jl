@@ -1,5 +1,5 @@
 function Base.string(rnode::RemoteNodeRef)
-    return String(rnode.node_label)
+    return String(rnode.node_label.x)
 end
 Base.print(io::IO, rnode::RemoteNodeRef) = Base.print(io, Base.string(rnode))
 Base.show(io::IO, rnode::RemoteNodeRef) = Base.print(io, rnode)
@@ -16,11 +16,15 @@ function Base.setindex!(rnode::RemoteNodeRef, value, name::Symbol) #TODO: Consid
     return nothing
 end
 
-function Base.getindex(rnode::RemoteNodeRef, sym::Symbol)
+function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how to make this more efficient; this returns a large set of variables
     rgraph = rnode.remote_graph
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         local_node = Plasmo.remote_node_to_local(rgraph, rnode)
+        # if sym == :_theta
+        #     println(local_node)
+        #     println(lg.element_data.node_obj_dict)
+        # end
         var = local_node[sym]
         var.index # get this from the symbol
     end
@@ -33,7 +37,7 @@ function add_node(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         n = add_node(lg)
-        (n.idx, n.label.x)
+        (n.idx, n.label)
     end
     node_tuple = fetch(f)
     return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
@@ -42,7 +46,7 @@ end
 function add_node(rgraph::RemoteOptiGraph, label::Symbol) # TODO: Rethink whether this can be merged with previous function; the problem is that I want to keep the kwarg default of add_node(graph::OptiGraph), which also calls length(graph.optinodes); trying to use that same default argument in the add_node(rgraph::RemoteOptiGraph) means having to query the subgraph and get the number of nodes; probably not a big deal, but might require an extra fetch
     f = @spawnat rgraph.worker begin
         n = add_node(localpart(rgraph.graph)[1], label=label)
-        (n.idx, n.label.x)
+        (n.idx, n.label)
     end
     node_tuple = fetch(f)
     return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
@@ -102,7 +106,7 @@ function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
         lnode.label.x = label
     end
 
-    rnode.node_label[1] = label
+    rnode.node_label.x = label
     #return RemoteVariableRef(rgraph, rnode.node_idx, label)
 end
 
@@ -119,7 +123,10 @@ function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable,
         lg = local_graph(rgraph)
         lnode = remote_node_to_local(rgraph, rnode)
         nvref = JuMP.add_variable(lnode, v, name)
-        lg.element_data.node_obj_dict[(lnode, sym)] = nvref
+        name_first, _make_vector = _parse_var_name(name)
+        var_sym = Symbol(name_first)
+        new_key = (lnode, var_sym)
+        _add_var_to_node_obj_dict(new_key, lg, nvref, _make_vector)
         nvref.index
     end
     moi_idx = fetch(f)
@@ -226,4 +233,16 @@ end
 
 function node_type(graph::OptiGraph)
     return OptiNode
+end
+
+function Base.isequal(rnode1::RemoteNodeRef, rnode2::RemoteNodeRef)
+    return rnode1.remote_graph == rnode2.remote_graph && rnode1.node_idx == rnode2.node_idx && rnode1.node_label.x == rnode2.node_label.x
+end
+
+function Base.:(==)(rnode1::RemoteNodeRef, rnode2::RemoteNodeRef)
+    return rnode1.remote_graph == rnode2.remote_graph && rnode1.node_idx == rnode2.node_idx && rnode1.node_label.x == rnode2.node_label.x
+end
+
+function Base.hash(rnode::RemoteNodeRef, h::UInt)
+    return hash((rnode.remote_graph, rnode.node_idx, rnode.node_label.x), h)
 end

@@ -25,7 +25,7 @@ function JuMP.all_variables(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         all_vars = JuMP.all_variables(lg)
-        [(var.node.idx, var.node.label.x, var.index, Symbol(name(var))) for var in all_vars] #Note: Building the remote ref on the remote does not keep the rgraph or rnode the same as before 
+        [(var.node.idx, var.node.label, var.index, Symbol(name(var))) for var in all_vars] #Note: Building the remote ref on the remote does not keep the rgraph or rnode the same as before 
     end
     var_tuples = fetch(f)
     vars = [
@@ -312,4 +312,31 @@ end
 
 function variable_type(graph::OptiGraph)
     return NodeVariableRef
+end
+
+function _parse_var_name(str::String)
+    if occursin("[", str)
+        return first(split(str, "[")), true
+    else
+        return str, false
+    end
+end
+
+function _add_var_to_node_obj_dict(key::Tuple, lg::OptiGraph, nvref::NodeVariableRef, _make_vector::Bool)
+    if haskey(lg.element_data.node_obj_dict, key) #TODO: Do this for containing optigraphs? 
+        entry = lg.element_data.node_obj_dict[key]
+        if isa(entry, Vector)
+            push!(lg.element_data.node_obj_dict[key], nvref)
+        elseif isa(entry, NodeVariableRef)
+            lg.element_data.node_obj_dict[key] = NodeVariableRef[entry, nvref]
+        else
+            error("element data in the node_obj_dict is type $(typeof(entry))")
+        end
+    else
+        if _make_vector
+            lg.element_data.node_obj_dict[key] = NodeVariableRef[nvref]
+        else
+            lg.element_data.node_obj_dict[key] = nvref
+        end
+    end
 end

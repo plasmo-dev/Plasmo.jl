@@ -12,7 +12,7 @@ function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
         lg = local_graph(rgraph)
         #new_sym = Symbol(rgraph.label, ".", sym)
         local_node = Plasmo.get_node(lg, sym)
-        (local_node.idx, local_node.label.x)
+        (local_node.idx, local_node.label)
     end
     node_tuple = fetch(f)
 
@@ -57,7 +57,7 @@ function all_nodes(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         nodes = Plasmo.all_nodes(lg)
-        [(node.idx, node.label.x) for node in nodes]
+        [(node.idx, node.label) for node in nodes]
         #[local_node_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
     end
     node_tuples = fetch(f)
@@ -124,7 +124,7 @@ function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstr
         cref = JuMP.add_constraint(lg, lcon, name)
         ledge = JuMP.owner_model(cref)
         lnodes = ledge.nodes
-        node_tuples = [(node.idx, node.label.x) for node in lnodes]
+        node_tuples = [(node.idx, node.label) for node in lnodes]
         #redge = local_edge_to_remote(rgraph, ledge)
         #rcref = ConstraintRef(redge, cref.index, cref.shape)
         #rcref
