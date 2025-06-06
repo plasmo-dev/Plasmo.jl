@@ -46,7 +46,7 @@ function remote_edge_to_local(rgraph::RemoteOptiGraph, redge::Plasmo.RemoteOptiE
 end
 
 function local_node_to_remote(rgraph::RemoteOptiGraph, node::OptiNode) #ISSUE: can go from node to graph, but graph to node is hard
-    return RemoteNodeRef(rgraph, node.idx, Symbol[node.label.x])
+    return RemoteNodeRef(rgraph, node.idx, node.label.x)
 end
 
 function local_var_to_remote(rgraph::RemoteOptiGraph, var::NodeVariableRef)

@@ -6,7 +6,7 @@ Base.show(io::IO, graph::RemoteOptiGraph) = Base.print(io, graph)
 
 function source_graph(rgraph::RemoteOptiGraph) return rgraph.parent_graph end
 
-#TODO: Figure out displaying constraints
+#TODO: Figure out displaying c  onstraints
 function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
@@ -16,7 +16,7 @@ function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
     end
     node_tuple = fetch(f)
 
-    return RemoteNodeRef(rgraph, node_tuple[1], Symbol[node_tuple[2]])
+    return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
 end
 #TODO: Each call will create a new RemoteNodeRef; need to figure out how to not duplicate these; maybe we have a dictionary of node symbols to node refs in the RemoteOptiGraph? 
 # Need to double check this. If I try to set two of the above functions equal to each other for different calls of the same node (even using ===), it says it is true; looking online,it looks like this might result in different allocations in memory but you cannot tell on the Julia language level
@@ -61,7 +61,7 @@ function all_nodes(rgraph::RemoteOptiGraph)
         #[local_node_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
     end
     node_tuples = fetch(f)
-    nodes = [RemoteNodeRef(rgraph, idx, Symbol[label]) for (idx, label) in node_tuples]
+    nodes = [RemoteNodeRef(rgraph, idx, label) for (idx, label) in node_tuples]
     for g in rgraph.subgraphs
         append!(nodes, all_nodes(g))
     end
@@ -131,7 +131,7 @@ function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstr
         (cref.index, cref.shape, node_tuples, ledge.label)
     end
     cref_data = fetch(f)
-    rnodes = OrderedSet([RemoteNodeRef(rgraph, idx, Symbol[label]) for (idx, label) in cref_data[3]])
+    rnodes = OrderedSet([RemoteNodeRef(rgraph, idx, label) for (idx, label) in cref_data[3]])
     redge = RemoteEdgeRef(rgraph, rnodes, cref_data[4])
     return ConstraintRef(redge, cref_data[1], cref_data[2])
 end

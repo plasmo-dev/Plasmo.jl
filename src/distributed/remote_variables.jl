@@ -29,7 +29,7 @@ function JuMP.all_variables(rgraph::RemoteOptiGraph)
     end
     var_tuples = fetch(f)
     vars = [
-        RemoteVariableRef(RemoteNodeRef(rgraph, t[1], Symbol[t[2]]), t[3], t[4]) for t in var_tuples
+        RemoteVariableRef(RemoteNodeRef(rgraph, t[1], t[2]), t[3], t[4]) for t in var_tuples
     ]
     
     return vars
