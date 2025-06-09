@@ -62,20 +62,22 @@ function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol)
     return nothing
 end
 
-function _return_var_index(var::JuMP.Containers.DenseAxisArray)
-    return var.axes
-end
+# function _return_var_index(var::JuMP.Containers.DenseAxisArray)
+#     return (var.axes #TODO: Support DenseAxisArrays
+# end
 
 function _return_var_index(var::Array{NodeVariableRef})
-    return size(var)
+    var_array = map(x -> (x.index, Symbol(name(x))), var)
+    return var_array
 end
 
 function _return_var_index(var::NodeVariableRef)
     return var.index
 end
 
-function _return_remote_var_object(rnode::RemoteNodeRef, idx::Tuple, sym::Symbol)
-    return RemoteVariableArrayRef(rnode, sym, idx)
+function _return_remote_var_object(rnode::RemoteNodeRef, idx::Array, sym::Symbol)
+    rvars = map(x -> RemoteVariableRef(rnode, x[1], x[2]), idx)
+    return rvars
 end
 
 # function _return_remote_var_object(rnode::RemoteNodeRef, idx::Int, sym::Symbol)
@@ -91,10 +93,6 @@ function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how 
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         local_node = Plasmo.remote_node_to_local(rgraph, rnode)
-        # if sym == :_theta
-        #     println(local_node)
-        #     println(lg.element_data.node_obj_dict)
-        # end
         var = local_node[sym]
         _return_var_index(var)
     end
@@ -274,7 +272,7 @@ function JuMP.dual(rgraph::RemoteOptiGraph, rcref::RemoteNodeConstraintRef)
     rnode = JuMP.owner_model(rcref)
     f = @spawnat rgraph.worker begin
         lgraph = local_graph(rgraph)
-        lnode = node(rgraph, rnode)
+        lnode = remote_node_to_local(rgraph, rnode)
         cref = ConstraintRef(lnode, rcref.index, rcref.shape)
         JuMP.dual(lgraph, cref)
     end

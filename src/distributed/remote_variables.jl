@@ -84,6 +84,18 @@ function JuMP.value(rgraph::RemoteOptiGraph, rvar::RemoteVariableRef)
     return fetch(f)
 end
 
+function JuMP.value(
+    rgraph::RemoteOptiGraph, 
+    rexpr::E
+) where {E <: Union{GenericAffExpr, GenericQuadExpr, GenericNonlinearExpr}}
+    f = @spawnat rgraph.worker begin
+        lgraph = local_graph(rgraph)
+        lexpr = _convert_remote_to_local(rgraph, rexpr)
+        JuMP.value(lgraph, lexpr)
+    end
+    return fetch(f)
+end
+
 function JuMP.has_upper_bound(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
     f = @spawnat rgraph.worker begin
