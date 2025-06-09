@@ -12,8 +12,78 @@ Base.show(io::IO, rcref::RemoteNodeConstraintRef) = Base.print(io, rcref)
 
 function source_graph(rnode::RemoteNodeRef) return rnode.remote_graph end
 
-function Base.setindex!(rnode::RemoteNodeRef, value, name::Symbol) #TODO: Consider whether we should do this differently without an object dictionary
+function Base.setindex!(rnode::RemoteNodeRef, value::JuMP.Containers.DenseAxisArray{RemoteVariableRef}, name::Symbol)
+    rgraph = rnode.remote_graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = local_graph(rgraph)
+        lnode = remote_node_to_local(rgraph, rnode)
+        key = (lnode, name)
+        var_array = map(x -> Plasmo.NodeVariableRef(lnode, x.index), value.data)
+        dense_array = DenseAxisArray(var_array, value.axes, value.lookup, value.names)
+
+        lgraph.element_data.node_obj_dict[key] = dense_array
+        nothing
+    end
     return nothing
+end
+
+#TODO: Support sparse axis arrays
+
+function Base.setindex!(rnode::RemoteNodeRef, value::Array{RemoteVariableRef}, name::Symbol)
+    rgraph = rnode.remote_graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = local_graph(rgraph)
+        lnode = remote_node_to_local(rgraph, rnode)
+        key = (lnode, name)
+        var_array = map(x -> Plasmo.NodeVariableRef(lnode, x.index), value)
+        lgraph.element_data.node_obj_dict[key] = var_array
+        nothing
+    end
+    return nothing
+end
+
+function Base.setindex!(rnode::RemoteNodeRef, value::RemoteVariableRef, name::Symbol) 
+    rgraph = rnode.remote_graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = local_graph(rgraph)
+        lnode = remote_node_to_local(rgraph, rnode)
+        key = (lnode, name)
+        var = NodeVariableRef(lnode, value.index)
+        lgraph.element_data.node_obj_dict[key] = var
+        nothing
+    end
+    return nothing
+end
+
+function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol)
+    return nothing
+end
+
+function _return_var_index(var::JuMP.Containers.DenseAxisArray)
+    return var.axes
+end
+
+function _return_var_index(var::Array{NodeVariableRef})
+    return size(var)
+end
+
+function _return_var_index(var::NodeVariableRef)
+    return var.index
+end
+
+function _return_remote_var_object(rnode::RemoteNodeRef, idx::Tuple, sym::Symbol)
+    return RemoteVariableArrayRef(rnode, sym, idx)
+end
+
+# function _return_remote_var_object(rnode::RemoteNodeRef, idx::Int, sym::Symbol)
+#     return RemoteVariableArrayRef(rnode, sym, idx)
+# end
+
+function _return_remote_var_object(rnode::RemoteNodeRef, idx::MOI.VariableIndex, sym::Symbol)
+    return RemoteVariableRef(rnode, idx, sym)
 end
 
 function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how to make this more efficient; this returns a large set of variables
@@ -26,11 +96,11 @@ function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how 
         #     println(lg.element_data.node_obj_dict)
         # end
         var = local_node[sym]
-        var.index # get this from the symbol
+        _return_var_index(var)
     end
-    moi_idx = fetch(f)
+    idx = fetch(f)
 
-    return RemoteVariableRef(rnode, moi_idx, sym)
+    return _return_remote_var_object(rnode, idx, sym)# RemoteVariableRef(rnode, moi_idx, sym)
 end
 
 function add_node(rgraph::RemoteOptiGraph)
@@ -107,6 +177,7 @@ function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
     end
 
     rnode.node_label.x = label
+    return nothing
     #return RemoteVariableRef(rgraph, rnode.node_idx, label)
 end
 
@@ -120,13 +191,8 @@ function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable,
     sym = Symbol(name)
 
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
         lnode = remote_node_to_local(rgraph, rnode)
         nvref = JuMP.add_variable(lnode, v, name)
-        name_first, _make_vector = _parse_var_name(name)
-        var_sym = Symbol(name_first)
-        new_key = (lnode, var_sym)
-        _add_var_to_node_obj_dict(new_key, lg, nvref, _make_vector)
         nvref.index
     end
     moi_idx = fetch(f)
@@ -141,7 +207,6 @@ function add_variable(rnode::RemoteNodeRef, name::Symbol=Symbol(""))
         lg = local_graph(rgraph)
         local_node = remote_node_to_local(rgraph, rnode)
         new_var = @variable(local_node, base_name = String(name))
-        lg.element_data.node_obj_dict[(local_node, name)] = new_var
         new_var.index
     end
 

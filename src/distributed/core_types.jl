@@ -69,7 +69,7 @@ const RemoteAffExpr = JuMP.GenericAffExpr{
 }
 
 const RemoteOptiObject = Union{
-    RemoteNodeRef, RemoteEdgeRef, RemoteOptiGraph
+    RemoteNodeRef, RemoteEdgeRef, RemoteOptiGraph, RemoteOptiEdge
 }
 
 function RemoteOptiGraph(; name::Symbol=Symbol(:rg, gensym()), worker::Int=1)
@@ -96,4 +96,10 @@ function RemoteEdgeData()
         OrderedDict{RemoteEdgeRef, Int64}(), 
     )
     return edge_data
+end
+
+struct RemoteVariableArrayRef
+    node::Plasmo.RemoteNodeRef
+    name::Symbol
+    axes::Tuple
 end

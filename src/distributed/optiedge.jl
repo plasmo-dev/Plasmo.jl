@@ -29,9 +29,14 @@ Base.show(io::IO, rcref::RemoteOptiEdgeConstraintRef) = Base.print(io, Base.stri
 function source_graph(redge::RemoteOptiEdge) return redge.remote_graph end
 function source_graph(redge::RemoteEdgeRef) return redge.remote_graph end
 
-function JuMP.constraint_object(rcref::RemoteOptiEdgeConstraintRef)
-    redge = JuMP.owner_model(rcref)
-    return redge.constriants[rcref]
+function JuMP.constraint_object(
+    con_ref::ConstraintRef{
+        RemoteOptiEdge,
+        MOI.ConstraintIndex{FuncType,SetType},
+    },
+) where {FuncType<:MOI.AbstractScalarFunction,SetType<:MOI.AbstractScalarSet}
+    model = con_ref.model
+    return model.constraints[con_ref]
 end
 
 function add_edge(
@@ -109,7 +114,7 @@ function incident_edges(rgraph::RemoteOptiGraph)
 end
 
 function JuMP.all_constraints(redge::RemoteOptiEdge)
-    return collect(values(redge.constraints))
+    return collect(keys(redge.constraints))
 end
 
 function JuMP.dual(rgraph::RemoteOptiGraph, rcref::RemoteEdgeConstraintRef)
