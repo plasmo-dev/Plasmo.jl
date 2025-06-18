@@ -1,3 +1,5 @@
+# Support for printing the Remote objects
+
 function Base.string(rvar::RemoteVariableRef)
     return Base.string(rvar.node) * "[" * String(rvar.name) * "]"
 end
@@ -12,7 +14,9 @@ function remote_graph(rvar::R) where {R <: Union{RemoteVariableRef, RemoteVariab
     return rvar.node.remote_graph 
 end
 
-function Base.getindex(rvar::RemoteVariableArrayRef, idx...)# where {R <: Union{RemoteVariableArrayRef, RemoteVariableDenseArrayRef}}
+# enable accessing specific variables from a RemoteVariableRef; these actually don't get used under
+# the current implementation, but these would make querying variables lighter on memory
+function Base.getindex(rvar::RemoteVariableArrayRef, idx...)
     rgraph = remote_graph(rvar)
     rnode = rvar.node
     f = @spawnat rgraph.worker begin
@@ -45,7 +49,27 @@ function JuMP.is_valid(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
     end
 end
 
+"""
+    JuMP.local_variables(rgraph::RemoteOptiGraph)
+
+Return all of the variables stored on the OptiGraph of the RemoteOptiGraph
+including all sub-RemoteOptiGraphs
+"""
 function JuMP.all_variables(rgraph::RemoteOptiGraph)
+    vars = local_variables(rgraph)
+    for g in all_subgraphs(rgraph)
+        vars = [vars; local_variables(g)]
+    end
+    return vars
+end
+
+"""
+    local_variables(rgraph::RemoteOptiGraph)
+
+Return all of the variables stored on the OptiGraph of the RemoteOptiGraph
+Does not fetch variables from subgraphs
+"""
+function local_variables(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         all_vars = JuMP.all_variables(lg)
@@ -58,21 +82,32 @@ function JuMP.all_variables(rgraph::RemoteOptiGraph)
     return vars
 end
 
+"""
+    JuMP.num_variables(rgraph::RemoteOptiGraph)
+
+Return the total number of variables stored on the OptiGraph of the RemoteOptiGraph
+including variables stored on all subgraphs
+"""
+function JuMP.num_variables(rgraph::RemoteOptiGraph)
+    num_variables = num_local_variables(rgraph)
+    for g in all_subgraphs(rgraph)
+        num_variables += num_local_variables(g)
+    end
+    return num_variables
+end
+
+"""
+    num_local_variables(rgraph::RemoteOptiGraph)
+
+Return the number of variables stored on the OptiGraph of the RemoteOptiGraph
+Does not include variables on subgraphs
+"""
 function num_local_variables(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
         JuMP.num_variables(lg)
     end
     return fetch(f)
-end
-
-function JuMP.num_variables(rgraph::RemoteOptiGraph)
-    num_vars = num_local_variables(rgraph)
-    subgraphs = all_subgraphs(rgraph)
-    for sub in subgraphs
-        num_vars += num_local_variables(sub)
-    end
-    return num_vars    
 end
 
 function JuMP.value(rgraph::RemoteOptiGraph, rvar::RemoteVariableRef)
@@ -83,6 +118,9 @@ function JuMP.value(rgraph::RemoteOptiGraph, rvar::RemoteVariableRef)
     end
     return fetch(f)
 end
+
+########## Extend many JuMP functions ##########
+# most of these are just wrapped @spawnat calls
 
 function JuMP.value(
     rgraph::RemoteOptiGraph, 

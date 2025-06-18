@@ -1,3 +1,6 @@
+# This file mostly extends the functions of `jump_interop.jl` for the ordinary optigraph
+# to the RemoteOptiGraph case
+
 #TODO: I think perhaps we could make an abstractnodevariableref type which NodeVariableRef and RemoteVariableRef are subtypes of so that we can just have one set of MOI functions we are extending instead of two
 JuMP.variable_ref_type(::Type{T} where {T<:RemoteOptiObject}) = RemoteVariableRef
 JuMP.jump_function(::RemoteOptiObject, x::Number) = convert(Float64, x)

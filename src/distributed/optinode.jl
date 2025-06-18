@@ -1,3 +1,5 @@
+# Support for printing the Remote objects
+
 function Base.string(rnode::RemoteNodeRef)
     return String(rnode.node_label.x)
 end
@@ -12,6 +14,7 @@ Base.show(io::IO, rcref::RemoteNodeConstraintRef) = Base.print(io, rcref)
 
 function source_graph(rnode::RemoteNodeRef) return rnode.remote_graph end
 
+###### Set Index for registering names to the OptiGraph stored on the RemoteOptiGraph ######
 function Base.setindex!(rnode::RemoteNodeRef, value::JuMP.Containers.DenseAxisArray{RemoteVariableRef}, name::Symbol)
     rgraph = rnode.remote_graph
 
@@ -98,9 +101,14 @@ function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how 
     end
     idx = fetch(f)
 
-    return _return_remote_var_object(rnode, idx, sym)# RemoteVariableRef(rnode, moi_idx, sym)
+    return _return_remote_var_object(rnode, idx, sym)
 end
 
+"""
+    add_node(rgraph::RemoteOptiGraph)
+
+Add a new optinode to `rgraph`. 
+"""
 function add_node(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
@@ -111,6 +119,11 @@ function add_node(rgraph::RemoteOptiGraph)
     return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
 end
 
+"""
+    add_node(rgraph::RemoteOptiGraph, label::Symbol)
+
+Add a new optinode to `rgraph` with the name `label`
+"""
 function add_node(rgraph::RemoteOptiGraph, label::Symbol) # TODO: Rethink whether this can be merged with previous function; the problem is that I want to keep the kwarg default of add_node(graph::OptiGraph), which also calls length(graph.optinodes); trying to use that same default argument in the add_node(rgraph::RemoteOptiGraph) means having to query the subgraph and get the number of nodes; probably not a big deal, but might require an extra fetch
     f = @spawnat rgraph.worker begin
         n = add_node(localpart(rgraph.graph)[1], label=label)
@@ -120,6 +133,12 @@ function add_node(rgraph::RemoteOptiGraph, label::Symbol) # TODO: Rethink whethe
     return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
 end
 
+"""
+    JuMP.add_constraint(rnode::RemoteNodeRef, con::JuMP.AbstractConstraint, name::String="")
+
+Add a constraint `con` to the node which `rnode` represents. 
+This function supports use of the @constraint JuMP macro.
+"""
 function JuMP.add_constraint(
     rnode::RemoteNodeRef, con::JuMP.AbstractConstraint, name::String=""
 )
@@ -128,6 +147,8 @@ function JuMP.add_constraint(
     return nothing
 end
 
+# build constraint refs
+# vectorconstraints are not yet supported for the RemoteOptiGraph case
 function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.VectorConstraint)
     error("Constraint $con is a vector constraint. Vector constraints are not yet supported in RemoteOptiGraphs")
 end
@@ -179,6 +200,12 @@ function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
     #return RemoteVariableRef(rgraph, rnode.node_idx, label)
 end
 
+"""
+    JuMP.add_variable(rnode::RemoteNodeRef, v::JuMP.AbstractVariable, name::String="")
+
+Add variable `v` to RemoteNodeRef `rnode`. This function supports use of the `@variable` JuMP macro.
+Optionally add a `base_name` to the variable for printing.
+"""
 function JuMP.add_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable, name::String="")
     rvref = _add_remote_node_variable(rnode, v, name)
     return rvref
@@ -198,21 +225,7 @@ function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable,
     return RemoteVariableRef(rnode, moi_idx, sym)
 end
 
-function add_variable(rnode::RemoteNodeRef, name::Symbol=Symbol(""))
-    rgraph = rnode.remote_graph
-
-    f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        local_node = remote_node_to_local(rgraph, rnode)
-        new_var = @variable(local_node, base_name = String(name))
-        new_var.index
-    end
-
-    moi_idx = fetch(f)
-    return RemoteVariableRef(rnode, moi_idx, name)
-end
-
-
+# objective support
 function JuMP.set_objective(
     rnode::RemoteNodeRef, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
 )
@@ -298,6 +311,8 @@ function node_type(graph::OptiGraph)
     return OptiNode
 end
 
+# These functions allow for making sure dictionary keys recognize two RemoteNodeRefs
+# instantiated at different times will still be equal to one another
 function Base.isequal(rnode1::RemoteNodeRef, rnode2::RemoteNodeRef)
     return rnode1.remote_graph == rnode2.remote_graph && rnode1.node_idx == rnode2.node_idx && rnode1.node_label.x == rnode2.node_label.x
 end

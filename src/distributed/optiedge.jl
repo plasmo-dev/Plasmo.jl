@@ -1,15 +1,18 @@
+# Enable visualizing/printing a RemoteEdgeRef
 function Base.string(redge::RemoteEdgeRef)
     return String(redge.label)
 end
 Base.print(io::IO, redge::RemoteEdgeRef) = Base.print(io, Base.string(redge))
 Base.show(io::IO, redge::RemoteEdgeRef) = Base.print(io, redge)
 
+# Enable visualizing/printing a RemoteOptiEdge
 function Base.string(redge::RemoteOptiEdge)
     return String(redge.label)
 end
 Base.print(io::IO, redge::RemoteOptiEdge) = Base.print(io, Base.string(redge))
 Base.show(io::IO, redge::RemoteOptiEdge) = Base.print(io, redge)
 
+# Enable visualizing a remote constraint ref
 function Base.string(rcref::RemoteOptiEdgeConstraintRef)
     redge = rcref.model
     rcref = redge.constraints[rcref]
@@ -26,9 +29,11 @@ Base.show(io::IO, rcref::RemoteEdgeConstraintRef) = Base.print(io, rcref)
 Base.print(io::IO, rcref::RemoteOptiEdgeConstraintRef) = Base.print(io, Base.string(rcref))
 Base.show(io::IO, rcref::RemoteOptiEdgeConstraintRef) = Base.print(io, Base.string(rcref))
 
+# return source graph (will be a RemoteOptiGraph)
 function source_graph(redge::RemoteOptiEdge) return redge.remote_graph end
 function source_graph(redge::RemoteEdgeRef) return redge.remote_graph end
 
+# Extend Constraint Object call
 function JuMP.constraint_object(
     con_ref::ConstraintRef{
         RemoteOptiEdge,
@@ -39,19 +44,22 @@ function JuMP.constraint_object(
     return model.constraints[con_ref]
 end
 
+# Add an edge for a set of RemoteNodeRefs
 function add_edge(
     rgraph::RemoteOptiGraph,
     rnodes::RemoteNodeRef...;
     label = Symbol(rgraph.label, Symbol(".e"), length(rgraph.optiedges)+1)
 )
-    if has_edge(rgraph, Set(rnodes))
+    if has_edge(rgraph, Set(rnodes)) # check if the edge exists
         redge = get_edge(rgraph, Set(rnodes))
     else
+        # if not, check that the nodes are in the graph or subgraphs
         subgraphs = [rgraph; all_subgraphs(rgraph)]
         if !(all(x -> x.remote_graph in subgraphs, rnodes))
             error("Remote nodes do not belong to the remote graph or its subgraphs")
         end
 
+        # build new edge
         redge = RemoteOptiEdge(rgraph, OrderedSet(collect(rnodes)), OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteOptiEdgeConstraintRef}(), OrderedDict{Plasmo.RemoteOptiEdgeConstraintRef, JuMP.AbstractConstraint}(), label)
         push!(rgraph.optiedges, redge)
         rgraph.edge_data.optiedge_map[Set(collect(rnodes))] = redge
@@ -59,6 +67,7 @@ function add_edge(
     return redge
 end
 
+# Check if an edge exists between the given nodes
 function has_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
     if haskey(rgraph.edge_data.optiedge_map, rnodes)
         return true
@@ -98,6 +107,30 @@ function next_constraint_index(
     return MOI.ConstraintIndex{F,S}(source_data.last_constraint_index[redge])
 end
 
+# build the constraint reference for an edge
+function _build_constraint_ref(redge::RemoteOptiEdge, con::JuMP.AbstractConstraint)
+    # get moi function and set
+    moi_func = JuMP.moi_function(con)
+    moi_set = JuMP.moi_set(con)
+
+    # create constraint index and reference
+    constraint_index = next_constraint_index(
+        redge, typeof(moi_func), typeof(moi_set)
+    )::MOI.ConstraintIndex{typeof(moi_func),typeof(moi_set)}
+    cref = ConstraintRef(redge, constraint_index, JuMP.shape(con))
+
+    redge.constraint_refs[constraint_index] = cref
+    redge.constraints[cref] = con
+
+    return cref
+end
+
+"""
+    Plasmo.incident_edges(rgraph::RemoteOptiGraph)
+
+Get the set of incident edges to a given `rgraph`. This requires the `rgraph` to have 
+a parent graph, which is what will be search to get the incident edges
+"""
 function incident_edges(rgraph::RemoteOptiGraph)
     !(isnothing(rgraph.parent_graph)) || error("Given graph does not have parent graph")
     parent_graph = rgraph.parent_graph
@@ -139,6 +172,9 @@ function JuMP.dual(rcref::RemoteEdgeConstraintRef)
     return fetch(f)
 end
 
+
+# These functions are used by extending packages like PlasmoBenders to 
+# set the needed type data
 function edge_type(rgraph::RemoteOptiGraph)
     return RemoteOptiEdge
 end

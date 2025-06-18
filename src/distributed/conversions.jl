@@ -1,8 +1,12 @@
+# This file contains functions used for converting remote objects to their corresponding
+# local objects. These functions are primarily internal functions for Plasmo and won't be
+# used often by users
 
 function remote_node_to_local(rgraph::RemoteOptiGraph, rnode::RemoteNodeRef)
     lg = local_graph(rgraph)
 
     #TODO: Make this more efficient
+    # find the node whose node_idx matchs the remote node
     for n in all_nodes(lg)
         if n.idx == rnode.node_idx
             return n
@@ -12,6 +16,7 @@ function remote_node_to_local(rgraph::RemoteOptiGraph, rnode::RemoteNodeRef)
 end
 
 function get_node(graph::OptiGraph, sym::Symbol)
+    # find the node whose symbol matches
     for n in all_nodes(graph)
         if n.label.x == sym
             return n
@@ -32,11 +37,13 @@ end
 
 function remote_edge_to_local(rgraph::RemoteOptiGraph, redge::Plasmo.RemoteOptiEdge)
     lgraph = local_part(rgraph)
+    #first search local edges
     for edge in lgraph.optiedges #TODO: Make this approach more intuitive
         if edge.label == redge.label
             return edge
         end
     end
+    # if the edge wasn't found in the local edges, look at all the edges (this includes nested edges)
     for edge in all_edges(lgraph)
         if edge.label == redge.label
             return edge
@@ -45,7 +52,7 @@ function remote_edge_to_local(rgraph::RemoteOptiGraph, redge::Plasmo.RemoteOptiE
     error("Edge $redge not found in remote graph")
 end
 
-function local_node_to_remote(rgraph::RemoteOptiGraph, node::OptiNode) #ISSUE: can go from node to graph, but graph to node is hard
+function local_node_to_remote(rgraph::RemoteOptiGraph, node::OptiNode)
     return RemoteNodeRef(rgraph, node.idx, node.label)
 end
 
