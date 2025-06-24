@@ -2,7 +2,7 @@
 # local objects. These functions are primarily internal functions for Plasmo and won't be
 # used often by users
 
-function remote_node_to_local(rgraph::RemoteOptiGraph, rnode::RemoteNodeRef)
+function _convert_remote_to_local(rgraph::RemoteOptiGraph, rnode::RemoteNodeRef)
     lg = local_graph(rgraph)
 
     #TODO: Make this more efficient
@@ -25,17 +25,17 @@ function get_node(graph::OptiGraph, sym::Symbol)
     error("Symbol $sym not saved on remotegraph")
 end
 
-function local_edge_to_remote(rgraph::RemoteOptiGraph, ledge::Plasmo.OptiEdge)
+function _convert_local_to_remote(rgraph::RemoteOptiGraph, ledge::Plasmo.OptiEdge)
     rnodes = OrderedSet{Plasmo.RemoteNodeRef}()
     lnodes = ledge.nodes
     for node in lnodes
-        rnode = local_node_to_remote(rgraph, node)
+        rnode = _convert_local_to_remote(rgraph, node)
         push!(rnodes, rnode)
     end
     return RemoteEdgeRef(rgraph, rnodes, ledge.label)
 end
 
-function remote_edge_to_local(rgraph::RemoteOptiGraph, redge::Plasmo.RemoteOptiEdge)
+function _convert_remote_to_local(rgraph::RemoteOptiGraph, redge::Plasmo.RemoteOptiEdge)
     lgraph = local_part(rgraph)
     #first search local edges
     for edge in lgraph.optiedges #TODO: Make this approach more intuitive
@@ -52,12 +52,12 @@ function remote_edge_to_local(rgraph::RemoteOptiGraph, redge::Plasmo.RemoteOptiE
     error("Edge $redge not found in remote graph")
 end
 
-function local_node_to_remote(rgraph::RemoteOptiGraph, node::OptiNode)
+function _convert_local_to_remote(rgraph::RemoteOptiGraph, node::OptiNode)
     return RemoteNodeRef(rgraph, node.idx, node.label)
 end
 
 function local_var_to_remote(rgraph::RemoteOptiGraph, var::NodeVariableRef)
-    rnode = local_node_to_remote(rgraph, var.node)
+    rnode = _convert_local_to_remote(rgraph, var.node)
     return RemoteVariableRef(rnode, var.index, Symbol(name(var)))
     #TODO: decide if the name should be a string or a symbol; I think I am switching between these a lot
 end
@@ -65,7 +65,7 @@ end
 function remote_var_to_local(var::RemoteVariableRef)
     rnode = var.node
     rgraph = rnode.remote_graph
-    lnode = remote_node_to_local(rgraph, rnode)
+    lnode = _convert_remote_to_local(rgraph, rnode)
     return NodeVariableRef(lnode, var.index)
 end
 
@@ -76,7 +76,7 @@ end
 function _convert_remote_to_local(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
     new_func = GenericAffExpr{Float64, Plasmo.NodeVariableRef}(func.constant)
     for (var, val) in func.terms
-        lnode = remote_node_to_local(rgraph, var.node)
+        lnode = _convert_remote_to_local(rgraph, var.node)
         local_var = remote_var_to_local(var, lnode)
         new_func.terms[local_var] = val
     end
@@ -84,7 +84,7 @@ function _convert_remote_to_local(rgraph::RemoteOptiGraph, func::GenericAffExpr{
 end
 
 function _convert_remote_to_local(rnode::RemoteNodeRef, func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
-    lnode = remote_node_to_local(rnode.remote_graph, rnode)
+    lnode = _convert_remote_to_local(rnode.remote_graph, rnode)
     new_func = GenericAffExpr{Float64, Plasmo.NodeVariableRef}(func.constant)
     for (var, val) in func.terms
         local_var = remote_var_to_local(var, lnode)
@@ -97,9 +97,9 @@ function _convert_remote_to_local(rgraph::RemoteOptiGraph, func::GenericQuadExpr
     new_aff = _convert_remote_to_local(rgraph, func.aff)
     new_terms = OrderedDict{UnorderedPair{NodeVariableRef}, Float64}()
     for (pair, val) in func.terms
-        lnode1 = remote_node_to_local(rgraph, pair.a.node)
+        lnode1 = _convert_remote_to_local(rgraph, pair.a.node)
         local_var1 = remote_var_to_local(pair.a, lnode1)
-        lnode2 = remote_node_to_local(rgraph, pair.b.node)
+        lnode2 = _convert_remote_to_local(rgraph, pair.b.node)
         local_var2 = remote_var_to_local(pair.b, lnode2)
         new_pair = UnorderedPair(local_var1, local_var2)
         new_terms[new_pair] = val
@@ -108,7 +108,7 @@ function _convert_remote_to_local(rgraph::RemoteOptiGraph, func::GenericQuadExpr
 end
 
 function _convert_remote_to_local(rnode::RemoteNodeRef, func::GenericQuadExpr{Float64, Plasmo.RemoteVariableRef})
-    lnode = remote_node_to_local(rnode.remote_graph, rnode)
+    lnode = _convert_remote_to_local(rnode.remote_graph, rnode)
     new_aff = _convert_remote_to_local(rnode, func.aff)
     new_terms = OrderedDict{UnorderedPair{NodeVariableRef}, Float64}()
     for (pair, val) in func.terms
@@ -144,12 +144,12 @@ function _convert_remote_to_local(robj::R, func::GenericNonlinearExpr{Plasmo.Rem
 end
 
 function _convert_remote_to_local(rgraph::RemoteOptiGraph, func::RemoteVariableRef)
-    lnode = remote_node_to_local(rgraph, func.node) #TODO: These "remote_node_to_local" calls will likely be slow if it gets called a lot; should address this in the future
+    lnode = _convert_remote_to_local(rgraph, func.node) #TODO: These "_convert_remote_to_local" calls will likely be slow if it gets called a lot; should address this in the future
     return remote_var_to_local(func, lnode)
 end
 
 function _convert_remote_to_local(rnode::RemoteNodeRef, func::RemoteVariableRef)
-    lnode = remote_node_to_local(rnode.remote_graph, rnode) #TODO: These "remote_node_to_local" calls will likely be slow if it gets called a lot; should address this in the future
+    lnode = _convert_remote_to_local(rnode.remote_graph, rnode) #TODO: These "_convert_remote_to_local" calls will likely be slow if it gets called a lot; should address this in the future
     return remote_var_to_local(func, lnode)
 end
 
@@ -228,6 +228,12 @@ end
 
 function _convert_local_to_remote(rgraph::RemoteOptiGraph, func::Float64)
     return func
+end
+
+function _convert_local_to_remote(rgraph::RemoteOptiGraph, cref::JuMP.ConstraintRef)
+    model = cref.model
+    rmodel = _convert_local_to_remote(cref)
+    return JuMP.ConstraintRef(rmodel, cref.index, cref.shape)
 end
 
 function _check_node_variables(rnode::RemoteNodeRef, jump_func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})

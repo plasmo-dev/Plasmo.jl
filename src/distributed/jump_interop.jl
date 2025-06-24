@@ -118,3 +118,7 @@ end
 function JuMP._error_if_cannot_register(rnode::RemoteNodeRef, name::Symbol)
     return nothing
 end
+
+# function JuMP._error_if_cannot_register(rnode::RemoteOptiGraph, name::Symbol)
+#     return nothing
+# end

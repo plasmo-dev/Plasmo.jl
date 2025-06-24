@@ -7,20 +7,22 @@ Base.show(io::IO, graph::RemoteOptiGraph) = Base.print(io, graph)
 
 function source_graph(rgraph::RemoteOptiGraph) return rgraph.parent_graph end
 
-# return the RemoteNodeRef corresponding to the symbol
 function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
-    f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        #new_sym = Symbol(rgraph.label, ".", sym)
-        local_node = Plasmo.get_node(lg, sym)
-        (local_node.idx, local_node.label)
+    if haskey(rgraph.obj_dict, sym)
+        return rgraph.obj_dict[sym]
+    else
+        f = @spawnat rgraph.worker begin
+            lg = local_graph(rgraph)
+            if haskey(lg.obj_dict, sym)
+                obj = lg.obj_dict[sym]
+            else
+                error("No object with name $sym is registered on given OptiGraph")
+            end
+            _convert_local_to_remote(rgraph, obj)
+        end
+        return fetch(f)
     end
-    node_tuple = fetch(f)
-
-    return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
 end
-#TODO: Each call will create a new RemoteNodeRef; shoiuld we figure out how to not duplicate these? maybe we have a dictionary of node symbols to node refs in the RemoteOptiGraph? 
-# Need to double check this. If I try to set two of the above functions equal to each other for different calls of the same node (even using ===), it says it is true; looking online,it looks like this might result in different allocations in memory but you cannot tell on the Julia language level
 
 ###### Functions for getting the remote data from a RemoteOptiGraph ######
 function local_graph(rgraph::RemoteOptiGraph)
@@ -77,7 +79,7 @@ function all_nodes(rgraph::RemoteOptiGraph)
         lg = local_graph(rgraph)
         nodes = Plasmo.all_nodes(lg)
         [(node.idx, node.label) for node in nodes]
-        #[local_node_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
+        #[_convert_local_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
     end
     node_tuples = fetch(f)
     nodes = [RemoteNodeRef(rgraph, idx, label) for (idx, label) in node_tuples]
@@ -101,7 +103,7 @@ function local_nodes(rgraph::RemoteOptiGraph)
         lg = local_graph(rgraph)
         nodes = Plasmo.all_nodes(lg)
         [(node.idx, node.label) for node in nodes]
-        #[local_node_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
+        #[_convert_local_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
     end
     node_tuples = fetch(f)
     nodes = [RemoteNodeRef(rgraph, idx, label) for (idx, label) in node_tuples]
@@ -296,3 +298,6 @@ function JuMP.termination_status(rgraph::RemoteOptiGraph)
     return fetch(f)
 end
 
+function JuMP.object_dictionary(rgraph::RemoteOptiGraph)
+    return rgraph.obj_dict
+end

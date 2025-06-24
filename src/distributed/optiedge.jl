@@ -154,7 +154,7 @@ function JuMP.dual(rgraph::RemoteOptiGraph, rcref::RemoteEdgeConstraintRef)
     redge = JuMP.owner_model(rcref) #TODO: Make sure the redge is owned by the rgraph
     f = @spawnat rgraph.worker begin
         lgraph = local_graph(rgraph)
-        ledge = remote_edge_to_local(rgraph, redge)
+        ledge = _convert_remote_to_local(rgraph, redge)
         cref = ConstraintRef(ledge, rcref.index, rcref.shape)
         JuMP.dual(lgraph, cref)
     end
@@ -165,7 +165,7 @@ function JuMP.dual(rcref::RemoteEdgeConstraintRef)
     redge = JuMP.owner_model(rcref)
     rgraph = redge.remote_graph
     f = @spawnat rgraph.worker begin
-        ledge = remote_edge_to_local(rgraph, redge)
+        ledge = _convert_remote_to_local(rgraph, redge)
         cref = ConstraintRef(ledge, rcref.index, rcref.shape)
         JuMP.dual(cref)
     end

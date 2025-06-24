@@ -20,7 +20,7 @@ function Base.setindex!(rnode::RemoteNodeRef, value::JuMP.Containers.DenseAxisAr
 
     f = @spawnat rgraph.worker begin
         lgraph = local_graph(rgraph)
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         key = (lnode, name)
         var_array = map(x -> Plasmo.NodeVariableRef(lnode, x.index), value.data)
         dense_array = DenseAxisArray(var_array, value.axes, value.lookup, value.names)
@@ -38,7 +38,7 @@ function Base.setindex!(rnode::RemoteNodeRef, value::Array{RemoteVariableRef}, n
 
     f = @spawnat rgraph.worker begin
         lgraph = local_graph(rgraph)
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         key = (lnode, name)
         var_array = map(x -> Plasmo.NodeVariableRef(lnode, x.index), value)
         lgraph.element_data.node_obj_dict[key] = var_array
@@ -52,7 +52,7 @@ function Base.setindex!(rnode::RemoteNodeRef, value::RemoteVariableRef, name::Sy
 
     f = @spawnat rgraph.worker begin
         lgraph = local_graph(rgraph)
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         key = (lnode, name)
         var = NodeVariableRef(lnode, value.index)
         lgraph.element_data.node_obj_dict[key] = var
@@ -95,7 +95,7 @@ function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how 
     rgraph = rnode.remote_graph
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)
-        local_node = Plasmo.remote_node_to_local(rgraph, rnode)
+        local_node = Plasmo._convert_remote_to_local(rgraph, rnode)
         var = local_node[sym]
         _return_var_index(var)
     end
@@ -160,7 +160,7 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
     rgraph = rnode.remote_graph
 
     f = @spawnat rgraph.worker begin
-        node = remote_node_to_local(rgraph, rnode)
+        node = _convert_remote_to_local(rgraph, rnode)
         new_expr = _convert_remote_to_local(rnode, con.func)
         lcon = JuMP.ScalarConstraint(new_expr, con.set)
 
@@ -191,8 +191,14 @@ function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
     rgraph = rnode.remote_graph
 
     f = @spawnat rgraph.worker begin
-        lnode = remote_node_to_local(rgraph, rnode)
+        lgraph = Plasmo.local_graph(rgraph)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         lnode.label.x = label
+        if !(haskey(lgraph, label))
+            lgraph[label] = lnode
+        else
+            error("Name $(label) is already registered to the model")
+        end
     end
 
     rnode.node_label.x = label
@@ -216,7 +222,7 @@ function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable,
     sym = Symbol(name)
 
     f = @spawnat rgraph.worker begin
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         nvref = JuMP.add_variable(lnode, v, name)
         nvref.index
     end
@@ -232,7 +238,7 @@ function JuMP.set_objective(
     rgraph = rnode.remote_graph
     f = @spawnat rgraph.worker begin
         new_func = _convert_remote_to_local(rnode, func)
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         JuMP.set_objective(lnode, sense, new_func)
     end
     return func
@@ -244,7 +250,7 @@ function JuMP.set_objective_function(
     rgraph = rnode.remote
     f = @spawnat rgraph.worker begin
         new_func = _convert_remote_to_local(rnode, func)
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         JuMP.set_objective_function(lnode, new_func)
     end
     return func
@@ -255,7 +261,7 @@ function JuMP.set_objective_sense(
 )
     rgraph = rnode.remote
     f = @spawnat rgraph.worker begin
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         JuMP.set_objective_sense(lnode, sense)
     end
     return nothing
@@ -264,7 +270,7 @@ end
 function JuMP.objective_value(rnode::RemoteNodeRef)
     rgraph = rnode.remote_graph
     f = @spawnat rgraph.worker begin
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         JuMP.objective_value(local_graph(lnode))
     end
     return fetch(f)
@@ -273,7 +279,7 @@ end
 function JuMP.objective_function(rnode::RemoteNodeRef)
     rgraph = rnode.remote_graph
     f = @spawnat rgraph.worker begin
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         lobj_func = JuMP.objective_function(lnode)
         robj_func = _convert_local_to_remote(rgraph, lobj_func)
         robj_func
@@ -285,7 +291,7 @@ function JuMP.dual(rgraph::RemoteOptiGraph, rcref::RemoteNodeConstraintRef)
     rnode = JuMP.owner_model(rcref)
     f = @spawnat rgraph.worker begin
         lgraph = local_graph(rgraph)
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         cref = ConstraintRef(lnode, rcref.index, rcref.shape)
         JuMP.dual(lgraph, cref)
     end

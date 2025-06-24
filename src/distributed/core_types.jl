@@ -56,6 +56,7 @@ mutable struct RemoteOptiGraph <: AbstractOptiGraph
     # Set of edges and data for them
     optiedges::Vector{<:AbstractRemoteOptiEdge}
     edge_data::RemoteEdgeData
+    obj_dict::Dict{Symbol,Any}
     label::Symbol
     ext::Dict{Symbol, Any}
 end #TODO: Maybe add an obj_dict and node_obj_dict for saving and referencing remotenoderefs or RemoteVariableRefs; this would allow for registering expression names to a remote optigraph, which is currently not done
@@ -134,6 +135,7 @@ function RemoteOptiGraph(; name::Symbol=Symbol(:rg, gensym()), worker::Int=1)
         Vector{RemoteOptiGraph}(), 
         Vector{Plasmo.RemoteOptiEdge}(), 
         RemoteEdgeData(),
+        Dict{Symbol,Any}(),
         name, #not sure yet whether the remote and local should have the same name, but doing that for now
         Dict{Symbol, Any}()
     )

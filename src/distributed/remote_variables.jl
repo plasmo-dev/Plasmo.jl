@@ -20,7 +20,7 @@ function Base.getindex(rvar::RemoteVariableArrayRef, idx...)
     rgraph = remote_graph(rvar)
     rnode = rvar.node
     f = @spawnat rgraph.worker begin
-        lnode = remote_node_to_local(rgraph, rnode)
+        lnode = _convert_remote_to_local(rgraph, rnode)
         vname = rvar.name
         lvars = lnode[vname][idx...]
         if isa(lvars, Plasmo.NodeVariableRef)
@@ -302,7 +302,7 @@ function JuMP.FixRef(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         cref = JuMP.FixRef(lvar)
         lnode = JuMP.owner_model(cref)
-        rnode = local_node_to_remote(rgraph, lnode)
+        rnode = _convert_local_to_remote(rgraph, lnode)
         rcref = ConstraintRef(rnode, cref.index, cref.shape)
         rcref
     end
@@ -315,7 +315,7 @@ function JuMP.LowerBoundRef(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         cref = JuMP.LowerBoundRef(lvar)
         lnode = JuMP.owner_model(cref)
-        rnode = local_node_to_remote(rgraph, lnode)
+        rnode = _convert_local_to_remote(rgraph, lnode)
         rcref = ConstraintRef(rnode, cref.index, cref.shape)
         rcref
     end
@@ -328,7 +328,7 @@ function JuMP.UpperBoundRef(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         cref = JuMP.UpperBoundRef(lvar)
         lnode = JuMP.owner_model(cref)
-        rnode = local_node_to_remote(rgraph, lnode)
+        rnode = _convert_local_to_remote(rgraph, lnode)
         rcref = ConstraintRef(rnode, cref.index, cref.shape)
         rcref
     end
@@ -359,7 +359,7 @@ function JuMP.IntegerRef(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         cref = JuMP.IntegerRef(lvar)
         lnode = JuMP.owner_model(cref)
-        rnode = local_node_to_remote(rgraph, lnode)
+        rnode = _convert_local_to_remote(rgraph, lnode)
         rcref = ConstraintRef(rnode, cref.index, cref.shape)
         rcref
     end
@@ -372,7 +372,7 @@ function JuMP.BinaryRef(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         cref = JuMP.BinaryRef(lvar)
         lnode = JuMP.owner_model(cref)
-        rnode = local_node_to_remote(rgraph, lnode)
+        rnode = _convert_local_to_remote(rgraph, lnode)
         rcref = ConstraintRef(rnode, cref.index, cref.shape)
         rcref
     end
