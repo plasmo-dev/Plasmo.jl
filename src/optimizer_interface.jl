@@ -161,6 +161,7 @@ Optimize `graph` using the current set optimizer.
 function JuMP.optimize!(
     graph::OptiGraph;
     #ignore_optimize_hook = (graph.optimize_hook === nothing),
+    silence_zero_objective_warning = false,
     kwargs...,
 )
     # TODO: optimize hooks for optigraphs
@@ -179,7 +180,7 @@ function JuMP.optimize!(
     end
 
     # check for node objectives when graph objective is empty
-    if iszero(objective_function(graph))
+    if iszero(objective_function(graph)) && !(silence_zero_objective_warning)
         if has_node_objective(graph)
             @warn """
             The optigraph objective is empty but objectives exist on optinodes. 

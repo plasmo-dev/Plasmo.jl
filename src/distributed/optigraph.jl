@@ -7,6 +7,45 @@ Base.show(io::IO, graph::RemoteOptiGraph) = Base.print(io, graph)
 
 function source_graph(rgraph::RemoteOptiGraph) return rgraph.parent_graph end
 
+# If we directly create the remote reference on the remote worker, there are issues
+# with equality of the resulting remoterefs. For instance, a node's remote graph
+# may not be equal to the remotegraph from which it was created. Consequently, we have
+# this kind of hacky interface for turning whatever object is returned into the
+# appropriate object
+
+function _return_remotegraph_object(rgraph::RemoteOptiGraph, obj::Plasmo.OptiNode)
+    return (obj.idx, obj.label)
+end
+
+function _return_remotegraph_object(rgraph::RemoteOptiGraph, obj::Plasmo.EdgeConstraintRef)
+    edge = JuMP.owner_model(obj)
+    lnodes = edge.nodes
+    elabel = edge.label
+    cref_index = obj.index
+    cref_shape = obj.shape
+
+    node_data = [(node.idx, node.label) for node in lnodes]
+    #(node_list; should be )
+    return (node_data, elabel, cref_index, cref_shape)
+end
+
+function _return_remotegraph_object(rgraph::RemoteOptiGraph, obj)
+    error("Retrieving object resulted in an object of type $(typeof(obj)) which is not yet supported")
+end
+
+function _build_fetched_object_from_data(rgraph::RemoteOptiGraph, data::Tuple{Plasmo.NodeIndex, Base.RefValue{Symbol}})
+    return RemoteNodeRef(rgraph, data[1], data[2])
+end
+
+function _build_fetched_object_from_data(rgraph::RemoteOptiGraph, data::Tuple{Vector{Tuple}, Symbol, FT, ST}) where {FT <: MOI.AbstractFunction, ST <: JuMP.AbstractShape}
+    rnodes = [RemoteNodeRef(rgraph, t[1], t[2]) for t in data[1]]
+    redge = RemoteEdgeRef(rgraph, rnodes, data[2])
+    return ConstraintRef(redge, data[3], data[4])
+end
+
+
+#TODO: Support arrays of these objects
+
 function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
     if haskey(rgraph.obj_dict, sym)
         return rgraph.obj_dict[sym]
@@ -18,11 +57,18 @@ function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
             else
                 error("No object with name $sym is registered on given OptiGraph")
             end
-            _convert_local_to_remote(rgraph, obj)
+            _return_remotegraph_object(rgraph, obj)
+            # return data to then build these separately
         end
-        return fetch(f)
+        return _build_fetched_object_from_data(rgraph, fetch(f))
     end
 end
+
+# (local_node.idx, local_node.label)
+#     end
+#     node_tuple = fetch(f)
+
+#     return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
 
 ###### Functions for getting the remote data from a RemoteOptiGraph ######
 function local_graph(rgraph::RemoteOptiGraph)
