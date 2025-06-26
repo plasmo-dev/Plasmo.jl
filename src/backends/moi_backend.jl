@@ -92,8 +92,8 @@ mutable struct GraphMOIBackend <: MOI.AbstractOptimizer
     graph_to_element_map::GraphToElementMap
 
     # map of nodes and edges to variables and constraints.
-    node_variables::OrderedDict{OptiNode,Vector{MOI.VariableIndex}}
-    element_constraints::OrderedDict{OptiElement,Vector{MOI.ConstraintIndex}}
+    node_variables::OrderedDict{OptiNode,OrderedSet{MOI.VariableIndex}}
+    element_constraints::OrderedDict{OptiElement,OrderedSet{MOI.ConstraintIndex}}
     element_attributes::OrderedDict{Tuple{OptiObject,MOI.AbstractModelAttribute},Any}
     operator_map::OrderedDict{Tuple{OptiObject,MOI.UserDefinedFunction},Symbol}
 end
@@ -245,10 +245,10 @@ end
 
 function _add_node(backend::GraphMOIBackend, node::OptiNode)
     if !haskey(backend.node_variables, node)
-        backend.node_variables[node] = MOI.VariableIndex[]
+        backend.node_variables[node] = OrderedSet{MOI.VariableIndex}()
     end
     if !haskey(backend.element_constraints, node)
-        backend.element_constraints[node] = MOI.ConstraintIndex[]
+        backend.element_constraints[node] = OrderedSet{MOI.ConstraintIndex}()
     end
     return nothing
 end
@@ -264,7 +264,7 @@ end
 
 function _add_edge(backend::GraphMOIBackend, edge::OptiEdge)
     if !haskey(backend.element_constraints, edge)
-        backend.element_constraints[edge] = MOI.ConstraintIndex[]
+        backend.element_constraints[edge] = OrderedSet{MOI.ConstraintIndex}()
     end
     return nothing
 end
@@ -472,10 +472,7 @@ end
 function MOI.delete(backend::GraphMOIBackend, nvref::NodeVariableRef)
     index = backend.element_to_graph_map[nvref]
     MOI.delete(backend.moi_backend, index)
-
-    # delete from list
-    list_index = findall(x -> x == index, backend.node_variables[nvref.node])
-    deleteat!(backend.node_variables[nvref.node], list_index)
+    delete!(backend.node_variables[nvref.node], index)
 
     # delete dictionary entries
     delete!(backend.graph_to_element_map.var_map, backend.element_to_graph_map[nvref])
@@ -487,10 +484,7 @@ function MOI.delete(backend::GraphMOIBackend, cref::ConstraintRef)
     # delete backend index
     index = backend.element_to_graph_map[cref]
     MOI.delete(backend.moi_backend, index)
-
-    # delete from list
-    list_index = findall(x -> x == index, backend.element_constraints[cref.model])
-    deleteat!(backend.element_constraints[cref.model], list_index)
+    delete!(backend.element_constraints[cref.model], index)
 
     # delete dicionary entries
     delete!(backend.graph_to_element_map.con_map, backend.element_to_graph_map[cref])
@@ -543,7 +537,7 @@ function MOI.add_variable(backend::GraphMOIBackend, vref::NodeVariableRef)
 
     # create key for node if necessary
     if !haskey(backend.node_variables, vref.node)
-        backend.node_variables[vref.node] = MOI.VariableIndex[]
+        backend.node_variables[vref.node] = OrderedSet{MOI.VariableIndex}()
     end
     push!(backend.node_variables[vref.node], graph_var_index)
     return graph_var_index
@@ -571,10 +565,10 @@ function MOI.add_constrained_variable(
 
     # create key for node if necessary
     if !haskey(backend.node_variables, vref.node)
-        backend.node_variables[vref.node] = MOI.VariableIndex[]
+        backend.node_variables[vref.node] = OrderedSet{MOI.VariableIndex}()
     end
     if !haskey(backend.element_constraints, vref.node)
-        graph_backend.element_constraints[vref.node] = MOI.ConstraintIndex[]
+        graph_backend.element_constraints[vref.node] = OrderedSet{MOI.ConstraintIndex}()
     end
     push!(backend.node_variables[vref.node], graph_var_index)
     push!(backend.element_constraints[vref.node], graph_con_index)
@@ -589,7 +583,7 @@ function MOI.add_constraint(
 
     # create key for element if necessary
     if !haskey(backend.element_constraints, cref.model)
-        graph_backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
+        graph_backend.element_constraints[cref.model] = OrderedSet{MOI.ConstraintIndex}()
     end
 
     # create the constraint
@@ -869,7 +863,7 @@ function _copy_node_to_backend!(backend::GraphMOIBackend, node::OptiNode)
 
     # copy constraints and constraint attributes
     # NOTE: for now, we split between variable and non-variable, but they do the same thing.
-    # eventually, we might try doing something more similar to MOI `default_copy_to` where
+    # eventually, we might try doing something more similar to MOI `default_copy_to` whereF
     # we try to constrain variables on creation.
     all_constraint_types = MOI.get(node, MOI.ListOfConstraintTypesPresent())
     variable_constraint_types = filter(all_constraint_types) do (F, S)
