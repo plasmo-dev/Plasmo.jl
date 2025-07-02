@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Optimal Control of a Quadcopter · Plasmo.jl</title><meta name="title" content="Optimal Control of a Quadcopter · Plasmo.jl"/><meta property="og:title" content="Optimal Control of a Quadcopter · Plasmo.jl"/><meta property="twitter:title" content="Optimal Control of a Quadcopter · Plasmo.jl"/><meta name="description" content="Documentation for Plasmo.jl."/><meta property="og:description" content="Documentation for Plasmo.jl."/><meta property="twitter:description" content="Documentation for Plasmo.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Plasmo.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Plasmo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../documentation/quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../documentation/modeling/">Modeling with OptiGraphs</a></li><li><a class="tocitem" href="../../documentation/graph_processing/">Graph Processing and Analysis</a></li><li><a class="tocitem" href="../../documentation/api_docs/">API Documentation</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../supply_chain/">Supply Chain Optimization</a></li><li><a class="tocitem" href="../MHMPC/">Multi-Horizon Model Predictive Control</a></li><li class="is-active"><a class="tocitem" href>Optimal Control of a Quadcopter</a></li><li><a class="tocitem" href="../HVAC/">Hierarchical HVAC Optimization</a></li><li><a class="tocitem" href="../gas_pipeline/">Optimal Control of a Natural Gas Network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Optimal Control of a Quadcopter</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Optimal Control of a Quadcopter</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl/blob/main/docs/src/tutorials/quadcopter.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Optimal-Control-of-a-Quadcopter"><a class="docs-heading-anchor" href="#Optimal-Control-of-a-Quadcopter">Optimal Control of a Quadcopter</a><a id="Optimal-Control-of-a-Quadcopter-1"></a><a class="docs-heading-anchor-permalink" href="#Optimal-Control-of-a-Quadcopter" title="Permalink"></a></h1><p>By: Rishi Mandyam</p><p>This tutorial notebook is an introduction to the graph-based modeling framework  Plasmo.jl (Platform for Scalable Modeling and Optimization) for JuMP  (Julia for Mathematical Programming).</p><p>The following problem comes from the paper of Na, Shin,  Anitescu, and Zavala (available <a href="https://ieeexplore.ieee.org/stamp/stamp.jsp?arnumber=9840913">here</a>).</p><p>A quadcopter operates in 3-D space with positions <span>$(x, y, z)$</span> and angles (<span>$\gamma$</span>, <span>$\beta$</span>, and <span>$\alpha$</span>).  <span>$g$</span> is the graviational constant. The set of state variables at time <span>$t$</span> are treated as <span>$\boldsymbol{x}_t = (x, y, z, \dot{x}, \dot{y}, \dot{z}, \gamma, \beta, \alpha)$</span>.  The input variables at time <span>$t$</span> are <span>$\boldsymbol{u}_t = (a, \omega_x, \omega_y, \omega_z)$</span>. </p><p>The quadcopter control problem can be written as an optimization problem as:</p><p class="math-container">\[\begin{align*}
+    \min &amp;\; \phi(t) := \int_{0}^T \frac{1}{2} (\boldsymbol{x}(t) - \boldsymbol{x}(t)^{ref})^\top Q (\boldsymbol{x}(t) - \boldsymbol{x}(t)^{ref}) + \boldsymbol{u}(t)^\top R \boldsymbol{u}(t) dt \\
+    \textrm{s.t.} &amp;\; \frac{d^2x}{dt^2} = a (\cos(\gamma) \sin( \beta) \cos (\alpha)  + \sin (\gamma) \sin (\alpha)) \\
+&amp;\; \frac{d^2 y}{dt^2} = a (\cos (\gamma) \sin (\beta) \sin (\alpha) - \sin (\gamma) \cos (\alpha)) \\
+&amp;\; \frac{d^2 z}{dt^2} = a \cos (\gamma) \cos (\beta) - g \\
+&amp;\; \frac{d\gamma}{dt} = (\omega_x \cos (\gamma) + \omega_y \sin (\gamma)) / \cos (\beta)\\
+&amp;\;\frac{d\beta}{dt} = -\omega_x \sin (\gamma) + \omega_y \cos (\gamma) \\
+&amp;\;\frac{d\alpha}{dt} = \omega_x \cos (\gamma) \tan (\beta) + \omega_y \sin (\gamma) \tan (\beta) + \omega_z
+\end{align*}\]</p><p>We will model this problem in Plasmo by discretizing the problem into finite time points and representing each time point with a node. </p><h3 id="1.-Import-Packages"><a class="docs-heading-anchor" href="#1.-Import-Packages">1. Import Packages</a><a id="1.-Import-Packages-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Import-Packages" title="Permalink"></a></h3><p>To begin, we will import and use the necessary packages</p><pre><code class="language-julia hljs">using JuMP
+using Plasmo
+using Ipopt
+using Plots
+using LinearAlgebra</code></pre><h3 id="2.-Function-Design"><a class="docs-heading-anchor" href="#2.-Function-Design">2. Function Design</a><a id="2.-Function-Design-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Function-Design" title="Permalink"></a></h3><p>We will define a function called <code>build_quadcopter_graph</code> that will take arguments for the number of nodes and the discretization size (i.e., <span>$\Delta t$</span>), optimize the model, and return the graph and reference values <span>$x^{ref}$</span>.  </p><p>The function inputs are:</p><ul><li>number of nodes (<code>N</code>)</li><li>time discretization (number of seconds between nodes <code>dt</code>)</li></ul><p>The function outputs are:</p><ul><li>The objective value of the discretized form of <span>$\phi$</span></li><li>The graph</li><li>An array with the reference values on each node (<span>$x^{ref}$</span>)</li></ul><p>The <code>build_quadcopter_graph</code> function will use three supporting functions that will add variables, add constraints (both local and linking) and add the objectives to the nodes. These functions will be detailed below before they are used to build the full quadcopter graph. </p><p>The first function we call <code>add_variables!</code>, which defines each of the decision variables as well as some supporting expressions. Here, we loop through the nodes, and define variables on each node. These variables include expressions that will simplify forming the linking constrints (these are the right hand sides of the derivatives). </p><pre><code class="language-julia hljs">function add_variables!(nodes)
+    grav = 9.8 # m/s^2
+
+    for (i, node) in enumerate(nodes)
+        # Create state variables
+        @variable(node, g)
+        @variable(node, b)
+        @variable(node, a)
+
+        @variable(node, X)
+        @variable(node, Y)
+        @variable(node, Z)
+
+        @variable(node, dXdt)
+        @variable(node, dYdt)
+        @variable(node, dZdt)
+
+        # Create input variables
+        @variable(node, C_a)
+        @variable(node, wx)
+        @variable(node, wy)
+        @variable(node, wz)
+
+        # These expressions to simplify the linking constraints later
+        @expression(node, d2Xdt2, C_a * (cos(g) * sin(b) * cos(a) + sin(g) * sin(a)))
+        @expression(node, d2Ydt2, C_a * (cos(g) * sin(b) * sin(a) + sin(g) * cos(a)))
+        @expression(node, d2Zdt2, C_a * cos(g) * cos(b) - grav)
+
+        @expression(node, dgdt, (wx * cos(g) + wy * sin(g)) / (cos(b)))
+        @expression(node, dbdt, - wx * sin(g) + wy * cos(g))
+        @expression(node, dadt, wx * cos(g) * tan(b) + wy * sin(g) * tan(b) + wz)
+    end
+end</code></pre><p>Next, we define a function for adding the constraints to the graph. We will set the initial values at time 0 and then define the linking constraints, which are discretized derivatives. Note that both linear and nonlinear constraints are handled in the same way by the user in both the <code>@constraint</code> and <code>@linkconstraint</code> macros. </p><pre><code class="language-julia hljs">function add_constraints!(graph, nodes, dt)
+    N = length(nodes)
+
+    @constraint(nodes[1], nodes[1][:X] == 0)
+    @constraint(nodes[1], nodes[1][:Y] == 0)
+    @constraint(nodes[1], nodes[1][:Z] == 0)
+    @constraint(nodes[1], nodes[1][:dXdt] == 0)
+    @constraint(nodes[1], nodes[1][:dYdt] == 0)
+    @constraint(nodes[1], nodes[1][:dZdt] == 0)
+    @constraint(nodes[1], nodes[1][:g] == 0)
+    @constraint(nodes[1], nodes[1][:b] == 0)
+    @constraint(nodes[1], nodes[1][:a] == 0)
+
+    for i in 1:(N-1) # iterate through each node except the last
+        @linkconstraint(graph, nodes[i+1][:dXdt] == dt*nodes[i][:d2Xdt2] + nodes[i][:dXdt])
+        @linkconstraint(graph, nodes[i+1][:dYdt] == dt*nodes[i][:d2Ydt2] + nodes[i][:dYdt])
+        @linkconstraint(graph, nodes[i+1][:dZdt] == dt*nodes[i][:d2Zdt2] + nodes[i][:dZdt])
+
+        @linkconstraint(graph, nodes[i+1][:g] == dt*nodes[i][:dgdt] + nodes[i][:g])
+        @linkconstraint(graph, nodes[i+1][:b] == dt*nodes[i][:dbdt] + nodes[i][:b])
+        @linkconstraint(graph, nodes[i+1][:a] == dt*nodes[i][:dadt] + nodes[i][:a])
+
+        @linkconstraint(graph, nodes[i+1][:X] == dt*nodes[i][:dXdt] + nodes[i][:X])
+        @linkconstraint(graph, nodes[i+1][:Y] == dt*nodes[i][:dYdt] + nodes[i][:Y])
+        @linkconstraint(graph, nodes[i+1][:Z] == dt*nodes[i][:dZdt] + nodes[i][:Z])
+    end
+end</code></pre><p>Next, we set a function for defining the objectives. The quadcopter will fly in a linear upward path in the positive X, Y, and Z directions. We combine these vectors into another vector which we call <span>$x^{ref}$</span>, and then define the necessary constants and arrays (this will simplify forming the objective function).</p><pre><code class="language-julia hljs">function add_objective!(nodes, N, dt)
+    X_ref = 0:10/N:10;
+    dXdt_ref = zeros(N);
+    Y_ref = 0:10/N:10;
+    dYdt_ref = zeros(N)
+    Z_ref = 0:10/N:10;
+    dZdt_ref = zeros(N);
+    g_ref = zeros(N);
+    b_ref = zeros(N);
+    a_ref = zeros(N);
+
+    xk_ref = [X_ref, dXdt_ref, Y_ref, dYdt_ref, Z_ref, dZdt_ref, g_ref, b_ref, a_ref];
+
+    Q = diagm([1, 0, 1, 0, 1, 0, 1, 1, 1]);
+    R = diagm([1/10, 1/10, 1/10, 1/10]);
+
+    xk_ref1 = zeros(N,9)
+    for i in (1:N)
+        for j in 1:length(xk_ref)
+            xk_ref1[i,j] = xk_ref[j][i]
+        end
+    end
+
+    for (i, node) in enumerate(nodes)
+        xk = [ # Array to hold variables
+            node[:X],
+            node[:dXdt],
+            node[:Y],
+            node[:dYdt],
+            node[:Z],
+            node[:dZdt],
+            node[:g],
+            node[:b],
+            node[:a]
+        ]
+
+        xk1 = xk .- xk_ref1[i, :] # Array to hold the difference between variable values and their setpoints.
+        uk = [node[:C_a], node[:wx], node[:wy], node[:wz]]
+        @objective(node, Min, (1 / 2 * (xk1&#39;) * Q * (xk1) + 1 / 2 * (uk&#39;) * R * (uk)) * dt)
+    end
+    return xk_ref
+end</code></pre><p>We can now define the function for building the optigraph. We initialize an OptiGraph and set the optimizer. We then define <code>N</code> nodes on the OptiGraph <code>graph</code>. We then call the three functions above and call <code>set_to_node_objectives</code> to set the graph&#39;s objective to the nodes&#39; objectives we have defined. We can then call <code>optimize</code> and return the objective value, the graph, and the reference points. </p><pre><code class="language-julia hljs">function build_quadcopter_graph(N, dt)
+    graph = OptiGraph()
+    solver = optimizer_with_attributes(Ipopt.Optimizer, &quot;max_iter&quot; =&gt; 100)
+    set_optimizer(graph, solver)
+    @optinode(graph, nodes[1:N])
+
+    add_variables!(nodes)
+    add_constraints!(graph, nodes, dt)
+    xk_ref = add_objective!(nodes, N, dt)
+
+    set_to_node_objectives(graph)
+
+    optimize!(graph);
+
+    return objective_value(graph), graph, xk_ref
+end</code></pre><p>Now that we have created our function to model the behavior of the quadcopter, we can test it using some example cases.</p><h3 id="Examples"><a class="docs-heading-anchor" href="#Examples">Examples</a><a id="Examples-1"></a><a class="docs-heading-anchor-permalink" href="#Examples" title="Permalink"></a></h3><p>First, we will run an example with 50 time points (each represented by a node) with a time discretization size of 0.1 seconds</p><pre><code class="language-julia hljs">N = 50
+dt = 0.1
+objv, graph, xk_ref = build_quadcopter_graph(N, dt)
+nodes = getnodes(graph)
+# create empty arrays
+CAval_array = zeros(length(nodes))
+xval_array = zeros(length(nodes))
+yval_array = zeros(length(nodes))
+zval_array = zeros(length(nodes))
+
+# add values to arrays
+for (i, node)  in enumerate(nodes)
+    CAval_array[i] = value(node[:C_a])
+    xval_array[i] = value(node[:X])
+    yval_array[i] = value(node[:Y])
+    zval_array[i] = value(node[:Z])
+end
+
+xarray = Array{Array}(undef, 2)
+xarray[1] = xval_array
+xarray[2] = 0:10/(N-1):10
+
+yarray = Array{Array}(undef, 2)
+yarray[1] = yval_array
+yarray[2] = 0:10/(N-1):10
+
+zarray = Array{Array}(undef, 2)
+zarray[1] = zval_array
+zarray[2] = 0:10/(N-1):10</code></pre><p>Now, let&#39;s visualize the position of the quadcopter in relation to its setpoint in each dimension. Below is the code for doing so in the x-dimension, and the code can be adapted for the y and z dimensions. </p><pre><code class="language-julia hljs">plot(
+    1:length(xval_array),
+    xarray[1:end], 
+    title = &quot;X value over time&quot;, 
+    xlabel = &quot;Node (N)&quot;, 
+    ylabel = &quot;X Value&quot;, 
+    label = [&quot;Current X position&quot; &quot;X Setpoint&quot;]
+)</code></pre><p><img src="../../assets/Quadcopter_Xpos.png" alt="QuadcopterXpos"/> <img src="../../assets/Quadcopter_Ypos.png" alt="QuadcopterYpos"/> <img src="../../assets/Quadcopter_Zpos.png" alt="QuadcopterZpos"/></p><p>Now that we have solved for the optimal solution, let&#39;s explore a correlation. Let&#39;s see how increasing the number of nodes changes the objective value of the system. In the code snippet below, we keep the time horizon the same (10 seconds) while changing the number of nodes (i.e., the discretization intervals)</p><pre><code class="language-julia hljs">time_steps = 2:4:50
+
+N = length(time_steps)
+dt = .5
+obj_val_N = zeros(N)
+
+for i in 1:length(time_steps)
+    timing = @elapsed begin
+    objval, graph, xk_ref = build_quadcopter_graph(time_steps[i], 10 / time_steps[i]);
+    obj_val_N[i] = objval
+    end
+    println(&quot;Done with iteration $i after &quot;, timing, &quot; seconds&quot;)
+end
+
+Quad_Obj_NN = plot(
+    time_steps,
+    obj_val_N, 
+    title=&quot;Objective Value vs Number of Nodes (N)&quot;, 
+    xlabel=&quot;Number of Nodes (N)&quot;, 
+    ylabel=&quot;Objective Value&quot;,
+    label=&quot;Objective Value&quot;
+)</code></pre><p><img src="../../assets/Quadcopter_Obj_NN.png" alt="Quadcopter_Ojb"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../MHMPC/">« Multi-Horizon Model Predictive Control</a><a class="docs-footer-nextpage" href="../HVAC/">Hierarchical HVAC Optimization »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.13.0 on <span class="colophon-date" title="Wednesday 2 July 2025 19:39">Wednesday 2 July 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>

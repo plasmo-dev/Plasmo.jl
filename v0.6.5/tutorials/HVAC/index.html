@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Hierarchical HVAC Optimization · Plasmo.jl</title><meta name="title" content="Hierarchical HVAC Optimization · Plasmo.jl"/><meta property="og:title" content="Hierarchical HVAC Optimization · Plasmo.jl"/><meta property="twitter:title" content="Hierarchical HVAC Optimization · Plasmo.jl"/><meta name="description" content="Documentation for Plasmo.jl."/><meta property="og:description" content="Documentation for Plasmo.jl."/><meta property="twitter:description" content="Documentation for Plasmo.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Plasmo.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Plasmo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../../documentation/quickstart/">Quickstart</a></li><li><a class="tocitem" href="../../documentation/modeling/">Modeling with OptiGraphs</a></li><li><a class="tocitem" href="../../documentation/graph_processing/">Graph Processing and Analysis</a></li><li><a class="tocitem" href="../../documentation/api_docs/">API Documentation</a></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../supply_chain/">Supply Chain Optimization</a></li><li><a class="tocitem" href="../MHMPC/">Multi-Horizon Model Predictive Control</a></li><li><a class="tocitem" href="../quadcopter/">Optimal Control of a Quadcopter</a></li><li class="is-active"><a class="tocitem" href>Hierarchical HVAC Optimization</a><ul class="internal"><li><a class="tocitem" href="#Modeling-HVAC-MPC"><span>Modeling HVAC MPC</span></a></li><li><a class="tocitem" href="#Hierarchical-Implementation"><span>Hierarchical Implementation</span></a></li></ul></li><li><a class="tocitem" href="../gas_pipeline/">Optimal Control of a Natural Gas Network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li class="is-active"><a href>Hierarchical HVAC Optimization</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Hierarchical HVAC Optimization</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl/blob/main/docs/src/tutorials/HVAC.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Model-Predictive-Control-of-an-HVAC-System"><a class="docs-heading-anchor" href="#Model-Predictive-Control-of-an-HVAC-System">Model Predictive Control of an HVAC System</a><a id="Model-Predictive-Control-of-an-HVAC-System-1"></a><a class="docs-heading-anchor-permalink" href="#Model-Predictive-Control-of-an-HVAC-System" title="Permalink"></a></h1><p>By: Rishi Mandyam and David Cole</p><p>This example considers the problem outlined in <a href="https://ieeexplore.ieee.org/document/7525274">&quot;A Hierarchical Distributed MPC for HVAC Systems&quot;</a> by Long et al. This problem considers the operation of a air conditioning unit that can control the temperature in adjacent rooms by changing how much air is sent into each room. For our purpose, we will consider a set of three rooms in series as shown below. </p><p><img src="../../assets/room_diagram.png" alt="room_figure"/>  </p><p>The temperature of each room is influenced by the adjacent room temperature, the outside temperature, a disturbance term (e.g., heating from activity in the room), and the cooling from the AC unit. We can outline this problem as an NLP that seeks to minimize the difference between a set point temperature and the amount of power the AC unit uses. This problem has the form: </p><p class="math-container">\[\begin{align*}
+\min &amp;\; \sum_{t \in \mathcal{T}} \sum_{i \in \mathcal{R}} (T_{i,t} - T^d_{i,t})^2 + \alpha (u_{i,t})^2\\
+\textrm{s.t.} &amp;\; C_i \frac{T_{i, t+1} - T_{i,t}}{\Delta t} = u_{i, t} C_p (T_s - T_{i,t}) + \sum_{j \in \mathcal{R}_i} (T_{j,t} - T_{i, t})/R_{i,j} + (T_{oa} - T_{i,t})/R_o + P^i_d, \quad i \in \mathcal{R} \\
+&amp;\; T_{i, 0} = \bar{T}_{i, 0}, \quad i \in \mathcal{R} \\
+&amp;\; \underline{m} \le u_{i, t} \le  \overline{m}, \quad i \in \mathcal{R} \\
+&amp;\; \underline{T} \le T_{i, t} \le \overline{T}, \quad i \in \mathcal{R}
+\end{align*} \]</p><p>Here, <span>$\mathcal{T}$</span> and <span>$\mathcal{R}$</span> are the set of times and the set of rooms, <span>$T_{i, t}$</span> is the temperature of room <span>$i$</span> at time <span>$t$</span>, <span>$u_{i, t}$</span> is the air flow rate into a room, <span>$C_i$</span> is thelumped mass of the room, <span>$C_p$</span> is the heat capacity of air, <span>$T_s$</span> is the temperature of the supply air coming into the room from the AC, <span>$T_{oa}$</span> is the temperature of the outside air, and <span>$R_*$</span> are resistences for heat transfer from the room to the outside or the other rooms, and <span>$P^i_d$</span> is the disturbance term. The first constraint captures the dynamics of the system, the second constraint sets the initial temperature of the room, and the last two constraints add bounds to their respective variables.</p><p>In the original paper on the MPC system, they introduced a hierarchical approach with a coarse, upper layer to achieve set points and then a higher resolution lower layer. For simplicity, we will first walk through modeling this problem as a graph without hierarchy, and then we will introduce the hierarchical version. </p><h2 id="Modeling-HVAC-MPC"><a class="docs-heading-anchor" href="#Modeling-HVAC-MPC">Modeling HVAC MPC</a><a id="Modeling-HVAC-MPC-1"></a><a class="docs-heading-anchor-permalink" href="#Modeling-HVAC-MPC" title="Permalink"></a></h2><p>To begin, we import the required packages. We also import PlasmoPlots.jl for visualizations</p><pre><code class="language-julia hljs">using JuMP
+using Plasmo
+using Ipopt
+using Plots
+using PlasmoPlots</code></pre><p>Next, we set the constant values, most of which are from the paper by Long et al.</p><pre><code class="language-Julia hljs"># Thermal Dynamics into and between rooms
+rho_air = 1.225 # kg/m^3
+V_room = 50 # m^3
+
+Ci = 9163 
+cp = 1012 # heat capacity of air in room (J/kg*K)
+Ts = 16+273 # temp of supply air (K)
+Toa = 293 # temp of outside air (K)
+Rij = .004 # thermal resistance between rooms i and j (K/W)
+Rioa = .057 # thermal resistance between room and outside (K/W)
+Pid = 1 # disturbance term from weather forecast; arbitrary</code></pre><p>Next, we can define a function to initialize the graph and its variables. This function will take as arguments the number of time steps (<code>N</code>), the number of rooms (<code>num_rooms</code>), and the initial temperature set point (<code>T_init</code>). This function creates an OptiGraph with <code>N</code> nodes (each node representing a time point and containing all three rooms). Variables are added for temperature and for the AC flow rate, and an expression is created for the term <span>$u_{i,t} C_p (T_s - T_{i, t})$</span> in the optimization problem (this will be used in the linking constraints between nodes). This function then sets the optimizer to be Ipopt and returns the graph and the set of nodes. Note that a finer resolution is also possible in the nodes by representing each room at each time point as a node (i.e., the nodes would capture both a spatial and temporal structure). However, we choose to place the variables for all rooms on one node (i.e., we are only capturing the temporal structure with the nodes). </p><pre><code class="language-julia hljs">function MPC_HVAC(N, num_rooms, T_init, T_d)
+    Tb = [270, 350] # (K) Lower and upper bounds of the temperature values
+    ub = [.0005, .5] # (Kg/s) Lower and upper bounds of the air flowrate values
+
+    graph = OptiGraph() # initialize the optigraph
+    @optinode(graph, nodes[1:N]) # make a number of upperlayer nodes on the graph equal to N
+
+    for (i, node) in enumerate(nodes)
+        # Define temperature variables
+        @variable(node, Tb[1] &lt;= T[1:num_rooms] &lt;= Tb[2], start = T_init)
+
+        # Define flowrate variables
+        @variable(node, ub[1] &lt;= u[1:num_rooms] &lt;= ub[2], start = 0)
+
+        # Define expression for simplifying linking constraitns
+        @expression(node, u_cp_T[j = 1:num_rooms], u[j] * cp * (Ts - T[j]))
+
+        # Set the start point
+        if i == 1
+            @constraint(node, [j = 1:num_rooms], node[:T][j] == T_init)
+        end
+    end
+
+    # Set Optimizer
+    set_optimizer(graph, Ipopt.Optimizer);
+    set_optimizer_attribute(graph, &quot;max_iter&quot;, 100);
+
+    return graph, nodes
+end</code></pre><p>Next, we define a function for adding the linking constraints between the nodes. This function takes as arguments the graph (<code>graph</code>), the nodes (<code>nodes</code>), the set point temperatures (<code>T_d</code>), and the time discretization (<code>dtu</code>). This function loops through the set of nodes and then loops through each room. Because there is heat transfer between the rooms, we have to define which rooms are adjacent, which is done with the if statements. We also set the objective function on each node, which minimizes a combination of the error (temperature difference from the set point) and the amount of power needed for the AC (assumed to be directly related to the total amount of air sent into the room). We include the constants <code>c1</code> and <code>c2</code> as weight/conversion factors on their respective terms. </p><pre><code class="language-julia hljs">function add_room_linking!(graph, nodes, T_d, dtu)
+    c1 = 10
+    c2 = 0.5
+
+    NU = length(nodes)
+    for (i, node) in enumerate(nodes)
+        for (room_num, T_var) in enumerate(node[:T])
+            if node != nodes[NU] 
+                T_var_next = nodes[i + 1][:T][room_num]
+
+                if room_num == 1 # if in the first room of the system
+                    T_sideroom = node[:T][room_num + 1]
+                    @linkconstraint(graph, Ci * (T_var_next - T_var) / dtu ==
+                        node[:u_cp_T][room_num] +
+                        (T_sideroom − T_var) / Rij +
+                        (Toa − T_var) / Rioa + Pid
+                    ) # relationship between room temps
+
+                elseif room_num == num_rooms # if in the last last room of the system
+                    T_sideroom = node[:T][room_num - 1]
+                    @linkconstraint(graph, Ci * (T_var_next - T_var) / dtu ==
+                    node[:u_cp_T][room_num] +
+                    (T_sideroom − T_var) / Rij +
+                    (Toa − T_var) / Rioa + Pid
+                ) # relationship between room temps
+
+                else # if in a room surrounded by 2 rooms
+                    T_sideroom1 = node[:T][room_num - 1]
+                    T_sideroom2 = node[:T][room_num + 1]
+                    @linkconstraint(graph, Ci * (T_var_next - T_var) / dtu ==
+                        node[:u_cp_T][room_num] +
+                        (T_sideroom1 − T_var) / Rij +
+                        (T_sideroom2 − T_var) / Rij +
+                        (Toa − T_var) / Rioa + Pid
+                    )# relationship between room temps
+                end
+            end
+        end
+        # Set the objective
+        @objective(node, Min,
+        (c1 * (sum((node[:T][j] − T_d[i, j]) .^ 2 for j in (1:num_rooms)))
+        + (c2 * sum(node[:u] .^ 2))).*dtu)
+    end
+end</code></pre><h3 id="Example-Simulation"><a class="docs-heading-anchor" href="#Example-Simulation">Example Simulation</a><a id="Example-Simulation-1"></a><a class="docs-heading-anchor-permalink" href="#Example-Simulation" title="Permalink"></a></h3><p>Before introducing the hierarchical formulation, we will first show an example simulation without the hierarchy. First, we will define the data required for the functions we have defined. We use 10 time steps with a size of 10, and set the initial temperature to be 300K. To make the problem slightly more interesting. We set the set point temperatures, <code>T_d</code> to be different for each room and to be slowly decreasing. </p><pre><code class="language-julia hljs">NU = 10
+dtu = 10 # seconds
+num_rooms = 3
+T_init = 300 # Kelvin
+
+T_d = zeros(NU, num_rooms)
+T_d[:, 1] .= [292 - i * .02 for i in 1:NU]
+T_d[:, 2] .= [291 - i * .01 for i in 1:NU]
+T_d[:, 3] .= [290 - i * .02 for i in 1:NU]</code></pre><p>With the data set, we next call our functions defined above. To set the graph&#39;s objective function to be equal to a sum of the objectives sotred on the nodes, we call <code>set_to_node_objectives</code>. Finally, we can call <code>optimize!</code> on the graph. </p><pre><code class="language-julia hljs">graph, nodes = MPC_HVAC(NU, num_rooms, T_init);
+add_room_linking!(graph, nodes, T_d, dtu)
+set_to_node_objectives(graph)
+
+optimize!(graph)</code></pre><p>We can visualize the graph structure by using the package <a href="https://github.com/plasmo-dev/PlasmoPlots.jl">PlasmoPlots.jl</a>, as shown below. </p><pre><code class="language-julia hljs">using PlasmoPlots
+
+plt_graph = layout_plot(
+    graph,
+    node_labels=true,
+    markersize=10,
+    labelsize=8,
+    linewidth=1,
+    layout_options=Dict(
+        :tol=&gt;.01,
+        :iterations=&gt;300
+    ),
+    plt_options=Dict(
+        :legend=&gt;false,
+        :framestyle=&gt;:box,
+        :grid=&gt;false,
+        :size=&gt;(600,600),
+        :axis =&gt; nothing
+    )
+)</code></pre><p>This produces the visual shown below.</p><p><img src="../../assets/MPC_Ulayer.png" alt="ULayer_Graph"/></p><p>We can also query the solutions and visualize the performance of the system using the script below. Note that the <code>value</code> function requires first specifying the graph that has been optimized. This is because Plasmo supports having hierarchical, nested graphs that can contain the same variable objects, so we have to specify which graph to query the variable value from. </p><pre><code class="language-julia hljs">T_room_1 = [value(graph, node[:T][1]) for node in nodes]
+T_room_2 = [value(graph, node[:T][2]) for node in nodes]
+T_room_3 = [value(graph, node[:T][3]) for node in nodes]
+
+u_room_1 = [value(graph, node[:u][1]) for node in nodes]
+u_room_2 = [value(graph, node[:u][2]) for node in nodes]
+u_room_3 = [value(graph, node[:u][3]) for node in nodes]
+
+t_range = 0:dtu:(NU*dtu - dtu)
+plot(t_range, T_room_1, label = &quot;Room 1&quot;, linewidth = 2, color = &quot;blue&quot;)
+plot!(t_range, T_dU[:, 1], label = &quot;Set Point Room 1&quot;, linewidth = 1, color = &quot;blue&quot;, linestyle = :dash)
+plot!(t_range, T_room_2, label = &quot;Room 2&quot;, linewidth = 2, color = &quot;red&quot;)
+plot!(t_range, T_dU[:, 2], label = &quot;Set Point Room 2&quot;, linewidth = 1, color = &quot;red&quot;, linestyle = :dash)
+plot!(t_range, T_room_3, label = &quot;Room 3&quot;, linewidth = 2, color = &quot;black&quot;)
+plot!(t_range, T_dU[:, 3], label = &quot;Set Point Room 3&quot;, linewidth = 1, color = &quot;black&quot;, linestyle = :dash)
+xlabel!(&quot;Time&quot;)
+ylabel!(&quot;Temperature (K)&quot;)
+
+plot(t_range, u_room_1, label = &quot;Room 1&quot;, linewidth = 2, color = &quot;blue&quot;)
+plot!(t_range, u_room_2, label = &quot;Room 2&quot;, linewidth = 2, color = &quot;red&quot;)
+plot!(t_range, u_room_3, label = &quot;Room 3&quot;, linewidth = 2, color = &quot;black&quot;)
+xlabel!(&quot;Time&quot;)
+ylabel!(&quot;Air Flowrate&quot;)</code></pre><p>The resulting figures can be seen below:</p><p><img src="../../assets/MPC_example1.png" alt="ULayer_Results"/></p><h2 id="Hierarchical-Implementation"><a class="docs-heading-anchor" href="#Hierarchical-Implementation">Hierarchical Implementation</a><a id="Hierarchical-Implementation-1"></a><a class="docs-heading-anchor-permalink" href="#Hierarchical-Implementation" title="Permalink"></a></h2><p>We can now extend our work above to the hierarchical instance. The hierarchical formulation includes an upper layer and a lower layer. The upper layer solves the MPC formulation with a coarse time resolution. One challenge of the MPC formulation is that each room is linked to the room next to it, so each room cannot be solved independently, and the computational requirements grow with the number of rooms. To address this challenge, Long et al. propose using the solution of the coarse resolution problem to estimate the temperature of the adjacent rooms, and then solve each room independently with a finer time resolution. In other words, the finer resolution problem is solved for each room <span>$i$</span>, and for the expression <span>$\sum_{j \in \mathcal{R}_i} (T_{j,t} - T_{i, t})/R_{i,j}$</span>, the terms <span>$T_{j, t}$</span> are set as constants based on the solution of the coarse upper level problem. </p><p>We will build this problem in Plasmo.jl, but, to highlight the modeling capabilities of Plasmo.jl, we will not fully make each lower level graph independent of the upper layer (though they will not be linked to other lower layer graphs). The upper layer will be represented by a single subgraph, and Instead, we will use a linking constraint between the upper and lower layers and directly link the upper layer variables to the lower layers. This captures the structure of the different layers with links between them, and it is a structure that could be potenially exploited by different decomposition approaches (e.g., Generalized Benders Decomposition). In this case, we will use one subgraph for the upper layer and then we will create a subgraph for each room on the lower layer (i.e., we will have one subgraph representing the upper layer and three subgraphs representing the lower layer). This allows us to reuse some of the functions we have defined above. However, we will have to define a function for linking the lower layers to the upper layers. </p><p>To begin, we will first define a function to map the index of the lower level to the upper level since they use different temporal resolutions. </p><pre><code class="language-julia hljs">function map_L_to_U(idx, NU, NL)
+    nl_per_nu = Int(NL / NU)
+
+    return Int(ceil(idx / nl_per_nu))
+end</code></pre><p>Next, we will define a new function that will operate similar to <code>add_room_linking!</code>. The upper and lower level problem subgraphs are &quot;owned&quot; by an overall graph, which is what will &quot;own&quot; the linking constraints. Since each lower level graph represents a single room (and the upper level graph includes all three rooms), this function will take the lower level nodes (<code>nodes</code>), the upper level nodes (<code>ref_nodes</code>), the set point values (<code>Tdl</code>), the time resolution of the lower level (<code>dtl</code>), and the room number (<code>room_num</code>). Like <code>add_room_linking!</code>, this function links across time points, but for the term using the temperature of the adjacent room, it uses the temperature from the upper level. This function also sets the objective of the lower level. We call this new function <code>add_hierarchical_room_linking!</code>. </p><pre><code class="language-julia hljs">function add_hierarchical_room_linking!(overall_graph, nodes, ref_nodes, NU, NL, TdL, dtl, room_num)
+    c1 = 10
+    c2 = 0.5
+
+    for (i, node) in enumerate(nodes)
+        if node != nodes[NL] 
+            T_var = nodes[i + 1][:T][1]
+            T_var_next = nodes[i + 1][:T][1]
+            node_ref_idx = map_L_to_U(i, NU, NL)
+
+            if room_num == 1 # if in the first room of the system
+                T_ref = ref_nodes[node_ref_idx][:T][room_num + 1]
+                @linkconstraint(overall_graph, Ci * (T_var_next - T_var) / dtl ==
+                    node[:u_cp_T][1] +
+                    (T_ref − T_var) / Rij +
+                    (Toa − T_var) / Rioa + Pid
+                ) # relationship between room temps
+
+            elseif room_num == num_rooms # if in the last last room of the system
+                T_ref = ref_nodes[node_ref_idx][:T][room_num - 1]
+                @linkconstraint(overall_graph, Ci * (T_var_next - T_var) / dtl ==
+                node[:u_cp_T][1] +
+                (T_ref − T_var) / Rij +
+                (Toa − T_var) / Rioa + Pid
+            ) # relationship between room temps
+
+            else # if in a room surrounded by 2 rooms
+                T_ref1 = ref_nodes[node_ref_idx][:T][room_num - 1]
+                T_ref2 = ref_nodes[node_ref_idx][:T][room_num + 1]
+                @linkconstraint(overall_graph, Ci * (T_var_next - T_var) / dtl ==
+                    node[:u_cp_T][1] +
+                    (T_ref1 − T_var) / Rij +
+                    (T_ref2 − T_var) / Rij +
+                    (Toa − T_var) / Rioa + Pid
+                )# relationship between room temps
+            end
+        end
+        @objective(node, Min,
+        (c1 * (sum((node[:T][1] − TdL[i, room_num]) .^ 2))
+        + (c2*sum(node[:u] .^ 2))).*dtl)
+    end
+end</code></pre><p>Lastly, Long et al. propose that the temperature of the lower layers should be within some value of the upper layers (that is, the lower layer should not deviate too much from the upper layer). As the time horizon increases, the deviation from the upper layer is allowed to increase as well. We add this constraint in the function <code>add_deviation_constraints</code> below</p><pre><code class="language-julia hljs">function add_deviation_constraints!(graph, nodes, ref_nodes, NU, NL, room_num, epsilon, r)
+    for (i, node) in enumerate(nodes)
+        node_ref_idx = map_L_to_U(i, NU, NL)
+
+        for room_num in 1:num_rooms # The absolute value of the deviation from the upper layer remains within some bound
+            @linkconstraint(graph, nodes[i][:T][1] -  ref_nodes[node_ref_idx][:T][room_num] &lt;= epsilon * (1 + i * r))
+            @linkconstraint(graph, - nodes[i][:T][1] + ref_nodes[node_ref_idx][:T][room_num] &lt;= epsilon * (1 + i * r))
+        end
+    end
+end</code></pre><p>Note that each of the above functions could be revised to use the solution value of the upper layer by calling <code>value(upper_graph, ref_nodes[node_ref_idx][:T][room_num])</code> where the variable appears in the link constraints. </p><h3 id="Example-Simulation-2"><a class="docs-heading-anchor" href="#Example-Simulation-2">Example Simulation</a><a class="docs-heading-anchor-permalink" href="#Example-Simulation-2" title="Permalink"></a></h3><p>We can now run an example problem of this hierarchical problem. To begin, we define the data for the upper and lower levels. Here, we will use 10 time points for the upper layer and 40 time points for the lower layer. </p><pre><code class="language-julia hljs">NL = 40
+NU = 10
+dtu = 10
+dtl = 2.5
+num_rooms = 3
+T_init = 300 # Kelvin
+
+T_dU = zeros(NU, num_rooms)
+T_dU[:, 1] .= [292 - i * .02 for i in 1:NU]
+T_dU[:, 2] .= [291 - i * .01 for i in 1:NU]
+T_dU[:, 3] .= [290 - i * .02 for i in 1:NU]
+
+T_dL = zeros(NL, num_rooms)
+T_dL[:, 1] .= [292 - i * .02 * .25 for i in 1:NL]
+T_dL[:, 2] .= [291 - i * .01 * .25 for i in 1:NL]
+T_dL[:, 3] .= [290 - i * .02 * .25 for i in 1:NL]</code></pre><p>We can next define the upper and lower level graphs. Since each lower level graphs only contain one room, we set the <code>num_rooms</code> argument of the <code>MPC_HVAC</code> function to be 1. We then add each of these subgraphs to an overall graph.</p><pre><code class="language-julia hljs">Ugraph, Unodes = MPC_HVAC(NU, num_rooms, T_init);
+
+Lgraph1, Lnodes1 = MPC_HVAC(NL, 1, T_init);
+Lgraph2, Lnodes2 = MPC_HVAC(NL, 1, T_init);
+Lgraph3, Lnodes3 = MPC_HVAC(NL, 1, T_init);
+
+graph = OptiGraph()
+add_subgraph!(graph, Ugraph)
+add_subgraph!(graph, Lgraph1)
+add_subgraph!(graph, Lgraph2)
+add_subgraph!(graph, Lgraph3)</code></pre><p>Next, we can add the linking constraints across layers (and within the upper level graph). </p><pre><code class="language-julia hljs">add_room_linking!(Ugraph, Unodes, T_dU, dtu) # add links to upper layer
+
+# Link lower levels to upper levels
+add_hierarchical_room_linking!(graph, Lnodes1, Unodes, NU, NL, T_dL, dtl, 1)
+add_hierarchical_room_linking!(graph, Lnodes2, Unodes, NU, NL, T_dL, dtl, 2)
+add_hierarchical_room_linking!(graph, Lnodes3, Unodes, NU, NL, T_dL, dtl, 3)
+
+add_deviation_constraints!(graph, Lnodes1, Unodes, NU, NL, 1, 1, .2)
+add_deviation_constraints!(graph, Lnodes2, Unodes, NU, NL, 2, 1, .2)
+add_deviation_constraints!(graph, Lnodes3, Unodes, NU, NL, 3, 1, .2)</code></pre><p>We can visualize the structure of this problem by using PlasmoPlots.jl. Here, we will omit node labels and we will color each subgraph its own color. </p><pre><code class="language-julia hljs">plt_graph = layout_plot(
+    graph,
+    node_labels=false,
+    markersize=5,
+    labelsize=8,
+    linewidth=2,
+    subgraph_colors = true,
+    layout_options=Dict(
+        :tol=&gt;.01,
+        :iterations=&gt;500,
+        :C =&gt; 50,
+        :K =&gt; 1
+    ),
+    plt_options=Dict(
+        :legend=&gt;false,
+        :framestyle=&gt;:box,
+        :grid=&gt;false,
+        :size=&gt;(600,600),
+        :axis =&gt; nothing
+    )
+)</code></pre><p>The resulting structure can be seen below, where the yellow nodes represent the upper level graph and the other three colors are each a subgraph for the individual rooms. </p><p><img src="../../assets/MPC_Example2_Graph.png" alt="HMPC_Structure"/></p><p>With those linking constraints added, we can now solve the problem. </p><pre><code class="language-julia hljs">set_to_node_objectives(graph)
+set_optimizer(graph, Ipopt.Optimizer)
+set_optimizer_attribute(graph, &quot;max_iter&quot;, 200)
+
+optimize!(graph)</code></pre><p>After optimizing the graph, we can query and plot the solutions.</p><pre><code class="language-julia hljs"># Query solutions of Temperatures
+T_room1L = [value(graph, Lgraph1[:nodes][i][:T][1]) for i in 1:Plasmo.num_nodes(Lgraph)]
+T_room1U = [value(graph, Ugraph[:nodes][i][:T][1]) for i in 1:Plasmo.num_nodes(Ugraph)]
+T_room2L = [value(graph, Lgraph2[:nodes][i][:T][1]) for i in 1:Plasmo.num_nodes(Lgraph)]
+T_room2U = [value(graph, Ugraph[:nodes][i][:T][2]) for i in 1:Plasmo.num_nodes(Ugraph)]
+T_room3L = [value(graph, Lgraph3[:nodes][i][:T][1]) for i in 1:Plasmo.num_nodes(Lgraph)]
+T_room3U = [value(graph, Ugraph[:nodes][i][:T][3]) for i in 1:Plasmo.num_nodes(Ugraph)]
+
+# Query solutions of flowrates
+u_room1L = [value(graph, Lgraph1[:nodes][i][:u][1]) for i in 1:Plasmo.num_nodes(Lgraph)]
+u_room1U = [value(graph, Ugraph[:nodes][i][:u][1]) for i in 1:Plasmo.num_nodes(Ugraph)]
+u_room2L = [value(graph, Lgraph2[:nodes][i][:u][1]) for i in 1:Plasmo.num_nodes(Lgraph)]
+u_room2U = [value(graph, Ugraph[:nodes][i][:u][2]) for i in 1:Plasmo.num_nodes(Ugraph)]
+u_room3L = [value(graph, Lgraph3[:nodes][i][:u][1]) for i in 1:Plasmo.num_nodes(Lgraph)]
+u_room3U = [value(graph, Ugraph[:nodes][i][:u][3]) for i in 1:Plasmo.num_nodes(Ugraph)]
+
+# Set time ranges
+t_rangeU = (0:dtu:(NU*dtu - dtu))
+t_rangeL = (0:dtl:(NL*dtl - dtl))
+
+# Plot solutions
+plot(t_rangeU, T_room1U, color = &quot;black&quot;, label = &quot;Upper Level&quot;, linewidth = 2 )
+plot!(t_rangeL, T_room1L, color = &quot;gray&quot;, label = &quot;Lower Level&quot;, linewidth = 2, ls = :dash )
+plot!(t_rangeL, T_dL[:, 1], color = &quot;darkgray&quot;, label = &quot;Setpoint&quot;, linewidth = 1)
+xlabel!(&quot;Time&quot;)
+ylabel!(&quot;Temperature&quot;)
+title!(&quot;Room 1&quot;)
+
+plot(t_rangeU, T_room2U, color = &quot;black&quot;, label = &quot;Upper Level&quot;, linewidth = 2 )
+plot!(t_rangeL, T_room2L, color = &quot;gray&quot;, label = &quot;Lower Level&quot;, linewidth = 2, ls = :dash )
+plot!(t_rangeL, T_dL[:, 2], color = &quot;darkgray&quot;, label = &quot;Setpoint&quot;, linewidth = 1)
+xlabel!(&quot;Time&quot;)
+ylabel!(&quot;Temperature&quot;)
+title!(&quot;Room 2&quot;)
+
+plot(t_rangeU, T_room3U, color = &quot;black&quot;, label = &quot;Upper Level&quot;, linewidth = 2 )
+plot!(t_rangeL, T_room3L, color = &quot;gray&quot;, label = &quot;Lower Level&quot;, linewidth = 2, ls = :dash )
+plot!(t_rangeL, T_dL[:, 3], color = &quot;darkgray&quot;, label = &quot;Setpoint&quot;, linewidth = 1)
+xlabel!(&quot;Time&quot;)
+ylabel!(&quot;Temperature&quot;)
+title!(&quot;Room 3&quot;)
+
+plot(t_rangeU, u_room1U, color = &quot;black&quot;, label = &quot;Upper Level&quot;, linewidth = 2 )
+plot!(t_rangeL, u_room1L, color = &quot;gray&quot;, label = &quot;Lower Level&quot;, linewidth = 2, ls = :dash)
+xlabel!(&quot;Time&quot;)
+ylabel!(&quot;Air Flowrate&quot;)
+
+plot(t_rangeU, u_room2U, color = &quot;black&quot;, label = &quot;Upper Level&quot;, linewidth = 2 )
+plot!(t_rangeL, u_room2L, color = &quot;gray&quot;, label = &quot;Lower Level&quot;, linewidth = 2, ls = :dash)
+xlabel!(&quot;Time&quot;)
+ylabel!(&quot;Air Flowrate&quot;)
+
+plot(t_rangeU, u_room3U, color = &quot;black&quot;, label = &quot;Upper Level&quot;, linewidth = 2 )
+plot!(t_rangeL, u_room3L, color = &quot;gray&quot;, label = &quot;Lower Level&quot;, linewidth = 2, ls = :dash)
+xlabel!(&quot;Time&quot;)
+ylabel!(&quot;Air Flowrate&quot;)</code></pre><p>The plots of the solution are shown below</p><p><img src="../../assets/HMPC_sols.png" alt="HMPC_Solutions"/></p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quadcopter/">« Optimal Control of a Quadcopter</a><a class="docs-footer-nextpage" href="../gas_pipeline/">Optimal Control of a Natural Gas Network »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.13.0 on <span class="colophon-date" title="Wednesday 2 July 2025 19:39">Wednesday 2 July 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
