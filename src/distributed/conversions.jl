@@ -231,9 +231,15 @@ function _convert_local_to_remote(rgraph::RemoteOptiGraph, func::Float64)
 end
 
 function _convert_local_to_remote(rgraph::RemoteOptiGraph, cref::JuMP.ConstraintRef)
-    model = cref.model
-    rmodel = _convert_local_to_remote(cref)
+    lmodel = cref.model
+    rmodel = _convert_local_to_remote(rgraph, lmodel)
     return JuMP.ConstraintRef(rmodel, cref.index, cref.shape)
+end
+
+function _convert_remote_to_local(rgraph::RemoteOptiGraph, cref::JuMP.ConstraintRef)# TODO: specify constraintref better
+    rmodel = cref.model
+    lmodel = _convert_remote_to_local(rgraph, rmodel)
+    return JuMP.ConstraintRef(lmodel, cref.index, cref.shape)
 end
 
 function _check_node_variables(rnode::RemoteNodeRef, jump_func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})

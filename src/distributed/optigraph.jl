@@ -45,6 +45,7 @@ end
 
 
 #TODO: Support arrays of these objects
+#TODO: Support adding named expressions to the graph; currently only do link constraints
 
 function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
     if haskey(rgraph.obj_dict, sym)

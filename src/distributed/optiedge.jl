@@ -172,6 +172,9 @@ function JuMP.dual(rcref::RemoteEdgeConstraintRef)
     return fetch(f)
 end
 
+# function JuMP.set_normlaized_rhs(rcref::RemoteOptiEdgeConstraintRef, value::Number)
+
+# end
 
 # These functions are used by extending packages like PlasmoBenders to 
 # set the needed type data
@@ -182,3 +185,12 @@ end
 function edge_type(rgraph::OptiGraph)
     return OptiEdge
 end
+
+# Need to add the following
+# JuMP.delete (for variables and node constraints and edge constraints)
+# Need to ensure that node constraints can be named too by @constraint? not sure
+    # at least need to ensure that the remote registers this name
+# set_normalized_rhs
+# add_to_function_constant
+# set_normalized_coefficient
+# normalized_coefficient

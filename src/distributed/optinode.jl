@@ -61,21 +61,56 @@ function Base.setindex!(rnode::RemoteNodeRef, value::RemoteVariableRef, name::Sy
     return nothing
 end
 
+function Base.setindex!(rnode::RemoteNodeRef, value::E, name::Symbol) where {E <: Union{GenericAffExpr{Float64, Plasmo.RemoteVariableRef}, GenericQuadExpr{Float64, Plasmo.RemoteVariableRef}, GenericNonlinearExpr{Plasmo.RemoteVariableRef}}}
+    rgraph = rnode.remote_graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = local_graph(rgraph)
+        lnode = _convert_remote_to_local(rgraph, rnode)
+        lexpr = _convert_remote_to_local(rnode, value)
+        key = (lnode, name)
+        lgraph.element_data.node_obj_dict[key] = lexpr
+    end
+end
+
+function Base.setindex!(rnode::RemoteNodeRef, value::JuMP.ConstraintRef, name::Symbol) #TODO: Make the constraintref more specific to remote objects
+    rgraph = rnode.remote_graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = local_graph(rgraph)
+        lnode = _convert_remote_to_local(rgraph, rnode)
+        lcref = _convert_remote_to_local(rgraph, value)
+        key = (lnode, name)
+        lgraph.element_data.node_obj_dict[key] = lcref
+    end
+end
+
 function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol)
+    @warn("Registering name of object of type $(typeof(value)) is not yet supported
+    Please open an issue to have this added.")
     return nothing
+    #TODO: PRIORITY Support expressions and constraint names
 end
 
 # function _return_var_index(var::JuMP.Containers.DenseAxisArray)
 #     return (var.axes #TODO: Support DenseAxisArrays
 # end
 
-function _return_var_index(var::Array{NodeVariableRef})
+function _return_var_index(rgraph::RemoteOptiGraph, var::Array{NodeVariableRef})
     var_array = map(x -> (x.index, Symbol(name(x))), var)
     return var_array
 end
 
-function _return_var_index(var::NodeVariableRef)
+function _return_var_index(rgraph::RemoteOptiGraph, var::NodeVariableRef)
     return var.index
+end
+
+function _return_var_index(rgraph::RemoteOptiGraph, var::E) where {E <: Union{GenericAffExpr{Float64, Plasmo.NodeVariableRef}, GenericQuadExpr{Float64, Plasmo.NodeVariableRef}, GenericNonlinearExpr{Plasmo.NodeVariableRef}}}
+    return _convert_local_to_remote(rgraph, var)
+end
+
+function _return_var_index(rgraph::RemoteOptiGraph, var::JuMP.ConstraintRef)
+    return (var.index, var.shape)
 end
 
 function _return_remote_var_object(rnode::RemoteNodeRef, idx::Array, sym::Symbol)
@@ -83,12 +118,16 @@ function _return_remote_var_object(rnode::RemoteNodeRef, idx::Array, sym::Symbol
     return rvars
 end
 
-# function _return_remote_var_object(rnode::RemoteNodeRef, idx::Int, sym::Symbol)
-#     return RemoteVariableArrayRef(rnode, sym, idx)
-# end
-
 function _return_remote_var_object(rnode::RemoteNodeRef, idx::MOI.VariableIndex, sym::Symbol)
     return RemoteVariableRef(rnode, idx, sym)
+end
+
+function _return_remote_var_object(rnode::RemoteNodeRef, idx::E, sym::Symbol) where {E <: Union{GenericAffExpr{Float64, Plasmo.RemoteVariableRef}, GenericQuadExpr{Float64, Plasmo.RemoteVariableRef}, GenericNonlinearExpr{Plasmo.RemoteVariableRef}}}
+    return idx
+end
+
+function _return_remote_var_object(rnode::RemoteNodeRef, idx::Tuple{CI, SS}, sym::Symbol) where {CI <: MOI.ConstraintIndex, SS <: JuMP.ScalarShape}
+    return JuMP.ConstraintRef(rnode, idx[1], idx[2])
 end
 
 function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how to make this more efficient; this returns a large set of variables
@@ -97,7 +136,7 @@ function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how 
         lg = local_graph(rgraph)
         local_node = Plasmo._convert_remote_to_local(rgraph, rnode)
         var = local_node[sym]
-        _return_var_index(var)
+        _return_var_index(rgraph, var)
     end
     idx = fetch(f)
 
@@ -142,9 +181,9 @@ This function supports use of the @constraint JuMP macro.
 function JuMP.add_constraint(
     rnode::RemoteNodeRef, con::JuMP.AbstractConstraint, name::String=""
 )
-    JuMP.model_convert(rnode, con)
+    abc = JuMP.model_convert(rnode, con)
     cref = _build_constraint_ref(rnode, con)
-    return nothing
+    return cref
 end
 
 # build constraint refs
