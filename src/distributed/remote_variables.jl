@@ -64,6 +64,25 @@ function JuMP.all_variables(rgraph::RemoteOptiGraph)
 end
 
 """
+    JuMP.local_variables(rgraph::RemoteNodeRef)
+
+Return all of the variables stored on the OptiNode represented by RemoteNodeRef
+"""
+function JuMP.all_variables(rnode::RemoteNodeRef)
+    rgraph = rnode.remote_graph
+    
+    f = @spawnat rgraph.worker begin
+        lnode = _convert_remote_to_local(rgraph, rnode)
+        all_vars = JuMP.all_variables(lnode)
+        [(var.index, Symbol(name(var))) for var in all_vars]
+    end
+    var_tuples = fetch(f)
+
+    vars = [Plasmo.RemoteVariableRef(rnode, t[1], t[2]) for t in var_tuples]
+    return vars
+end
+
+"""
     local_variables(rgraph::RemoteOptiGraph)
 
 Return all of the variables stored on the OptiGraph of the RemoteOptiGraph
@@ -212,7 +231,7 @@ function JuMP.set_binary(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         JuMP.set_binary(lvar)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.unset_binary(rvar::RemoteVariableRef)
@@ -221,7 +240,7 @@ function JuMP.unset_binary(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         JuMP.unset_binary(lvar)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.set_integer(rvar::RemoteVariableRef)
@@ -230,7 +249,7 @@ function JuMP.set_integer(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         JuMP.set_integer(lvar)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.unset_integer(rvar::RemoteVariableRef)
@@ -239,7 +258,7 @@ function JuMP.unset_integer(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         JuMP.unset_integer(lvar)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.fix(rvar::RemoteVariableRef, value::Number; force::Bool = false)
@@ -248,7 +267,7 @@ function JuMP.fix(rvar::RemoteVariableRef, value::Number; force::Bool = false)
         lvar = remote_var_to_local(rvar)
         JuMP.fix(lvar, value; force = force)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.unfix(rvar::RemoteVariableRef)
@@ -257,7 +276,7 @@ function JuMP.unfix(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         JuMP.unfix(lvar)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.set_upper_bound(rvar::RemoteVariableRef, upper::Number)
@@ -266,7 +285,7 @@ function JuMP.set_upper_bound(rvar::RemoteVariableRef, upper::Number)
         lvar = remote_var_to_local(rvar)
         JuMP.set_upper_bound(lvar, upper)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.set_lower_bound(rvar::RemoteVariableRef, lower::Number)
@@ -275,7 +294,7 @@ function JuMP.set_lower_bound(rvar::RemoteVariableRef, lower::Number)
         lvar = remote_var_to_local(rvar)
         JuMP.set_lower_bound(lvar, lower)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.start_value(rvar::RemoteVariableRef)
@@ -293,7 +312,7 @@ function JuMP.set_start_value(rvar::RemoteVariableRef, value::Union{Nothing, Rea
         lvar = remote_var_to_local(rvar)
         JuMP.set_start_value(lvar, value)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.FixRef(rvar::RemoteVariableRef)
@@ -311,7 +330,7 @@ end
 
 function JuMP.LowerBoundRef(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
-    f = @spawnat rgraph.worker begin #TODO: Decide if this should test if there is a lower bound fist; doing so results in a second call to the remote, rather than doing it all within the same @spawnat call
+    f = @spawnat rgraph.worker begin #TODO: Decide if this should test if there is a lower bound first; doing so results in a second call to the remote, rather than doing it all within the same @spawnat call
         lvar = remote_var_to_local(rvar)
         cref = JuMP.LowerBoundRef(lvar)
         lnode = JuMP.owner_model(cref)
@@ -341,7 +360,7 @@ function JuMP.delete_lower_bound(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         JuMP.delete_lower_bound(lvar)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.delete_upper_bound(rvar::RemoteVariableRef)
@@ -350,7 +369,7 @@ function JuMP.delete_upper_bound(rvar::RemoteVariableRef)
         lvar = remote_var_to_local(rvar)
         JuMP.delete_upper_bound(lvar)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.IntegerRef(rvar::RemoteVariableRef)
@@ -385,4 +404,19 @@ end
 
 function variable_type(graph::OptiGraph)
     return NodeVariableRef
+end
+
+function JuMP.delete(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
+    if rvar.node != rnode
+        error("The variable reference you are trying to delete " * 
+            "does not belong to the node"
+        ) 
+    end
+    rgraph = rnode.remote_graph
+    f = @spawnat rgraph.worker begin
+        lnode = _convert_remote_to_local(rgraph, rnode) # TODO: if obj_dict is added, make sure the name is deleted
+        lvar = _convert_remote_to_local(rgraph, rvar)
+        JuMP.delete(lnode, lvar)
+    end
+    return nothing
 end

@@ -125,7 +125,8 @@ export OptiGraph,
     RemoteVariableRef,
     RemoteNodeRef,
     RemoteOptiEdge,
-    RemoteEdgeRef
+    RemoteEdgeRef,
+    get_constraint
 
 
 include("core_types.jl")

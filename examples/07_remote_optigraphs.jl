@@ -28,17 +28,15 @@ rg = Plasmo.RemoteOptiGraph(worker=2)
 # can query all variables on a graph
 all_vars = JuMP.all_variables(rg)
 
-# Defined RemoteAffExpr made up of RemoteVariableRefs
-a = Plasmo.RemoteAffExpr(0.)
-# Can update these expressions like normal
-JuMP.add_to_expression!(a, x + y)
+@linkconstraint(rg, lc1, x + rg[:n2][:z] <= 1)
 
-# @linkconstraint works for adding edges; however, this display does not work correctly
-lc = @linkconstraint(rg, x + rg[:n2][:z] <= 1);
-
-@constraint(n1, x + y <= 2); #linear constraint
+@constraint(n1, n1_con, x + y <= 2); #linear constraint
 @constraint(n1, x^2 + y <= 4); # quadratic constraint
 @constraint(n1, cos(x) + y^2*x >= 1); #nonlinear constraint
+
+# test naming of expressions on nodes and on graphs
+@expression(n1, n1_expr, x + 2 * y)
+@expression(rg, rg_expr, x + y + z)
 
 fix(x, 0)
 
@@ -67,7 +65,7 @@ rg3 = Plasmo.add_subgraph(rg, worker = 2)
 @optinode(rg3, n5)
 @variable(n5, x5)
 
-@linkconstraint(rg, x + x3 + rg3[:n5][:x5] == 0);
+lc2 = @linkconstraint(rg, x + x3 + rg3[:n5][:x5] == 0);
 
 println("Success")
 

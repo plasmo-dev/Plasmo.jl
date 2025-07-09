@@ -96,6 +96,12 @@ function get_edge(cref::RemoteEdgeConstraintRef)
     return JuMP.owner_model(cref)
 end
 
+function get_constraint(rcref::RemoteOptiEdgeConstraintRef)
+    redge = rcref.model
+    @assert haskey(redge.constraints, rcref)
+    return redge.constraints[rcref]
+end
+
 function next_constraint_index(
     redge::RemoteOptiEdge, ::Type{F}, ::Type{S}
 )::MOI.ConstraintIndex{F,S} where {F<:MOI.AbstractFunction,S<:MOI.AbstractSet}
@@ -172,9 +178,161 @@ function JuMP.dual(rcref::RemoteEdgeConstraintRef)
     return fetch(f)
 end
 
-# function JuMP.set_normlaized_rhs(rcref::RemoteOptiEdgeConstraintRef, value::Number)
+function JuMP.set_normalized_rhs(
+    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}}, 
+    value::Number
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    con = Plasmo.get_constraint(rcref)
+    con.func.set = value
+    return nothing
+end
 
-# end
+function JuMP.set_normalized_rhs(
+    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    value::Number
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    rmodel = rcref.model
+    rgraph = rmodel.remote_graph
+    f = @spawnat rgraph.worker begin
+        lcref = _convert_remote_to_local(rgraph, rcref)
+        JuMP.set_normalized_rhs(lcref, value)
+    end
+    return nothing
+end
+
+function JuMP.add_to_function_constant(
+    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}}, 
+    value::Number
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    con = Plasmo.get_constraint(rcref)
+    con.func.set += value
+    return nothing
+end
+
+function JuMP.add_to_function_constant(
+    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    value::Number
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    rmodel = rcref.model
+    rgraph = rmodel.remote_graph
+    f = @spawnat rgraph.worker begin
+        lcref = _convert_remote_to_local(rgraph, rcref)
+        JuMP.add_to_function_constant(lcref, value)
+    end
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    var::RemoteVariableRef,
+    value::Number
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    con = Plasmo.get_constraint(rcref)
+    @assert haskey(con.func.terms, var)
+    con.func.terms[var] = value
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    var::RemoteVariableRef,
+    value::Number
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    rmodel = rcref.model
+    rgraph = rmodel.remote_graph
+    f =@spawnat rgraph.worker begin
+        lcref = _convert_remote_to_local(rgraph, rcref)
+        lvar = _convert_remote_to_local(rgraph, var)
+        JuMP.set_normalized_coefficient(lcref, lvar, value)
+    end
+    return nothing
+end
+
+function JuMP.normalized_coefficient(
+    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    var::RemoteVariableRef
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    con = Plasmo.get_constraint(rcref)
+    @assert haskey(con.func.terms, var)
+    return con.func.terms[var]
+end
+
+function JuMP.normalized_coefficient(
+    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    var::RemoteVariableRef
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    rmodel = rcref.model
+    rgraph = rmodel.remote_graph
+    f =@spawnat rgraph.worker begin
+        lcref = _convert_remote_to_local(rgraph, rcref)
+        lvar = _convert_remote_to_local(rgraph, var)
+        JuMP.normalized_coefficient(lcref, lvar)
+    end
+    return fetch(f)
+end
+
+function JuMP.delete(rmodel::R, rcref::JuMP.ConstraintRef) where {R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef}}
+    if rcref.model != rmodel
+        error("The constraint reference you are trying to delete " * 
+            "does not belong to the remote node/edge"
+        ) 
+    end
+    rgraph = rmodel.remote_graph
+    f = @spawnat rgraph.worker begin
+        lmodel = _convert_remote_to_local(rgraph, rmodel) # TODO: if obj_dict is added, make sure the name is deleted
+        lcref = _convert_remote_to_local(rgraph, rcref)
+        JuMP.delete(lmodel, lcref)
+    end
+    return nothing
+end
+
+function JuMP.delete(redge::RemoteOptiEdge, rcref::JuMP.ConstraintRef)
+    if rcref.model != redge
+        error("The constraint reference you are trying to delete " * 
+            "does not belong to the RemoteOptiEdge"
+        ) 
+    end
+    delete!(redge.constraint_refs, rcref.index)
+    delete!(redge.constraints, rcref)
+    return nothing
+end
+
 
 # These functions are used by extending packages like PlasmoBenders to 
 # set the needed type data
@@ -188,9 +346,10 @@ end
 
 # Need to add the following
 # JuMP.delete (for variables and node constraints and edge constraints)
-# Need to ensure that node constraints can be named too by @constraint? not sure
-    # at least need to ensure that the remote registers this name
-# set_normalized_rhs
-# add_to_function_constant
-# set_normalized_coefficient
-# normalized_coefficient
+# TODO: Support these jump functions for vectors as well
+# TODO: Probably move a lot of these jump extensions to another file
+
+# for variables: delete(rnode, rvar)
+# for constraints: delete(redgeref, rcon)
+# for constraints: delete(roptiedge, rcon)
+# for constraints: delete(rnode, rcon)

@@ -89,7 +89,7 @@ function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol)
     @warn("Registering name of object of type $(typeof(value)) is not yet supported
     Please open an issue to have this added.")
     return nothing
-    #TODO: PRIORITY Support expressions and constraint names
+    #TODO: Vector{ConstraintRef} does not work for name registry
 end
 
 # function _return_var_index(var::JuMP.Containers.DenseAxisArray)
@@ -220,6 +220,21 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
         rcref
     end
     return fetch(f)
+end
+
+function JuMP.delete(rnode::RemoteNodeRef, rcref::JuMP.ConstraintRef)
+    if rcref.model != rnode
+        error("The constraint reference you are trying to delete " * 
+            "does not belong to the remote node"
+        ) 
+    end
+    rgraph = rnode.remote_graph
+    f = @spawnat rgraph.worker begin
+        lnode = _convert_remote_to_local(rgraph, rnode) # TODO: if obj_dict is added, make sure the name is deleted
+        lcref = _convert_remote_to_local(rgraph, rcref)
+        JuMP.delete(lnode, lcref)
+    end
+    return nothing
 end
 
 function JuMP.is_valid(node::RemoteNodeRef, cref::ConstraintRef)
