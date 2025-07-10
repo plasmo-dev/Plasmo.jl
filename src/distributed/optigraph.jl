@@ -327,6 +327,11 @@ function JuMP.objective_value(rgraph::RemoteOptiGraph)
     return fetch(f)
 end
 
+function JuMP.dual_objective_value(rgraph::RemoteOptiGraph)
+    f = @spawnat rgraph.worker JuMP.dual_objective_value(local_graph(rgraph))
+    return fetch(f)
+end
+
 function JuMP.objective_function(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lg = local_graph(rgraph)

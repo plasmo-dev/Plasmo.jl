@@ -333,7 +333,6 @@ function JuMP.delete(redge::RemoteOptiEdge, rcref::JuMP.ConstraintRef)
     return nothing
 end
 
-
 # These functions are used by extending packages like PlasmoBenders to 
 # set the needed type data
 function edge_type(rgraph::RemoteOptiGraph)
