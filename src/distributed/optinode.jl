@@ -235,7 +235,6 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
         new_expr = _convert_proxy_to_local(lgraph, pexpr)
         lcon = JuMP.ScalarConstraint(new_expr, con_set)
 
-        jump_func = JuMP.jump_function(lcon)
         moi_func = JuMP.moi_function(lcon)
         moi_set = JuMP.moi_set(lcon)
 
@@ -246,7 +245,7 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
         cref = ConstraintRef(node, constraint_index, JuMP.shape(lcon))
         # add to each containing optigraph
         for graph in containing_optigraphs(node)
-            MOI.add_constraint(graph_backend(graph), cref, jump_func, moi_set)
+            MOI.add_constraint(graph_backend(graph), cref, new_expr, moi_set)
         end
         pcref = ConstraintRef(pnode, cref.index, cref.shape)
         pcref
