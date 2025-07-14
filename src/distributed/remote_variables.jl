@@ -18,27 +18,20 @@ end
 # the current implementation, but these would make querying variables lighter on memory
 function Base.getindex(rvar::RemoteVariableArrayRef, idx...)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
     rnode = rvar.node
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    vname = rvar.name
     f = @spawnat rgraph.worker begin
-        lnode = _convert_remote_to_local(rgraph, rnode)
-        vname = rvar.name
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
         lvars = lnode[vname][idx...]
-        if isa(lvars, Plasmo.NodeVariableRef)
-            var = (lvars.index, Symbol(name(lvars)))
-        else
-            var = [(var.index, Symbol(name(var))) for var in lvars]
-        end
+
+        var = _local_var_to_proxy(lgraph, lvars)
         var
     end
-    var_tuples = fetch(f)
-    if isa(var_tuples, Tuple) #TODO: Make this code more elegant
-        return RemoteVariableRef(rnode, var_tuples[1], var_tuples[2])
-    else
-        vars = [
-            RemoteVariableRef(rnode, t[1], t[2]) for t in var_tuples
-        ]
-        return vars
-    end
+    pvars = fetch(f)
+    return _proxy_var_to_remote(rgraph, pvars)
 end
 
 function JuMP.is_valid(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
@@ -70,9 +63,12 @@ Return all of the variables stored on the OptiNode represented by RemoteNodeRef
 """
 function JuMP.all_variables(rnode::RemoteNodeRef)
     rgraph = rnode.remote_graph
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
     
     f = @spawnat rgraph.worker begin
-        lnode = _convert_remote_to_local(rgraph, rnode)
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
         all_vars = JuMP.all_variables(lnode)
         [(var.index, Symbol(name(var))) for var in all_vars]
     end
@@ -89,9 +85,10 @@ Return all of the variables stored on the OptiGraph of the RemoteOptiGraph
 Does not fetch variables from subgraphs
 """
 function local_variables(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        all_vars = JuMP.all_variables(lg)
+        lgraph = localpart(darray)[1]
+        all_vars = JuMP.all_variables(lgraph)
         [(var.node.idx, var.node.label, var.index, Symbol(name(var))) for var in all_vars] #Note: Building the remote ref on the remote does not keep the rgraph or rnode the same as before 
     end
     var_tuples = fetch(f)
@@ -122,17 +119,20 @@ Return the number of variables stored on the OptiGraph of the RemoteOptiGraph
 Does not include variables on subgraphs
 """
 function num_local_variables(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        JuMP.num_variables(lg)
+        lgraph = localpart(darray)[1]
+        JuMP.num_variables(lgraph)
     end
     return fetch(f)
 end
 
 function JuMP.value(rgraph::RemoteOptiGraph, rvar::RemoteVariableRef)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lgraph = local_graph(rgraph)
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _convert_proxy_to_local(lgraph, pvar)
         JuMP.value(lgraph, lvar)
     end
     return fetch(f)
@@ -145,9 +145,11 @@ function JuMP.value(
     rgraph::RemoteOptiGraph, 
     rexpr::E
 ) where {E <: Union{GenericAffExpr, GenericQuadExpr, GenericNonlinearExpr}}
+    darray = rgraph.graph
+    pexpr = _convert_remote_to_proxy(rgraph, rexpr)
     f = @spawnat rgraph.worker begin
-        lgraph = local_graph(rgraph)
-        lexpr = _convert_remote_to_local(rgraph, rexpr)
+        lgraph = localpart(darray)[1]
+        lexpr = _convert_proxy_to_local(lgraph, pexpr)
         JuMP.value(lgraph, lexpr)
     end
     return fetch(f)
@@ -155,8 +157,12 @@ end
 
 function JuMP.has_upper_bound(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
+
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.has_upper_bound(lvar)
     end
     return fetch(f)
@@ -164,8 +170,11 @@ end
 
 function JuMP.has_lower_bound(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.has_lower_bound(lvar)
     end
     return fetch(f)
@@ -173,8 +182,11 @@ end
 
 function JuMP.upper_bound(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.upper_bound(lvar)
     end
     return fetch(f)
@@ -182,8 +194,11 @@ end
 
 function JuMP.lower_bound(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.lower_bound(lvar)
     end
     return fetch(f)
@@ -191,8 +206,11 @@ end
 
 function JuMP.fix_value(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.fix_value(lvar)
     end
     return fetch(f)
@@ -200,8 +218,11 @@ end
 
 function JuMP.is_binary(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.is_binary(lvar)
     end
     return fetch(f)
@@ -209,8 +230,11 @@ end
 
 function JuMP.is_integer(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.is_integer(lvar)
     end
     return fetch(f)
@@ -218,8 +242,11 @@ end
 
 function JuMP.is_fixed(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.is_fixed(lvar)
     end
     return fetch(f)
@@ -227,8 +254,11 @@ end
 
 function JuMP.set_binary(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.set_binary(lvar)
     end
     return nothing
@@ -236,8 +266,11 @@ end
 
 function JuMP.unset_binary(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.unset_binary(lvar)
     end
     return nothing
@@ -245,8 +278,11 @@ end
 
 function JuMP.set_integer(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.set_integer(lvar)
     end
     return nothing
@@ -254,8 +290,11 @@ end
 
 function JuMP.unset_integer(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.unset_integer(lvar)
     end
     return nothing
@@ -263,8 +302,11 @@ end
 
 function JuMP.fix(rvar::RemoteVariableRef, value::Number; force::Bool = false)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.fix(lvar, value; force = force)
     end
     return nothing
@@ -272,8 +314,11 @@ end
 
 function JuMP.unfix(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.unfix(lvar)
     end
     return nothing
@@ -281,8 +326,11 @@ end
 
 function JuMP.set_upper_bound(rvar::RemoteVariableRef, upper::Number)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.set_upper_bound(lvar, upper)
     end
     return nothing
@@ -290,8 +338,11 @@ end
 
 function JuMP.set_lower_bound(rvar::RemoteVariableRef, lower::Number)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.set_lower_bound(lvar, lower)
     end
     return nothing
@@ -299,8 +350,11 @@ end
 
 function JuMP.start_value(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.start_value(lvar)
     end
     return fetch(f)
@@ -308,8 +362,11 @@ end
 
 function JuMP.set_start_value(rvar::RemoteVariableRef, value::Union{Nothing, Real})
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.set_start_value(lvar, value)
     end
     return nothing
@@ -317,47 +374,57 @@ end
 
 function JuMP.FixRef(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         cref = JuMP.FixRef(lvar)
-        lnode = JuMP.owner_model(cref)
-        rnode = _convert_local_to_remote(rgraph, lnode)
-        rcref = ConstraintRef(rnode, cref.index, cref.shape)
-        rcref
+        pcref = _convert_local_to_proxy(lgraph, cref)
+        pcref
     end
-    return fetch(f)
+    pcref = fetch(f)
+    return _convert_proxy_to_local(rgraph, pcref)
 end
 
 function JuMP.LowerBoundRef(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
+        
     f = @spawnat rgraph.worker begin #TODO: Decide if this should test if there is a lower bound first; doing so results in a second call to the remote, rather than doing it all within the same @spawnat call
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         cref = JuMP.LowerBoundRef(lvar)
-        lnode = JuMP.owner_model(cref)
-        rnode = _convert_local_to_remote(rgraph, lnode)
-        rcref = ConstraintRef(rnode, cref.index, cref.shape)
-        rcref
+        pcref = _convert_local_to_proxy(lgraph, cref)
+        pcref
     end
-    return fetch(f)
+    pcref = fetch(f)
+    return _convert_proxy_to_local(rgraph, pcref)
 end
 
 function JuMP.UpperBoundRef(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         cref = JuMP.UpperBoundRef(lvar)
-        lnode = JuMP.owner_model(cref)
-        rnode = _convert_local_to_remote(rgraph, lnode)
-        rcref = ConstraintRef(rnode, cref.index, cref.shape)
-        rcref
+        pcref = _convert_local_to_proxy(lgraph, cref)
+        pcref
     end
-    return fetch(f)
+    pcref = fetch(f)
+    return _convert_proxy_to_local(rgraph, pcref)
 end
 
 function JuMP.delete_lower_bound(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.delete_lower_bound(lvar)
     end
     return nothing
@@ -365,8 +432,11 @@ end
 
 function JuMP.delete_upper_bound(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         JuMP.delete_upper_bound(lvar)
     end
     return nothing
@@ -374,28 +444,32 @@ end
 
 function JuMP.IntegerRef(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         cref = JuMP.IntegerRef(lvar)
-        lnode = JuMP.owner_model(cref)
-        rnode = _convert_local_to_remote(rgraph, lnode)
-        rcref = ConstraintRef(rnode, cref.index, cref.shape)
-        rcref
+        pcref = _convert_local_to_proxy(lgraph, cref)
+        pcref
     end
-    return fetch(f)
+    pcref = fetch(f)
+    return _convert_proxy_to_local(rgraph, pcref)
 end
 
 function JuMP.BinaryRef(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lvar = remote_var_to_local(rvar)
+        lgraph = localpart(darray)[1]
+        lvar = _proxy_var_to_local(lgraph, pvar)
         cref = JuMP.BinaryRef(lvar)
-        lnode = JuMP.owner_model(cref)
-        rnode = _convert_local_to_remote(rgraph, lnode)
-        rcref = ConstraintRef(rnode, cref.index, cref.shape)
-        rcref
+        pcref = _convert_local_to_proxy(lgraph, cref)
+        pcref
     end
-    return fetch(f)
+    pcref = fetch(f)
+    return _convert_proxy_to_local(rgraph, pcref)
 end
 
 function variable_type(rgraph::RemoteOptiGraph)
@@ -413,9 +487,13 @@ function JuMP.delete(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
         ) 
     end
     rgraph = rnode.remote_graph
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
-        lnode = _convert_remote_to_local(rgraph, rnode) # TODO: if obj_dict is added, make sure the name is deleted
-        lvar = _convert_remote_to_local(rgraph, rvar)
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode) # TODO: if obj_dict is added, make sure the name is deleted
+        lvar = _convert_proxy_to_local(lgraph, pvar)
         JuMP.delete(lnode, lvar)
     end
     return nothing

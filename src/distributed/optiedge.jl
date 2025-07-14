@@ -72,11 +72,13 @@ function has_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
     if haskey(rgraph.edge_data.optiedge_map, rnodes)
         return true
     else
+        #TODO: this function only looks at the local rgraph, not the edges of the graph on the remote worker; need to implement both versions probably. 
+        # Add another if statement here to see if it is in the distributed graph
         return false
     end
-end
-
+end 
 function get_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
+    #TODO: this function only looks at the local rgraph, not the edges of the graph on the remote worker; need to implement both versions probably. 
     return rgraph.edge_data.optiedge_map[rnodes]
 end
 
@@ -158,9 +160,12 @@ end
 
 function JuMP.dual(rgraph::RemoteOptiGraph, rcref::RemoteEdgeConstraintRef)
     redge = JuMP.owner_model(rcref) #TODO: Make sure the redge is owned by the rgraph
+    darray = rgraph.graph
+    pedge = _convert_remote_to_proxy(rgraph, redge)
+
     f = @spawnat rgraph.worker begin
-        lgraph = local_graph(rgraph)
-        ledge = _convert_remote_to_local(rgraph, redge)
+        lgraph = localpart(darray)[1]
+        ledge = _convert_proxy_to_local(lgraph, pedge)
         cref = ConstraintRef(ledge, rcref.index, rcref.shape)
         JuMP.dual(lgraph, cref)
     end
@@ -170,8 +175,12 @@ end
 function JuMP.dual(rcref::RemoteEdgeConstraintRef)
     redge = JuMP.owner_model(rcref)
     rgraph = redge.remote_graph
+    darray = rgraph.graph
+    pedge = _convert_remote_to_proxy(rgraph, redge)
+    
     f = @spawnat rgraph.worker begin
-        ledge = _convert_remote_to_local(rgraph, redge)
+        lgraph = localpart(darray)[1]
+        ledge = _convert_proxy_to_local(lgraph, pedge)
         cref = ConstraintRef(ledge, rcref.index, rcref.shape)
         JuMP.dual(cref)
     end
@@ -202,8 +211,12 @@ function JuMP.set_normalized_rhs(
 }
     rmodel = rcref.model
     rgraph = rmodel.remote_graph
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+
     f = @spawnat rgraph.worker begin
-        lcref = _convert_remote_to_local(rgraph, rcref)
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
         JuMP.set_normalized_rhs(lcref, value)
     end
     return nothing
@@ -233,8 +246,12 @@ function JuMP.add_to_function_constant(
 }
     rmodel = rcref.model
     rgraph = rmodel.remote_graph
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+
     f = @spawnat rgraph.worker begin
-        lcref = _convert_remote_to_local(rgraph, rcref)
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
         JuMP.add_to_function_constant(lcref, value)
     end
     return nothing
@@ -267,9 +284,14 @@ function JuMP.set_normalized_coefficient(
 }
     rmodel = rcref.model
     rgraph = rmodel.remote_graph
-    f =@spawnat rgraph.worker begin
-        lcref = _convert_remote_to_local(rgraph, rcref)
-        lvar = _convert_remote_to_local(rgraph, var)
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+    pvar = _convert_remote_to_proxy(rgraph, var)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
+        lvar = _convert_proxy_to_local(rgraph, pvar)
         JuMP.set_normalized_coefficient(lcref, lvar, value)
     end
     return nothing
@@ -299,9 +321,14 @@ function JuMP.normalized_coefficient(
 }
     rmodel = rcref.model
     rgraph = rmodel.remote_graph
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+    pvar = _convert_remote_to_proxy(rgraph, var)
+
     f =@spawnat rgraph.worker begin
-        lcref = _convert_remote_to_local(rgraph, rcref)
-        lvar = _convert_remote_to_local(rgraph, var)
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
+        lvar = _convert_proxy_to_local(rgraph, pvar)
         JuMP.normalized_coefficient(lcref, lvar)
     end
     return fetch(f)
@@ -314,9 +341,14 @@ function JuMP.delete(rmodel::R, rcref::JuMP.ConstraintRef) where {R<:Union{Abstr
         ) 
     end
     rgraph = rmodel.remote_graph
+    darray = rgraph.graph
+    pmodel = _convert_remote_to_proxy(rgraph, rcref)
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+
     f = @spawnat rgraph.worker begin
-        lmodel = _convert_remote_to_local(rgraph, rmodel) # TODO: if obj_dict is added, make sure the name is deleted
-        lcref = _convert_remote_to_local(rgraph, rcref)
+        lgraph = localpart(darray)[1]
+        lmodel = _convert_proxy_to_local(lgraph, pmodel) # TODO: if obj_dict is added, make sure the name is deleted
+        lcref = _convert_proxy_to_local(lgraph, pcref)
         JuMP.delete(lmodel, lcref)
     end
     return nothing

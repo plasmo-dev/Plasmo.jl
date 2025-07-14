@@ -2,8 +2,11 @@
 # The remote graph can also have a subset of other, nested remote graphs that are distributed on other workers
 
 abstract type AbstractRemoteOptiEdge <: JuMP.AbstractModel end
+abstract type AbstractRemoteOptiNode <: JuMP.AbstractModel end
 abstract type AbstractRemoteEdgeRef <: JuMP.AbstractModel end
 abstract type AbstractRemoteNodeRef <: JuMP.AbstractModel end
+abstract type AbstractProxyNodeRef <: JuMP.AbstractModel end
+abstract type AbstractProxyEdgeRef <: JuMP.AbstractModel end
 
 const RemoteOptiEdgeConstraintRef = JuMP.ConstraintRef{
     <:AbstractRemoteOptiEdge,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
@@ -19,7 +22,7 @@ const RemoteNodeConstraintRef = JuMP.ConstraintRef{
 
 const RemoteConstraintRef = JuMP.ConstraintRef{
     <:R,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
-} where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef,AbstractRemoteOptiEdge},FT<:MOI.AbstractFunction,ST<:AbstractSet}
+} where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef,AbstractRemoteOptiEdge, AbstractRemoteOptiNode},FT<:MOI.AbstractFunction,ST<:AbstractSet}
 
 """
     RemoteEdgeData
@@ -74,12 +77,40 @@ struct RemoteNodeRef <: AbstractRemoteNodeRef
 end
 
 """
+    ProxyNodeRef
+
+A "lightweight" reference to a node that is used for serializing between the 
+remote and main worker. Used internally and converted to a `RemoteNodeRef` after
+the fetch call
+"""
+struct ProxyNodeRef <: AbstractProxyNodeRef
+    # no remote graph is needed here because we will immediately convert
+    # to a RemoteNodeRef after calling fetch
+    node_idx::NodeIndex
+    node_label::Base.RefValue{Symbol}
+end
+
+
+"""
     RemoteVariableRef
 
 A "lightweight" reference to a variable stored remotely on the OptiGraph stored on a RemoteOptiGraph.
 """
 struct RemoteVariableRef <: JuMP.AbstractVariableRef
     node::Plasmo.RemoteNodeRef
+    index::MOI.VariableIndex
+    name::Symbol
+end
+
+"""
+    ProxyVariableRef
+
+A "lightweight" reference to a variable that is used for serializing between the 
+remote and main worker. Used internally and converted to a `RemoteVariableRef`
+after the fetch call
+"""
+struct ProxyVariableRef <: JuMP.AbstractVariableRef
+    node::Plasmo.ProxyNodeRef
     index::MOI.VariableIndex
     name::Symbol
 end
@@ -92,6 +123,18 @@ A "lightweight" reference to an edge stored remotely on the OptiGraph stored on 
 struct RemoteEdgeRef <: AbstractRemoteEdgeRef
     remote_graph::Plasmo.RemoteOptiGraph #TODO: Decide if this should be `remote_graph` or just `graph`
     nodes::OrderedSet{Plasmo.RemoteNodeRef}
+    label::Symbol
+end
+
+"""
+    ProxyEdgeRef
+
+A "lightweight" reference to an edge that is used for serializing between the 
+remote and main worker. Used internally and converted to a `RemoteEdgeRef`
+after the fetch call
+"""
+struct ProxyEdgeRef <: AbstractProxyEdgeRef
+    nodes::OrderedSet{Plasmo.ProxyNodeRef}
     label::Symbol
 end
 
@@ -111,6 +154,10 @@ end
 
 const RemoteAffExpr = JuMP.GenericAffExpr{
     Float64, RemoteVariableRef
+}
+
+const ProxyAffExpr = JuMP.GenericAffExpr{
+    Float64, ProxyVariableRef
 }
 
 const RemoteOptiObject = Union{

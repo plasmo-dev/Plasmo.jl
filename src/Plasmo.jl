@@ -161,7 +161,9 @@ include("utils.jl")
 
 include("distributed/core_types.jl")
 
-include("distributed/conversions.jl")
+include("distributed/local_conversions.jl")
+
+include("distributed/remote_conversions.jl")
 
 include("distributed/optigraph.jl")
 

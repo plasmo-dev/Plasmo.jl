@@ -7,69 +7,28 @@ Base.show(io::IO, graph::RemoteOptiGraph) = Base.print(io, graph)
 
 function source_graph(rgraph::RemoteOptiGraph) return rgraph.parent_graph end
 
-# If we directly create the remote reference on the remote worker, there are issues
-# with equality of the resulting remoterefs. For instance, a node's remote graph
-# may not be equal to the remotegraph from which it was created. Consequently, we have
-# this kind of hacky interface for turning whatever object is returned into the
-# appropriate object
-
-function _return_remotegraph_object(rgraph::RemoteOptiGraph, obj::Plasmo.OptiNode)
-    return (obj.idx, obj.label)
-end
-
-function _return_remotegraph_object(rgraph::RemoteOptiGraph, obj::Plasmo.EdgeConstraintRef)
-    edge = JuMP.owner_model(obj)
-    lnodes = edge.nodes
-    elabel = edge.label
-    cref_index = obj.index
-    cref_shape = obj.shape
-
-    node_data = [(node.idx, node.label) for node in lnodes]
-    #(node_list; should be )
-    return (node_data, elabel, cref_index, cref_shape)
-end
-
-function _return_remotegraph_object(rgraph::RemoteOptiGraph, obj)
-    error("Retrieving object resulted in an object of type $(typeof(obj)) which is not yet supported")
-end
-
-function _build_fetched_object_from_data(rgraph::RemoteOptiGraph, data::Tuple{Plasmo.NodeIndex, Base.RefValue{Symbol}})
-    return RemoteNodeRef(rgraph, data[1], data[2])
-end
-
-function _build_fetched_object_from_data(rgraph::RemoteOptiGraph, data::Tuple{Vector{Tuple}, Symbol, FT, ST}) where {FT <: MOI.AbstractFunction, ST <: JuMP.AbstractShape}
-    rnodes = [RemoteNodeRef(rgraph, t[1], t[2]) for t in data[1]]
-    redge = RemoteEdgeRef(rgraph, rnodes, data[2])
-    return ConstraintRef(redge, data[3], data[4])
-end
-
-
-#TODO: Support arrays of these objects
-#TODO: Support adding named expressions to the graph; currently only do link constraints
 
 function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
     if haskey(rgraph.obj_dict, sym)
         return rgraph.obj_dict[sym]
     else
+        darray = rgraph.graph
+
         f = @spawnat rgraph.worker begin
-            lg = local_graph(rgraph)
+            lgraph = localpart(darray)[1]
             if haskey(lg.obj_dict, sym)
                 obj = lg.obj_dict[sym]
             else
                 error("No object with name $sym is registered on given OptiGraph")
             end
-            _return_remotegraph_object(rgraph, obj)
+            #TODO: Support arrays of these objects; I think the _convert function only handles single objects, not arrays of objects
+            _convert_local_to_proxy(lgraph, obj)
             # return data to then build these separately
         end
-        return _build_fetched_object_from_data(rgraph, fetch(f))
+        pobj = fetch(f)
+        return _convert_proxy_to_remote(rgraph, pobj)
     end
 end
-
-# (local_node.idx, local_node.label)
-#     end
-#     node_tuple = fetch(f)
-
-#     return RemoteNodeRef(rgraph, node_tuple[1], node_tuple[2])
 
 ###### Functions for getting the remote data from a RemoteOptiGraph ######
 function local_graph(rgraph::RemoteOptiGraph)
@@ -122,14 +81,15 @@ Returns a vector of RemoteNodeRefs for all nodes stored on remote OptiGraphs on
 `rgraph` and all of its subgraphs
 """
 function all_nodes(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        nodes = Plasmo.all_nodes(lg)
-        [(node.idx, node.label) for node in nodes]
-        #[_convert_local_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
+        lgraph = localpart(darray)[1]
+        nodes = Plasmo.all_nodes(lgraph)
+        [_convert_local_to_proxy(lgraph, node) for node in nodes]
     end
-    node_tuples = fetch(f)
-    nodes = [RemoteNodeRef(rgraph, idx, label) for (idx, label) in node_tuples]
+    pnodes = fetch(f)
+    nodes = [_convert_proxy_to_remote(rgraph, node) for node in pnodes]
     for g in rgraph.subgraphs
         append!(nodes, all_nodes(g))
     end
@@ -146,14 +106,14 @@ NOTE: the remote OptiGraph stored on `rgraph` may contain multiple sub-opitgraph
 function still returns all nodes contained on these "local" subgraphs.
 """
 function local_nodes(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        nodes = Plasmo.all_nodes(lg)
-        [(node.idx, node.label) for node in nodes]
-        #[_convert_local_to_remote(rgraph, node) for node in nodes] #TODO: Move the local_var_to_remote outside @spawnat? Not sure if this is being called in the right place. May need to rethink this
+        lgraph = localpart(darray)[1]
+        nodes = Plasmo.all_nodes(lgraph)
+        [_convert_local_to_proxy(lgraph, node) for node in nodes]
     end
-    node_tuples = fetch(f)
-    nodes = [RemoteNodeRef(rgraph, idx, label) for (idx, label) in node_tuples]
+    pnodes = fetch(f)
+    nodes = [_convert_proxy_to_remote(rgraph, node) for node in pnodes]
     return nodes
 end
 
@@ -243,44 +203,47 @@ end
 
 # build the constraint reference
 function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstraint; name::String="")
+    darray = rgraph.graph
+    pexpr = _convert_remote_to_proxy(rgraph, con.func)
+    con_set = con.set
+
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        new_expr = _convert_remote_to_local(rgraph, con.func)
+        lgraph = localpart(darray)[1]
+        new_expr = _convert_proxy_to_local(lgraph, pexpr)
         lcon = JuMP.ScalarConstraint(new_expr, con.set)
-        cref = JuMP.add_constraint(lg, lcon, name)
-        ledge = JuMP.owner_model(cref)
-        lnodes = ledge.nodes
-        node_tuples = [(node.idx, node.label) for node in lnodes]
-        (cref.index, cref.shape, node_tuples, ledge.label)
+        cref = JuMP.add_constraint(lgraph, lcon, name)
+        pcref = _convert_local_to_proxy(lgraph, cref)
+        pcref
     end
-    cref_data = fetch(f)
-    rnodes = OrderedSet([RemoteNodeRef(rgraph, idx, label) for (idx, label) in cref_data[3]])
-    redge = RemoteEdgeRef(rgraph, rnodes, cref_data[4])
-    return ConstraintRef(redge, cref_data[1], cref_data[2])
+    pcref = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcref)
 end
 
 ###### Support optimization interface for graphs ######
 
 function JuMP.optimize!(rgraph::RemoteOptiGraph)#TODO: Figure out how to support kwargs for this
+    darray = rgraph.graph
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        JuMP.optimize!(lg)
+        lgraph = localpart(darray)[1]
+        JuMP.optimize!(lgraph)
     end
-    return fetch(f)
+    return nothing
 end
 
 function JuMP.set_optimizer(rgraph::RemoteOptiGraph, optimizer)
+    darray = rgraph.graph
     remotecall_wait(rgraph.worker) do
-        lg = local_graph(rgraph)    
-        JuMP.set_optimizer(lg, optimizer)
+        lgraph = localpart(darray)[1]
+        JuMP.set_optimizer(lgraph, optimizer)
     end
     return nothing
 end
 
 function JuMP.set_optimizer_attribute(rgraph::RemoteOptiGraph, pairs::Pair...)
+    darray = rgraph.graph
     remotecall_wait(rgraph.worker) do
-        lg = local_graph(rgraph)
-        JuMP.set_optimizer_attribute(lg, pairs...)
+        lgraph = localpart(darray)[1]
+        JuMP.set_optimizer_attribute(lgraph, pairs...)
     end
     return nothing
 end #TODO: go through and decide if all my functions should be using `remotecall_wait` or `@spawnat`
@@ -288,9 +251,11 @@ end #TODO: go through and decide if all my functions should be using `remotecall
 function JuMP.set_objective(
     rgraph::RemoteOptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
 )
+    darray = rgraph.graph
+    pfunc = _convert_remote_to_proxy(rgraph, func)
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        new_func = _convert_remote_to_local(rgraph, func)
+        lgraph = localpart(darray)[1]
+        new_func = _convert_proxy_to_local(lgraph, pfunc)
         JuMP.set_objective(lg, sense, new_func)
     end
     return func
@@ -299,10 +264,12 @@ end
 function JuMP.set_objective_function(
     rgraph::RemoteOptiGraph, func::JuMP.AbstractJuMPScalar
 )
+    darray = rgraph.graph
+    pfunc = _convert_remote_to_proxy(rgraph, func)
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        new_func = _convert_remote_to_local(rgraph, func)
-        JuMP.set_objective_function(lg, new_func)
+        lgraph = localpart(darray)[1]
+        new_func = _convert_proxy_to_local(lgraph, pfunc)
+        JuMP.set_objective_function(lgraph, new_func)
     end
     return func
 end
@@ -310,41 +277,48 @@ end
 function JuMP.set_objective_sense(
     rgraph::RemoteOptiGraph, sense::MOI.OptimizationSense
 )
+    darray = rgraph.graph
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        JuMP.set_objective_sense(lg, sense)
+        lgraph = localpart(darray)[1]
+        JuMP.set_objective_sense(lgraph, sense)
     end
     return nothing
 end
 
 function set_to_node_objectives(rgraph::RemoteOptiGraph)
-    @spawnat rgraph.worker set_to_node_objectives(local_graph(rgraph))
+    darray = rgraph.graph
+    @spawnat rgraph.worker set_to_node_objectives(localpart(darray)[1])
     return nothing
 end
 
 function JuMP.objective_value(rgraph::RemoteOptiGraph)
-    f = @spawnat rgraph.worker JuMP.objective_value(local_graph(rgraph))
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker JuMP.objective_value(localpart(darray)[1])
     return fetch(f)
 end
 
 function JuMP.dual_objective_value(rgraph::RemoteOptiGraph)
-    f = @spawnat rgraph.worker JuMP.dual_objective_value(local_graph(rgraph))
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker JuMP.dual_objective_value(localpart(darray)[1])
     return fetch(f)
 end
 
 function JuMP.objective_function(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
     f = @spawnat rgraph.worker begin
-        lg = local_graph(rgraph)
-        lobj_func = JuMP.objective_function(lg)
-        robj_func = _convert_local_to_remote(rgraph, lobj_func)
+        lgraph = localpart(darray)[1]
+        lobj_func = JuMP.objective_function(lgraph)
+        robj_func = _convert_local_to_proxy(lgraph, lobj_func)
         robj_func
     end # TODO: Make sure the references are correct here
-    return fetch(f)
+    pobj_func = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pobj_func)
 end
 
 function JuMP.termination_status(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
     f = @spawnat rgraph.worker begin
-        lgraph = local_graph(rgraph)
+        lgraph = localpart(darray)[1]
         JuMP.termination_status(lgraph)
     end
     return fetch(f)
