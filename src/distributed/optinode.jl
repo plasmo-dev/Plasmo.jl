@@ -19,7 +19,7 @@ function Base.setindex!(rnode::RemoteNodeRef, value::JuMP.Containers.DenseAxisAr
     rgraph = rnode.remote_graph
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
-    pvar_array = map(x -> Plasmo.ProxyVariableRef(pnode, x.index, Symbol(name(x))), value.data)
+    pvar_array = map(x -> Plasmo.ProxyVariableRef(pnode, x.index, Symbol(JuMP.name(x))), value.data)
     axes = value.axes
     lookup = value.lookup
     names = value.names
@@ -43,11 +43,11 @@ function Base.setindex!(rnode::RemoteNodeRef, value::Array{RemoteVariableRef}, n
     rgraph = rnode.remote_graph
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
-    pvar_array = map(x -> Plasmo.ProxyVariableRef(pnode, x.index, Symbol(name(x))), value)
-
+    pvar_array = map(x -> Plasmo.ProxyVariableRef(pnode, x.index, Symbol(JuMP.name(x))), value)
+    
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
-        lnode = _convert_proxy_to_local(rgraph, pnode)
+        lnode = _convert_proxy_to_local(lgraph, pnode)
         key = (lnode, name)
         var_array = map(x -> Plasmo.NodeVariableRef(lnode, x.index), pvar_array)
         lgraph.element_data.node_obj_dict[key] = var_array
@@ -116,7 +116,7 @@ end
 # end
 
 function _return_var_index(lgraph::OptiGraph, pnode::ProxyNodeRef, var::Array{NodeVariableRef})
-    var_array = map(x -> Plasmo.ProxyVariableRef(pnode, x.index, Symbol(name(var))), var)
+    var_array = map(x -> Plasmo.ProxyVariableRef(pnode, x.index, Symbol(JuMP.name(x))), var)
     return var_array
 end
 
@@ -158,7 +158,6 @@ function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how 
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         lnode = Plasmo._convert_proxy_to_local(lgraph, pnode)
-        pnode = _convert_local_to_proxy(lgraph, lnode)
         var = lnode[sym]
         _return_var_index(lgraph, pnode, var)
     end

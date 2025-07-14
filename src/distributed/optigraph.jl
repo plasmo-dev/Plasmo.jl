@@ -16,8 +16,8 @@ function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
 
         f = @spawnat rgraph.worker begin
             lgraph = localpart(darray)[1]
-            if haskey(lg.obj_dict, sym)
-                obj = lg.obj_dict[sym]
+            if haskey(lgraph.obj_dict, sym)
+                obj = lgraph.obj_dict[sym]
             else
                 error("No object with name $sym is registered on given OptiGraph")
             end
@@ -33,6 +33,10 @@ end
 ###### Functions for getting the remote data from a RemoteOptiGraph ######
 function local_graph(rgraph::RemoteOptiGraph)
     return localpart(rgraph.graph)[1]
+end
+
+function local_graph(darray::DistributedArrays.DArray)
+    return localpart(darray)[1]
 end
 
 function print_local_graph(rgraph::RemoteOptiGraph)
@@ -256,7 +260,7 @@ function JuMP.set_objective(
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         new_func = _convert_proxy_to_local(lgraph, pfunc)
-        JuMP.set_objective(lg, sense, new_func)
+        JuMP.set_objective(lgraph, sense, new_func)
     end
     return func
 end

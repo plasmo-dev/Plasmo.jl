@@ -65,6 +65,10 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::ProxyVariableRef
     return _proxy_var_to_remote(rgraph, var)
 end
 
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::Array{ProxyVariableRef})
+    return _proxy_var_to_remote(rgraph, var)
+end
+
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::RemoteVariableRef)
     return _remote_var_to_proxy(rgraph, var)
 end
@@ -217,14 +221,26 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::ProxyVariableRe
     return func
 end
 
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Float64)
+    return func
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{ProxyVariableRef})
+    return func
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, ProxyVariableRef})
+    return func
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64, ProxyVariableRef})
+    return func
+end
+
 #function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::RemoteVariableRef)
 #    pvar = _remote_var_to_proxy(lgraph, func)
 #    return pvar
 #end
-
-function _convert_remote_to_proxy(lgraph::RemoteOptiGraph, func::Float64)
-    return func
-end
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, cref::JuMP.ConstraintRef)
     rmodel = cref.model
