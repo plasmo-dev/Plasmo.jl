@@ -214,7 +214,7 @@ function _build_constraint_ref(rgraph::RemoteOptiGraph, con::JuMP.AbstractConstr
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         new_expr = _convert_proxy_to_local(lgraph, pexpr)
-        lcon = JuMP.ScalarConstraint(new_expr, con.set)
+        lcon = JuMP.ScalarConstraint(new_expr, con_set)
         cref = JuMP.add_constraint(lgraph, lcon, name)
         pcref = _convert_local_to_proxy(lgraph, cref)
         pcref
