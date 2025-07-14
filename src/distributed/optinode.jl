@@ -233,7 +233,7 @@ function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
         lgraph = localpart(darray)[1]
         node = _convert_proxy_to_local(lgraph, pnode)
         new_expr = _convert_proxy_to_local(lgraph, pexpr)
-        lcon = JuMP.ScalarConstraint(new_expr, con.set)
+        lcon = JuMP.ScalarConstraint(new_expr, con_set)
 
         jump_func = JuMP.jump_function(lcon)
         moi_func = JuMP.moi_function(lcon)
