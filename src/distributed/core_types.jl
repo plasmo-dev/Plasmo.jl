@@ -152,12 +152,27 @@ struct RemoteOptiEdge <: AbstractRemoteOptiEdge
     label::Symbol
 end
 
-const RemoteAffExpr = JuMP.GenericAffExpr{
-    Float64, RemoteVariableRef
+const RemoteAffExpr = JuMP.GenericAffExpr{Float64, RemoteVariableRef}
+const ProxyAffExpr = JuMP.GenericAffExpr{Float64, ProxyVariableRef}
+
+const RemoteQuadExpr = JuMP.GenericQuadExpr{Float64, RemoteVariableRef}
+const ProxyQuadExpr = JuMP.GenericQuadExpr{Float64, ProxyVariableRef}
+
+const RemoteNonlinearExpr = JuMP.GenericNonlinearExpr{RemoteVariableRef}
+const ProxyNonlinearExpr = JuMP.GenericNonlinearExpr{ProxyVariableRef}
+
+const RemoteExpr = Union{
+    RemoteAffExpr, RemoteQuadExpr, RemoteNonlinearExpr
 }
 
-const ProxyAffExpr = JuMP.GenericAffExpr{
-    Float64, ProxyVariableRef
+const ProxyExpr = Union{
+    ProxyAffExpr, ProxyQuadExpr, ProxyNonlinearExpr
+}
+
+const NodeExpr = Union{
+    JuMP.GenericAffExpr{Float64, NodeVariableRef},
+    JuMP.GenericQuadExpr{Float64, NodeVariableRef},
+    JuMP.GenericNonlinearExpr{NodeVariableRef}
 }
 
 const RemoteOptiObject = Union{

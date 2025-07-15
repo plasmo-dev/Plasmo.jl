@@ -1,6 +1,8 @@
-# This file contains functions used for converting remote objects to their corresponding
-# local objects. These functions are primarily internal functions for Plasmo and won't be
-# used often by users
+# This file contains functions used for converting proxy variables/nodes/edges/expressions into 
+# local ones. Here "local" means what is local to the distributed worker (i.e., it is "local"
+# with respect to the remote worker).
+
+#################################### Nodes ####################################
 
 function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef)
     #TODO: Make this more efficient
@@ -13,6 +15,10 @@ function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef)
     error("Node $pnode not detected in OptiGraph $lgraph")
 end
 
+function _convert_local_to_proxy(lgraph::OptiGraph, node::OptiNode)
+    return ProxyNodeRef(node.idx, node.label)
+end
+
 function get_node(graph::OptiGraph, sym::Symbol)
     # find the node whose symbol matches
     for n in all_nodes(graph)
@@ -22,6 +28,8 @@ function get_node(graph::OptiGraph, sym::Symbol)
     end
     error("Symbol $sym not saved on OptiGraph")
 end
+
+#################################### Edge ####################################
 
 function _convert_local_to_proxy(lgraph::OptiGraph, ledge::Plasmo.OptiEdge)
     pnodes = OrderedSet{Plasmo.ProxyNodeRef}()
@@ -49,14 +57,13 @@ function _convert_proxy_to_local(lgraph::OptiGraph, pedge::Plasmo.ProxyEdgeRef)
     error("Edge $pedge not found in remote graph")
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, node::OptiNode)
-    return ProxyNodeRef(node.idx, node.label)
-end
+#################################### Variables ####################################
 
+# Maybe need to clean this up in the future; right now there are these
+# local_var_to_proxy functions that are later called by _convert_local_to_proxy
 function _local_var_to_proxy(lgraph::OptiGraph, var::NodeVariableRef)
     pnode = _convert_local_to_proxy(lgraph, var.node)
     return ProxyVariableRef(pnode, var.index, Symbol(name(var)))
-    #TODO: decide if the name should be a string or a symbol; I think I am switching between these a lot
 end
 
 function _local_var_to_proxy(var::NodeVariableRef, pnode::ProxyNodeRef)
@@ -85,6 +92,7 @@ function _proxy_var_to_local(var::ProxyVariableRef, lnode::Plasmo.OptiNode)
     return NodeVariableRef(lnode, var.index)
 end
 
+# Convert variables
 function _convert_proxy_to_local(lgraph::OptiGraph, var::ProxyVariableRef)
     return _proxy_var_to_local(lgraph, var)
 end
@@ -92,6 +100,37 @@ end
 function _convert_local_to_proxy(lgraph::OptiGraph, var::NodeVariableRef)
     return _local_var_to_proxy(lgraph, var)
 end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::Array{ProxyVariableRef})
+    return map(x -> _proxy_var_to_local(lgraph, x), var)
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::Array{NodeVariableRef})
+    return map(x -> _local_var_to_proxy(lgraph, x), var)
+end
+
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:NodeVariableRef,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _local_var_to_proxy(lgraph, v) for (k, v) in var)
+    return SparseAxisArray(od, var.names)    
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:ProxyVariableRef,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _proxy_var_to_local(lgraph, v) for (k, v) in var)
+    return SparseAxisArray(od, var.names)    
+
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{NodeVariableRef})
+    pvars = _convert_local_to_proxy(lgraph, var.data)
+    return DenseAxisArray(pvars, var.axes, var.lookup, var.names)
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{ProxyVariableRef})
+    lvars = _convert_proxy_to_local(lgraph, var.data)
+    return DenseAxisArray(lvars, var.axes, var.lookup, var.names)
+end
+#################################### Expressions ####################################
 
 function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericAffExpr{Float64, Plasmo.ProxyVariableRef})
     new_func = GenericAffExpr{Float64, Plasmo.NodeVariableRef}(func.constant)
@@ -163,36 +202,6 @@ function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericNonlinearExpr{P
     return ret
 end
 
-# function _convert_proxy_to_local(lgraph::OptiGraph, func::ProxyVariableRef)
-#     lnode = _convert_proxy_to_local(lgraph, func.node) #TODO: These "_convert_remote_to_local" calls will likely be slow if it gets called a lot; should address this in the future
-#     return _proxy_var_to_local(func, lnode)
-# end
-
-function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef)
-    lnode = _convert_proxy_to_local(lgraph, pnode) #TODO: These "_convert_remote_to_local" calls will likely be slow if it gets called a lot; should address this in the future
-    return _proxy_var_to_local(func, lnode)
-end
-
-function _convert_proxy_to_local(lgraph::OptiGraph, func::NodeVariableRef)
-    return func
-end
-
-function _convert_proxy_to_local(lgraph::OptiGraph, func::Float64)
-    return func
-end
-
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericNonlinearExpr{NodeVariableRef})
-    return func
-end
-
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericAffExpr{Float64, NodeVariableRef})
-    return func
-end
-
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericQuadExpr{Float64, NodeVariableRef})
-    return func
-end
-
 function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericAffExpr{Float64, Plasmo.NodeVariableRef})
     new_func = GenericAffExpr{Float64, Plasmo.ProxyVariableRef}(func.constant)
     for var in keys(func.terms)
@@ -237,18 +246,72 @@ function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericNonlinearExpr{P
     return ret
 end
 
+function _convert_proxy_to_local(lgraph::OptiGraph, func::Array{E}) where {E <: ProxyExpr}
+    return map(x -> _convert_proxy_to_local(lgraph, x), func)
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, func::Array{E}) where {E <: NodeExpr}
+    return map(x -> _convert_local_to_proxy(lgraph, x), func)
+end
+
+#################################### Expression Supports ####################################
+
+function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef)
+    lnode = _convert_proxy_to_local(lgraph, pnode) #TODO: These "_convert_remote_to_local" calls will likely be slow if it gets called a lot; should address this in the future
+    return _proxy_var_to_local(func, lnode)
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, func::NodeVariableRef)
+    return func
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, func::Float64)
+    return func
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, func::Array{Float64})
+    return func
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericAffExpr{Float64, NodeVariableRef})
+    return func
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericQuadExpr{Float64, NodeVariableRef})
+    return func
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericNonlinearExpr{NodeVariableRef})
+    return func
+end
+
 function _convert_local_to_proxy(lgraph::OptiGraph, func::ProxyVariableRef)
     return func
 end
 
-# function _convert_local_to_proxy(lgraph::OptiGraph, func::NodeVariableRef)
-#     pvar = _local_var_to_proxy(lgraph, func)
-#     return pvar
-# end
-
 function _convert_local_to_proxy(lgraph::OptiGraph, func::Float64)
     return func
 end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, func::Array{Float64})
+    return func
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericAffExpr{Float64, ProxyVariableRef})
+    return func
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericQuadExpr{Float64, ProxyVariableRef})
+    return func
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericNonlinearExpr{ProxyVariableRef})
+    return func
+end
+
+
+#################################### Constraints ####################################
+
 
 function _convert_local_to_proxy(lgraph::OptiGraph, cref::JuMP.ConstraintRef)
     lmodel = cref.model
@@ -260,4 +323,28 @@ function _convert_proxy_to_local(lgraph::OptiGraph, cref::JuMP.ConstraintRef)# T
     pmodel = cref.model
     lmodel = _convert_proxy_to_local(lgraph, pmodel)
     return JuMP.ConstraintRef(lmodel, cref.index, cref.shape)
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, func::Array{E}) where {E <: JuMP.ConstraintRef}
+    return map(x -> _convert_local_to_proxy(lgraph, x), func)
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, func::Array{E}) where {E <: JuMP.ConstraintRef}
+    return map(x -> _convert_proxy_to_local(lgraph, x), func)
+end
+
+#################################### Catch and Warn ####################################
+
+function _convert_proxy_to_local(lgraph::OptiGraph, obj)
+    @error("Trying to move an object of type $(typeof(obj)) to the remote.
+            This object type is not yet supported and could cause errors later.
+            Please open an issue to have this ability added.")
+    return nothing
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, obj)
+    @error("Trying to move an object of type $(typeof(obj)) to the remote.
+            This object type is not yet supported and could cause errors later.
+            Please open an issue to have this ability added.")
+    return nothing
 end

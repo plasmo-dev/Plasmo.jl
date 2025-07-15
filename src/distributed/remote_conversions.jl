@@ -1,10 +1,18 @@
-# This file contains functions used for converting remote objects to their corresponding
-# local objects. These functions are primarily internal functions for Plasmo and won't be
-# used often by users
+# This file contains functions used for converting proxy variables/nodes/edges/expressions into 
+# remote ones. Here "remote" refers to the objects stored on the main worker because they reference
+# objects that are remote/distributed.
+
+#################################### Nodes ####################################
 
 function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pnode::ProxyNodeRef)
     return RemoteNodeRef(rgraph, pnode.node_idx, pnode.node_label)
 end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, rnode::RemoteNodeRef)
+    return ProxyNodeRef(rnode.node_idx, rnode.node_label)
+end
+
+#################################### Edge ####################################
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, redge::Plasmo.RemoteEdgeRef)
     pnodes = OrderedSet{Plasmo.ProxyNodeRef}()
@@ -25,14 +33,14 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pedge::Plasmo.ProxyEd
     return RemoteEdgeRef(rgraph, rnodes, pedge.label)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, rnode::RemoteNodeRef)
-    return ProxyNodeRef(rnode.node_idx, rnode.node_label)
-end
+#################################### Variables ####################################
+
+# Maybe need to clean this up in the future; right now there are these
+# remote_var_to_proxy functions that are later called by _convert_remote_to_proxy
 
 function _remote_var_to_proxy(rgraph::RemoteOptiGraph, var::RemoteVariableRef)
     pnode = _convert_remote_to_proxy(rgraph, var.node)
     return ProxyVariableRef(pnode, var.index, Symbol(name(var)))
-    #TODO: decide if the name should be a string or a symbol; I think I am switching between these a lot
 end
 
 function _remote_var_to_proxy(var::RemoteVariableRef, pnode::ProxyNodeRef)
@@ -61,17 +69,45 @@ function _proxy_var_to_remote(var::ProxyVariableRef, rnode::Plasmo.RemoteNodeRef
     return RemoteVariableRef(rnode, var.index, var.name)
 end
 
+# Convert variables
 function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::ProxyVariableRef)
-    return _proxy_var_to_remote(rgraph, var)
-end
-
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::Array{ProxyVariableRef})
     return _proxy_var_to_remote(rgraph, var)
 end
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::RemoteVariableRef)
     return _remote_var_to_proxy(rgraph, var)
 end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::Array{ProxyVariableRef})
+    return map(x -> _proxy_var_to_remote(rgraph, x), var)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::Array{RemoteVariableRef})
+    return map(x -> _remote_var_to_proxy(rgraph, x), var)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:RemoteVariableRef,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _remote_var_to_proxy(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:ProxyVariableRef,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _proxy_var_to_remote(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{RemoteVariableRef})
+    pvars = _convert_remote_to_proxy(rgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(pvars, var.axes, var.lookup, var.names)
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{ProxyVariableRef})
+    rvars = _convert_proxy_to_remote(rgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(rvars, var.axes, var.lookup, var.names)
+end
+
+#################################### Expressions ####################################
 
 function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, Plasmo.ProxyVariableRef})
     new_func = GenericAffExpr{Float64, Plasmo.RemoteVariableRef}(func.constant)
@@ -143,36 +179,6 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericNonlinea
     return ret
 end
 
-# function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::ProxyVariableRef)
-#     rnode = _convert_proxy_to_remote(rgraph, func.node) #TODO: These "_convert_remote_to_local" calls will likely be slow if it gets called a lot; should address this in the future
-#     return _proxy_var_to_remote(func, rnode)
-# end
-
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef)
-    rnode = _convert_proxy_to_remote(rgraph, pnode) #TODO: These "_convert_remote_to_local" calls will likely be slow if it gets called a lot; should address this in the future
-    return _proxy_var_to_remote(func, rnode)
-end
-
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::RemoteVariableRef)
-    return func
-end
-
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Float64)
-    return func
-end
-
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{RemoteVariableRef})
-    return func
-end
-
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, RemoteVariableRef})
-    return func
-end
-
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64, RemoteVariableRef})
-    return func
-end
-
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
     new_func = GenericAffExpr{Float64, Plasmo.ProxyVariableRef}(func.constant)
     for var in keys(func.terms)
@@ -217,6 +223,45 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericNonlinea
     return ret
 end
 
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Array{E}) where {E <: ProxyExpr}
+    return map(x -> _convert_proxy_to_remote(rgraph, x), func)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Array{E}) where {E <: RemoteExpr}
+    return map(x -> _convert_remote_to_proxy(rgraph, x), func)
+end
+
+#################################### Expression Supports ####################################
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef)
+    rnode = _convert_proxy_to_remote(rgraph, pnode)
+    return _proxy_var_to_remote(func, rnode)
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::RemoteVariableRef)
+    return func
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Float64)
+    return func
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Array{Float64})
+    return func
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, RemoteVariableRef})
+    return func
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64, RemoteVariableRef})
+    return func
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{RemoteVariableRef})
+    return func
+end
+
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::ProxyVariableRef)
     return func
 end
@@ -225,7 +270,7 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Float64)
     return func
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{ProxyVariableRef})
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Array{Float64})
     return func
 end
 
@@ -237,10 +282,11 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericQuadExpr
     return func
 end
 
-#function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::RemoteVariableRef)
-#    pvar = _remote_var_to_proxy(lgraph, func)
-#    return pvar
-#end
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{ProxyVariableRef})
+    return func
+end
+
+#################################### Constraints ####################################
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, cref::JuMP.ConstraintRef)
     rmodel = cref.model
@@ -253,6 +299,17 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, cref::JuMP.Constraint
     rmodel = _convert_proxy_to_remote(rgraph, pmodel)
     return JuMP.ConstraintRef(rmodel, cref.index, cref.shape)
 end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Array{E}) where {E <: JuMP.ConstraintRef}
+    return map(x -> _convert_remote_to_proxy(rgraph, x), func)
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Array{E}) where {E <: JuMP.ConstraintRef}
+    return map(x -> _convert_proxy_to_remote(rgraph, x), func)
+end
+
+#################################### Check Node Variables ####################################
+
 
 function _check_node_variables(rnode::RemoteNodeRef, jump_func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
     for var in keys(jump_func.terms)
@@ -290,5 +347,21 @@ function _check_node_variables(rnode::RemoteNodeRef, jump_func::RemoteVariableRe
 end
 
 function _check_node_variables(rnode::RemoteNodeRef, jump_func::Float64)
+    return nothing
+end
+
+#################################### Catch and Warn ####################################
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, obj)
+    @error("Trying to move an object of type $(typeof(obj)) to the remote.
+            This object type is not yet supported and could cause errors later.
+            Please open an issue to have this ability added.")
+    return nothing
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, obj)
+    @error("Trying to move an object of type $(typeof(obj)) to the remote.
+            This object type is not yet supported and could cause errors later.
+            Please open an issue to have this ability added.")
     return nothing
 end
