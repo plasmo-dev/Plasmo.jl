@@ -112,23 +112,23 @@ end
 
 function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:NodeVariableRef,N,K<:Tuple{N, Any}}
     od = OrderedDict{K, T}(k => _local_var_to_proxy(lgraph, v) for (k, v) in var)
-    return SparseAxisArray(od, var.names)    
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
 end
 
 function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:ProxyVariableRef,N,K<:Tuple{N, Any}}
     od = OrderedDict{K, T}(k => _proxy_var_to_local(lgraph, v) for (k, v) in var)
-    return SparseAxisArray(od, var.names)    
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
 
 end
 
 function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{NodeVariableRef})
     pvars = _convert_local_to_proxy(lgraph, var.data)
-    return DenseAxisArray(pvars, var.axes, var.lookup, var.names)
+    return JuMP.Containers.DenseAxisArray(pvars, var.axes, var.lookup, var.names)
 end
 
 function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{ProxyVariableRef})
     lvars = _convert_proxy_to_local(lgraph, var.data)
-    return DenseAxisArray(lvars, var.axes, var.lookup, var.names)
+    return JuMP.Containers.DenseAxisArray(lvars, var.axes, var.lookup, var.names)
 end
 #################################### Expressions ####################################
 
@@ -257,7 +257,7 @@ end
 #################################### Expression Supports ####################################
 
 function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef)
-    lnode = _convert_proxy_to_local(lgraph, pnode) #TODO: These "_convert_remote_to_local" calls will likely be slow if it gets called a lot; should address this in the future
+    lnode = _convert_proxy_to_local(lgraph, pnode)
     return _proxy_var_to_local(func, lnode)
 end
 
@@ -309,9 +309,7 @@ function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericNonlinearExpr{P
     return func
 end
 
-
 #################################### Constraints ####################################
-
 
 function _convert_local_to_proxy(lgraph::OptiGraph, cref::JuMP.ConstraintRef)
     lmodel = cref.model
@@ -333,18 +331,94 @@ function _convert_proxy_to_local(lgraph::OptiGraph, func::Array{E}) where {E <: 
     return map(x -> _convert_proxy_to_local(lgraph, x), func)
 end
 
-#################################### Catch and Warn ####################################
-
-function _convert_proxy_to_local(lgraph::OptiGraph, obj)
-    @error("Trying to move an object of type $(typeof(obj)) to the remote.
-            This object type is not yet supported and could cause errors later.
-            Please open an issue to have this ability added.")
-    return nothing
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.ConstraintRef}
+    vars = _convert_local_to_proxy(lgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, obj)
-    @error("Trying to move an object of type $(typeof(obj)) to the remote.
-            This object type is not yet supported and could cause errors later.
-            Please open an issue to have this ability added.")
-    return nothing
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.ConstraintRef}
+    vars = _convert_proxy_to_local(lgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+#################################### Miscellaneous ####################################
+# These get called when a user defines something like 
+# @constraint(rg, con_name[some_set_that_has_no_entries], ....)
+# this still needs to register the empty set to the model or it could cause
+# issues for the user later
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::Array{T}) where {T<:JuMP.AbstractJuMPScalar}
+    return map(x -> _convert_local_to_proxy(lgraph, x), var)
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::Array{T}) where {T<:JuMP.AbstractJuMPScalar}
+    return map(x -> _convert_proxy_to_local(lgraph, x), var)
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.AbstractJuMPScalar}
+    vars = _convert_local_to_proxy(lgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.AbstractJuMPScalar}
+    vars = _convert_proxy_to_local(lgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray)
+    pvars = _convert_local_to_proxy(lgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(pvars, var.axes, var.lookup, var.names)
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray)
+    lvars = _convert_proxy_to_local(lgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(lvars, var.axes, var.lookup, var.names)
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, obj::Any)
+    # @warn(
+    #     "Object of type $(typeof(obj)) is being passed from the remote worker and does not
+    #     have a proxy equivalent set up and will be serialized in passing. This 
+    #     could cause unexpected slow performance"
+    # )
+    return obj
+end
+
+function _convert_proxy_to_local(lgraph::OptiGraph, obj::Any)
+    # @warn(
+    #     "Object of type $(typeof(obj)) is being passed to the remote worker and does not
+    #     have a proxy equivalent set up and will be serialized in passing. This 
+    #     could cause unexpected slow performance"
+    # )
+    return obj
 end

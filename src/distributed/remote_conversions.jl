@@ -94,7 +94,6 @@ end
 function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:ProxyVariableRef,N,K<:Tuple{N, Any}}
     od = OrderedDict{K, T}(k => _proxy_var_to_remote(rgraph, v) for (k, v) in var)
     return JuMP.Containers.SparseAxisArray(od, var.names)    
-
 end
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{RemoteVariableRef})
@@ -308,6 +307,27 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Array{E}) where
     return map(x -> _convert_proxy_to_remote(rgraph, x), func)
 end
 
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.ConstraintRef}
+    vars = _convert_remote_to_proxy(rgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.ConstraintRef}
+    vars = _convert_proxy_to_remote(rgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+
 #################################### Check Node Variables ####################################
 
 
@@ -350,18 +370,80 @@ function _check_node_variables(rnode::RemoteNodeRef, jump_func::Float64)
     return nothing
 end
 
-#################################### Catch and Warn ####################################
+#################################### Miscellaneous ####################################
+# These get called when a user defines something like 
+# @constraint(rg, con_name[some_set_that_has_no_entries], ....)
+# this still needs to register the empty set to the model or it could cause
+# issues for the user later
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, obj)
-    @error("Trying to move an object of type $(typeof(obj)) to the remote.
-            This object type is not yet supported and could cause errors later.
-            Please open an issue to have this ability added.")
-    return nothing
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::Array{T}) where {T<:JuMP.AbstractJuMPScalar}
+    return map(x -> _convert_remote_to_proxy(rgraph, x), var)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, obj)
-    @error("Trying to move an object of type $(typeof(obj)) to the remote.
-            This object type is not yet supported and could cause errors later.
-            Please open an issue to have this ability added.")
-    return nothing
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::Array{T}) where {T<:JuMP.AbstractJuMPScalar}
+    return map(x -> _convert_proxy_to_remote(rgraph, x), var)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.AbstractJuMPScalar}
+    vars = _convert_remote_to_proxy(rgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.AbstractJuMPScalar}
+    vars = _convert_proxy_to_remote(rgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray)
+    pvars = _convert_remote_to_proxy(rgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(pvars, var.axes, var.lookup, var.names)
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray)
+    rvars = _convert_proxy_to_remote(rgraph, var.data)
+    return JuMP.Containers.DenseAxisArray(rvars, var.axes, var.lookup, var.names)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T,N,K<:Tuple{N, Any}}
+    od = OrderedDict{K, T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)    
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, obj::Any)
+    #@warn(
+    #    "Object of type $(typeof(obj)) is being passed to the remote worker and does not
+    #    have a proxy equivalent set up and will be serialized in passing. This 
+    #    could cause unexpected slow performance"
+    #)
+    if typeof(obj) <: JuMP.AbstractJuMPScalar
+        println(obj)
+    elseif isa(obj, Matrix{JuMP.AbstractJuMPScalar})
+        println(obj[1])
+        println(typeof(obj[1]))
+    end
+    return obj
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, obj::Any)
+    # @warn(
+    #     "Object of type $(typeof(obj)) is being passed from the remote worker and does not
+    #     have a proxy equivalent set up and will be serialized in passing. This 
+    #     could cause unexpected slow performance"
+    # )
+    return obj
 end

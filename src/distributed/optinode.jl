@@ -30,110 +30,7 @@ function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol) #TODO: T
     end
 end
 
-
-# function Base.setindex!(rnode::RemoteNodeRef, value::JuMP.Containers.DenseAxisArray{RemoteVariableRef}, name::Symbol)
-#     rgraph = rnode.remote_graph
-#     darray = rgraph.graph
-#     pnode = _convert_remote_to_proxy(rgraph, rnode)
-#     pvar_array = map(x -> Plasmo.ProxyVariableRef(pnode, x.index, Symbol(JuMP.name(x))), value.data)
-#     axes = value.axes
-#     lookup = value.lookup
-#     names = value.names
-
-#     f = @spawnat rgraph.worker begin
-#         lgraph = localpart(darray)[1]
-#         lnode = _convert_proxy_to_local(lgraph, pnode)
-#         key = (lnode, name)
-#         var_array = map(x -> Plasmo.NodeVariableRef(lnode, x.index), pvar_array)
-#         dense_array = DenseAxisArray(var_array, axes, lookup, names)
-
-#         lgraph.element_data.node_obj_dict[key] = dense_array
-#         nothing
-#     end
-#     return nothing
-# end
-
-# #TODO: Support sparse axis arrays
-
-# function Base.setindex!(rnode::RemoteNodeRef, value::Array{RemoteVariableRef}, name::Symbol)
-#     rgraph = rnode.remote_graph
-#     darray = rgraph.graph
-#     pnode = _convert_remote_to_proxy(rgraph, rnode)
-#     pvar_array = _convert_remote_to_proxy(rgraph, value)
-#     println("Running for $name")
-    
-#     f = @spawnat rgraph.worker begin
-#         lgraph = localpart(darray)[1]
-#         lnode = _convert_proxy_to_local(lgraph, pnode)
-#         key = (lnode, name)
-#         var_array = _convert_proxy_to_local(lgraph, pvar_array)
-#         lgraph.element_data.node_obj_dict[key] = var_array
-#         nothing
-#     end
-#     return nothing
-# end
-
-# function Base.setindex!(rnode::RemoteNodeRef, value::RemoteVariableRef, name::Symbol) 
-#     rgraph = rnode.remote_graph
-#     darray = rgraph.graph
-#     pnode = _convert_remote_to_proxy(rgraph, rnode)
-#     var_idx = value.index
-
-#     f = @spawnat rgraph.worker begin
-#         lgraph = localpart(darray)[1]
-#         lnode = _convert_proxy_to_local(lgraph, pnode)
-#         key = (lnode, name)
-#         var = NodeVariableRef(lnode, var_idx)
-#         lgraph.element_data.node_obj_dict[key] = var
-#         nothing
-#     end
-#     return nothing
-# end
-
-# function Base.setindex!(rnode::RemoteNodeRef, value::E, name::Symbol) where {E <: Union{GenericAffExpr{Float64, Plasmo.RemoteVariableRef}, GenericQuadExpr{Float64, Plasmo.RemoteVariableRef}, GenericNonlinearExpr{Plasmo.RemoteVariableRef}}}
-#     rgraph = rnode.remote_graph
-#     darray = rgraph.graph
-#     _check_node_variables(rnode, value)
-#     pnode = _convert_remote_to_proxy(rgraph, rnode)
-#     pexpr = _convert_remote_to_proxy(rgraph, value)
-
-#     f = @spawnat rgraph.worker begin
-#         lgraph = localpart(darray)[1]
-#         lnode = _convert_proxy_to_local(lgraph, pnode)
-#         lexpr = _convert_proxy_to_local(lgraph, pexpr)
-#         key = (lnode, name)
-#         lgraph.element_data.node_obj_dict[key] = lexpr
-#     end
-# end
-
-# function Base.setindex!(rnode::RemoteNodeRef, value::JuMP.ConstraintRef, name::Symbol) #TODO: Make the constraintref more specific to remote objects
-#     rgraph = rnode.remote_graph
-#     darray = rgraph.graph
-#     pnode = _convert_remote_to_proxy(rgraph, rnode)
-#     pcref = _convert_remote_to_proxy(rgraph, value)
-
-#     f = @spawnat rgraph.worker begin
-#         lgraph = localpart(darray)[1]
-#         lnode = _convert_proxy_to_local(lgraph, pnode)
-#         lcref = _convert_proxy_to_local(lgraph, pcref)
-#         key = (lnode, name)
-#         lgraph.element_data.node_obj_dict[key] = lcref
-#     end
-# end
-
-
-# function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol)
-#     @warn("Registering name of object of type $(typeof(value)) is not yet supported
-#     Please open an issue to have this added.")
-#     return nothing
-#     #TODO: Vector{ConstraintRef} does not work for name registry
-# end
-
-# function _return_remote_var_object(rnode::RemoteNodeRef, idx::Tuple{CI, SS}, sym::Symbol) where {CI <: MOI.ConstraintIndex, SS <: JuMP.ScalarShape}
-#     return JuMP.ConstraintRef(rnode, idx[1], idx[2])
-# end
-
-function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how to make this more efficient; this returns a large set of variables
+function Base.getindex(rnode::RemoteNodeRef, sym::Symbol)
     rgraph = rnode.remote_graph
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
@@ -141,14 +38,28 @@ function Base.getindex(rnode::RemoteNodeRef, sym::Symbol) #TODO: Figure out how 
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         lnode = Plasmo._convert_proxy_to_local(lgraph, pnode)
-        println(lgraph.element_data.node_obj_dict)
+        #println(lgraph.element_data.node_obj_dict)
         var = lnode[sym]
-        println(var)
+        #println(var)
         _convert_local_to_proxy(lgraph, var)
     end
     object = fetch(f)
 
     return _convert_proxy_to_remote(rgraph, object)
+end
+
+function Base.haskey(rnode::RemoteNodeRef, sym::Symbol)
+    rgraph = rnode.remote_graph
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        
+        lnode = Plasmo._convert_proxy_to_local(lgraph, pnode)
+        haskey(lnode, sym)
+    end
+    return fetch(f)
 end
 
 """
