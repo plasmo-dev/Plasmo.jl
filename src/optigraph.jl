@@ -180,9 +180,9 @@ Add a new optinode to `graph`. By default, the node label is set to be "n<i+1>" 
 the number of nodes in the graph.
 """
 function add_node(
-    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1), nindex = gensym()
+    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1), index = gensym()
 )
-    node_index = NodeIndex(nindex)
+    node_index = NodeIndex(index)
     node = OptiNode(Ref(graph), node_index, Ref(label))
     push!(graph.optinodes, node)
     add_node(graph_backend(graph), node)
@@ -274,7 +274,7 @@ end
 
 Return the total number of nodes in `graph` by recursively checking subgraphs.
 """
-function num_nodes(graph::OptiGraph)
+function num_nodes(graph::GT) where {GT<:AbstractOptiGraph}
     n_nodes = num_local_nodes(graph)
     for subgraph in graph.subgraphs
         n_nodes += num_nodes(subgraph)
@@ -751,7 +751,7 @@ end
 
 Return the name of `graph`.
 """
-function JuMP.name(graph::OptiGraph)
+function JuMP.name(graph::GT) where {GT<:AbstractOptiGraph}
     return Base.string(graph.label)
 end
 
@@ -760,7 +760,7 @@ end
 
 Set the name of `graph` to `name`.
 """
-function JuMP.set_name(graph::OptiGraph, name::Symbol)
+function JuMP.set_name(graph::GT, name::Symbol) where {GT<:AbstractOptiGraph}
     graph.label = name
     return nothing
 end
@@ -1486,7 +1486,7 @@ function _set_objective_coefficient(
     return nothing
 end
 
-function JuMP.unregister(graph::OptiGraph, key::Symbol)
+function JuMP.unregister(graph::GT, key::Symbol) where {GT<:AbstractOptiGraph}
     return delete!(object_dictionary(graph), key)
 end
 

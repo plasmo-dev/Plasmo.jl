@@ -92,6 +92,15 @@ end
 function has_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
     if haskey(rgraph.element_data.optiedge_map, rnodes)
         return true
+    elseif all(x -> x.remote_graph == rgraph, rnodes)
+        darray = rgraph.graph
+        pnodes = _convert_remote_to_proxy(rgraph, rnodes)
+        f = @spawnat rgraph.worker begin
+            lgraph = localpart(darray)[1]
+            lnodes = _convert_proxy_to_remote(lgraph, pnodes)
+            Plasmo.has_edge(lgraph, lnodes)
+        end
+        return fetch(f)
     else
         #TODO: this function only looks at the local rgraph, not the edges of the graph on the remote worker; need to implement both versions probably. 
         # Add another if statement here to see if it is in the distributed graph
@@ -283,7 +292,8 @@ function JuMP.all_variables(edge::E) where {E<:Union{RemoteOptiEdge, RemoteEdgeR
 end
 
 function JuMP.dual(rgraph::RemoteOptiGraph, rcref::RemoteEdgeConstraintRef)
-    redge = JuMP.owner_model(rcref) #TODO: Make sure the redge is owned by the rgraph
+    redge = JuMP.owner_model(rcref) 
+    @assert rgraph == source_graph(redge)
     darray = rgraph.graph
     pedge = _convert_remote_to_proxy(rgraph, redge)
 

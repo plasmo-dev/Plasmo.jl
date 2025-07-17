@@ -107,6 +107,15 @@ function add_node(rgraph::RemoteOptiGraph, label::Symbol) # TODO: Rethink whethe
     return _convert_proxy_to_remote(rgraph, pnode)
 end
 
+function containing_optigraphs(node::RemoteNodeRef)
+    source = source_graph(node)
+    graphs = [source]
+    if isa(source.parent_graph, RemoteOptiGraph)
+        graphs = [graphs; traverse_parents(source.parent_graph)]
+    end
+    return graphs
+end
+
 """
     JuMP.add_constraint(rnode::RemoteNodeRef, con::JuMP.AbstractConstraint, name::String="")
 
@@ -186,30 +195,6 @@ function JuMP.is_valid(node::RemoteNodeRef, cref::ConstraintRef)
     return node === JuMP.owner_model(cref)# && MOI.is_valid(graph_backend(edge), cref)
 end
 
-#TODO: add JuMP.name
-#TODO: containing optigraphs
-#TODO: node_object_dictionary
-#TODO: JuMP.object_dictionary
-#TODO: num_variables
-#TODO: all_variables
-#TODO: JuMP.unregister
-#TODO: JuMP.objective_function
-#TODO: JuMP.objective_Function_type
-#TODO: JuMP.objective_sense
-#TODO: JuMP.objective_value
-#TODO: has_objective
-#TODO: relax_or_fix_itnegrality? 
-
-
-# """
-#     Filter the object dictionary for values that belong to node. Keep in mind that 
-# this function is slow for optigraphs with many nodes.
-# """
-# function node_object_dictionary(node::OptiNode)
-#     d = JuMP.object_dictionary(node::OptiNode)
-#     return filter(p -> p.first[1] == node, d)
-# end
-
 function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
     rgraph = rnode.remote_graph
     darray = rgraph.graph
@@ -257,6 +242,34 @@ function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable,
     moi_idx = fetch(f)
 
     return RemoteVariableRef(rnode, moi_idx, sym)
+end
+
+function JuMP.all_variables(rnode::RemoteNodeRef)
+    rgraph = rnode.remote_graph
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        lvars = all_variables(lnode)
+        _convert_local_to_proxy(lgraph, lvars)
+    end
+    pvars = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pvars)
+end
+
+function JuMP.num_variables(rnode::RemoteNodeRef)
+    rgraph = rnode.remote_graph
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        JuMP.num_variables(lnode)
+    end
+    return fetch(f)
 end
 
 # objective support
@@ -336,6 +349,45 @@ function JuMP.objective_function(rnode::RemoteNodeRef)
     end
     pexpr = fetch(f)
     return _convert_proxy_to_remote(rgraph, pexpr)
+end
+
+function JuMP.objective_sense(rnode::RemoteNodeRef)
+    rgraph = source_graph(rnode)
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    darray = rgraph.graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        JuMP.objective_sense(lnode)
+    end
+    return fetch(f)
+end
+
+function has_objective(rnode::RemoteNodeRef)
+    rgraph = source_graph(rnode)
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    darray = rgraph.graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        Plasmo.has_objective(lnode)
+    end
+    return fetch(f)
+end
+
+function JuMP.objective_function_type(rnode::RemoteNodeRef)
+    rgraph = source_graph(rnode)
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    darray = rgraph.graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        JuMP.objective_function_type(lnode)
+    end
+    return fetch(f)
 end
 
 function JuMP.dual(rgraph::RemoteOptiGraph, rcref::RemoteNodeConstraintRef)

@@ -285,6 +285,14 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericNonlinea
     return func
 end
 
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Nothing)
+    return nothing
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Nothing)
+    return nothing
+end
+
 #################################### Constraints ####################################
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, cref::JuMP.ConstraintRef)
@@ -404,6 +412,22 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.
     return JuMP.Containers.SparseAxisArray(od, var.names)    
 end
 
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::Array{T}) where {T}
+    return map(x -> _convert_remote_to_proxy(rgraph, x), var)
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::Array{T}) where {T}
+    return map(x -> _convert_proxy_to_remote(rgraph, x), var)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::Set{T}) where {T}
+    return Set([_convert_remote_to_proxy(rgraph, v) for v in var])
+end
+
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::Set{T}) where {T}
+    return Set([_convert_proxy_to_remote(rgraph, v) for v in var])
+end
+
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray)
     pvars = _convert_remote_to_proxy(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(pvars, var.axes, var.lookup, var.names)
@@ -425,25 +449,19 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.
 end
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, obj::Any)
-    #@warn(
-    #    "Object of type $(typeof(obj)) is being passed to the remote worker and does not
-    #    have a proxy equivalent set up and will be serialized in passing. This 
-    #    could cause unexpected slow performance"
-    #)
-    if typeof(obj) <: JuMP.AbstractJuMPScalar
-        println(obj)
-    elseif isa(obj, Matrix{JuMP.AbstractJuMPScalar})
-        println(obj[1])
-        println(typeof(obj[1]))
-    end
+    @warn(
+       "Object of type $(typeof(obj)) is being passed to the remote worker and does not
+       have a proxy equivalent set up and will be serialized in passing. This 
+       could cause unexpected slow performance"
+    )
     return obj
 end
 
 function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, obj::Any)
-    # @warn(
-    #     "Object of type $(typeof(obj)) is being passed from the remote worker and does not
-    #     have a proxy equivalent set up and will be serialized in passing. This 
-    #     could cause unexpected slow performance"
-    # )
+    @warn(
+        "Object of type $(typeof(obj)) is being passed from the remote worker and does not
+        have a proxy equivalent set up and will be serialized in passing. This 
+        could cause unexpected slow performance"
+    )
     return obj
 end

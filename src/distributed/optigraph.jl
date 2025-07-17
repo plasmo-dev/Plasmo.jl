@@ -32,29 +32,21 @@ JuMP.value_type(::Type{RemoteOptiGraph}) = Float64
 
 #TODO: print OptiGraph nicer
 #TODO: implement summary option that will fetch data
-#TODO: get_node
-#TODO: num_local_nodes
-#TODO: num_nodes
 #TODO: num_elements
 #TODO: local_elements
 #TODO: all_elements
-#TODO: traverse_parents
 #TODO: num_local_link_constraints
 #TODO: num_link_constraints
 #TODO: local_link_constraints
 #TODO: all_link_constraints
 #TODO: num_local_constraints
 #TODO: local_constraints
-#TODO: JuMP.name
-#TODO: JuMP.set_name
 #TODO: JuMP.index
-#TODO: JuMP.object_dictionary
 #TODO: has_node_objective
 #TODO: node_objective_type
 #TODO: JuMP.relative_gap
 #TODO: JuMP.objective_bound
 #TODO: JuMP.set_objective_coefficient (both single and vector problems), plus Quadratic
-#TODO: unregister
 
 ###### Functions for getting the remote data from a RemoteOptiGraph ######
 function local_graph(rgraph::RemoteOptiGraph)
@@ -146,6 +138,27 @@ function local_nodes(rgraph::RemoteOptiGraph)
     nodes = [_convert_proxy_to_remote(rgraph, node) for node in pnodes]
     return nodes
 end
+
+function get_node(rgraph::RemoteOptiGraph, idx::Int)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = get_node(lgraph, idx)
+        _convert_local_to_proxy(lgraph, lnode)
+    end
+    pnode = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pnode)
+end
+
+function num_local_nodes(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        num_local_nodes(lgraph)
+    end
+    return fetch(f)
+end
+
 
 """
     Plasmo.all_subgraphs(rgraph::RemoteOptiGraph)
@@ -340,7 +353,7 @@ function JuMP.objective_function(rgraph::RemoteOptiGraph)
         lobj_func = JuMP.objective_function(lgraph)
         robj_func = _convert_local_to_proxy(lgraph, lobj_func)
         robj_func
-    end # TODO: Make sure the references are correct here
+    end 
     pobj_func = fetch(f)
     return _convert_proxy_to_remote(rgraph, pobj_func)
 end

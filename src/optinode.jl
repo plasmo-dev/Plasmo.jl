@@ -20,7 +20,7 @@ function Base.getindex(node::OptiNode, name::Symbol)
     return source_graph(node).element_data.node_obj_dict[t]
 end
 
-function JuMP.name(node::OptiNode)
+function JuMP.name(node::N) where {N<:Union{OptiNode,RemoteNodeRef}}
     return node.label.x
 end
 
@@ -80,8 +80,8 @@ end
     Filter the object dictionary for values that belong to node. Keep in mind that 
 this function is slow for optigraphs with many nodes.
 """
-function node_object_dictionary(node::OptiNode)
-    d = JuMP.object_dictionary(node::OptiNode)
+function node_object_dictionary(node::N) where {N<:Union{OptiNode,RemoteNodeRef}}
+    d = JuMP.object_dictionary(node::N)
     return filter(p -> p.first[1] == node, d)
 end
 
@@ -101,7 +101,7 @@ end
 # JuMP Methods
 #
 
-function JuMP.object_dictionary(node::OptiNode)
+function JuMP.object_dictionary(node::N) where {N<:Union{OptiNode,RemoteNodeRef}}
     d = source_graph(node).element_data.node_obj_dict
     return d
 end
@@ -121,7 +121,7 @@ function JuMP.all_variables(node::OptiNode)
     return NodeVariableRef.(Ref(node), var_inds)
 end
 
-function JuMP.unregister(node::OptiNode, key::Symbol)
+function JuMP.unregister(node::N, key::Symbol) where {N<:Union{OptiNode,RemoteNodeRef}}
     return delete!(object_dictionary(node), (node, key))
 end
 
