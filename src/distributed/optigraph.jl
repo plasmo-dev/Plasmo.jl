@@ -7,7 +7,6 @@ Base.show(io::IO, graph::RemoteOptiGraph) = Base.print(io, graph)
 
 function source_graph(rgraph::RemoteOptiGraph) return rgraph.parent_graph end
 
-
 function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
     if haskey(rgraph.obj_dict, sym)
         return rgraph.obj_dict[sym]
@@ -21,14 +20,41 @@ function Base.getindex(rgraph::RemoteOptiGraph, sym::Symbol)
             else
                 error("No object with name $sym is registered on given OptiGraph")
             end
-            #TODO: Support arrays of these objects; I think the _convert function only handles single objects, not arrays of objects
             _convert_local_to_proxy(lgraph, obj)
-            # return data to then build these separately
         end
         pobj = fetch(f)
         return _convert_proxy_to_remote(rgraph, pobj)
     end
 end
+
+JuMP.value_type(::Type{RemoteOptiGraph}) = Float64
+
+
+#TODO: print OptiGraph nicer
+#TODO: implement summary option that will fetch data
+#TODO: get_node
+#TODO: num_local_nodes
+#TODO: num_nodes
+#TODO: num_elements
+#TODO: local_elements
+#TODO: all_elements
+#TODO: traverse_parents
+#TODO: num_local_link_constraints
+#TODO: num_link_constraints
+#TODO: local_link_constraints
+#TODO: all_link_constraints
+#TODO: num_local_constraints
+#TODO: local_constraints
+#TODO: JuMP.name
+#TODO: JuMP.set_name
+#TODO: JuMP.index
+#TODO: JuMP.object_dictionary
+#TODO: has_node_objective
+#TODO: node_objective_type
+#TODO: JuMP.relative_gap
+#TODO: JuMP.objective_bound
+#TODO: JuMP.set_objective_coefficient (both single and vector problems), plus Quadratic
+#TODO: unregister
 
 ###### Functions for getting the remote data from a RemoteOptiGraph ######
 function local_graph(rgraph::RemoteOptiGraph)

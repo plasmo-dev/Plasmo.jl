@@ -15,8 +15,11 @@ Base.show(io::IO, rcref::RemoteNodeConstraintRef) = Base.print(io, rcref)
 function source_graph(rnode::RemoteNodeRef) return rnode.remote_graph end
 
 ###### Set Index for registering names to the OptiGraph stored on the RemoteOptiGraph ######
-function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol) #TODO: This is the only setindex! function we need; delete the others
+function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol) 
     rgraph = rnode.remote_graph
+    t = (rnode, name)
+    rgraph.element_data.node_obj_dict[t] = value
+
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
     pobj = _convert_remote_to_proxy(rgraph, value)
@@ -32,15 +35,17 @@ end
 
 function Base.getindex(rnode::RemoteNodeRef, sym::Symbol)
     rgraph = rnode.remote_graph
+    t = (rnode, sym)
+    if haskey(rgraph.element_data.node_obj_dict, t)
+        return rgraph.element_data.node_obj_dict[t]
+    end
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
 
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         lnode = Plasmo._convert_proxy_to_local(lgraph, pnode)
-        #println(lgraph.element_data.node_obj_dict)
         var = lnode[sym]
-        #println(var)
         _convert_local_to_proxy(lgraph, var)
     end
     object = fetch(f)
@@ -50,6 +55,10 @@ end
 
 function Base.haskey(rnode::RemoteNodeRef, sym::Symbol)
     rgraph = rnode.remote_graph
+    t = (rnode, sym)
+    if haskey(rgraph.element_data.node_obj_dict, t)
+        return true
+    end
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
 
@@ -69,10 +78,13 @@ Add a new optinode to `rgraph`.
 """
 function add_node(rgraph::RemoteOptiGraph)
     darray = rgraph.graph
+    wid = rgraph.worker
 
-    f = @spawnat rgraph.worker begin
+    f = @spawnat wid begin
         lgraph = localpart(darray)[1]
-        n = add_node(lgraph)
+        # I think gensym is only unique to the worker, so we 
+        # tack on the worker id to ensure it is globally unique
+        n = add_node(lgraph; index=Symbol(gensym(), ".w$wid"))
         _convert_local_to_proxy(lgraph, n)
     end
     pnode = fetch(f)
@@ -173,6 +185,30 @@ end
 function JuMP.is_valid(node::RemoteNodeRef, cref::ConstraintRef)
     return node === JuMP.owner_model(cref)# && MOI.is_valid(graph_backend(edge), cref)
 end
+
+#TODO: add JuMP.name
+#TODO: containing optigraphs
+#TODO: node_object_dictionary
+#TODO: JuMP.object_dictionary
+#TODO: num_variables
+#TODO: all_variables
+#TODO: JuMP.unregister
+#TODO: JuMP.objective_function
+#TODO: JuMP.objective_Function_type
+#TODO: JuMP.objective_sense
+#TODO: JuMP.objective_value
+#TODO: has_objective
+#TODO: relax_or_fix_itnegrality? 
+
+
+# """
+#     Filter the object dictionary for values that belong to node. Keep in mind that 
+# this function is slow for optigraphs with many nodes.
+# """
+# function node_object_dictionary(node::OptiNode)
+#     d = JuMP.object_dictionary(node::OptiNode)
+#     return filter(p -> p.first[1] == node, d)
+# end
 
 function JuMP.set_name(rnode::RemoteNodeRef, label::Symbol)
     rgraph = rnode.remote_graph

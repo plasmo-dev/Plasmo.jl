@@ -25,14 +25,15 @@ const RemoteConstraintRef = JuMP.ConstraintRef{
 } where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef,AbstractRemoteOptiEdge, AbstractRemoteOptiNode},FT<:MOI.AbstractFunction,ST<:AbstractSet}
 
 """
-    RemoteEdgeData
+    RemoteElementData
 
-A data structure for saving mappings relating to RemoteOptiEdges. Includes an `optiedge_map`
-which maps from sets of sets of RemtoeNodeRefs to an AbstractRemoteOptiEdge object. Also 
-includes a `last_constraint_index` used in defining new constraint data
+A data structure for saving names for nodes or edges and for saving mappings relating to RemoteOptiEdges. 
 """
-mutable struct RemoteEdgeData #TODO: merge the `constraints` attribute of the RemoteEdgeRef with this struct; I think the crefs should live on the graph, not on the edge structure
-    optiedge_map::OrderedDict{Set{<:AbstractRemoteNodeRef}, AbstractRemoteOptiEdge}
+struct RemoteElementData
+    node_obj_dict::OrderedDict{Tuple{AbstractRemoteNodeRef, Symbol}, Any}
+    edge_obj_dict::OrderedDict{Tuple{AbstractRemoteOptiEdge, Symbol}, Any}
+
+    optiedge_map::OrderedDict{Set{AbstractRemoteNodeRef}, AbstractRemoteOptiEdge}
     last_constraint_index::OrderedDict{AbstractRemoteOptiEdge, Int64}
 end
 
@@ -58,7 +59,7 @@ mutable struct RemoteOptiGraph <: AbstractOptiGraph
     subgraphs::Vector{RemoteOptiGraph} # These are nested remote optigraph objects; all remote optigraphs live on the main worker, but they contain a distributed optigraph that does not have to live on the main worker
     # Set of edges and data for them
     optiedges::Vector{<:AbstractRemoteOptiEdge}
-    edge_data::RemoteEdgeData
+    element_data::RemoteElementData
     obj_dict::Dict{Symbol,Any}
     label::Symbol
     ext::Dict{Symbol, Any}
@@ -152,6 +153,15 @@ struct RemoteOptiEdge <: AbstractRemoteOptiEdge
     label::Symbol
 end
 
+function RemoteElementData()
+    return RemoteElementData(
+        OrderedDict{Tuple{RemoteNodeRef, Symbol}, Any}(),
+        OrderedDict{Tuple{RemoteOptiEdge, Symbol}, Any}(),
+        OrderedDict{Set{RemoteNodeRef}, RemoteOptiEdge}(),
+        OrderedDict{RemoteOptiEdge, Int64}()
+    )
+end
+
 const RemoteAffExpr = JuMP.GenericAffExpr{Float64, RemoteVariableRef}
 const ProxyAffExpr = JuMP.GenericAffExpr{Float64, ProxyVariableRef}
 
@@ -196,20 +206,12 @@ function RemoteOptiGraph(; name::Symbol=Symbol(:rg, gensym()), worker::Int=1)
         nothing,
         Vector{RemoteOptiGraph}(), 
         Vector{Plasmo.RemoteOptiEdge}(), 
-        RemoteEdgeData(),
+        RemoteElementData(),
         Dict{Symbol,Any}(),
         name, #not sure yet whether the remote and local should have the same name, but doing that for now
         Dict{Symbol, Any}()
     )
     return rgraph
-end
-
-function RemoteEdgeData()
-    edge_data = RemoteEdgeData(
-        OrderedDict{Set{RemoteNodeRef},RemoteEdgeRef}(), 
-        OrderedDict{RemoteEdgeRef, Int64}(), 
-    )
-    return edge_data
 end
 
 struct RemoteVariableArrayRef

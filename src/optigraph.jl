@@ -180,9 +180,9 @@ Add a new optinode to `graph`. By default, the node label is set to be "n<i+1>" 
 the number of nodes in the graph.
 """
 function add_node(
-    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1)
+    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1), nindex = gensym()
 )
-    node_index = NodeIndex(gensym())
+    node_index = NodeIndex(nindex)
     node = OptiNode(Ref(graph), node_index, Ref(label))
     push!(graph.optinodes, node)
     add_node(graph_backend(graph), node)
@@ -493,8 +493,8 @@ end
 Return all the parents of the given `graph` if it has any. Can be used to determine how deep
 the graph is located with another optigraph. 
 """
-function traverse_parents(graph::OptiGraph)
-    parents = OptiGraph[]
+function traverse_parents(graph::GT) where {GT<:AbstractOptiGraph}
+    parents = GT[]
     if graph.parent_graph != nothing
         push!(parents, graph.parent_graph)
         append!(parents, traverse_parents(graph.parent_graph))
@@ -979,7 +979,7 @@ end
 Return the total number of constraints in `graph`. If `count_variable_in_set_constraints`
 is set to true, this also includes variable bound constraints. 
 """
-function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraints=true)
+function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraints=false)
     num_cons = 0
     con_types = JuMP.list_of_constraint_types(graph)
     for con_type in con_types

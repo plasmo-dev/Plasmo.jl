@@ -405,20 +405,22 @@ function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseA
     return JuMP.Containers.SparseAxisArray(od, var.names)    
 end
 
+#TODO: Abstract Array
+
 function _convert_local_to_proxy(lgraph::OptiGraph, obj::Any)
-    # @warn(
-    #     "Object of type $(typeof(obj)) is being passed from the remote worker and does not
-    #     have a proxy equivalent set up and will be serialized in passing. This 
-    #     could cause unexpected slow performance"
-    # )
+    @warn(
+        "Object of type $(typeof(obj)) is being passed from the remote worker and does not
+        have a proxy equivalent set up and will be serialized in passing. This 
+        could cause unexpected slow performance"
+    )
     return obj
 end
 
 function _convert_proxy_to_local(lgraph::OptiGraph, obj::Any)
-    # @warn(
-    #     "Object of type $(typeof(obj)) is being passed to the remote worker and does not
-    #     have a proxy equivalent set up and will be serialized in passing. This 
-    #     could cause unexpected slow performance"
-    # )
+    @warn(
+        "Object of type $(typeof(obj)) is being passed to the remote worker and does not
+        have a proxy equivalent set up and will be serialized in passing. This 
+        could cause unexpected slow performance"
+    )
     return obj
 end
