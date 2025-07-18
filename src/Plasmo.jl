@@ -133,6 +133,8 @@ include("core_types.jl")
 
 include("node_variables.jl")
 
+include("distributed/core_types.jl")
+
 include("optigraph.jl")
 
 include("optinode.jl")
@@ -158,8 +160,6 @@ include("graph_functions/topology.jl")
 include("graph_functions/partition.jl")
 
 include("utils.jl")
-
-include("distributed/core_types.jl")
 
 include("distributed/local_conversions.jl")
 

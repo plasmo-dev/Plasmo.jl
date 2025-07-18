@@ -244,21 +244,6 @@ function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable,
     return RemoteVariableRef(rnode, moi_idx, sym)
 end
 
-function JuMP.all_variables(rnode::RemoteNodeRef)
-    rgraph = rnode.remote_graph
-    darray = rgraph.graph
-    pnode = _convert_remote_to_proxy(rgraph, rnode)
-
-    f = @spawnat rgraph.worker begin
-        lgraph = localpart(darray)[1]
-        lnode = _convert_proxy_to_local(lgraph, pnode)
-        lvars = all_variables(lnode)
-        _convert_local_to_proxy(lgraph, lvars)
-    end
-    pvars = fetch(f)
-    return _convert_proxy_to_remote(rgraph, pvars)
-end
-
 function JuMP.num_variables(rnode::RemoteNodeRef)
     rgraph = rnode.remote_graph
     darray = rgraph.graph

@@ -427,7 +427,7 @@ end
 
 function JuMP.FixRef(nvref::NodeVariableRef)
     if !JuMP.is_fixed(nvref)
-        error("Variable $(v) does not have fixed bounds.")
+        error("Variable $(nvref) does not have fixed bounds.")
     end
     return _nv_fix_ref(nvref)
 end

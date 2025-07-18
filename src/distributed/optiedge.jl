@@ -102,8 +102,6 @@ function has_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
         end
         return fetch(f)
     else
-        #TODO: this function only looks at the local rgraph, not the edges of the graph on the remote worker; need to implement both versions probably. 
-        # Add another if statement here to see if it is in the distributed graph
         return false
     end
 end 
@@ -123,8 +121,22 @@ end
 Retrieve the remote optiedge in `rgraph` that connects `rnodes`.
 """
 function get_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
-    #TODO: this function only looks at the local rgraph, not the edges of the graph on the remote worker; need to implement both versions probably. 
-    return rgraph.element_data.optiedge_map[rnodes]
+    if haskey(rgraph.element_data.optiedge_map, rnodes)
+        return rgraph.element_data.optiedge_map[rnodes]
+    elseif all(x -> x.remote_graph == rgraph, rnodes)
+        darray = rgraph.graph
+        pnodes = _convert_remote_to_proxy(rgraph, rnodes)
+        f = @spawnat rgraph.worker begin
+            lgraph = localpart(darray)[1]
+            lnodes = _convert_proxy_to_remote(lgraph, pnodes)
+            ledge = Plasmo.get_edge(lgraph, lnodes)
+            _convert_local_to_proxy(lgraph, ledge)
+        end
+        pedge = fetch(f)
+        return _convert_proxy_to_remote(rgraph, pedge)
+    else
+        error("Edge not found in the graph")
+    end
 end
 
 """
