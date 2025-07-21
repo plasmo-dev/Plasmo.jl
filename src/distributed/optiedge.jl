@@ -256,6 +256,40 @@ function _build_constraint_ref(redge::RemoteOptiEdge, con::JuMP.AbstractConstrai
     return cref
 end
 
+function num_constraints(
+    redge::RemoteEdgeRef,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
+)
+    rgraph = source_graph(redge)
+    darray = rgraph.graph
+    pedge = _convert_remote_to_proxy(rgraph, redge)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        ledge = _convert_proxy_to_local(lgraph, pedge)
+        JuMP.num_constraints(ledge, func_type, set_type)
+    end
+    return fetch(f)
+end
+
+function JuMP.all_constraints(
+    redge::RemoteEdgeRef,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
+)
+    rgraph = source_graph(redge)
+    darray = rgraph.graph
+    pedge = _convert_remote_to_proxy(rgraph, redge)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        ledge = _convert_proxy_to_local(lgraph, pedge)
+        lcons = JuMP.all_constraints(ledge, func_type, set_type)
+        _convert_local_to_proxy(lgraph, lcons)
+    end
+    pcons = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcons)
+end
+
 """
     Plasmo.incident_edges(rgraph::RemoteOptiGraph)
 

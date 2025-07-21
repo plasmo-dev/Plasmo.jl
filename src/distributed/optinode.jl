@@ -191,6 +191,40 @@ function JuMP.delete(rnode::RemoteNodeRef, rcref::JuMP.ConstraintRef)
     return nothing
 end
 
+function num_constraints(
+    rnode::RemoteNodeRef,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
+)
+    rgraph = source_graph(rnode)
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        JuMP.num_constraints(ledge, func_type, set_type)
+    end
+    return fetch(f)
+end
+
+function JuMP.all_constraints(
+    rnode::RemoteNodeRef,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
+)
+    rgraph = source_graph(rnode)
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        lcons = JuMP.all_constraints(lnode, func_type, set_type)
+        _convert_local_to_proxy(lgraph, lcons)
+    end
+    pcons = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcons)
+end
+
 function JuMP.is_valid(node::RemoteNodeRef, cref::ConstraintRef)
     return node === JuMP.owner_model(cref)# && MOI.is_valid(graph_backend(edge), cref)
 end
