@@ -256,7 +256,7 @@ function _build_constraint_ref(redge::RemoteOptiEdge, con::JuMP.AbstractConstrai
     return cref
 end
 
-function num_constraints(
+function JuMP.num_constraints(
     redge::RemoteEdgeRef,
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},

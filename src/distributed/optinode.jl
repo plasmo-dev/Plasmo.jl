@@ -191,7 +191,7 @@ function JuMP.delete(rnode::RemoteNodeRef, rcref::JuMP.ConstraintRef)
     return nothing
 end
 
-function num_constraints(
+function JuMP.num_constraints(
     rnode::RemoteNodeRef,
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
