@@ -127,8 +127,15 @@ export OptiGraph,
     RemoteOptiEdge,
     RemoteEdgeRef,
     get_constraint,
-    summarize_optigraph
-
+    summarize_optigraph,
+    all_remote_edges,
+    num_remote_edges,
+    local_remote_edges,
+    num_local_remote_edges, 
+    num_remote_link_constraints,
+    all_remote_link_constraints,
+    num_local_remote_link_constraints,
+    local_remote_link_constraints
 
 include("core_types.jl")
 
@@ -175,6 +182,8 @@ include("distributed/optiedge.jl")
 include("distributed/remote_variables.jl")
 
 include("distributed/jump_interop.jl")
+
+include("distributed/utils.jl")
 
 # extensions
 function __init__()

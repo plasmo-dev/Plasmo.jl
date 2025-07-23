@@ -273,7 +273,7 @@ function all_elements(rgraph::RemoteOptiGraph)
         pelements = _convert_local_to_proxy(lgraph, elements)
     end
     pelements = fetch(f)
-    relements = _convert_proxy_to_local(rgraph, pelements)
+    relements = _convert_proxy_to_remote(rgraph, pelements)
     for subgraph in rgraph.subgraphs
         relements = [relements; all_elements(subgraph)]
     end
@@ -288,9 +288,9 @@ end
 
 # To address this, I have defaulted `link_constraints` to refer to the RemoteOptiEdges, 
 # which I think was most similar to the original usage in Plasmo. In contrast,
-# `remote_edge_ref_link_constraints` refers to the link constraints on the OptiGraph stored
+# `remote_link_constraints` refers to the link constraints on the OptiGraph stored
 # on the remote processor
-function num_local_remote_edge_ref_link_constraints(
+function num_local_remote_link_constraints(
     rgraph::RemoteOptiGraph,
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
@@ -303,7 +303,7 @@ function num_local_remote_edge_ref_link_constraints(
     return fetch(f)
 end
 
-function num_local_remote_edge_ref_link_constraints(rgraph::RemoteOptiGraph)
+function num_local_remote_link_constraints(rgraph::RemoteOptiGraph)
     darray = rgraph.graph
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
@@ -312,22 +312,22 @@ function num_local_remote_edge_ref_link_constraints(rgraph::RemoteOptiGraph)
     return fetch(f)
 end
 
-function num_remote_edge_ref_link_constraints(
+function num_remote_link_constraints(
     rgraph::RemoteOptiGraph,
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
 )
-    nconstraints = num_local_remote_edge_ref_link_constraints(rgraph, func_type, set_type)
+    nconstraints = num_local_remote_link_constraints(rgraph, func_type, set_type)
     for subgraph in rgraph.subgraphs
-        nconstraints += num_remote_edge_ref_link_constraints(subgraph, func_type, set_type)
+        nconstraints += num_remote_link_constraints(subgraph, func_type, set_type)
     end
     return nconstraints
 end
 
-function num_remote_edge_ref_link_constraints(rgraph::RemoteOptiGraph)
-    nconstraints = num_local_remote_edge_ref_link_constraints(rgraph)
+function num_remote_link_constraints(rgraph::RemoteOptiGraph)
+    nconstraints = num_local_remote_link_constraints(rgraph)
     for subgraph in rgraph.subgraphs
-        nconstraints += num_remote_edge_ref_link_constraints(subgraph)
+        nconstraints += num_remote_link_constraints(subgraph)
     end
     return nconstraints
 end
@@ -340,6 +340,14 @@ function num_local_link_constraints(rgraph::RemoteOptiGraph)
     return n_remote_constraints
 end
 
+function num_local_link_constraints(
+    graph::RemoteOptiGraph,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
+)
+    return sum(JuMP.num_constraints.(local_edges(graph), Ref(func_type), Ref(set_type)))
+end
+
 function num_link_constraints(rgraph::RemoteOptiGraph)
     n_remote_constraints = num_local_link_constraints(rgraph)
     for subgraph in rgraph.subgraphs
@@ -348,7 +356,15 @@ function num_link_constraints(rgraph::RemoteOptiGraph)
     return n_remote_constraints
 end
 
-function local_remote_edge_ref_link_constraints(
+function num_link_constraints(
+    graph::RemoteOptiGraph,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
+)
+    return sum(JuMP.num_constraints.(all_edges(graph), Ref(func_type), Ref(set_type)))
+end
+
+function local_remote_link_constraints(
     rgraph::RemoteOptiGraph,
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
@@ -363,7 +379,7 @@ function local_remote_edge_ref_link_constraints(
     return _convert_proxy_to_remote(rgraph, pcons)
 end
 
-function local_remote_edge_ref_link_constraints(rgraph::RemoteOptiGraph)
+function local_remote_link_constraints(rgraph::RemoteOptiGraph)
     darray = rgraph.graph
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
@@ -374,22 +390,22 @@ function local_remote_edge_ref_link_constraints(rgraph::RemoteOptiGraph)
     return _convert_proxy_to_remote(rgraph, pcons)
 end
 
-function all_remote_edge_ref_link_constraints(
+function all_remote_link_constraints(
     rgraph::RemoteOptiGraph,
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
 )
-    remote_constraints = local_remote_edge_ref_link_constraints(rgraph, func_type, set_type)
+    remote_constraints = local_remote_link_constraints(rgraph, func_type, set_type)
     for subgraph in rgraph.subgraphs
-        remote_constraints = [remote_constraints; all_remote_edge_ref_link_constraints(subgraph, func_type, set_type)]
+        remote_constraints = [remote_constraints; all_remote_link_constraints(subgraph, func_type, set_type)]
     end
     return remote_constraints
 end
 
-function all_remote_edge_ref_link_constraints(rgraph::RemoteOptiGraph)
-    remote_constraints = local_remote_edge_ref_link_constraints(rgraph)
+function all_remote_link_constraints(rgraph::RemoteOptiGraph)
+    remote_constraints = local_remote_link_constraints(rgraph)
     for subgraph in rgraph.subgraphs
-        remote_constraints = [remote_constraints; all_remote_edge_ref_link_constraints(subgraph)]
+        remote_constraints = [remote_constraints; all_remote_link_constraints(subgraph)]
     end
     return remote_constraints
 end
@@ -449,18 +465,22 @@ function local_constraints(
     darray = rgraph.graph
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
-        JuMP.all_constraints(lgraph, func_type, set_type)
+        lcons = JuMP.all_constraints(lgraph, func_type, set_type)
+        _convert_local_to_proxy(lgraph, lcons)
     end
-    return fetch(f)
+    pcons = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcons)
 end
 
-function local_constraints(rgraph::RemoteOptiGraph; count_variable_in_set_constraints=false)
+function local_constraints(rgraph::RemoteOptiGraph; include_variable_in_set_constraints=false)
     darray = rgraph.graph
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
-        JuMP.all_constraints(lgraph, count_variable_in_set_constraints = count_variable_in_set_constraints)
+        lcons = JuMP.all_constraints(lgraph, include_variable_in_set_constraints = include_variable_in_set_constraints)
+        _convert_local_to_proxy(lgraph, lcons)
     end
-    return fetch(f)
+    pcons = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcons)
 end
 
 
@@ -489,25 +509,41 @@ function JuMP.all_constraints(
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
 )
-    darray = rgraph.graph
-    f = @spawnat rgraph.worker begin
-        lgraph = localpart(darray)[1]
-        lcons = JuMP.all_constraints(lgraph, func_type, set_type)
-        pcons = _convert_local_to_proxy(lgraph, lcons)
+    constraints = local_constraints(rgraph, func_type, set_type)
+    for subgraph in rgraph.subgraphs
+        constraints = [constraints; JuMP.all_constraints(subgraph, func_type, set_type)]
     end
-    pcons = fetch(f)
-    return _convert_proxy_to_remote(rgraph, pcons)
+    return constraints
 end
 
-function JuMP.all_constraints(rgraph::RemoteOptiGraph; count_variable_in_set_constraints=false)
+function JuMP.all_constraints(rgraph::RemoteOptiGraph; include_variable_in_set_constraints=false)
+    constraints = local_constraints(rgraph, include_variable_in_set_constraints = include_variable_in_set_constraints)
+    for subgraph in rgraph.subgraphs
+        constraints = [constraints; JuMP.all_constraints(subgraph,include_variable_in_set_constraints = include_variable_in_set_constraints)]
+    end
+    return constraints
+end
+
+function list_of_local_constraint_types(rgraph::RemoteOptiGraph)
     darray = rgraph.graph
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
-        lcons = JuMP.all_constraints(lgraph, count_variable_in_set_constraints = count_variable_in_set_constraints)
-        pcons = _convert_local_to_proxy(lgraph, lcons)
+        JuMP.list_of_constraint_types(lgraph)
     end
-    pcons = fetch(f)
-    return _convert_proxy_to_remote(rgraph, pcons)
+    return fetch(f)
+end
+
+function JuMP.list_of_constraint_types(rgraph::RemoteOptiGraph)
+    constraint_types = list_of_local_constraint_types(rgraph)
+    for subgraph in rgraph.subgraphs
+        subgraph_constraints = JuMP.list_of_constraint_types(subgraph)
+        for cref in subgraph_constraints
+            if !(cref in constraint_types)
+                push!(constraint_types, cref)
+            end
+        end
+    end
+    return constraint_types
 end
 
 function JuMP.index(rgraph::RemoteOptiGraph, nvref::RemoteVariableRef)
@@ -596,6 +632,15 @@ function JuMP.set_optimizer(rgraph::RemoteOptiGraph, optimizer)
     return nothing
 end
 
+function JuMP.set_optimizer_attribute(rgraph::RemoteOptiGraph, attr::Union{AbstractString,MOI.AbstractOptimizerAttribute}, value)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        JuMP.set_optimizer_attribute(lgraph, attr, value)
+    end
+    return fetch(f)
+end 
+
 function JuMP.set_optimizer_attribute(rgraph::RemoteOptiGraph, pairs::Pair...)
     darray = rgraph.graph
     remotecall_wait(rgraph.worker) do
@@ -603,7 +648,17 @@ function JuMP.set_optimizer_attribute(rgraph::RemoteOptiGraph, pairs::Pair...)
         JuMP.set_optimizer_attribute(lgraph, pairs...)
     end
     return nothing
-end #TODO: go through and decide if all my functions should be using `remotecall_wait` or `@spawnat`
+#TODO: go through and decide if all my functions should be using `remotecall_wait` or `@spawnat`
+end 
+
+function JuMP.get_optimizer_attribute(rgraph::RemoteOptiGraph, attr::Union{AbstractString,MOI.AbstractOptimizerAttribute})
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        JuMP.get_optimizer_attribute(lgraph, attr)
+    end
+    return fetch(f)
+end
 
 function JuMP.set_objective(
     rgraph::RemoteOptiGraph, sense::MOI.OptimizationSense, func::JuMP.AbstractJuMPScalar
@@ -671,6 +726,16 @@ function JuMP.objective_function(rgraph::RemoteOptiGraph)
     pobj_func = fetch(f)
     return _convert_proxy_to_remote(rgraph, pobj_func)
 end
+
+function JuMP.objective_function_type(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        JuMP.objective_function_type(lgraph)
+    end 
+    return fetch(f)
+end
+
 
 function JuMP.set_objective_coefficient(
     rgraph::RemoteOptiGraph, variable::RemoteVariableRef, coeff::Real
@@ -774,6 +839,60 @@ function JuMP.objective_bound(rgraph::RemoteOptiGraph)
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         JuMP.objective_bound(lgraph)
+    end
+    return fetch(f)
+end
+
+function JuMP.primal_status(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        JuMP.primal_status(lgraph)
+    end
+    return fetch(f)
+end
+
+function JuMP.dual_status(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        JuMP.dual_status(lgraph)
+    end
+    return fetch(f)
+end
+
+function MOI.Utilities.state(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        MOI.Utilities.state(lgraph)
+    end
+    return fetch(f)
+end
+
+function MOI.Utilities.reset_optimizer(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        MOI.Utilities.reset_optimizer(lgraph)
+    end
+    return fetch(f)
+end
+
+function MOI.Utilities.attach_optimizer(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        MOI.Utilities.attach_optimizer(lgraph)
+    end
+    return fetch(f)
+end
+
+function MOI.Utilities.drop_optimizer(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        MOI.Utilities.drop_optimizer(lgraph)
     end
     return fetch(f)
 end

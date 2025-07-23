@@ -189,6 +189,10 @@ const RemoteOptiObject = Union{
     RemoteNodeRef, RemoteEdgeRef, RemoteOptiGraph, RemoteOptiEdge
 }
 
+const RemoteOptiRef = Union{
+    RemoteNodeRef, RemoteEdgeRef
+}
+
 """
     RemoteOptiGraph(; name::Symbol, worker::Int = 1)
 

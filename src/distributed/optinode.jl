@@ -207,6 +207,18 @@ function JuMP.num_constraints(
     return fetch(f)
 end
 
+function JuMP.num_constraints(rnode::RemoteNodeRef; count_variable_in_set_constraints=true)
+    rgraph = source_graph(rnode)
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        JuMP.num_constraints(lnode, count_variable_in_set_constraints = count_variable_in_set_constraints)
+    end
+    return fetch(f)
+end
+
 function JuMP.all_constraints(
     rnode::RemoteNodeRef,
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
@@ -223,6 +235,36 @@ function JuMP.all_constraints(
     end
     pcons = fetch(f)
     return _convert_proxy_to_remote(rgraph, pcons)
+end
+
+function JuMP.all_constraints(rnode::RemoteNodeRef; include_variable_in_set_constraints=false)
+    rgraph = source_graph(rnode)
+    darray = rgraph.graph
+    pnode = _convert_remote_to_proxy(rgraph, rnode)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lnode = _convert_proxy_to_local(lgraph, pnode)
+        lcons = JuMP.all_constraints(lnode, include_variable_in_set_constraints = include_variable_in_set_constraints)
+        _convert_local_to_proxy(lgraph, lcons)
+    end
+    pcons = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcons)
+end
+
+function JuMP.constraint_object(cref::C) where {C<:Union{RemoteNodeConstraintRef, RemoteEdgeConstraintRef}}
+    rmodel = cref.model
+    rgraph = source_graph(rmodel)
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, cref)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
+        lcon_obj = JuMP.constraint_object(lcref)
+        _convert_local_to_proxy(lcon_obj)
+    end
+    pcon_obj = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcon_obj)
 end
 
 function JuMP.is_valid(node::RemoteNodeRef, cref::ConstraintRef)
@@ -256,12 +298,12 @@ end
 Add variable `v` to RemoteNodeRef `rnode`. This function supports use of the `@variable` JuMP macro.
 Optionally add a `base_name` to the variable for printing.
 """
-function JuMP.add_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable, name::String="")
+function JuMP.add_variable(rnode::RemoteNodeRef, v::JuMP.AbstractVariable, name::String="")
     rvref = _add_remote_node_variable(rnode, v, name)
     return rvref
 end
 
-function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable, name::String="")
+function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.AbstractVariable, name::String="")
     rgraph = rnode.remote_graph
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
@@ -271,11 +313,12 @@ function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.ScalarVariable,
         lgraph = localpart(darray)[1]
         lnode = _convert_proxy_to_local(lgraph, pnode)
         nvref = JuMP.add_variable(lnode, v, name)
-        nvref.index
-    end
-    moi_idx = fetch(f)
+        _convert_local_to_proxy(lgraph, nvref)
 
-    return RemoteVariableRef(rnode, moi_idx, sym)
+    end
+    pvref = fetch(f)
+
+    return _convert_proxy_to_remote(rgraph, pvref)
 end
 
 function JuMP.num_variables(rnode::RemoteNodeRef)
@@ -431,7 +474,7 @@ function JuMP.dual(rcref::RemoteNodeConstraintRef)
 
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
-        lnode = node(lgraph, pnode)
+        lnode = _convert_proxy_to_local(lgraph, pnode)
         cref = ConstraintRef(lnode, rcref.index, rcref.shape)
         JuMP.dual(cref)
     end

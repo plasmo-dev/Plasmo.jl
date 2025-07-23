@@ -113,5 +113,6 @@ The other important data structure is the `RemoteOptiEdge`. This object captures
 
 Finally, we note on these `RemoteOptiGraph` objects are likely most useful for decomposition approaches or situations where there are memory limiations. Unlike the `OptiGraph` abstraction, calling `JuMP.optimize!` on a `RemoteOptiGraph` only optimizes the `OptiGraph` that is stored remotely on the `RemoteOptiGraph` and does NOT consider subgraphs. When optimizing an `OptiGraph`, calling `JuMP.optimize!` will include all subgraphs in the optimization problem, but this is not the case of the remote. 
 
-## Note on Algorithms for working with it
+## Decomposition Schemes for Working with `RemoteOptiGraph`s
 
+The package PlasmoBenders.jl has been designed to work with both Plasmo.jl's `OptiGraph`s and `RemoteOptiGraph`s. This package implements Benders decomposition and is available [here](https://github.com/plasmo-dev/PlasmoAlgorithms.jl/tree/main/lib/PlasmoBenders). Using the `RemoteOptiGraph`s with PlasmoBenders.jl requires PlasmoBenders v0.2.0+.

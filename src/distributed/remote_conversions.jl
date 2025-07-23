@@ -21,7 +21,7 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, redge::Plasmo.RemoteE
         pnode = _convert_remote_to_proxy(rgraph, node)
         push!(pnodes, pnode)
     end
-    return ProxyEdgeRef(pnodes, ledge.label)
+    return ProxyEdgeRef(pnodes, redge.label)
 end
 
 function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pedge::Plasmo.ProxyEdgeRef)
@@ -335,6 +335,17 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.
     return JuMP.Containers.SparseAxisArray(od, var.names)    
 end
 
+function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.ScalarConstraint{E, S}) where {E<:ProxyExpr, S<:MOI.AbstractSet}
+    pexpr = var.func
+    rexpr = _convert_proxy_to_remote(rgraph, pexpr)
+    return JuMP.ScalarConstraint(rexpr, var.set)
+end
+
+function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.ScalarConstraint{E, S}) where {E<:RemoteExpr, S<:MOI.AbstractSet}
+    rexpr = var.func
+    pexpr = _convert_proxy_to_remote(rgraph, rexpr)
+    return JuMP.ScalarConstraint(pexpr, var.set)
+end
 
 #################################### Check Node Variables ####################################
 
@@ -449,19 +460,23 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.
 end
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, obj::Any)
-    @warn(
-       "Object of type $(typeof(obj)) is being passed to the remote worker and does not
-       have a proxy equivalent set up and will be serialized in passing. This 
-       could cause unexpected slow performance"
-    )
+    if !(isa(obj, Real))
+        @warn(
+           "Object of type $(typeof(obj)) is being passed to the remote worker and does not
+           have a proxy equivalent set up and will be serialized in passing. This 
+           could cause unexpected slow performance"
+        )
+    end
     return obj
 end
 
 function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, obj::Any)
-    @warn(
-        "Object of type $(typeof(obj)) is being passed from the remote worker and does not
-        have a proxy equivalent set up and will be serialized in passing. This 
-        could cause unexpected slow performance"
-    )
+    if !(isa(obj, Real))
+        @warn(
+            "Object of type $(typeof(obj)) is being passed from the remote worker and does not
+            have a proxy equivalent set up and will be serialized in passing. This 
+            could cause unexpected slow performance"
+        )
+    end
     return obj
 end

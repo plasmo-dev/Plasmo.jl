@@ -14,6 +14,10 @@ function remote_graph(rvar::R) where {R <: Union{RemoteVariableRef, RemoteVariab
     return rvar.node.remote_graph 
 end
 
+function get_node(vref::RemoteVariableRef)
+    return JuMP.owner_model(vref)
+end
+
 # enable accessing specific variables from a RemoteVariableRef; these actually don't get used under
 # the current implementation, but these would make querying variables lighter on memory
 function Base.getindex(rvar::RemoteVariableArrayRef, idx...)
@@ -39,6 +43,19 @@ function JuMP.is_valid(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
         return true
     else
         return false
+    end
+end
+
+function source_graph(rvar::RemoteVariableRef)
+    return source_graph(rvar.node)
+end
+
+function source_graph(rexpr::E) where {E <: Union{RemoteAffExpr, RemoteQuadExpr, RemoteNonlinearExpr}}
+    vars = extract_variables(rexpr)
+    if length(vars) > 0
+        return source_graph(vars[1])
+    else
+        return nothing
     end
 end
 
@@ -138,13 +155,25 @@ function JuMP.value(rgraph::RemoteOptiGraph, rvar::RemoteVariableRef)
     return fetch(f)
 end
 
+function JuMP.value(rvar::RemoteVariableRef)
+    rgraph = source_graph(rvar)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, rvar)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lvar = _convert_proxy_to_local(lgraph, pvar)
+        JuMP.value(lvar)
+    end
+    return fetch(f)
+end
+
 ########## Extend many JuMP functions ##########
 # most of these are just wrapped @spawnat calls
 
 function JuMP.value(
     rgraph::RemoteOptiGraph, 
     rexpr::E
-) where {E <: Union{GenericAffExpr, GenericQuadExpr, GenericNonlinearExpr}}
+) where {E <: Union{RemoteAffExpr, RemoteQuadExpr, RemoteNonlinearExpr}}
     darray = rgraph.graph
     pexpr = _convert_remote_to_proxy(rgraph, rexpr)
     f = @spawnat rgraph.worker begin
@@ -153,6 +182,28 @@ function JuMP.value(
         JuMP.value(lgraph, lexpr)
     end
     return fetch(f)
+end
+
+function JuMP.value(
+    rexpr::E
+) where {E <: Union{RemoteAffExpr, RemoteQuadExpr, RemoteNonlinearExpr}}
+    rgraph = source_graph(rexpr)
+    if isnothing(rgraph)
+        if isa(rexpr, RemoteQuadExpr) || isa(rexpr, RemoteAffExpr)
+            return rexpr.constant
+        else
+            error("Expression has no variables in it; use JuMP.value(rgraph, expr) to retrieve a value")
+        end
+    else
+        darray = rgraph.graph
+        pexpr = _convert_remote_to_proxy(rgraph, rexpr)
+        f = @spawnat rgraph.worker begin
+            lgraph = localpart(darray)[1]
+            lexpr = _convert_proxy_to_local(lgraph, pexpr)
+            JuMP.value(lgraph, lexpr)
+        end
+        return fetch(f)
+    end
 end
 
 function JuMP.has_upper_bound(rvar::RemoteVariableRef)
@@ -495,6 +546,62 @@ function JuMP.delete(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
         lnode = _convert_proxy_to_local(lgraph, pnode) # TODO: if obj_dict is added, make sure the name is deleted
         lvar = _convert_proxy_to_local(lgraph, pvar)
         JuMP.delete(lnode, lvar)
+    end
+    return nothing
+end
+
+# Parameters
+function JuMP.ParameterRef(nvref::RemoteVariableRef)
+    rgraph = source_graph(nvref)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, nvref)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lvar = _convert_proxy_to_local(lgraph, pvar)
+
+        cref = JuMP.ParameterRef(lvar)
+        _convert_local_to_proxy(lgraph, cref)
+    end
+    pcref = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcref)
+end
+
+function JuMP.is_parameter(nvref::RemoteVariableRef)
+    rgraph = source_graph(nvref)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, nvref)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lvar = _convert_proxy_to_local(lgraph, pvar)
+
+        JuMP.is_parameter(lvar)
+    end
+    return fetch(f)
+
+end
+
+function JuMP.parameter_value(nvref::RemoteVariableRef)
+    rgraph = source_graph(nvref)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, nvref)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lvar = _convert_proxy_to_local(lgraph, pvar)
+
+        JuMP.parameter_value(lvar)
+    end
+    return fetch(f)
+end
+
+function JuMP.set_parameter_value(nvref::RemoteVariableRef, value)
+    rgraph = source_graph(nvref)
+    darray = rgraph.graph
+    pvar = _convert_remote_to_proxy(rgraph, nvref)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lvar = _convert_proxy_to_local(lgraph, pvar)
+
+        JuMP.set_parameter_value(lvar, value)
     end
     return nothing
 end

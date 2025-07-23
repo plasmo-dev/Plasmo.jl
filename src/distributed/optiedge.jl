@@ -97,7 +97,7 @@ function has_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
         pnodes = _convert_remote_to_proxy(rgraph, rnodes)
         f = @spawnat rgraph.worker begin
             lgraph = localpart(darray)[1]
-            lnodes = _convert_proxy_to_remote(lgraph, pnodes)
+            lnodes = _convert_proxy_to_local(lgraph, pnodes)
             Plasmo.has_edge(lgraph, lnodes)
         end
         return fetch(f)
@@ -128,7 +128,7 @@ function get_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
         pnodes = _convert_remote_to_proxy(rgraph, rnodes)
         f = @spawnat rgraph.worker begin
             lgraph = localpart(darray)[1]
-            lnodes = _convert_proxy_to_remote(lgraph, pnodes)
+            lnodes = _convert_proxy_to_local(lgraph, pnodes)
             ledge = Plasmo.get_edge(lgraph, lnodes)
             _convert_local_to_proxy(lgraph, ledge)
         end
@@ -201,6 +201,68 @@ function num_edges(rgraph::RemoteOptiGraph)
     return n_edges
 end
 
+"""
+    all_remote_edges(rgraph::RemoteOptiGraph)::Vector{<:RemoteOptiEdge}
+
+Collect all remote optiedges in `rgraph` by traversing each of its subgraphs. 
+Returns only `RemoteEdgeRef`s, not `RemoteOptiEdge`s.
+"""
+function all_remote_edges(rgraph::RemoteOptiGraph)
+    edges = local_remote_edges(rgraph)
+    for subgraph in rgraph.subgraphs
+        edges = [edges; all_remote_edges(subgraph)]
+    end
+    return edges
+end
+
+"""
+    num_remote_edges(graph::RemoteOptiGraph)::Int
+
+Return the total number of edges on the graph and subgraphs of `graph`.
+Returns only the number of `RemoteEdgeRef`s, not `RemoteOptiEdge`s
+"""
+function num_remote_edges(rgraph::RemoteOptiGraph)
+    n_edges = num_local_remote_edges(rgraph)
+    for subgraph in rgraph.subgraphs
+        n_edges += num_remote_edges(subgraph)
+    end
+    return n_edges
+end
+
+"""
+    local_remote_edges(rgraph::RemoteOptiGraph)
+
+Retrieve the edges that exist in `rgraph`. Does not return edges that exist
+in subgraphs, and does not return any `RemoteOptiEdges`, only `RemoteEdgeRef`s
+"""
+function local_remote_edges(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        ledges = all_edges(lgraph)
+        _convert_local_to_proxy(lgraph, ledges)
+    end
+    pedges = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pedges)
+end
+
+"""
+    num_local_remote_edges(rgraph::RemoteOptiGraph)::Int
+
+Retrieve the number of edges that exist in `rgraph`. Does not return edges that exist in subgraphs, and does not count `RemoteOptiEdges`, only `RemoteEdgeRef`s
+"""
+function num_local_remote_edges(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        num_edges(lgraph)
+    end
+    return fetch(f)
+end
+
+
 function all_nodes(edge::E) where {E<:Union{RemoteOptiEdge, RemoteEdgeRef}}
     return collect(edge.nodes)
 end
@@ -272,6 +334,18 @@ function JuMP.num_constraints(
     return fetch(f)
 end
 
+function JuMP.num_constraints(redge::RemoteEdgeRef)
+    rgraph = source_graph(redge)
+    darray = rgraph.graph
+    pedge = _convert_remote_to_proxy(rgraph, redge)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        ledge = _convert_proxy_to_local(lgraph, pedge)
+        JuMP.num_constraints(ledge)
+    end
+    return fetch(f)
+end
+
 function JuMP.all_constraints(
     redge::RemoteEdgeRef,
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
@@ -288,6 +362,63 @@ function JuMP.all_constraints(
     end
     pcons = fetch(f)
     return _convert_proxy_to_remote(rgraph, pcons)
+end
+
+function JuMP.all_constraints(redge::RemoteEdgeRef)
+    rgraph = source_graph(redge)
+    darray = rgraph.graph
+    pedge = _convert_remote_to_proxy(rgraph, redge)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        ledge = _convert_proxy_to_local(lgraph, pedge)
+        lcons = JuMP.all_constraints(ledge)
+        _convert_local_to_proxy(lgraph, lcons)
+    end
+    pcons = fetch(f)
+    return _convert_proxy_to_remote(rgraph, pcons)
+end
+
+function JuMP.num_constraints(
+    redge::RemoteOptiEdge,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
+)
+    rgraph = source_graph(redge)
+    all_crefs = collect(keys(redge.constraints))
+    ncrefs = 0
+    for cref in all_crefs
+        con = redge.constraints[cref]
+        if isa(con.func, func_type) && isa(con.set, set_type)
+            ncrefs += 1
+        end
+    end
+    return ncrefs
+    
+end
+
+function JuMP.num_constraints(redge::RemoteOptiEdge)
+    return length(redge.constraints)
+end
+
+function JuMP.all_constraints(
+    redge::RemoteOptiEdge,
+    func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
+    set_type::Type{<:MOI.AbstractSet},
+)
+    rgraph = source_graph(redge)
+    all_crefs = collect(keys(redge.constraints))
+    cons = RemoteOptiEdgeConstraintRef[]
+    for cref in all_crefs
+        con = redge.constraints[cref]
+        if isa(con.func, func_type) && isa(con.set, set_type)
+            push!(cons, cref)
+        end
+    end
+    return cons
+end
+
+function JuMP.all_constraints(redge::RemoteOptiEdge)
+    return collect(keys(redge.constraints))
 end
 
 """
@@ -309,26 +440,6 @@ function incident_edges(rgraph::RemoteOptiGraph)
         end
     end
     return assigned_edges
-end
-
-function JuMP.all_constraints(redge::RemoteOptiEdge)
-    return collect(keys(redge.constraints))
-end
-
-function JuMP.all_constraints(redge::RemoteEdgeRef)
-    rgraph = redge.remote_graph
-    pedge = _convert_remote_to_proxy(redge)
-    darray = rgraph.graph
-
-    f = @spawnat rgraph.worker begin
-        lgraph = localpart(darray)[1]
-        ledge = _convert_proxy_to_local(lgraph, pedge)
-        all_cons = JuMP.all_constraints(ledge)
-        _convert_local_to_proxy(lgraph, all_cons)
-    end
-
-    pvars = fetch(f)
-    return _convert_proxy_to_remote(rgraph, pvars)
 end
 
 function JuMP.all_variables(edge::E) where {E<:Union{RemoteOptiEdge, RemoteEdgeRef}}
@@ -356,13 +467,12 @@ function JuMP.dual(rcref::RemoteEdgeConstraintRef)
     redge = JuMP.owner_model(rcref)
     rgraph = redge.remote_graph
     darray = rgraph.graph
-    pedge = _convert_remote_to_proxy(rgraph, redge)
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
     
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
-        ledge = _convert_proxy_to_local(lgraph, pedge)
-        cref = ConstraintRef(ledge, rcref.index, rcref.shape)
-        JuMP.dual(cref)
+        lcref = _convert_proxy_to_local(lgraph, pcref)
+        JuMP.dual(lcref)
     end
     return fetch(f)
 end
@@ -553,6 +663,20 @@ end
 
 function edge_type(rgraph::OptiGraph)
     return OptiEdge
+end
+
+# These functions allow for making sure dictionary keys recognize two RemoteNodeRefs
+# instantiated at different times will still be equal to one another
+function Base.isequal(redge1::RemoteEdgeRef, redge2::RemoteEdgeRef)
+    return redge1.remote_graph == redge2.remote_graph && redge1.nodes == redge2.nodes && redge1.label == redge2.label
+end
+
+function Base.:(==)(redge1::RemoteEdgeRef, redge2::RemoteEdgeRef)
+    return redge1.remote_graph == redge2.remote_graph && redge1.nodes == redge2.nodes && redge1.label == redge2.label
+end
+
+function Base.hash(redge::RemoteEdgeRef, h::UInt)
+    return hash((redge.remote_graph, redge.nodes, redge.label), h)
 end
 
 # Need to add the following

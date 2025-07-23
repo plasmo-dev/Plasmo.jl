@@ -358,6 +358,18 @@ function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseA
     return JuMP.Containers.SparseAxisArray(od, var.names)    
 end
 
+function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.ScalarConstraint{E, S}) where {E<:ProxyExpr, S<:MOI.AbstractSet}
+    pexpr = var.func
+    lexpr = _convert_proxy_to_local(lgraph, pexpr)
+    return JuMP.ScalarConstraint(lexpr, var.set)
+end
+
+function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.ScalarConstraint{E, S}) where {E<:NodeExpr, S<:MOI.AbstractSet}
+    lexpr = var.func
+    pexpr = _convert_local_to_proxy(lgraph, lexpr)
+    return JuMP.ScalarConstraint(pexpr, var.set)
+end
+
 #################################### Miscellaneous ####################################
 # These get called when a user defines something like 
 # @constraint(rg, con_name[some_set_that_has_no_entries], ....)
@@ -431,19 +443,23 @@ end
 #TODO: Abstract Array
 
 function _convert_local_to_proxy(lgraph::OptiGraph, obj::Any)
-    @warn(
-        "Object of type $(typeof(obj)) is being passed from the remote worker and does not
-        have a proxy equivalent set up and will be serialized in passing. This 
-        could cause unexpected slow performance"
-    )
+    if !(isa(obj, Real))
+        @warn(
+            "Object of type $(typeof(obj)) is being passed from the remote worker and does not
+            have a proxy equivalent set up and will be serialized in passing. This 
+            could cause unexpected slow performance"
+        )
+    end
     return obj
 end
 
 function _convert_proxy_to_local(lgraph::OptiGraph, obj::Any)
-    @warn(
-        "Object of type $(typeof(obj)) is being passed to the remote worker and does not
-        have a proxy equivalent set up and will be serialized in passing. This 
-        could cause unexpected slow performance"
-    )
+    if !(isa(obj, Real))
+        @warn(
+            "Object of type $(typeof(obj)) is being passed to the remote worker and does not
+            have a proxy equivalent set up and will be serialized in passing. This 
+            could cause unexpected slow performance"
+        )
+    end
     return obj
 end
