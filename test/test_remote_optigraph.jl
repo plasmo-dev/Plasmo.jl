@@ -10,9 +10,13 @@ using Ipopt
 using HiGHS
 using Suppressor
 using Test
+using Distributed
 
 function test_simple_remote_graph()
-    graph = RemoteOptiGraph()
+    if nprocs() < 2
+        addprocs(1)
+    end
+    graph = RemoteOptiGraph(worker = 2)
     @optinode(graph, nodes[1:2])
 
     @variable(nodes[1], x >= 1)
@@ -78,7 +82,10 @@ function test_simple_remote_graph()
 end
 
 function _create_test_nonlinear_optigraph()
-    graph = RemoteOptiGraph()
+    if nprocs() < 2
+        addprocs(1)
+    end
+    graph = RemoteOptiGraph(worker = 2)
 
     n1 = add_node(graph)
     n2 = add_node(graph)
@@ -219,7 +226,10 @@ function test_objective_functions()
 end
 
 function test_subgraphs()
-    graph = RemoteOptiGraph(; name=:root)
+    if nprocs() < 2
+        addprocs(1)
+    end
+    graph = RemoteOptiGraph(worker = 2; name=:root)
 
     @optinode(graph, n0)
     @variable(n0, x)
@@ -296,7 +306,10 @@ end
 
 
 function test_variable_constraints()
-    graph = RemoteOptiGraph()
+    if nprocs() < 2
+        addprocs(1)
+    end
+    graph = RemoteOptiGraph(worker = 2)
     set_optimizer(graph, HiGHS.Optimizer)
 
     @optinode(graph, nodes[1:2])
@@ -351,34 +364,8 @@ function test_variable_constraints()
     set_integer(n2[:x])
     @test is_integer(n2[:x]) == true
     @suppress optimize!(graph)
-
-    # # relax and unrelax integrality for each node
-    # unrelax1 = JuMP.relax_integrality(n1)
-    # @test is_binary(n1[:x]) == false
-    # unrelax1()
-    # @test is_binary(n1[:x]) == true
-
-    # unrelax2 = JuMP.relax_integrality(n2)
-    # @test is_integer(n2[:x]) == false
-    # unrelax2()
-    # @test is_integer(n2[:x]) == true
-
-    # # relax and unrelax integrality for entire graph
-    # unrelax_graph = JuMP.relax_integrality(graph)
-    # @test is_binary(n1[:x]) == false
-    # @test is_integer(n2[:x]) == false
-    # unrelax_graph()
-    # @test is_binary(n1[:x]) == true
-    # @test is_integer(n2[:x]) == true
-
-    # # relax and unrelax integrality for entire graph, unfixing x variables first
-    # JuMP.unfix(n1[:x])
-    # unrelax_graph = JuMP.relax_integrality(graph)
-    # @test is_binary(n1[:x]) == false
-    # unrelax_graph()
-    # @test is_binary(n1[:x]) == true
-
-    graph = OptiGraph()
+    
+    graph = RemoteOptiGraph(worker = 2)
 
     @optinode(graph, nodes[1:2])
     n1, n2 = all_nodes(graph)
@@ -416,7 +403,7 @@ function test_multiple_solves()
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
 
-    n1 = graph[1]
+    n1 = all_nodes(graph)[1]
     set_lower_bound(n1[:x], 1.5)
     optimize!(graph)
     @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
@@ -441,7 +428,10 @@ function test_nlp_exceptions()
 end
 
 function test_delete_extensions()
-    graph = OptiGraph()
+    if nprocs() < 2
+        addprocs(1)
+    end
+    graph = RemoteOptiGraph(worker = 2)
     @optinode(graph, nodes[1:2])
 
     @variable(nodes[1], x >= 1)

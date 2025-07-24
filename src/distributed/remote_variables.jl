@@ -605,3 +605,297 @@ function JuMP.set_parameter_value(nvref::RemoteVariableRef, value)
     end
     return nothing
 end
+
+# These functions allow for making sure dictionary keys recognize two RemoteNodeRefs
+# instantiated at different times will still be equal to one another
+function Base.isequal(rvar1::RemoteVariableRef, rvar2::RemoteVariableRef)
+    return rvar1.node == rvar2.node && rvar1.index == rvar2.index && rvar1.name == rvar2.name
+end
+
+function Base.:(==)(rvar1::RemoteVariableRef, rvar2::RemoteVariableRef)
+    return rvar1.node == rvar2.node && rvar1.index == rvar2.index && rvar1.name == rvar2.name
+end
+
+function Base.hash(rvar::RemoteVariableRef, h::UInt)
+    return hash((rvar.node, rvar.index, rvar.name), h)
+end
+
+
+function JuMP.set_normalized_coefficient(
+    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    var::RemoteVariableRef,
+    value::Number
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    con = Plasmo.get_constraint(rcref)
+    @assert haskey(con.func.terms, var)
+    con.func.terms[var] = value
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    var::RemoteVariableRef,
+    value::Number
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    rmodel = rcref.model
+    rgraph = rmodel.remote_graph
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+    pvar = _convert_remote_to_proxy(rgraph, var)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
+        lvar = _convert_proxy_to_local(lgraph, pvar)
+        JuMP.set_normalized_coefficient(lcref, lvar, value)
+    end
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    constraints::AbstractVector{<:JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}}},
+    variables::AbstractVector{<:RemoteVariableRef},
+    coeffs::AbstractVector{<:Number}
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    c, n, m = length(constraints), length(variables), length(coeffs)
+    if !(c == n == m)
+        msg = "The number of constraints ($c), variables ($n) and coefficients ($m) must match"
+        throw(DimensionMismatch(msg))
+    end
+    for (i, con) in enumerate(constraints)
+        JuMP.set_normalized_coefficient(con, variables[i], coeffs[i])
+    end
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    constraints::AbstractVector{<:JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}}, 
+    variables::AbstractVector{<:RemoteVariableRef},
+    coeffs::AbstractVector{<:Number}
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    c, n, m = length(constraints), length(variables), length(coeffs)
+    if !(c == n == m)
+        msg = "The number of constraints ($c), variables ($n) and coefficients ($m) must match"
+        throw(DimensionMismatch(msg))
+    end
+
+    rmodel = constraints[1].model
+    rgraph = rmodel.remote_graph
+    if !all(x -> x.model.remote_graph == rgraph, constraints)
+        error("Constraints belong to different RemoteOptiGraphs")
+    end
+    darray = rgraph.graph
+    pcrefs = _convert_remote_to_proxy(rgraph, constraints)
+    pvars = _convert_remote_to_proxy(rgraph, variables)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lcrefs = _convert_proxy_to_local(lgraph, pcrefs)
+        lvars = _convert_proxy_to_local(lgraph, pvars)
+        JuMP.set_normalized_coefficient(lcrefs, lvars, coeffs)
+    end
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    var1::RemoteVariableRef,
+    var2::RemoteVariableRef,
+    value::Number
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    con = Plasmo.get_constraint(rcref)
+    pair = UnorderedPair(var1, var2)
+    @assert haskey(con.func.terms, pair)
+    con.func.terms[pair] = value
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    var1::RemoteVariableRef,
+    var2::RemoteVariableRef,
+    value::Number
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    rmodel = rcref.model
+    rgraph = rmodel.remote_graph
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+    pvar1 = _convert_remote_to_proxy(rgraph, var1)
+    pvar2 = _convert_remote_to_proxy(rgraph, var2)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
+        lvar1 = _convert_proxy_to_local(lgraph, pvar1)
+        lvar2 = _convert_proxy_to_local(lgraph, pvar2)
+        JuMP.set_normalized_coefficient(lcref, lvar1, lvar2, value)
+    end
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    constraints::AbstractVector{<:JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}}},
+    variables1::AbstractVector{<:RemoteVariableRef},
+    variables2::AbstractVector{<:RemoteVariableRef},
+    coeffs::AbstractVector{<:Number}
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    c, n1, n2, m = length(constraints), length(variables1), length(variables2), length(coeffs)
+    if !(c == n1 == n2 == m)
+        msg = "The number of constraints ($c), variables ($n1)/($n2) and coefficients ($m) must match"
+        throw(DimensionMismatch(msg))
+    end
+    for (i, con) in enumerate(constraints)
+        JuMP.set_normalized_coefficient(con, variables1[i], variables2[i], coeffs[i])
+    end
+    return nothing
+end
+
+function JuMP.set_normalized_coefficient(
+    constraints::AbstractVector{<:JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}}, 
+    variables1::AbstractVector{<:RemoteVariableRef},
+    variables2::AbstractVector{<:RemoteVariableRef},
+    coeffs::AbstractVector{<:Number}
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    c, n1, n2, m = length(constraints), length(variables1), length(variables2), length(coeffs)
+    if !(c == n1 == n2 == m)
+        msg = "The number of constraints ($c), variables ($n1)/($n2) and coefficients ($m) must match"
+        throw(DimensionMismatch(msg))
+    end
+
+    rmodel = constraints[1].model
+    rgraph = rmodel.remote_graph
+    if !all(x -> x.model.remote_graph == rgraph, constraints)
+        error("Constraints belong to different RemoteOptiGraphs")
+    end
+    darray = rgraph.graph
+    pcrefs = _convert_remote_to_proxy(rgraph, constraints)
+    pvars1 = _convert_remote_to_proxy(rgraph, variables1)
+    pvars2 = _convert_remote_to_proxy(rgraph, variables2)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lcrefs = _convert_proxy_to_local(lgraph, pcrefs)
+        lvars1 = _convert_proxy_to_local(lgraph, pvars1)
+        lvars2 = _convert_proxy_to_local(lgraph, pvars2)
+        JuMP.set_normalized_coefficient(lcrefs, lvars1, lvars2, coeffs)
+    end
+    return nothing
+end
+
+function JuMP.normalized_coefficient(
+    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    var::RemoteVariableRef
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    con = Plasmo.get_constraint(rcref)
+    @assert haskey(con.func.terms, var)
+    if isa(F, MOI.ScalarQuadraticFunction)
+        return con.func.aff.terms[var]
+    else
+        return con.func.terms[var]
+    end
+end
+
+function JuMP.normalized_coefficient(
+    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    var::RemoteVariableRef
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    rmodel = rcref.model
+    rgraph = rmodel.remote_graph
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+    pvar = _convert_remote_to_proxy(rgraph, var)
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
+        lvar = _convert_proxy_to_local(lgraph, pvar)
+        JuMP.normalized_coefficient(lcref, lvar)
+    end
+    return fetch(f)
+end
+
+
+function JuMP.normalized_coefficient(
+    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    var1::RemoteVariableRef,
+    var2::RemoteVariableRef
+)  where {
+    T,
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    con = Plasmo.get_constraint(rcref)
+    pair = UnorderedPair(var1, var2)
+    @assert haskey(con.func.terms, pair)
+    return con.func.terms[pair]
+end
+
+function JuMP.normalized_coefficient(
+    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    var1::RemoteVariableRef,
+    var2::RemoteVariableRef
+)  where {
+    T,
+    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
+    F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
+}
+    rmodel = rcref.model
+    rgraph = rmodel.remote_graph
+    darray = rgraph.graph
+    pcref = _convert_remote_to_proxy(rgraph, rcref)
+    pvar1 = _convert_remote_to_proxy(rgraph, var1)
+    pvar2 = _convert_remote_to_proxy(rgraph, var2)
+
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        lcref = _convert_proxy_to_local(lgraph, pcref)
+        lvar1 = _convert_proxy_to_local(lgraph, pvar1)
+        lvar2 = _convert_proxy_to_local(lgraph, pvar2)
+        JuMP.normalized_coefficient(lcref, lvar1, lvar2)
+    end
+    return fetch(f)
+end

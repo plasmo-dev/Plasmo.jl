@@ -65,8 +65,4 @@ rg3 = Plasmo.add_subgraph(rg, worker = 2)
 @optinode(rg3, n5)
 @variable(n5, x5)
 
-lc2 = @linkconstraint(rg, x + x3 + rg3[:n5][:x5] == 0);
-
-println("Success")
-
-# TODO: Need to figure out a way to port a function to a separate worker to add to an optigraph
+@linkconstraint(rg, x + x3 + rg3[:n5][:x5] == 0);

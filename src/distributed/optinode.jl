@@ -251,7 +251,11 @@ function JuMP.all_constraints(rnode::RemoteNodeRef; include_variable_in_set_cons
     return _convert_proxy_to_remote(rgraph, pcons)
 end
 
-function JuMP.constraint_object(cref::C) where {C<:Union{RemoteNodeConstraintRef, RemoteEdgeConstraintRef}}
+function JuMP.constraint_object(cref::ConstraintRef{
+        R,
+        MOI.ConstraintIndex{FuncType,SetType},
+    },
+) where {R<:Union{RemoteNodeRef, RemoteEdgeRef},FuncType<:MOI.AbstractScalarFunction,SetType<:MOI.AbstractScalarSet}
     rmodel = cref.model
     rgraph = source_graph(rmodel)
     darray = rgraph.graph
