@@ -10,7 +10,6 @@ if nprocs() == 1
 end
 
 @everywhere begin
-    using Revise
     using Plasmo, JuMP, Distributed, HiGHS, Ipopt, DistributedArrays
 end
 

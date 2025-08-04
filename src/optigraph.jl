@@ -65,8 +65,8 @@ function Base.string(graph::OptiGraph)
         num_local_variables(graph),
         num_variables(graph),
         "Constraints:",
-        num_local_constraints(graph),
-        num_constraints(graph)
+        num_local_constraints(graph, count_variable_in_set_constraints=true),
+        num_constraints(graph, count_variable_in_set_constraints=true)
     )
 end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
@@ -694,11 +694,11 @@ end
 Retrieve the number of local constraints (all constraint types) in `graph`. Does not include
 constraints in subgraphs.
 """
-function num_local_constraints(graph::OptiGraph)
+function num_local_constraints(graph::OptiGraph, count_variable_in_set_constraints=false)
     if num_local_elements(graph) == 0
         return 0
     else
-        return sum(JuMP.num_constraints.(local_elements(graph)))
+        return sum(JuMP.num_constraints.(local_elements(graph), count_variable_in_set_constraints=count_variable_in_set_constraints))
     end
 end
 
