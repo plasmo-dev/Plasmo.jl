@@ -689,12 +689,12 @@ function num_local_constraints(
 end
 
 """
-    num_local_constraints(graph::OptiGraph)
+    num_local_constraints(graph::OptiGraph; count_variable_in_set_constraints = false)
 
 Retrieve the number of local constraints (all constraint types) in `graph`. Does not include
 constraints in subgraphs.
 """
-function num_local_constraints(graph::OptiGraph, count_variable_in_set_constraints=false)
+function num_local_constraints(graph::OptiGraph; count_variable_in_set_constraints=false)
     if num_local_elements(graph) == 0
         return 0
     else
