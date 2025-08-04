@@ -15,7 +15,7 @@ Julia's default is to run code on a main processor or worker. To run distributed
 
 To run on additional workers, a user must start additional workers in Julia and define code to run on the workers. Additional workers can be added by calling `addprocs(num_cpus)` where `num_cpus` is an integer value for the number of processors to add or start. Similarly, a user can run `rmprocs` to shutdown and remove one or more Julia processors. Once an additional worker is started, a user must also load required packages (e.g., Plasmo) on the worker they want to use. This can be done via the `@everywhere` macro, which will run the code inside the macro on every worker. For instance, the user can run the following: 
 
-```julia
+```jldoctest; doctest=false
 using Distributed, Plasmo, JuMP
 
 # add three processors
@@ -31,7 +31,7 @@ end
 ```
 
 To run a task on the distributed worker, a must use functions from Distributed.jl such as `remotecall` or `@spawnat`. As an example, `remotecall` will run a function on a remote worker, such as in the following case: 
-```julia
+```jldoctest; doctest=false
 workers = workers()
 A = rand(5000)
 
@@ -39,7 +39,7 @@ f = remotecall(maximum, workers[1], A)
 ```
 
 Here, `remotecall` runs `maximum(A)` on the first worker indexed in the worker pool. Alternatively, a user can use the `@spawnat` macro to run code such as in the following case: 
-```julia
+```jldoctest; doctest=false
 f = @spawnat 2 begin
     A = rand(5000)
     maximum(A)
@@ -53,7 +53,7 @@ While distributed programming can be useful and accelerate task performance on s
 
 #### Limiting calls to the remote
 As an example of the first challenge, the second function below will more efficient than the first because there is only one `remotecall` to the worker and only one `fetch` call. 
-```julia
+```jldoctest; doctest=false
 A = rand(100, 100)
 function do_remote_task_v1(A::Matrix, worker_id::Int)
     max_values = zeros(100)
@@ -85,7 +85,7 @@ In terms of Plasmo.jl performance, it can be helpful to define constructor funct
 #### Limiting memory sent to the remote
 
 Memory form the main worker is shared to the remote worker inside of `remotecall` or `@spawnat`, and the user must be careful in what information is shared in these remote calls. For instance, in the following case, the entire `A` matrix is being shared to the remote worker since it is explicitly referenced inside the `@spawnat` call even though only one entry of the `A` matrix is necessary. 
-```julia
+```jldoctest; doctest=false
 A = rand(100, 100)
 f = @spawnat workers[1] begin
     A[1, 1] ** 2
@@ -93,7 +93,7 @@ end
 fetch(f)
 ```
 A more efficient option in terms of how much memory is shared, the user can create a reference/variable for this single entry outside of the fetch call, such as the following: 
-```julia
+```jldoctest; doctest=false
 A = rand(100, 100)
 first_entry = A[1,1]
 f = @spawnat workers[1] begin

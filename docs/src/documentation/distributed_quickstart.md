@@ -8,7 +8,7 @@ As with a normal `OptiGraph`, the `RemoteOptiGraph` supports nesting other subgr
 
 Functions in Plasmo and JuMP have been extended to work with Plasmo's `RemoteOptiGraph`s. For instance, macros for adding nodes, variables, constraints, expressions, linking constraints, and objectives have all been extended to work with the `RemoteOptiGraph`. Consequently, a user can build their graph remotely using the same functions they would for a normal, shared-memory `OptiGraph`. Below, we give a code snippet showing how a user can build the graph remotely. 
 
-```julia
+```jldoctest; doctest=false
 # Load in packages
 using Plasmo, Distributed, JuMP, HiGHS, Ipopt
 
@@ -64,7 +64,7 @@ optimize!(rg)
 
 Subgraphs can easily be added to this problem, as shown below. 
 
-```julia
+```jldoctest; doctest=false
 # Define another graph and add nodes
 rg2 = Plasmo.RemoteOptiGraph(worker = 2)
 
@@ -110,7 +110,7 @@ The larger the objects that are shared across workers, the slower the code will 
 
 As noted in 1., lots of macro calls and other function calls can slow down the code for especially large models. One option to avoid this is to build the graph directly on the remote worker inside a remote call or `@spawnat` call. for instance, the user could define a function that takes an `OptiGraph` object and constructs a large optimization problem on it for every worker, such as the following: 
 
-```julia
+```jldoctest; doctest=false
 using Plasmo, Distributed, DistributedArrays
 addprocs(1)
 
@@ -126,7 +126,7 @@ end
 
 The user can then call this on a remote graph by doing the following
 
-```julia
+```jldoctest; doctest=false
 rgraph = RemoteOptiGraph(worker = 2) # Define a RemoteOptiGraph on worker 2
 
 darray = rgraph.graph # Get the DistributedArray containing the OptiGraph

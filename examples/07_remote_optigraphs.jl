@@ -1,5 +1,3 @@
-using Revise
-
 using Plasmo
 using Distributed
 using DistributedArrays
