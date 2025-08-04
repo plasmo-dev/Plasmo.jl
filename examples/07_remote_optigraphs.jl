@@ -2,6 +2,7 @@ using Revise
 
 using Plasmo
 using Distributed
+using DistributedArrays
 using JuMP
 using HiGHS
 using Ipopt
@@ -12,7 +13,7 @@ end
 
 @everywhere begin
     using Revise
-    using Plasmo, JuMP, Distributed, HiGHS, Ipopt
+    using Plasmo, JuMP, Distributed, HiGHS, Ipopt, DistributedArrays
 end
 
 # Instantiate optigraph

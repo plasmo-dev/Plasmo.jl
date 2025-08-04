@@ -3,6 +3,21 @@
 #  License, v. 2.0. If a copy of the MPL was not distributed with this
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
+using Plasmo
+using Ipopt
+using HiGHS
+using Suppressor
+using Test
+using Distributed
+using DistributedArrays
+
+if nprocs() < 2
+    addprocs(1)
+end
+@everywhere begin
+    using Plasmo, Ipopt, HiGHS, Suppressor, Test, Distributed, DistributedArrays
+end
+
 module TestRemoteOptiGraph
 
 using Plasmo
@@ -11,11 +26,10 @@ using HiGHS
 using Suppressor
 using Test
 using Distributed
+using DistributedArrays
 
 function test_simple_remote_graph()
-    if nprocs() < 2
-        addprocs(1)
-    end
+
     graph = RemoteOptiGraph(worker = 2)
     @optinode(graph, nodes[1:2])
 
@@ -82,9 +96,7 @@ function test_simple_remote_graph()
 end
 
 function _create_test_nonlinear_optigraph()
-    if nprocs() < 2
-        addprocs(1)
-    end
+    
     graph = RemoteOptiGraph(worker = 2)
 
     n1 = add_node(graph)
@@ -226,9 +238,7 @@ function test_objective_functions()
 end
 
 function test_subgraphs()
-    if nprocs() < 2
-        addprocs(1)
-    end
+    
     graph = RemoteOptiGraph(worker = 2; name=:root)
 
     @optinode(graph, n0)
@@ -256,8 +266,8 @@ function test_subgraphs()
     # constraints
     @test num_local_constraints(graph) == 0
     @test length(local_constraints(graph)) == 0
-    @test num_constraints(graph, count_variable_in_set_constraints = true) == 118
-    @test length(all_constraints(graph, include_variable_in_set_constraints = true)) == 118
+    @test num_constraints(graph, count_variable_in_set_constraints=true) == 118
+    @test length(all_constraints(graph, include_variable_in_set_constraints=true)) == 118
 
     con_types = list_of_constraint_types(graph)
     F, S = con_types[5]
@@ -306,9 +316,7 @@ end
 
 
 function test_variable_constraints()
-    if nprocs() < 2
-        addprocs(1)
-    end
+    
     graph = RemoteOptiGraph(worker = 2)
     set_optimizer(graph, HiGHS.Optimizer)
 
@@ -428,9 +436,6 @@ function test_nlp_exceptions()
 end
 
 function test_delete_extensions()
-    if nprocs() < 2
-        addprocs(1)
-    end
     graph = RemoteOptiGraph(worker = 2)
     @optinode(graph, nodes[1:2])
 

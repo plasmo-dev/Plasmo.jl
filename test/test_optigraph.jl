@@ -103,7 +103,7 @@ function test_direct_moi_graph()
     @test JuMP.result_count(graph) == 1
     @test JuMP.raw_status(graph) == "kHighsModelStatusOptimal"
 
-    constraints = all_constraints(graph)
+    constraints = all_constraints(graph, include_variable_in_set_constraints=true)
     @test JuMP.dual(constraints[1]) == 1.0
     @test JuMP.dual(constraints[2]) == 0.0
     @test JuMP.dual(constraints[3]) == -2.0
@@ -167,7 +167,7 @@ function test_optigraph_build()
     @test index(graph, n2[:x]) == MOI.VariableIndex(3)
 
     # constraints
-    @test num_constraints(n1) == 5
+    @test num_constraints(n1, count_variable_in_set_constraints=true) == 5
     @test num_constraints(e1) == 1
     @test num_constraints(graph) == 31
     @test num_constraints(graph; count_variable_in_set_constraints=true) == 59
@@ -282,8 +282,8 @@ function test_subgraphs()
     # constraints
     @test num_local_constraints(graph) == 2
     @test length(local_constraints(graph)) == 2
-    @test num_constraints(graph) == 120
-    @test length(all_constraints(graph)) == 120
+    @test num_constraints(graph, count_variable_in_set_constraints=true) == 120
+    @test length(all_constraints(graph, include_variable_in_set_constraints=true)) == 120
 
     # link constraints
     @test num_local_link_constraints(graph, F, S) == 1
@@ -484,7 +484,7 @@ function test_nonlinear_operators()
     n2 = graph[2]
     @operator(graph, op_f_graph, 2, f)
     @linkconstraint(graph, con_ref, op_f_graph(n2[:x], n2[:y]) + n1[:x] >= 0)
-    @test num_constraints(graph) == 60
+    @test num_constraints(graph, count_variable_in_set_constraints=true) == 60
     optimize!(graph)
     @test dual(con_ref) != nothing
     @test value(op_f_graph(n2[:x], n2[:y])) != nothing
