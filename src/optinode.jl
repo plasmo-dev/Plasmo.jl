@@ -550,5 +550,5 @@ function Base.:(==)(node1::OptiNode, node2::OptiNode)
 end
 
 function Base.hash(node::OptiNode, h::UInt)
-    return hash((node.idx.value, node.label.x), h)
+    return hash((node.idx.value), h)
 end

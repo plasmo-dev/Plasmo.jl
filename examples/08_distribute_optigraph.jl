@@ -1,6 +1,5 @@
 a=1
 
-using Revise
 using Plasmo
 using Distributed
 using DistributedArrays
@@ -13,7 +12,6 @@ if nprocs() == 1
 end
 
 @everywhere begin
-    using Revise
     using Plasmo, JuMP, Distributed, HiGHS, Ipopt, DistributedArrays
 end
 
