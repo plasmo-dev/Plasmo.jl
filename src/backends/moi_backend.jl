@@ -589,7 +589,7 @@ function MOI.add_constraint(
 
     # create key for element if necessary
     if !haskey(backend.element_constraints, cref.model)
-        graph_backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
+        backend.element_constraints[cref.model] = MOI.ConstraintIndex[]
     end
 
     # create the constraint

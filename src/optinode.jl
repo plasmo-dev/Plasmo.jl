@@ -540,3 +540,15 @@ function _copy_object_dict_data(
     node[symbol] = node_daa
     return nothing
 end
+
+function Base.isequal(node1::OptiNode, node2::OptiNode)
+    return node1.source_graph.x == node2.source_graph.x && node1.idx == node2.idx && node1.label.x == node2.label.x
+end
+
+function Base.:(==)(node1::OptiNode, node2::OptiNode)
+    return node1.source_graph.x == node2.source_graph.x && node1.idx == node2.idx && node1.label.x == node2.label.x
+end
+
+function Base.hash(node::OptiNode, h::UInt)
+    return hash((node.idx.value, node.label.x), h)
+end

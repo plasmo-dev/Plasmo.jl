@@ -135,7 +135,8 @@ export OptiGraph,
     num_remote_link_constraints,
     all_remote_link_constraints,
     num_local_remote_link_constraints,
-    local_remote_link_constraints
+    local_remote_link_constraints,
+    distribute_graph
 
 include("core_types.jl")
 
@@ -184,6 +185,8 @@ include("distributed/remote_variables.jl")
 include("distributed/jump_interop.jl")
 
 include("distributed/utils.jl")
+
+include("distributed/distribute_optigraph.jl")
 
 # extensions
 function __init__()
