@@ -6,7 +6,6 @@
 using Plasmo
 using Ipopt
 using HiGHS
-using Suppressor
 using Test
 using Distributed
 using DistributedArrays
@@ -15,7 +14,7 @@ if nprocs() < 2
     addprocs(1)
 end
 @everywhere begin
-    using Plasmo, Ipopt, HiGHS, Suppressor, Test, Distributed, DistributedArrays
+    using Plasmo, Ipopt, HiGHS, Test, Distributed, DistributedArrays
 end
 
 module TestRemoteOptiGraph
@@ -23,7 +22,6 @@ module TestRemoteOptiGraph
 using Plasmo
 using Ipopt
 using HiGHS
-using Suppressor
 using Test
 using Distributed
 using DistributedArrays
@@ -38,10 +36,12 @@ function test_simple_remote_graph()
     @linkconstraint(graph, nodes[1][:x] + nodes[2][:x] == 4)
     @objective(graph, Max, nodes[1][:x] + 2 * nodes[2][:x])
 
+    JuMP.set_silent(graph)
     @test MOIU.state(graph) == MOIU.NO_OPTIMIZER
     set_optimizer(graph, HiGHS.Optimizer)
+    set_optimizer_attribute(graph, "output_flag", false)
     @test MOIU.state(graph) == MOIU.EMPTY_OPTIMIZER
-    @suppress optimize!(graph)
+    optimize!(graph)
     @test MOIU.state(graph) == MOIU.ATTACHED_OPTIMIZER
 
     @test objective_value(graph) == 7.0
@@ -351,27 +351,29 @@ function test_variable_constraints()
     set_upper_bound(n2[:x], 3)
     @test upper_bound(n2[:x]) == 3
 
+    JuMP.set_silent(graph)
+    set_optimizer_attribute(graph, "output_flag", false)
     # fix variables
     JuMP.fix(n1[:x], 1; force=true)
-    @suppress optimize!(graph)
+    optimize!(graph)
     @test value(n1[:x]) == 1
 
     JuMP.fix(n1[:x], 2)
-    @suppress optimize!(graph)
+    optimize!(graph)
     @test value(n1[:x]) == 2
 
     JuMP.fix(n1[:x], 0)
-    @suppress optimize!(graph)
+    optimize!(graph)
     @test value(n1[:x]) == 0
 
     # integer and binary
     set_binary(n1[:x])
     @test is_binary(n1[:x]) == true
-    @suppress optimize!(graph)
+    optimize!(graph)
 
     set_integer(n2[:x])
     @test is_integer(n2[:x]) == true
-    @suppress optimize!(graph)
+    optimize!(graph)
     
     graph = RemoteOptiGraph(worker = 2)
 

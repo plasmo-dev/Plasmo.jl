@@ -1,5 +1,3 @@
-a=1
-
 using Plasmo
 using Distributed
 using DistributedArrays

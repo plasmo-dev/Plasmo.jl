@@ -861,6 +861,12 @@ function JuMP.dual_status(rgraph::RemoteOptiGraph)
     return fetch(f)
 end
 
+function JuMP.set_silent(rgraph::RemoteOptiGraph)
+    darray = rgraph.graph
+    @spawnat rgraph.worker JuMP.set_silent(localpart(darray)[1])
+    return nothing
+end
+
 function MOI.Utilities.state(rgraph::RemoteOptiGraph)
     darray = rgraph.graph
     f = @spawnat rgraph.worker begin

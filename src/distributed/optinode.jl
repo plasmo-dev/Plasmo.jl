@@ -496,13 +496,13 @@ end
 # These functions allow for making sure dictionary keys recognize two RemoteNodeRefs
 # instantiated at different times will still be equal to one another
 function Base.isequal(rnode1::RemoteNodeRef, rnode2::RemoteNodeRef)
-    return rnode1.remote_graph == rnode2.remote_graph && rnode1.node_idx == rnode2.node_idx && rnode1.node_label.x == rnode2.node_label.x
+    return rnode1.node_idx == rnode2.node_idx
 end
 
 function Base.:(==)(rnode1::RemoteNodeRef, rnode2::RemoteNodeRef)
-    return rnode1.remote_graph == rnode2.remote_graph && rnode1.node_idx == rnode2.node_idx && rnode1.node_label.x == rnode2.node_label.x
+    return rnode1.node_idx == rnode2.node_idx
 end
 
 function Base.hash(rnode::RemoteNodeRef, h::UInt)
-    return hash((rnode.remote_graph, rnode.node_idx, rnode.node_label.x), h)
+    return hash((rnode.node_idx), h)
 end

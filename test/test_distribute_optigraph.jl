@@ -76,9 +76,9 @@ function test_distribute_optigraph()
     workers = [2,2,2]
 
     rg = Plasmo.distribute_graph(g, workers)
-    subgraphs = getsubgraphs(g)
-    rsubgraphs = getsubgraphs(rg)
-    @test length(getsubgraphs(g)) == length(getsubgraphs(rg))
+    subgraphs = local_subgraphs(g)
+    rsubgraphs = local_subgraphs(rg)
+    @test length(local_subgraphs(g)) == length(local_subgraphs(rg))
     @test num_variables(rsubgraphs[1]) == num_variables(subgraphs[1])
     @test num_variables(rg) == num_variables(g)
     @test num_constraints(rg) + num_link_constraints(rg) == num_constraints(g)
@@ -94,7 +94,6 @@ function test_distribute_optigraph()
     @test length(redge_con1.func) == length(constraint_object(lc1).func)
     @test length(redge_con2.func) == length(constraint_object(lc2).func)
     @test length(redge_con3.func) == length(constraint_object(lc3).func)
-
 end
 
 function run_tests()

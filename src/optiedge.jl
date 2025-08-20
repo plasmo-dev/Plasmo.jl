@@ -149,11 +149,11 @@ function JuMP.dual(cref::EdgeConstraintRef; result::Int=1)
 end
 
 function Base.isequal(edge1::OptiEdge, edge2::OptiEdge)
-    return edge1.source_graph.x == edge2.source_graph.x && edge1.label == edge2.label && edge1.nodes == edge2.nodes
+    return edge1.label == edge2.label && edge1.nodes == edge2.nodes
 end
 
 function Base.:(==)(edge1::OptiEdge, edge2::OptiEdge)
-    return edge1.source_graph.x == edge2.source_graph.x && edge1.label == edge2.label && edge1.nodes == edge2.nodes
+    return edge1.label == edge2.label && edge1.nodes == edge2.nodes
 end
 
 function Base.hash(edge::OptiEdge, h::UInt)

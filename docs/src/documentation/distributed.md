@@ -30,7 +30,7 @@ println(nprocs()) # returns 4
 end
 ```
 
-To run a task on the distributed worker, a must use functions from Distributed.jl such as `remotecall` or `@spawnat`. As an example, `remotecall` will run a function on a remote worker, such as in the following case: 
+To run a task on the distributed worker, a user must use functions from Distributed.jl such as `remotecall` or `@spawnat`. As an example, `remotecall` will run a function on a remote worker, such as in the following case: 
 ```julia
 workers = workers()
 A = rand(5000)
@@ -52,7 +52,7 @@ In this latter example, the matrix `A` is never defined on the main worker and i
 While distributed programming can be useful and accelerate task performance on some problems, there are tradeoffs. Variables, functions, or other allocated memory defined on the main processor are not shared directly with the remote workers. Thus at least two places a user may lose performance in their code is 1) making many calls to the remote worker (e.g., many `fetch` or `@spawnat` calls) and 2) passing large datastructures between the main and remote processors. A user must therefore be careful about both of these tasks. 
 
 #### Limiting calls to the remote
-As an example of the first challenge, the second function below will more efficient than the first because there is only one `remotecall` to the worker and only one `fetch` call. 
+As an example of the first challenge, the second function below will be more efficient than the first because there is only one `remotecall` to the worker and only one `fetch` call, or said another way, the second function outperforms the first because it transfers all of the matrix `A` in one call, rather than having repeated calls to transfer `A` a row at a time. 
 ```julia
 A = rand(100, 100)
 function do_remote_task_v1(A::Matrix, worker_id::Int)
@@ -92,7 +92,7 @@ f = @spawnat workers[1] begin
 end
 fetch(f)
 ```
-A more efficient option in terms of how much memory is shared, the user can create a reference/variable for this single entry outside of the fetch call, such as the following: 
+As a more efficient option in terms of what memory is implicitly communicated, the user can create a reference/variable for this single entry outside of the fetch call, such as the following: 
 ```julia
 A = rand(100, 100)
 first_entry = A[1,1]
@@ -107,7 +107,7 @@ In the case of Plasmo.jl (or JuMP.jl for that matter), sharing pieces of a tradi
 
 Plasmo.jl's distributed implementation is built on the `RemoteOptiGraph` data object. This object includes a `worker` field, which is the remote worker on which the actual `OptiGraph` is stored. The `graph` field is a length 1 `DArray` (a distributed array). The `DArray` is a light "wrapper" of sorts that stores the actual `OptiGraph` on the remote worker. `RemoteOptiGraph`s can also be nested in other `RemoteOptiGraphs` just as `OptiGraph`s can be, so there are also fields called `parent_graph` and `subgraphs`. Finally, there are fields `optiedges`, `element_data`, `obj_data`, `label`, and `ext`. 
 
-Several reference types and objects have been defined for working with the distributed implementation. The `RemoteOptiGraph` object "lives on the main worker and is essentially a wrapper and pointer to an `OptiGraph` on the remote worker. Nodes, edges, and variables from the `OptiGraph` on the remote worker can be referenced on the main worker via the structs `RemoteNodeRef`, `RemoteEdgeRef`, and `RemoteVariableRef`. Each of these objects belongs to the `RemoteOptiGraph` but includes information that points to the objects on the remote worker. In this way, the functions for working with Plasmo.jl's `OptiGraph` object have been extended for working with these remote reference objects. For instance, calling `@optinode` and passing a `RemoteOptiGraph` object will add the node to the `OptiGraph` on the remote worker and return a `RemoteNodeRef` to the main worker that represents the actual node added on the remote worker. Similarly, passing a `RemoteNodeRef` to the `@variable` constructs variables on the remote worker's `OptiGraph` but returns `RemoteVariableRef` objects on the main worker. Examples of many of these functions are included in the Quickstart
+Several reference types and objects have been defined for working with the distributed implementation. The `RemoteOptiGraph` object "lives on the main worker and is essentially a wrapper and pointer to an `OptiGraph` on the remote worker. Nodes, edges, and variables from the `OptiGraph` on the remote worker can be referenced on the main worker via the structs `RemoteNodeRef`, `RemoteEdgeRef`, and `RemoteVariableRef`. Each of these objects belongs to the `RemoteOptiGraph` but includes information that points to the objects on the remote worker. In this way, the functions for working with Plasmo.jl's `OptiGraph` object have been extended for working with these remote reference objects. For instance, calling `@optinode` and passing a `RemoteOptiGraph` object will add the node to the `OptiGraph` on the remote worker and return a `RemoteNodeRef` to the main worker that represents the actual node added on the remote worker. Similarly, passing a `RemoteNodeRef` to the `@variable` constructs variables on the remote worker's `OptiGraph` but returns `RemoteVariableRef` objects on the main worker. Examples of many of these functions are included in the [Distributed OptiGraph QuickStart](@ref).
 
 The other important data structure is the `RemoteOptiEdge`. This object captures constraints between multiple `RemoteOptiGraph`s. Since `RemoteOptiGraph`s can capture nested structures, constraints between these structures are stored on the `RemoteOptiEdge`. These constraints are stored directly on the `RemoteOptiGraph` object. In this way, the `RmeoteOptiEdge` structure is different than the `RemoteEdgeRef`, since the latter represents an edges contained in the `OptiGraph` object stored on the remote worker.
 

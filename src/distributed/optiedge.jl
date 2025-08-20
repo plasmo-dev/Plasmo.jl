@@ -591,15 +591,15 @@ end
 # These functions allow for making sure dictionary keys recognize two RemoteNodeRefs
 # instantiated at different times will still be equal to one another
 function Base.isequal(redge1::RemoteEdgeRef, redge2::RemoteEdgeRef)
-    return redge1.remote_graph == redge2.remote_graph && redge1.nodes == redge2.nodes && redge1.label == redge2.label
+    return redge1.nodes == redge2.nodes && redge1.label == redge2.label
 end
 
 function Base.:(==)(redge1::RemoteEdgeRef, redge2::RemoteEdgeRef)
-    return redge1.remote_graph == redge2.remote_graph && redge1.nodes == redge2.nodes && redge1.label == redge2.label
+    return redge1.nodes == redge2.nodes && redge1.label == redge2.label
 end
 
 function Base.hash(redge::RemoteEdgeRef, h::UInt)
-    return hash((redge.remote_graph, redge.nodes, redge.label), h)
+    return hash((redge.nodes, redge.label), h)
 end
 
 # Need to add the following

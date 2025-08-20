@@ -542,11 +542,11 @@ function _copy_object_dict_data(
 end
 
 function Base.isequal(node1::OptiNode, node2::OptiNode)
-    return node1.source_graph.x == node2.source_graph.x && node1.idx == node2.idx && node1.label.x == node2.label.x
+    return node1.idx == node2.idx
 end
 
 function Base.:(==)(node1::OptiNode, node2::OptiNode)
-    return node1.source_graph.x == node2.source_graph.x && node1.idx == node2.idx && node1.label.x == node2.label.x
+    return node1.idx.value == node2.idx.value
 end
 
 function Base.hash(node::OptiNode, h::UInt)

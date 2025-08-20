@@ -46,11 +46,7 @@ macro optinode(graph, args...)
                     JuMP.set_name(node, Symbol($var * "[$(string(terms[i]...))]"))
                 end
             end
-            #if isa($(graph), Plasmo.OptiGraph)
             $(graph).obj_dict[Symbol($var)] = container
-            #elseif isa($(graph), Plasmo.RemoteOptiGraph)
-            #    Plasmo._register_node_name($(graph), Symbol($var), container)
-            #end
         end
     end
     return esc(macro_code)

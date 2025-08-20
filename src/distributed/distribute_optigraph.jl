@@ -97,36 +97,22 @@ function _convert_local_to_remote(func::NodeVariableRef, variable_map::Dict{Node
     return variable_map[func]
 end
 
-function _convert_local_to_remote(func::RemoteVariableRef, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
+function _convert_local_to_remote(
+    func::T, 
+    variable_map::Dict{NodeVariableRef, RemoteVariableRef}
+) where {T <: Union{
+        RemoteVariableRef, 
+        Float64, 
+        GenericAffExpr{Float64, RemoteVariableRef}, 
+        GenericQuadExpr{Float64, RemoteVariableRef}, 
+        GenericNonlinearExpr{RemoteVariableRef}, 
+        Nothing
+    }}
     return func
-end
-
-function _convert_local_to_remote(func::Float64, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
-    return func
-end
-
-function _convert_local_to_remote(func::Array{Float64}, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
-    return func
-end
-
-function _convert_local_to_remote(func::GenericAffExpr{Float64, RemoteVariableRef}, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
-    return func
-end
-
-function _convert_local_to_remote(func::GenericQuadExpr{Float64, RemoteVariableRef}, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
-    return func
-end
-
-function _convert_local_to_remote(func::GenericNonlinearExpr{RemoteVariableRef}, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
-    return func
-end
-
-function _convert_local_to_remote(func::Nothing, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
-    return nothing
 end
 
 function distribute_graph(graph::OptiGraph, workers::Vector{Int})
-    subgraphs = getsubgraphs(graph)
+    subgraphs = local_subgraphs(graph)
     @assert length(subgraphs) == length(workers) 
     graph_map = Dict{OptiGraph, RemoteOptiGraph}()
     rgraph = RemoteOptiGraph()
