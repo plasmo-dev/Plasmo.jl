@@ -88,13 +88,13 @@ rg3 = Plasmo.add_subgraph(rg, worker = 2)
 @variable(n5, x5)
 
 # Link constraints can be added between subgraphs
-# These are stored as constraints on `RemoteOptiEdges
+# These are stored as constraints on `InterWorkerEdges
 @linkconstraint(rg, x + x3 + rg3[:n5][:x5] == 0);
 ```
 
 One note to make is that Plasmo returns light references to objects that are actually stored on the remote worker. For instance, in the above code, `n1` is a `RemoteNodeRef` that is stored on the main worker, and `x1` is a `RemoteVariableRef` that likewise lives on the remote. functions have been extended for working with these objects as you would with a `Plasmo.NodeVariableRef`, such that a user can call `fix(x1, 0)` (which is being called on the `RemoteVariableRef`) to fix the value of the _actual_ `NodeVariableRef` which `x1` corersponds to. 
 
-In addition, two types of edges exist for `RemoteOptiGraph`s. The first is an `RemoteEdgeRef` which represents an edge stored on the remote worker inside the `OptiGraph`. In contrast, the `RemoteOptiEdge` is an edge stored directly on the `RemoteOptiGraph` which connects the `OptiGraph` stored remotely with other subgraphs stored on the `RemoteOptiGraph`, or they connect multiple subgraphs stored on the `RemoteOptiGraph`.
+In addition, two types of edges exist for `RemoteOptiGraph`s. The first is an `RemoteEdgeRef` which represents an edge stored on the remote worker inside the `OptiGraph`. In contrast, the `InterWorkerEdge` is an edge stored directly on the `RemoteOptiGraph` which connects the `OptiGraph` stored remotely with other subgraphs stored on the `RemoteOptiGraph`, or they connect multiple subgraphs stored on the `RemoteOptiGraph`.
 
 ## Performance Tips and Suggestions
 

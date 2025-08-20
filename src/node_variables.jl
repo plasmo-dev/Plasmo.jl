@@ -42,6 +42,11 @@ function get_node(nvref::NodeVariableRef)
     return JuMP.owner_model(nvref)
 end
 
+function containing_optigraphs(nvref::NodeVariableRef)
+    node = JuMP.owner_model(nvref)
+    return JuMP.containing_optigraphs(node)
+end
+
 """
     MOI.get(node::OptiNode, attr::MOI.AbstractVariableAttribute, nvref::NodeVariableRef)
 

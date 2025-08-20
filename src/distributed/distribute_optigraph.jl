@@ -123,7 +123,7 @@ function distribute_graph(graph::OptiGraph, workers::Vector{Int})
             darray, 
             nothing,
             Vector{RemoteOptiGraph}(), 
-            Vector{Plasmo.RemoteOptiEdge}(), 
+            Vector{Plasmo.InterWorkerEdge}(), 
             Plasmo.RemoteElementData(),
             Dict{Symbol,Any}(),
             subgraphs[i].label, #not sure yet whether the remote and local should have the same name, but doing that for now

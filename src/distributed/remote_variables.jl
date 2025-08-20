@@ -18,6 +18,11 @@ function get_node(vref::RemoteVariableRef)
     return JuMP.owner_model(vref)
 end
 
+function containing_optigraphs(vref::RemoteVariableRef)
+    node = JuMP.owner_model(nvref)
+    return JuMP.containing_optigraphs(node)
+end
+
 # enable accessing specific variables from a RemoteVariableRef; these actually don't get used under
 # the current implementation, but these would make querying variables lighter on memory
 function Base.getindex(rvar::RemoteVariableArrayRef, idx...)
@@ -622,7 +627,7 @@ end
 
 
 function JuMP.set_normalized_coefficient(
-    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}},
     var::RemoteVariableRef,
     value::Number
 )  where {
@@ -662,7 +667,7 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    constraints::AbstractVector{<:JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}}},
+    constraints::AbstractVector{<:JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}}},
     variables::AbstractVector{<:RemoteVariableRef},
     coeffs::AbstractVector{<:Number}
 )  where {
@@ -715,7 +720,7 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}},
     var1::RemoteVariableRef,
     var2::RemoteVariableRef,
     value::Number
@@ -760,7 +765,7 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    constraints::AbstractVector{<:JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}}},
+    constraints::AbstractVector{<:JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}}},
     variables1::AbstractVector{<:RemoteVariableRef},
     variables2::AbstractVector{<:RemoteVariableRef},
     coeffs::AbstractVector{<:Number}
@@ -818,7 +823,7 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.normalized_coefficient(
-    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}},
     var::RemoteVariableRef
 )  where {
     T,
@@ -857,9 +862,8 @@ function JuMP.normalized_coefficient(
     return fetch(f)
 end
 
-
 function JuMP.normalized_coefficient(
-    rcref::JuMP.ConstraintRef{RemoteOptiEdge, MOI.ConstraintIndex{F,S}},
+    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}},
     var1::RemoteVariableRef,
     var2::RemoteVariableRef
 )  where {

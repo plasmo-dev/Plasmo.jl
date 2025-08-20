@@ -1,15 +1,15 @@
 # A remote graph tracks its worker and a DistributedArray as a persistent reference to the graph on the worker
 # The remote graph can also have a subset of other, nested remote graphs that are distributed on other workers
 
-abstract type AbstractRemoteOptiEdge <: JuMP.AbstractModel end
+abstract type AbstractInterWorkerEdge <: JuMP.AbstractModel end
 abstract type AbstractRemoteOptiNode <: JuMP.AbstractModel end
 abstract type AbstractRemoteEdgeRef <: JuMP.AbstractModel end
 abstract type AbstractRemoteNodeRef <: JuMP.AbstractModel end
 abstract type AbstractProxyNodeRef <: JuMP.AbstractModel end
 abstract type AbstractProxyEdgeRef <: JuMP.AbstractModel end
 
-const RemoteOptiEdgeConstraintRef = JuMP.ConstraintRef{
-    <:AbstractRemoteOptiEdge,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
+const InterWorkerEdgeConstraintRef = JuMP.ConstraintRef{
+    <:AbstractInterWorkerEdge,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
 } where {FT<:MOI.AbstractFunction,ST<:MOI.AbstractSet}
 
 const RemoteEdgeConstraintRef = JuMP.ConstraintRef{
@@ -22,19 +22,19 @@ const RemoteNodeConstraintRef = JuMP.ConstraintRef{
 
 const RemoteConstraintRef = JuMP.ConstraintRef{
     <:R,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
-} where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef,AbstractRemoteOptiEdge, AbstractRemoteOptiNode},FT<:MOI.AbstractFunction,ST<:AbstractSet}
+} where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef,AbstractInterWorkerEdge, AbstractRemoteOptiNode},FT<:MOI.AbstractFunction,ST<:AbstractSet}
 
 """
     RemoteElementData
 
-A data structure for saving names for nodes or edges and for saving mappings relating to RemoteOptiEdges. 
+A data structure for saving names for nodes or edges and for saving mappings relating to InterWorkerEdges. 
 """
 struct RemoteElementData
     node_obj_dict::OrderedDict{Tuple{AbstractRemoteNodeRef, Symbol}, Any}
-    edge_obj_dict::OrderedDict{Tuple{AbstractRemoteOptiEdge, Symbol}, Any}
+    edge_obj_dict::OrderedDict{Tuple{AbstractInterWorkerEdge, Symbol}, Any}
 
-    optiedge_map::OrderedDict{Set{AbstractRemoteNodeRef}, AbstractRemoteOptiEdge}
-    last_constraint_index::OrderedDict{AbstractRemoteOptiEdge, Int64}
+    optiedge_map::OrderedDict{Set{AbstractRemoteNodeRef}, AbstractInterWorkerEdge}
+    last_constraint_index::OrderedDict{AbstractInterWorkerEdge, Int64}
 end
 
 """
@@ -58,7 +58,7 @@ mutable struct RemoteOptiGraph <: AbstractOptiGraph
     # Vector of nested RemoteOptiGraphs; these can be stored on different workers
     subgraphs::Vector{RemoteOptiGraph} # These are nested remote optigraph objects; all remote optigraphs live on the main worker, but they contain a distributed optigraph that does not have to live on the main worker
     # Set of edges and data for them
-    optiedges::Vector{<:AbstractRemoteOptiEdge}
+    optiedges::Vector{<:AbstractInterWorkerEdge}
     element_data::RemoteElementData
     obj_dict::Dict{Symbol,Any}
     label::Symbol
@@ -140,25 +140,25 @@ struct ProxyEdgeRef <: AbstractProxyEdgeRef
 end
 
 """
-    RemoteOptiEdge
+    InterWorkerEdge
 
 An OptiEdge for RemoteOptiGraphs. These edges only connect between a RemoteOptiGraph's local 
 optigraph and/or its sub-RemoteOptiGraphs. These edges are intended for use by decomposition approaches
 """
-struct RemoteOptiEdge <: AbstractRemoteOptiEdge
+struct InterWorkerEdge <: AbstractInterWorkerEdge
     remote_graph::Plasmo.RemoteOptiGraph #TODO: Decide if this should be `remote_graph` or just `graph`
     nodes::OrderedSet{Plasmo.RemoteNodeRef}
-    constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.RemoteOptiEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
-    constraints::OrderedDict{Plasmo.RemoteOptiEdgeConstraintRef, JuMP.AbstractConstraint}
+    constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.InterWorkerEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
+    constraints::OrderedDict{Plasmo.InterWorkerEdgeConstraintRef, JuMP.AbstractConstraint}
     label::Symbol
 end
 
 function RemoteElementData()
     return RemoteElementData(
         OrderedDict{Tuple{RemoteNodeRef, Symbol}, Any}(),
-        OrderedDict{Tuple{RemoteOptiEdge, Symbol}, Any}(),
-        OrderedDict{Set{RemoteNodeRef}, RemoteOptiEdge}(),
-        OrderedDict{RemoteOptiEdge, Int64}()
+        OrderedDict{Tuple{InterWorkerEdge, Symbol}, Any}(),
+        OrderedDict{Set{RemoteNodeRef}, InterWorkerEdge}(),
+        OrderedDict{InterWorkerEdge, Int64}()
     )
 end
 
@@ -186,7 +186,7 @@ const NodeExpr = Union{
 }
 
 const RemoteOptiObject = Union{
-    RemoteNodeRef, RemoteEdgeRef, RemoteOptiGraph, RemoteOptiEdge
+    RemoteNodeRef, RemoteEdgeRef, RemoteOptiGraph, InterWorkerEdge
 }
 
 const RemoteOptiRef = Union{
@@ -209,7 +209,7 @@ function RemoteOptiGraph(; name::Symbol=Symbol(:rg, gensym()), worker::Int=1)
         darray, 
         nothing,
         Vector{RemoteOptiGraph}(), 
-        Vector{Plasmo.RemoteOptiEdge}(), 
+        Vector{Plasmo.InterWorkerEdge}(), 
         RemoteElementData(),
         Dict{Symbol,Any}(),
         name, #not sure yet whether the remote and local should have the same name, but doing that for now

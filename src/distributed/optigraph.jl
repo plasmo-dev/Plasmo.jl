@@ -281,12 +281,12 @@ function all_elements(rgraph::RemoteOptiGraph)
 end
 
 # These are a little confusing in that there are essentially two kinds of link constraints: 
-# RemoteEdgeRef and RemoteOptiEdge constraints. The former are for link constraints that 
+# RemoteEdgeRef and InterWorkerEdge constraints. The former are for link constraints that 
 # are on the OptiGraph on the remote processor. The latter are for link constraints that
 # are stored directly on the RemoteOptiGraph object on the main processor that link 
 # RemoteOptiGraphs together
 
-# To address this, I have defaulted `link_constraints` to refer to the RemoteOptiEdges, 
+# To address this, I have defaulted `link_constraints` to refer to the InterWorkerEdges, 
 # which I think was most similar to the original usage in Plasmo. In contrast,
 # `remote_link_constraints` refers to the link constraints on the OptiGraph stored
 # on the remote processor
