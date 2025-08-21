@@ -106,14 +106,6 @@ function has_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
     end
 end 
 
-function containing_optigraphs(edge::InterWorkerEdge)
-    source = source_graph(edge)
-    graphs = [source]
-    if isa(source.parent_graph, RemoteOptiGraph)
-        graphs = [graphs; traverse_parents(source.parent_graph)]
-    end
-    return graphs
-end
 
 """
     get_edge(rgraph::RemoteOptiGraph, rnodes::Set{<:RemoteNodeRef})
@@ -434,7 +426,7 @@ function incident_edges(rgraph::RemoteOptiGraph)
     assigned_edges = Vector{InterWorkerEdge}()
     for edge in parent_edges
         for node in edge.nodes
-            if rgraph in containing_optigraphs(node) #TODO: Make this function faster
+            if rgraph in get_all_source_graphs(node) #TODO: Make this function faster
                 push!(assigned_edges, edge)
             end
         end

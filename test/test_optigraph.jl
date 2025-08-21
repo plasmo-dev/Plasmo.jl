@@ -315,6 +315,21 @@ function test_subgraphs()
 
     # check that node solution matches source graph solution
     @test value(n11[:x]) == value(sg1, n11[:x])
+
+    g = OptiGraph()
+    g1 = OptiGraph()
+    g2 = OptiGraph()
+
+    add_subgraph(g, g1)
+    add_subgraph(g1, g2)
+
+    @optinode(g1, n1)
+    @variable(n1, x)
+    @optinode(g2, n2)
+    @variable(n2, y)
+
+    @test get_all_source_graphs(n1) == [g1, g]
+    @test get_all_source_graphs(n2) == [g2, g1, g]
 end
 
 function test_assemble_optigraph()

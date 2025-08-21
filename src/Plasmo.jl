@@ -68,6 +68,7 @@ export OptiGraph,
     containing_optigraphs,
     source_graph,
     assemble_optigraph,
+    get_all_source_graphs,
 
     # partition
 

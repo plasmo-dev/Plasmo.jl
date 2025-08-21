@@ -14,13 +14,8 @@ function remote_graph(rvar::R) where {R <: Union{RemoteVariableRef, RemoteVariab
     return rvar.node.remote_graph 
 end
 
-function get_node(vref::RemoteVariableRef)
-    return JuMP.owner_model(vref)
-end
-
-function containing_optigraphs(vref::RemoteVariableRef)
-    node = JuMP.owner_model(nvref)
-    return JuMP.containing_optigraphs(node)
+function get_node(rvar::RemoteVariableRef)
+    return JuMP.owner_model(rvar)
 end
 
 # enable accessing specific variables from a RemoteVariableRef; these actually don't get used under

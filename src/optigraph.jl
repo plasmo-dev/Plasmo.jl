@@ -503,6 +503,17 @@ function traverse_parents(graph::GT) where {GT<:AbstractOptiGraph}
 end
 
 """
+    Plasmo.get_all_source_graphs(element::OptiElement)
+
+Returns all the OptiGraphs that contain element
+"""
+function get_all_source_graphs(element::OptiElement)
+    source = source_graph(element)
+    graphs = [source; traverse_parents(source)]
+    return graphs
+end
+
+"""
     local_subgraphs(graph::OptiGraph)::Vector{OptiGraph}
 
 Retrieve the local subgraphs of `graph`.

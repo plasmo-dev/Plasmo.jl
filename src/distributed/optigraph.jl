@@ -558,17 +558,14 @@ function JuMP.index(rgraph::RemoteOptiGraph, nvref::RemoteVariableRef)
 end
 
 """
-    Plasmo.containing_optigraphs(robj::RemoteOptiObject)
+    Plasmo.get_all_source_graphs(robj<:Union{RemoteNodeRef, RemoteEdgeRef, InterWorkerEdge, RemoteVariableRef})
 
-returns all the RemoteOptiGraphs that contain the RemoteOptiObject
+Returns all the RemoteOptiGraphs that contain robj
 """
-function containing_optigraphs(robj::RemoteOptiObject)
-    sg = source_graph(robj)
-    if isnothing(sg.parent_graph)
-        return [sg]
-    else
-        return [sg; containing_optigraphs(sg)]
-    end    
+function get_all_source_graphs(robj::R) where {R<:Union{RemoteNodeRef, RemoteEdgeRef, InterWorkerEdge, RemoteVariableRef}}
+    source = source_graph(robj)
+    graphs = [source; traverse_parents(source)]
+    return graphs
 end
 
 """

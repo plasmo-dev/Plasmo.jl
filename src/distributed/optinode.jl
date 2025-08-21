@@ -107,15 +107,6 @@ function add_node(rgraph::RemoteOptiGraph, label::Symbol) # TODO: Rethink whethe
     return _convert_proxy_to_remote(rgraph, pnode)
 end
 
-function containing_optigraphs(node::RemoteNodeRef)
-    source = source_graph(node)
-    graphs = [source]
-    if isa(source.parent_graph, RemoteOptiGraph)
-        graphs = [graphs; traverse_parents(source.parent_graph)]
-    end
-    return graphs
-end
-
 """
     JuMP.add_constraint(rnode::RemoteNodeRef, con::JuMP.AbstractConstraint, name::String="")
 
