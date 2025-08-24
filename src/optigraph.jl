@@ -503,11 +503,11 @@ function traverse_parents(graph::GT) where {GT<:AbstractOptiGraph}
 end
 
 """
-    Plasmo.get_all_source_graphs(element::OptiElement)
+    Plasmo.traverse_parents(element::OptiElement)
 
-Returns all the OptiGraphs that contain element
+Returns the source graph of `element` along with all the source graph's parents
 """
-function get_all_source_graphs(element::OptiElement)
+function traverse_parents(element::OptiElement)
     source = source_graph(element)
     graphs = [source; traverse_parents(source)]
     return graphs

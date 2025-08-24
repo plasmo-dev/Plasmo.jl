@@ -445,7 +445,9 @@ function num_local_constraints(
         lgraph = localpart(darray)[1]
         JuMP.num_constraints(lgraph, func_type, set_type)
     end
-    return fetch(f)
+    n_constraints = fetch(f)
+    n_constraints += num_local_link_constraints(rgraph, func_type, set_type)
+    return n_constraints
 end
 
 function num_local_constraints(rgraph::RemoteOptiGraph; count_variable_in_set_constraints=false)
@@ -454,7 +456,9 @@ function num_local_constraints(rgraph::RemoteOptiGraph; count_variable_in_set_co
         lgraph = localpart(darray)[1]
         JuMP.num_constraints(lgraph, count_variable_in_set_constraints = count_variable_in_set_constraints)
     end
-    return fetch(f)
+    n_constraints = fetch(f)
+    n_constraints += num_local_link_constraints(rgraph)
+    return n_constraints
 end
 
 function local_constraints(
@@ -469,7 +473,9 @@ function local_constraints(
         _convert_local_to_proxy(lgraph, lcons)
     end
     pcons = fetch(f)
-    return _convert_proxy_to_remote(rgraph, pcons)
+    rcons =_convert_proxy_to_remote(rgraph, pcons)
+    rcons = [rcons; local_link_constraints(rgraph, func_type, set_type)] 
+    return rcons
 end
 
 function local_constraints(rgraph::RemoteOptiGraph; include_variable_in_set_constraints=false)
@@ -480,9 +486,10 @@ function local_constraints(rgraph::RemoteOptiGraph; include_variable_in_set_cons
         _convert_local_to_proxy(lgraph, lcons)
     end
     pcons = fetch(f)
-    return _convert_proxy_to_remote(rgraph, pcons)
+    rcons =_convert_proxy_to_remote(rgraph, pcons)
+    rcons = [rcons; local_link_constraints(rgraph)] 
+    return rcons
 end
-
 
 function JuMP.num_constraints(
     rgraph::RemoteOptiGraph,
@@ -558,11 +565,11 @@ function JuMP.index(rgraph::RemoteOptiGraph, nvref::RemoteVariableRef)
 end
 
 """
-    Plasmo.get_all_source_graphs(robj<:Union{RemoteNodeRef, RemoteEdgeRef, InterWorkerEdge, RemoteVariableRef})
+    Plasmo.traverse_parents(robj<:Union{RemoteNodeRef, RemoteEdgeRef, InterWorkerEdge, RemoteVariableRef})
 
-Returns all the RemoteOptiGraphs that contain robj
+Returns the source graph of `robj` and all parent graphs of the source graph
 """
-function get_all_source_graphs(robj::R) where {R<:Union{RemoteNodeRef, RemoteEdgeRef, InterWorkerEdge, RemoteVariableRef}}
+function traverse_parents(robj::R) where {R<:Union{RemoteNodeRef, RemoteEdgeRef, InterWorkerEdge, RemoteVariableRef}}
     source = source_graph(robj)
     graphs = [source; traverse_parents(source)]
     return graphs

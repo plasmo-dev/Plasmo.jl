@@ -328,8 +328,8 @@ function test_subgraphs()
     @optinode(g2, n2)
     @variable(n2, y)
 
-    @test get_all_source_graphs(n1) == [g1, g]
-    @test get_all_source_graphs(n2) == [g2, g1, g]
+    @test traverse_parents(n1) == [g1, g]
+    @test traverse_parents(n2) == [g2, g1, g]
 end
 
 function test_assemble_optigraph()

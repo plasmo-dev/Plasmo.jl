@@ -81,7 +81,7 @@ function test_distribute_optigraph()
     @test length(local_subgraphs(g)) == length(local_subgraphs(rg))
     @test num_variables(rsubgraphs[1]) == num_variables(subgraphs[1])
     @test num_variables(rg) == num_variables(g)
-    @test num_constraints(rg) + num_link_constraints(rg) == num_constraints(g)
+    @test num_constraints(rg) == num_constraints(g)
 
     @test length(local_edges(g)) == length(local_edges(rg))
     redge_con1 = constraint_object(all_constraints(all_edges(rg)[1])[1])

@@ -264,10 +264,10 @@ function test_subgraphs()
     @test num_subgraphs(graph) == 2
 
     # constraints
-    @test num_local_constraints(graph) == 0
-    @test length(local_constraints(graph)) == 0
-    @test num_constraints(graph, count_variable_in_set_constraints=true) == 118
-    @test length(all_constraints(graph, include_variable_in_set_constraints=true)) == 118
+    @test num_local_constraints(graph) == 2
+    @test length(local_constraints(graph)) == 2
+    @test num_constraints(graph, count_variable_in_set_constraints=true) == 120
+    @test length(all_constraints(graph, include_variable_in_set_constraints=true)) == 120
 
     con_types = list_of_constraint_types(graph)
     F, S = con_types[5]
@@ -325,10 +325,10 @@ function test_subgraphs()
     @optinode(g2, n2)
     @variable(n2, y)
 
-    @test get_all_source_graphs(n1) == [g1, g]
-    @test get_all_source_graphs(x) == [g1, g]
-    @test get_all_source_graphs(n2) == [g2, g1, g]
-    @test get_all_source_graphs(y) == [g2, g1, g]
+    @test traverse_parents(n1) == [g1, g]
+    @test traverse_parents(x) == [g1, g]
+    @test traverse_parents(n2) == [g2, g1, g]
+    @test traverse_parents(y) == [g2, g1, g]
 end
 
 function test_variable_constraints()

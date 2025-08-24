@@ -426,7 +426,7 @@ function incident_edges(rgraph::RemoteOptiGraph)
     assigned_edges = Vector{InterWorkerEdge}()
     for edge in parent_edges
         for node in edge.nodes
-            if rgraph in get_all_source_graphs(node) #TODO: Make this function faster
+            if rgraph in traverse_parents(node) #TODO: Make this function faster
                 push!(assigned_edges, edge)
             end
         end
