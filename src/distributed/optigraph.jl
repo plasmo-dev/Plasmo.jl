@@ -701,6 +701,17 @@ function JuMP.set_objective_sense(
     return nothing
 end
 
+function JuMP.objective_sense(
+    rgraph::RemoteOptiGraph
+)
+    darray = rgraph.graph
+    f = @spawnat rgraph.worker begin
+        lgraph = localpart(darray)[1]
+        JuMP.objective_sense(lgraph)
+    end
+    return fetch(f)
+end
+
 function set_to_node_objectives(rgraph::RemoteOptiGraph)
     darray = rgraph.graph
     @spawnat rgraph.worker set_to_node_objectives(localpart(darray)[1])
