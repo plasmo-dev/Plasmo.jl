@@ -82,9 +82,7 @@ function add_node(rgraph::RemoteOptiGraph)
 
     f = @spawnat wid begin
         lgraph = localpart(darray)[1]
-        # I think gensym is only unique to the worker, so we 
-        # tack on the worker id to ensure it is globally unique
-        n = add_node(lgraph; index=Symbol(gensym(), ".w$wid"))
+        n = add_node(lgraph; index=Symbol(UUIDs.uuid4()))
         _convert_local_to_proxy(lgraph, n)
     end
     pnode = fetch(f)

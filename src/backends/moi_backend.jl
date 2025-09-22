@@ -357,7 +357,7 @@ end
 function MOI.set(
     backend::GraphMOIBackend, attr::MOI.UserDefinedFunction, node::OptiNode, args...
 )
-    registered_name = Symbol(gensym(), node.label, ".", attr.name)
+    registered_name = Symbol(Symbol(UUIDs.uuid4()), node.label, ".", attr.name)
     MOI.set(
         backend.moi_backend, MOI.UserDefinedFunction(registered_name, attr.arity), args...
     )
@@ -367,7 +367,7 @@ end
 
 # TODO: set operator on graph directly
 function MOI.set(backend::GraphMOIBackend, attr::MOI.UserDefinedFunction, args...)
-    registered_name = Symbol(gensym(), backend.optigraph.label, ".", attr.name)
+    registered_name = Symbol(Symbol(UUIDs.uuid4()), backend.optigraph.label, ".", attr.name)
     MOI.set(
         backend.moi_backend, MOI.UserDefinedFunction(registered_name, attr.arity), args...
     )

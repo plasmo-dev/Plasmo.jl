@@ -21,7 +21,7 @@ function _initialize_optigraph(name::Symbol)
     return graph
 end
 
-function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
+function OptiGraph(; name::Symbol=Symbol(:g, Symbol(UUIDs.uuid4())))
     graph = _initialize_optigraph(name)
     # default is to use a CachingOptimizer backend
     graph.backend = cached_moi_backend(graph)
@@ -30,7 +30,7 @@ end
 
 function direct_moi_graph(
     backend::Union{MOI.ModelLike,MOI.OptimizerWithAttributes};
-    name::Symbol=Symbol(:g, gensym()),
+    name::Symbol=Symbol(:g, Symbol(UUIDs.uuid4())),
 )
     graph = _initialize_optigraph(name)
     graph.backend = direct_moi_backend(graph, backend)
@@ -49,7 +49,7 @@ function Base.string(graph::OptiGraph)
         %16s %9s %16s
         %16s %9s %16s
         """,
-        "$(name(graph))",
+        "",
         "#local elements",
         "#total elements",
         "Nodes:",
@@ -180,7 +180,7 @@ Add a new optinode to `graph`. By default, the node label is set to be "n<i+1>" 
 the number of nodes in the graph.
 """
 function add_node(
-    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1), index = gensym()
+    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1), index = Symbol(UUIDs.uuid4())
 )
     node_index = NodeIndex(index)
     node = OptiNode(Ref(graph), node_index, Ref(label))
@@ -461,11 +461,11 @@ end
 # manage subgraphs
 
 """
-    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
+    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, Symbol(UUIDs.uuid4())))
 
 Create and add a new subgraph to the optigraph `graph`.
 """
-function add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, gensym()))
+function add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, Symbol(UUIDs.uuid4())))
     subgraph = OptiGraph(; name=name)
     subgraph.parent_graph = graph
     push!(graph.subgraphs, subgraph)
@@ -473,7 +473,7 @@ function add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, gensym()))
 end
 
 """
-    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
+    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, Symbol(UUIDs.uuid4())))
 
 Add an existing subgraph to an optigraph. The subgraph cannot already be part of another
 optigraph. It also should not have nodes that already exist in the optigraph.

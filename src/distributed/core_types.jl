@@ -199,11 +199,11 @@ const RemoteOptiRef = Union{
 A constructor function for building a RemoteOptiGraph. The actual optigraph object of the
 RemoteOptiGraph object is stored on the worker `worker`. A name can be passed as a keyword argument
 """
-function RemoteOptiGraph(; name::Symbol=Symbol(:rg, gensym()), worker::Int=1)
+function RemoteOptiGraph(; name::Symbol=Symbol(:rg, Symbol(UUIDs.uuid4())), worker::Int=1)
     if !(worker in procs())
         error("The provided worker $worker is not in existing workers: $(procs())")
     end
-    darray = distribute([OptiGraph(name=name)], procs=[worker]) #gensym may not return a symbol that is unique on the worker...
+    darray = distribute([OptiGraph(name=name)], procs=[worker])
     rgraph = RemoteOptiGraph(
         worker, 
         darray, 

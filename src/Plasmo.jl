@@ -17,6 +17,7 @@ using Graphs
 using Printf
 using Distributed
 using DistributedArrays
+using UUIDs
 
 using MathOptInterface
 const MOI = MathOptInterface
