@@ -357,7 +357,7 @@ OptiGraph Partition w/ 5 subpartitions
 
 julia> metis_graph = assemble_optigraph(partition_metis; name=:metis_graph)
 An OptiGraph
-     metis_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0              199
           Edges:         4               99
@@ -402,7 +402,7 @@ julia> aggregate_graph, reference_map = aggregate_to_depth(kahypar_graph, 0; nam
 
 julia> aggregate_graph
 An OptiGraph
-       agg_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         8                8
           Edges:         7                7
