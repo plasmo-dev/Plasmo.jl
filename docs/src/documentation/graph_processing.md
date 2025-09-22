@@ -49,7 +49,7 @@ graph
 # output
 
 An OptiGraph
- optimal_control #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:       199              199
           Edges:        99               99
@@ -205,7 +205,7 @@ julia> queried_edges = induced_edges(projection, queried_nodes)
 
 julia> new_graph = assemble_optigraph(queried_nodes, queried_edges; name=:new_graph)
 An OptiGraph
-       new_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:        11               11
           Edges:         5                5
@@ -225,7 +225,7 @@ An easy alternative to using [`assemble_optigraph`](@ref) is to use [`induced_su
 ```jldoctest optimal_control
 julia> new_graph = induced_subgraph(projection, queried_nodes; name=:induced_graph)
 An OptiGraph
-   induced_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:        11               11
           Edges:         5                5
@@ -241,7 +241,7 @@ a subgraph (an optigraph) or a set of nodes to expand with. This would look like
 ```jldoctest optimal_control
 julia> expanded_graph = expand(projection, new_graph, 1; name=:expanded_graph)
 An OptiGraph
-  expanded_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:        13               13
           Edges:         6                6
@@ -251,7 +251,7 @@ An OptiGraph
 
 julia> expanded_with_nodes = expand(projection, queried_nodes, 1; name=:expanded_nodes)
 An OptiGraph
-  expanded_nodes #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:        13               13
           Edges:         6                6
@@ -287,7 +287,7 @@ Notice that the new graph contains few local elements (just the 4 edges that con
 ```jldoctest optimal_control
 julia> new_manual_graph = assemble_optigraph(manual_partition; name=:partitioned_graph)
 An OptiGraph
-partitioned_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0              199
           Edges:         4               99
@@ -316,7 +316,7 @@ OptiGraph Partition w/ 8 subpartitions
 
 julia> kahypar_graph = assemble_optigraph(partition_kahypar; name=:kahypar_graph)
 An OptiGraph
-   kahypar_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0              199
           Edges:         7               99
@@ -382,7 +382,7 @@ plt_chain_partition_layout = layout_plot(
     markersize=6,
     subgraph_colors=true
 )
-                                         )
+
 
 plt_chain_partition_matrix = matrix_layout(kahypar_graph, subgraph_colors=true)
 
