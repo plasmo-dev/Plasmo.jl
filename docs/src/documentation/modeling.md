@@ -36,7 +36,7 @@ julia> using Plasmo
 
 julia> graph1 = OptiGraph(;name=:graph1)
 An OptiGraph
-          graph1 #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0                0
           Edges:         0                0
@@ -94,7 +94,7 @@ julia>  for node in all_nodes(graph1)
 
 julia> graph1
 An OptiGraph
-          graph1 #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         3                3
           Edges:         0                0
@@ -260,7 +260,7 @@ graph3
 # output
 
 An OptiGraph
-          graph3 #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         3                3
           Edges:         1                1
@@ -276,7 +276,7 @@ These three optigraphs can be embedded into a higher level optigraph using the f
 ```jldoctest modeling
 julia> graph0 = OptiGraph(;name=:root_graph)
 An OptiGraph
-      root_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0                0
           Edges:         0                0
@@ -289,7 +289,7 @@ julia> add_subgraph(graph0, graph1);
 
 julia> graph0
 An OptiGraph
-      root_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0                3
           Edges:         0                1
@@ -301,7 +301,7 @@ julia> add_subgraph(graph0, graph2);
 
 julia> graph0
 An OptiGraph
-      root_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0                6
           Edges:         0                2
@@ -314,7 +314,7 @@ julia> add_subgraph(graph0, graph3);
 
 julia> graph0
 An OptiGraph
-      root_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0                9
           Edges:         0                3
@@ -335,7 +335,7 @@ nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
 
 julia> graph0
 An OptiGraph
-      root_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0                9
           Edges:         1                4
@@ -451,7 +451,7 @@ We can lastly query subgraphs using [`local_subgraphs`](@ref) and [`all_subgraph
 julia> local_subgraphs(graph0)
 3-element Vector{OptiGraph}:
  An OptiGraph
-          graph1 #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         3                3
           Edges:         1                1
@@ -460,7 +460,7 @@ julia> local_subgraphs(graph0)
     Constraints:        13               13
 
  An OptiGraph
-          graph2 #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         3                3
           Edges:         1                1
@@ -469,7 +469,7 @@ julia> local_subgraphs(graph0)
     Constraints:        10               10
 
  An OptiGraph
-          graph3 #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         3                3
           Edges:         1                1
