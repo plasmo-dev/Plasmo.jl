@@ -118,7 +118,35 @@ function add_subgraph(rgraph::RemoteOptiGraph, rsubgraph::RemoteOptiGraph)
         rsubgraph.parent_graph = rgraph
     end
     return nothing
-end 
+end
+
+"""
+    get_worker(rgraph::RemoteOptiGraph)
+
+Get the worker id for the worker on which the OptiGraph of the RemoteOptiGraph is stored
+"""
+function get_worker(rgraph::RemoteOptiGraph)
+    return rgraph.worker
+end
+
+"""
+    get_graph(rgraph::RemoteOptiGraph)
+
+Return the DistributedArray object that contains the OptiGraph of `rgraph`. This array has only one entry
+"""
+function get_graph(rgraph::RemoteOptiGraph)
+    return rgraph.graph
+end
+
+"""
+    get_darray(rgraph::RemoteOptiGraph)
+
+Return the DistributedArray object that contains the OptiGraph of `rgraph`. This array has only one entry. 
+This function is equivalent to `get_graph(rgraph)` but has a more intuitive name
+"""
+function get_darray(rgraph::RemoteOptiGraph)
+    return rgraph.graph
+end
 
 """
     Plasmo.all_nodes(rgraph::RemoteOptiGraph)

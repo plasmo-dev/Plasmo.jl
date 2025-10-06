@@ -138,7 +138,10 @@ export OptiGraph,
     all_remote_link_constraints,
     num_local_remote_link_constraints,
     local_remote_link_constraints,
-    distribute_graph
+    distribute_graph,
+    get_worker,
+    get_graph,
+    get_darray
 
 include("core_types.jl")
 
