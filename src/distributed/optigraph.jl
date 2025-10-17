@@ -949,7 +949,7 @@ end
 function JuMP.write_to_file(rgraph::RemoteOptiGraph, filename::String)
     darray = rgraph.graph
 
-    f = @spawnat graph.worker begin
+    f = @spawnat rgraph.worker begin
         lgraph = Plasmo.local_graph(darray)
         JuMP.write_to_file(lgraph, filename)
     end

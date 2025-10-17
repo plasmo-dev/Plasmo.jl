@@ -1502,7 +1502,7 @@ function JuMP.unregister(graph::GT, key::Symbol) where {GT<:AbstractOptiGraph}
 end
 
 """
-    write_to_file(graph::OptiGraph, filename::string)
+    write_to_file(graph::AbstractOptiGraph, filename::string)
 
 Write the model stored in `graph` to `filename.` See [`MOI.FileFormats.FileFormat`](@ref) 
 for a list of supported formats. Format is determined automatically based on given file
