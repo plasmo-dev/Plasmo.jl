@@ -1,8 +1,8 @@
 name = "Plasmo"
 uuid = "d3f7391f-f14a-50cc-bbe4-76a32d1bad3c"
+version = "0.6.5"
 authors = ["Jordan Jalving <jhjalving@gmail.com>"]
 repo = "https://github.com/plasmo-dev/Plasmo.jl.git"
-version = "0.6.5"
 
 [deps]
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
@@ -18,10 +18,10 @@ SparseArrays = "2f01184e-e22b-5df5-ae63-d93ebab69eaf"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [compat]
+DataStructures = "0.18, 0.19"
+GraphOptInterface = "0.1"
 Graphs = "1"
 JuMP = "1.2"
-DataStructures = "0.18"
-GraphOptInterface = "0.1"
 MathOptInterface = "1.6"
 Reexport = "1"
 Requires = "1"
