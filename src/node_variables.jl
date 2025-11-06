@@ -42,6 +42,11 @@ function get_node(nvref::NodeVariableRef)
     return JuMP.owner_model(nvref)
 end
 
+function containing_optigraphs(nvref::NodeVariableRef)
+    node = JuMP.owner_model(nvref)
+    return JuMP.containing_optigraphs(node)
+end
+
 """
     MOI.get(node::OptiNode, attr::MOI.AbstractVariableAttribute, nvref::NodeVariableRef)
 
@@ -427,7 +432,7 @@ end
 
 function JuMP.FixRef(nvref::NodeVariableRef)
     if !JuMP.is_fixed(nvref)
-        error("Variable $(v) does not have fixed bounds.")
+        error("Variable $(nvref) does not have fixed bounds.")
     end
     return _nv_fix_ref(nvref)
 end

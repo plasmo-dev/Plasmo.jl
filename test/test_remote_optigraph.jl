@@ -3,16 +3,32 @@
 #  License, v. 2.0. If a copy of the MPL was not distributed with this
 #  file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-module TestOptiGraph
+using Plasmo
+using Ipopt
+using HiGHS
+using Test
+using Distributed
+using DistributedArrays
+
+if nprocs() < 2
+    addprocs(1)
+end
+@everywhere begin
+    using Plasmo, Ipopt, HiGHS, Test, Distributed, DistributedArrays
+end
+
+module TestRemoteOptiGraph
 
 using Plasmo
 using Ipopt
 using HiGHS
-using Suppressor
 using Test
+using Distributed
+using DistributedArrays
 
-function test_simple_graph()
-    graph = OptiGraph()
+function test_simple_remote_graph()
+
+    graph = RemoteOptiGraph(worker = 2)
     @optinode(graph, nodes[1:2])
 
     @variable(nodes[1], x >= 1)
@@ -20,10 +36,12 @@ function test_simple_graph()
     @linkconstraint(graph, nodes[1][:x] + nodes[2][:x] == 4)
     @objective(graph, Max, nodes[1][:x] + 2 * nodes[2][:x])
 
+    JuMP.set_silent(graph)
     @test MOIU.state(graph) == MOIU.NO_OPTIMIZER
     set_optimizer(graph, HiGHS.Optimizer)
+    set_optimizer_attribute(graph, "output_flag", false)
     @test MOIU.state(graph) == MOIU.EMPTY_OPTIMIZER
-    @suppress optimize!(graph)
+    optimize!(graph)
     @test MOIU.state(graph) == MOIU.ATTACHED_OPTIMIZER
 
     @test objective_value(graph) == 7.0
@@ -38,10 +56,9 @@ function test_simple_graph()
     @test JuMP.termination_status(graph) == MOI.OPTIMAL
     @test JuMP.primal_status(graph) == MOI.FEASIBLE_POINT
     @test JuMP.dual_status(graph) == MOI.FEASIBLE_POINT
-    @test JuMP.result_count(graph) == 1
-    @test JuMP.raw_status(graph) == "kHighsModelStatusOptimal"
 
     constraints = all_constraints(graph, include_variable_in_set_constraints=true)
+
     @test JuMP.dual(constraints[1]) == 1.0
     @test JuMP.dual(constraints[2]) == 0.0
     @test JuMP.dual(constraints[3]) == -2.0
@@ -68,8 +85,8 @@ function test_simple_graph()
     @objective(graph, Min, nodes[1][:x]^3 + nodes[2][:x]^3)
     @test is_separable(objective_function(graph))
     sep_terms = extract_separable_terms(objective_function(graph), graph)
-    @test sep_terms[nodes[1]][1] isa JuMP.GenericNonlinearExpr{NodeVariableRef}
-    @test sep_terms[nodes[2]][1] isa JuMP.GenericNonlinearExpr{NodeVariableRef}
+    @test sep_terms[nodes[1]][1] isa JuMP.GenericNonlinearExpr{RemoteVariableRef}
+    @test sep_terms[nodes[2]][1] isa JuMP.GenericNonlinearExpr{RemoteVariableRef}
 
     @objective(graph, Min, nodes[1][:x]^2 + nodes[2][:x]^2 + nodes[1][:x] * nodes[2][:x])
     @test is_separable(objective_function(graph)) == false
@@ -78,39 +95,9 @@ function test_simple_graph()
     @test is_separable(objective_function(graph)) == false
 end
 
-function test_direct_moi_graph()
-    graph = direct_moi_graph(HiGHS.Optimizer())
-    @optinode(graph, nodes[1:2])
-
-    @variable(nodes[1], x >= 1)
-    @variable(nodes[2], x >= 2)
-    @linkconstraint(graph, nodes[1][:x] + nodes[2][:x] == 4)
-    @objective(graph, Max, nodes[1][:x] + 2 * nodes[2][:x])
-    @suppress optimize!(graph)
-
-    @test objective_value(graph) == 7.0
-    @test value(nodes[1][:x]) == 1.0
-    @test value(nodes[2][:x]) == 3.0
-    @test value(nodes[1][:x] + nodes[2][:x]) == value(graph, nodes[1][:x] + nodes[2][:x])
-    @test value(nodes[1][:x]^2 + nodes[2][:x]^2) ==
-        value(graph, nodes[1][:x]^2 + nodes[2][:x]^2)
-    @test value(nodes[1][:x]^3 + nodes[2][:x]^3) ==
-        value(graph, nodes[1][:x]^3 + nodes[2][:x]^3)
-
-    @test JuMP.termination_status(graph) == MOI.OPTIMAL
-    @test JuMP.primal_status(graph) == MOI.FEASIBLE_POINT
-    @test JuMP.dual_status(graph) == MOI.FEASIBLE_POINT
-    @test JuMP.result_count(graph) == 1
-    @test JuMP.raw_status(graph) == "kHighsModelStatusOptimal"
-
-    constraints = all_constraints(graph, include_variable_in_set_constraints=true)
-    @test JuMP.dual(constraints[1]) == 1.0
-    @test JuMP.dual(constraints[2]) == 0.0
-    @test JuMP.dual(constraints[3]) == -2.0
-end
-
 function _create_test_nonlinear_optigraph()
-    graph = OptiGraph()
+    
+    graph = RemoteOptiGraph(worker = 2)
 
     n1 = add_node(graph)
     n2 = add_node(graph)
@@ -146,13 +133,12 @@ function test_optigraph_build()
     graph = _create_test_nonlinear_optigraph()
 
     # basic queries
-    @test graph_backend(graph).optigraph == graph
     @test num_nodes(graph) == 4
-    @test num_edges(graph) == 4
+    @test num_remote_edges(graph) == 4
     @test num_subgraphs(graph) == 0
 
     n1, n2, n3, n4 = all_nodes(graph)
-    e1, e2, e3, e4 = all_edges(graph)
+    e1, e2, e3, e4 = all_remote_edges(graph)
 
     @test has_edge(graph, Set([n2, n4])) == true
     @test get_edge(graph, Set([n2, n4])) == e2
@@ -167,7 +153,7 @@ function test_optigraph_build()
     @test index(graph, n2[:x]) == MOI.VariableIndex(3)
 
     # constraints
-    @test num_constraints(n1, count_variable_in_set_constraints=true) == 5
+    @test num_constraints(n1) == 5
     @test num_constraints(e1) == 1
     @test num_constraints(graph) == 31
     @test num_constraints(graph; count_variable_in_set_constraints=true) == 59
@@ -176,8 +162,8 @@ function test_optigraph_build()
     F, S = con_types[3]
     @test length(con_types) == 6
     @test num_constraints(graph, F, S) == 1
-    @test num_link_constraints(graph) == 29
-    @test num_link_constraints(graph, F, S) == 0
+    @test num_remote_link_constraints(graph) == 29
+    @test num_remote_link_constraints(graph, F, S) == 0
 
     @test length(collect_nodes(objective_function(graph))) == 4
     @test JuMP.objective_function_type(graph) ==
@@ -243,17 +229,17 @@ function test_objective_functions()
 
     @objective(n4, Min, n4[:x]^3)
     set_to_node_objectives(graph)
-    @test typeof(objective_function(graph)) == GenericNonlinearExpr{NodeVariableRef}
+    @test typeof(objective_function(graph)) == GenericNonlinearExpr{RemoteVariableRef}
 
     # test solve
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     JuMP.optimize!(graph)
-    @test graph.is_model_dirty == false
     @test JuMP.termination_status(graph) == MOI.LOCALLY_SOLVED
 end
 
 function test_subgraphs()
-    graph = OptiGraph(; name=:root)
+    
+    graph = RemoteOptiGraph(worker = 2; name=:root)
 
     @optinode(graph, n0)
     @variable(n0, x)
@@ -270,13 +256,11 @@ function test_subgraphs()
     @linkconstraint(graph, n0[:x] + n11[:x] + n21[:x] <= 10)
     @linkconstraint(graph, n12[:x] == n24[:x])
 
-    con_types = list_of_constraint_types(graph)
-    F, S = con_types[6]
-
     @test num_local_nodes(graph) == 1
     @test num_nodes(graph) == 9
     @test num_local_edges(graph) == 2
-    @test num_edges(graph) == 10
+    @test num_remote_edges(graph) == 8
+    @test num_edges(graph) == 2
     @test num_subgraphs(graph) == 2
 
     # constraints
@@ -285,15 +269,28 @@ function test_subgraphs()
     @test num_constraints(graph, count_variable_in_set_constraints=true) == 120
     @test length(all_constraints(graph, include_variable_in_set_constraints=true)) == 120
 
+    con_types = list_of_constraint_types(graph)
+    F, S = con_types[5]
+
     # link constraints
-    @test num_local_link_constraints(graph, F, S) == 1
-    @test num_link_constraints(graph, F, S) == 53
+    @test num_local_remote_link_constraints(graph, F, S) == 0
+    @test num_remote_link_constraints(graph, F, S) == 52
     @test num_local_link_constraints(graph) == 2
-    @test num_link_constraints(graph) == 60
+    @test num_remote_link_constraints(graph) == 58
+    @test length(local_remote_link_constraints(graph, F, S)) == 0
+    @test length(all_remote_link_constraints(graph, F, S)) == 52
+    @test length(local_remote_link_constraints(graph)) == 0
+    @test length(all_remote_link_constraints(graph)) == 58
+
+    F = GenericAffExpr{Float64, RemoteVariableRef}
+    @test num_local_link_constraints(graph, F, S) == 1
     @test length(local_link_constraints(graph, F, S)) == 1
-    @test length(all_link_constraints(graph, F, S)) == 53
+    @test num_link_constraints(graph, F, S) == 1
+    @test length(local_link_constraints(graph, F, S)) == 1
+    @test num_local_link_constraints(graph) == 2
     @test length(local_link_constraints(graph)) == 2
-    @test length(all_link_constraints(graph)) == 60
+    @test num_link_constraints(graph) == 2
+    @test length(all_link_constraints(graph)) == 2
 
     # set objective
     @objective(sg1, Min, n11[:x] + n12[:x] + n13[:x][1] + n14[:x])
@@ -316,9 +313,9 @@ function test_subgraphs()
     # check that node solution matches source graph solution
     @test value(n11[:x]) == value(sg1, n11[:x])
 
-    g = OptiGraph()
-    g1 = OptiGraph()
-    g2 = OptiGraph()
+    g = RemoteOptiGraph(worker = 2)
+    g1 = RemoteOptiGraph(worker = 2)
+    g2 = RemoteOptiGraph(worker = 2)
 
     add_subgraph(g, g1)
     add_subgraph(g1, g2)
@@ -329,38 +326,14 @@ function test_subgraphs()
     @variable(n2, y)
 
     @test traverse_parents(n1) == [g1, g]
+    @test traverse_parents(x) == [g1, g]
     @test traverse_parents(n2) == [g2, g1, g]
-end
-
-function test_assemble_optigraph()
-    graph = _create_test_nonlinear_optigraph()
-    new_graph = assemble_optigraph(all_nodes(graph), all_edges(graph))
-
-    # test graphs have same elements
-    @test num_nodes(new_graph) == num_nodes(graph)
-    @test num_variables(new_graph) == num_variables(graph)
-    @test num_constraints(new_graph) == num_constraints(graph)
-    @test num_link_constraints(new_graph) == num_link_constraints(graph)
-
-    # test graphs produce the same solution
-    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-    optimize!(graph)
-    set_optimizer(new_graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-    optimize!(new_graph)
-    @test termination_status(new_graph) == MOI.LOCALLY_SOLVED
-    @test value.(all_variables(graph)) == value.(all_variables(new_graph))
-
-    # test start values
-    n1 = graph[1]
-    set_start_value(new_graph, n1[:x], 3.0)
-    @test start_value(new_graph, n1[:x]) == 3.0
-    @test start_value(n1[:x]) == 1.0
-    set_start_value(n1[:x], 3.0)
-    @test start_value(n1[:x]) == 3.0
+    @test traverse_parents(y) == [g2, g1, g]
 end
 
 function test_variable_constraints()
-    graph = OptiGraph()
+    
+    graph = RemoteOptiGraph(worker = 2)
     set_optimizer(graph, HiGHS.Optimizer)
 
     @optinode(graph, nodes[1:2])
@@ -381,9 +354,7 @@ function test_variable_constraints()
     @test start_value(n2[:x]) == 3.0
 
     # variable not owned
-    @test_throws ErrorException("Variable $(n1[:x]) does not belong to node $n2") @constraint(
-        n2, n1[:x] >= 0
-    )
+    @test_throws ErrorException @constraint(n2, n1[:x] >= 0)
 
     # bounds
     @test has_lower_bound(n1[:x]) == true
@@ -396,55 +367,31 @@ function test_variable_constraints()
     set_upper_bound(n2[:x], 3)
     @test upper_bound(n2[:x]) == 3
 
+    JuMP.set_silent(graph)
+    set_optimizer_attribute(graph, "output_flag", false)
     # fix variables
     JuMP.fix(n1[:x], 1; force=true)
-    @suppress optimize!(graph)
+    optimize!(graph)
     @test value(n1[:x]) == 1
 
     JuMP.fix(n1[:x], 2)
-    @suppress optimize!(graph)
+    optimize!(graph)
     @test value(n1[:x]) == 2
 
     JuMP.fix(n1[:x], 0)
-    @suppress optimize!(graph)
+    optimize!(graph)
     @test value(n1[:x]) == 0
 
     # integer and binary
     set_binary(n1[:x])
     @test is_binary(n1[:x]) == true
-    @suppress optimize!(graph)
+    optimize!(graph)
 
     set_integer(n2[:x])
     @test is_integer(n2[:x]) == true
-    @suppress optimize!(graph)
-
-    # relax and unrelax integrality for each node
-    unrelax1 = JuMP.relax_integrality(n1)
-    @test is_binary(n1[:x]) == false
-    unrelax1()
-    @test is_binary(n1[:x]) == true
-
-    unrelax2 = JuMP.relax_integrality(n2)
-    @test is_integer(n2[:x]) == false
-    unrelax2()
-    @test is_integer(n2[:x]) == true
-
-    # relax and unrelax integrality for entire graph
-    unrelax_graph = JuMP.relax_integrality(graph)
-    @test is_binary(n1[:x]) == false
-    @test is_integer(n2[:x]) == false
-    unrelax_graph()
-    @test is_binary(n1[:x]) == true
-    @test is_integer(n2[:x]) == true
-
-    # relax and unrelax integrality for entire graph, unfixing x variables first
-    JuMP.unfix(n1[:x])
-    unrelax_graph = JuMP.relax_integrality(graph)
-    @test is_binary(n1[:x]) == false
-    unrelax_graph()
-    @test is_binary(n1[:x]) == true
-
-    graph = OptiGraph()
+    optimize!(graph)
+    
+    graph = RemoteOptiGraph(worker = 2)
 
     @optinode(graph, nodes[1:2])
     n1, n2 = all_nodes(graph)
@@ -477,40 +424,12 @@ function test_variable_constraints()
     @test normalized_coefficient(graph[:link_con3], n1[:y], n2[:x]) == 3
 end
 
-function test_nonlinear_operators()
-    graph = _create_test_nonlinear_optigraph()
-    n1 = graph[1]
-
-    # setup node operator
-    square(x) = x^2
-    f(x, y) = (x - 1)^2 + (y - 2)^2
-
-    @operator(n1, op_square, 1, square)
-    @operator(n1, op_f, 2, f)
-    @objective(n1, Min, op_f(n1[:x], op_square(n1[:y])))
-
-    set_to_node_objectives(graph)
-    set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
-    optimize!(graph)
-
-    @test value(op_square(n1[:x])) != nothing
-    @test value(op_f(n1[:x], n1[:y])) != nothing
-
-    n2 = graph[2]
-    @operator(graph, op_f_graph, 2, f)
-    @linkconstraint(graph, con_ref, op_f_graph(n2[:x], n2[:y]) + n1[:x] >= 0)
-    @test num_constraints(graph, count_variable_in_set_constraints=true) == 60
-    optimize!(graph)
-    @test dual(con_ref) != nothing
-    @test value(op_f_graph(n2[:x], n2[:y])) != nothing
-end
-
 function test_multiple_solves()
     graph = _create_test_nonlinear_optigraph()
     set_optimizer(graph, optimizer_with_attributes(Ipopt.Optimizer, "print_level" => 0))
     optimize!(graph)
 
-    n1 = graph[1]
+    n1 = all_nodes(graph)[1]
     set_lower_bound(n1[:x], 1.5)
     optimize!(graph)
     @test isapprox(value(n1[:x]), 1.5, atol=1e-6)
@@ -535,7 +454,7 @@ function test_nlp_exceptions()
 end
 
 function test_delete_extensions()
-    graph = OptiGraph()
+    graph = RemoteOptiGraph(worker = 2)
     @optinode(graph, nodes[1:2])
 
     @variable(nodes[1], x >= 1)
@@ -567,4 +486,4 @@ end
 
 end
 
-TestOptiGraph.run_tests()
+TestRemoteOptiGraph.run_tests()

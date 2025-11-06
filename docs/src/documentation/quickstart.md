@@ -21,7 +21,7 @@ The following command will create the optigraph (referred to as `graph`). We als
 ```jldoctest quickstart
 julia> graph = OptiGraph(;name=:quickstart_graph)
 An OptiGraph
-quickstart_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         0                0
           Edges:         0                0
@@ -58,7 +58,7 @@ n1[:y]
 
 julia> graph
 An OptiGraph
-quickstart_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         1                1
           Edges:         0                0
@@ -89,7 +89,7 @@ println(graph)
 # output
 
 An OptiGraph
-quickstart_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         3                3
           Edges:         0                0
@@ -113,7 +113,7 @@ n1[:x] + n2[:x] + n3[:x] = 3
 
 julia> println(graph)
 An OptiGraph
-quickstart_graph #local elements  #total elements
+                 #local elements  #total elements
 --------------------------------------------------
           Nodes:         3                3
           Edges:         1                1

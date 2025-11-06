@@ -67,7 +67,7 @@ end
 ### Aggregate Functions
 
 """
-    aggregate(graph::OptiGraph; name=gensym())
+    aggregate(graph::OptiGraph; name=Symbol(UUIDs.uuid4()))
 
 Aggregate an optigraph into a graph containing a single optinode. An optional 
 `name` can be used to name the new optigraph.
@@ -75,7 +75,7 @@ Returns the new optinode (which points to a new graph with `source_graph(node)`)
 mapping from the original graph variables and constraints to the new node variables and 
 constraints.
 """
-function aggregate(graph::OptiGraph; name=gensym())
+function aggregate(graph::OptiGraph; name=Symbol(UUIDs.uuid4()))
     # aggregate into a graph containing a single optinode
     new_graph = OptiGraph(; name=name)
     new_node, ref_map = _copy_graph_elements_to!(new_graph, graph)
@@ -388,7 +388,7 @@ how many levels of subgraphs remain in the new aggregated optigraph. For example
 Return a new aggregated optigraph and reference map that maps elements from the old 
 optigraph to the new aggregate optigraph.
 """
-function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0; name=gensym())
+function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0; name=Symbol(UUIDs.uuid4()))
     if num_subgraphs(graph) == 0
         error("`aggregate_to_depth` requires the graph to contain subgraphs.")
     end

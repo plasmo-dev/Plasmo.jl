@@ -21,7 +21,7 @@ function _initialize_optigraph(name::Symbol)
     return graph
 end
 
-function OptiGraph(; name::Symbol=Symbol(:g, gensym()))
+function OptiGraph(; name::Symbol=Symbol(:g, Symbol(UUIDs.uuid4())))
     graph = _initialize_optigraph(name)
     # default is to use a CachingOptimizer backend
     graph.backend = cached_moi_backend(graph)
@@ -30,7 +30,7 @@ end
 
 function direct_moi_graph(
     backend::Union{MOI.ModelLike,MOI.OptimizerWithAttributes};
-    name::Symbol=Symbol(:g, gensym()),
+    name::Symbol=Symbol(:g, Symbol(UUIDs.uuid4())),
 )
     graph = _initialize_optigraph(name)
     graph.backend = direct_moi_backend(graph, backend)
@@ -49,7 +49,7 @@ function Base.string(graph::OptiGraph)
         %16s %9s %16s
         %16s %9s %16s
         """,
-        "$(name(graph))",
+        "",
         "#local elements",
         "#total elements",
         "Nodes:",
@@ -65,8 +65,8 @@ function Base.string(graph::OptiGraph)
         num_local_variables(graph),
         num_variables(graph),
         "Constraints:",
-        num_local_constraints(graph),
-        num_constraints(graph)
+        num_local_constraints(graph, count_variable_in_set_constraints=true),
+        num_constraints(graph, count_variable_in_set_constraints=true)
     )
 end
 Base.print(io::IO, graph::OptiGraph) = Base.print(io, Base.string(graph))
@@ -180,9 +180,9 @@ Add a new optinode to `graph`. By default, the node label is set to be "n<i+1>" 
 the number of nodes in the graph.
 """
 function add_node(
-    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1)
+    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1), index = Symbol(UUIDs.uuid4())
 )
-    node_index = NodeIndex(gensym())
+    node_index = NodeIndex(index)
     node = OptiNode(Ref(graph), node_index, Ref(label))
     push!(graph.optinodes, node)
     add_node(graph_backend(graph), node)
@@ -274,7 +274,7 @@ end
 
 Return the total number of nodes in `graph` by recursively checking subgraphs.
 """
-function num_nodes(graph::OptiGraph)
+function num_nodes(graph::GT) where {GT<:AbstractOptiGraph}
     n_nodes = num_local_nodes(graph)
     for subgraph in graph.subgraphs
         n_nodes += num_nodes(subgraph)
@@ -461,11 +461,11 @@ end
 # manage subgraphs
 
 """
-    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
+    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, Symbol(UUIDs.uuid4())))
 
 Create and add a new subgraph to the optigraph `graph`.
 """
-function add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, gensym()))
+function add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, Symbol(UUIDs.uuid4())))
     subgraph = OptiGraph(; name=name)
     subgraph.parent_graph = graph
     push!(graph.subgraphs, subgraph)
@@ -473,7 +473,7 @@ function add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, gensym()))
 end
 
 """
-    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg,gensym()))
+    add_subgraph(graph::OptiGraph; name::Symbol=Symbol(:sg, Symbol(UUIDs.uuid4())))
 
 Add an existing subgraph to an optigraph. The subgraph cannot already be part of another
 optigraph. It also should not have nodes that already exist in the optigraph.
@@ -493,13 +493,24 @@ end
 Return all the parents of the given `graph` if it has any. Can be used to determine how deep
 the graph is located with another optigraph. 
 """
-function traverse_parents(graph::OptiGraph)
-    parents = OptiGraph[]
+function traverse_parents(graph::GT) where {GT<:AbstractOptiGraph}
+    parents = GT[]
     if graph.parent_graph != nothing
         push!(parents, graph.parent_graph)
         append!(parents, traverse_parents(graph.parent_graph))
     end
     return parents
+end
+
+"""
+    Plasmo.traverse_parents(element::OptiElement)
+
+Returns the source graph of `element` along with all the source graph's parents
+"""
+function traverse_parents(element::OptiElement)
+    source = source_graph(element)
+    graphs = [source; traverse_parents(source)]
+    return graphs
 end
 
 """
@@ -542,7 +553,7 @@ Retrieve the total number of subgraphs in `graph`. Include subgraphs within subg
 function num_subgraphs(graph::OptiGraph)
     n_subs = num_local_subgraphs(graph)
     for subgraph in graph.subgraphs
-        n_subs += num_local_subgraphs(subgraph)
+        n_subs += num_subgraphs(subgraph)
     end
     return n_subs
 end
@@ -689,16 +700,16 @@ function num_local_constraints(
 end
 
 """
-    num_local_constraints(graph::OptiGraph)
+    num_local_constraints(graph::OptiGraph; count_variable_in_set_constraints = false)
 
 Retrieve the number of local constraints (all constraint types) in `graph`. Does not include
 constraints in subgraphs.
 """
-function num_local_constraints(graph::OptiGraph)
+function num_local_constraints(graph::OptiGraph; count_variable_in_set_constraints=false)
     if num_local_elements(graph) == 0
         return 0
     else
-        return sum(JuMP.num_constraints.(local_elements(graph)))
+        return sum(JuMP.num_constraints.(local_elements(graph), count_variable_in_set_constraints=count_variable_in_set_constraints))
     end
 end
 
@@ -751,7 +762,7 @@ end
 
 Return the name of `graph`.
 """
-function JuMP.name(graph::OptiGraph)
+function JuMP.name(graph::GT) where {GT<:AbstractOptiGraph}
     return Base.string(graph.label)
 end
 
@@ -760,7 +771,7 @@ end
 
 Set the name of `graph` to `name`.
 """
-function JuMP.set_name(graph::OptiGraph, name::Symbol)
+function JuMP.set_name(graph::GT, name::Symbol) where {GT<:AbstractOptiGraph}
     graph.label = name
     return nothing
 end
@@ -891,7 +902,7 @@ end
 """
     JuMP.add_constraint(graph::OptiGraph, con::JuMP.AbstractConstraint, name::String="")
 
-Add a new constraint to `graph`. This method is called internall when a user uses the 
+Add a new constraint to `graph`. This method is called internally when a user uses the 
 JuMP.@constraint macro.
 """
 function JuMP.add_constraint(
@@ -942,7 +953,7 @@ end
 
 Return all of the constraints in `graph` (all function and set types).
 """
-function JuMP.all_constraints(graph::OptiGraph; include_variable_in_set_constraints=true)
+function JuMP.all_constraints(graph::OptiGraph; include_variable_in_set_constraints=false)
     constraints = ConstraintRef[]
     con_types = JuMP.list_of_constraint_types(graph)
     for con_type in con_types
@@ -979,7 +990,7 @@ end
 Return the total number of constraints in `graph`. If `count_variable_in_set_constraints`
 is set to true, this also includes variable bound constraints. 
 """
-function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraints=true)
+function JuMP.num_constraints(graph::OptiGraph; count_variable_in_set_constraints=false)
     num_cons = 0
     con_types = JuMP.list_of_constraint_types(graph)
     for con_type in con_types
@@ -1486,12 +1497,12 @@ function _set_objective_coefficient(
     return nothing
 end
 
-function JuMP.unregister(graph::OptiGraph, key::Symbol)
+function JuMP.unregister(graph::GT, key::Symbol) where {GT<:AbstractOptiGraph}
     return delete!(object_dictionary(graph), key)
 end
 
 """
-    write_to_file(graph::OptiGraph, filename::string)
+    write_to_file(graph::AbstractOptiGraph, filename::string)
 
 Write the model stored in `graph` to `filename.` See [`MOI.FileFormats.FileFormat`](@ref) 
 for a list of supported formats. Format is determined automatically based on given file

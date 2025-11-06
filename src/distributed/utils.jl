@@ -1,59 +1,10 @@
-"""
-    extract_variables(func)
-
-Return the variables contained within the given expression or reference.
-"""
-function extract_variables(func)
-    return _extract_variables(func)
-end
-
-function _extract_variables(func::NodeVariableRef)
+function _extract_variables(func::RemoteVariableRef)
     return [func]
 end
 
-function _extract_variables(ref::EdgeConstraintRef)
+function _extract_variables(ref::RemoteEdgeConstraintRef)
     func = JuMP.jump_function(JuMP.constraint_object(ref))
     return _extract_variables(func)
-end
-
-function _extract_variables(func::JuMP.GenericAffExpr)
-    return collect(keys(func.terms))
-end
-
-function _extract_variables(func::JuMP.GenericQuadExpr)
-    quad_vars = vcat([[term[2]; term[3]] for term in JuMP.quad_terms(func)]...)
-    aff_vars = _extract_variables(func.aff)
-    return union(quad_vars, aff_vars)
-end
-
-function _extract_variables(func::JuMP.GenericNonlinearExpr)
-    V = typeof(func).parameters[1]
-    vars = V[]
-    for i in 1:length(func.args)
-        func_arg = func.args[i]
-        if func_arg isa Number
-            continue
-        elseif typeof(func_arg) == V
-            push!(vars, func_arg)
-        else
-            append!(vars, _extract_variables(func_arg))
-        end
-    end
-    return vars
-end
-
-function _first_variable(func::JuMP.GenericNonlinearExpr)
-    V = typeof(func).parameters[1]
-    for i in 1:length(func.args)
-        func_arg = func.args[i]
-        if func_arg isa Number
-            continue
-        elseif typeof(func_arg) == V
-            return func_arg
-        else
-            return _first_variable(func_arg)
-        end
-    end
 end
 
 """
@@ -61,23 +12,16 @@ end
 
 Return whether the given function is separable across optinodes.
 """
-function is_separable(func::Union{Number,JuMP.AbstractJuMPScalar})
-    return _is_separable(func)
-end
 
-function _is_separable(::Number)
+function _is_separable(::RemoteVariableRef)
     return true
 end
 
-function _is_separable(::NodeVariableRef)
+function _is_separable(::JuMP.GenericAffExpr{<:Number,RemoteVariableRef})
     return true
 end
 
-function _is_separable(::JuMP.GenericAffExpr{<:Number,NodeVariableRef})
-    return true
-end
-
-function _is_separable(func::JuMP.GenericQuadExpr{<:Number,NodeVariableRef})
+function _is_separable(func::JuMP.GenericQuadExpr{<:Number,RemoteVariableRef})
     # check each term; make sure they are all on the same subproblem
     for term in Plasmo.quad_terms(func)
         # term = (coefficient, variable_1, variable_2)
@@ -92,7 +36,7 @@ function _is_separable(func::JuMP.GenericQuadExpr{<:Number,NodeVariableRef})
     return true
 end
 
-function _is_separable(func::JuMP.GenericNonlinearExpr{NodeVariableRef})
+function _is_separable(func::JuMP.GenericNonlinearExpr{RemoteVariableRef})
     # check for a constant multiplier
     if func.head == :*
         if !(func.args[1] isa Number)
@@ -124,27 +68,27 @@ end
 Extract the separable terms contained within `graph`.
 NOTE: Nonlinear objectives are not completely tested and may return incorrect results.
 """
-function extract_separable_terms(func::JuMP.AbstractJuMPScalar, graph::OptiGraph)
+function extract_separable_terms(func::JuMP.AbstractJuMPScalar, graph::RemoteOptiGraph)
     !is_separable(func) && error("Cannont extract terms. Function is not separable.")
     return _extract_separable_terms(func, graph)
 end
 
 function _extract_separable_terms(
-    func::Union{Number,Plasmo.NodeVariableRef}, graph::OptiGraph
+    func::Union{Number,Plasmo.RemoteVariableRef}, graph::RemoteOptiGraph
 )
     return func
 end
 
 function _extract_separable_terms(
-    func::JuMP.GenericAffExpr{<:Number,NodeVariableRef}, graph::OptiGraph
+    func::JuMP.GenericAffExpr{<:Number,RemoteVariableRef}, graph::RemoteOptiGraph
 )
     node_terms = OrderedDict{
-        OptiNode,Vector{JuMP.GenericAffExpr{<:Number,NodeVariableRef}}
+        RemoteNodeRef,Vector{JuMP.GenericAffExpr{<:Number,RemoteVariableRef}}
     }()
     nodes = Plasmo.collect_nodes(func)
     nodes = intersect(nodes, all_nodes(graph))
     for node in nodes
-        node_terms[node] = Vector{JuMP.GenericAffExpr{<:Number,NodeVariableRef}}()
+        node_terms[node] = Vector{JuMP.GenericAffExpr{<:Number,RemoteVariableRef}}()
     end
 
     for term in Plasmo.linear_terms(func)
@@ -156,15 +100,15 @@ function _extract_separable_terms(
 end
 
 function _extract_separable_terms(
-    func::JuMP.GenericQuadExpr{<:Number,NodeVariableRef}, graph::OptiGraph
+    func::JuMP.GenericQuadExpr{<:Number,RemoteVariableRef}, graph::RemoteOptiGraph
 )
     node_terms = OrderedDict{
-        OptiNode,Vector{JuMP.GenericQuadExpr{<:Number,NodeVariableRef}}
+        RemoteNodeRef,Vector{JuMP.GenericQuadExpr{<:Number,RemoteVariableRef}}
     }()
     nodes = collect_nodes(func)
     nodes = intersect(nodes, all_nodes(graph))
     for node in nodes
-        node_terms[node] = Vector{JuMP.GenericQuadExpr{<:Number,NodeVariableRef}}()
+        node_terms[node] = Vector{JuMP.GenericQuadExpr{<:Number,RemoteVariableRef}}()
     end
 
     for term in JuMP.quad_terms(func)
@@ -182,13 +126,13 @@ end
 
 # NOTE: method needs improvement. does not cover all separable cases.
 function _extract_separable_terms(
-    func::JuMP.GenericNonlinearExpr{NodeVariableRef}, graph::OptiGraph
+    func::JuMP.GenericNonlinearExpr{RemoteVariableRef}, graph::RemoteOptiGraph
 )
-    node_terms = OrderedDict{OptiNode,Vector{JuMP.GenericNonlinearExpr{NodeVariableRef}}}()
+    node_terms = OrderedDict{RemoteNodeRef,Vector{JuMP.GenericNonlinearExpr{RemoteVariableRef}}}()
     nodes = collect_nodes(func)
     nodes = intersect(nodes, all_nodes(graph))
     for node in nodes
-        node_terms[node] = Vector{JuMP.GenericNonlinearExpr{NodeVariableRef}}()
+        node_terms[node] = Vector{JuMP.GenericNonlinearExpr{RemoteVariableRef}}()
     end
 
     _extract_separable_terms(func, node_terms)
@@ -197,8 +141,8 @@ function _extract_separable_terms(
 end
 
 function _extract_separable_terms(
-    func::JuMP.GenericNonlinearExpr{NodeVariableRef},
-    node_terms::OrderedDict{OptiNode,Vector{JuMP.GenericNonlinearExpr{NodeVariableRef}}},
+    func::JuMP.GenericNonlinearExpr{RemoteVariableRef},
+    node_terms::OrderedDict{RemoteNodeRef,Vector{JuMP.GenericNonlinearExpr{RemoteVariableRef}}},
 )
     # check for a constant multiplier
     multiplier = 1.0

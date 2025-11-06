@@ -36,6 +36,8 @@ macro optinode(graph, args...)
             container = JuMP.Containers.@container($(args...), add_node($graph))
             if isa(container, Plasmo.OptiNode)
                 set_name(container, Symbol($var))
+            elseif isa(container, Plasmo.RemoteNodeRef)
+                set_name(container, Symbol($var))
             else
                 #set node labels
                 axs = axes(container)
@@ -65,7 +67,7 @@ The @linkconstraint macro works the same way as the `JuMP.@constraint` macro.
 macro linkconstraint(graph, args...)
     args, kw_args, = Containers.parse_macro_arguments(error, args)
     macro_code = quote
-        @assert isa($graph, OptiGraph)
+        @assert isa($graph, Plasmo.AbstractOptiGraph)
         refs = JuMP.@constraint($graph, ($(args...)))
     end
     return esc(macro_code)

@@ -94,7 +94,7 @@ function test_aggregate_to_depth()
     @test num_edges(agg_graph) == 3
     @test num_subgraphs(agg_graph) == 0
     @test num_variables(agg_graph) == 80
-    @test num_constraints(agg_graph) == 319
+    @test num_constraints(agg_graph, count_variable_in_set_constraints = true) == 319
     @test num_local_link_constraints(agg_graph) == 3
 end
 

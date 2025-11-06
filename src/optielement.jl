@@ -94,7 +94,7 @@ function JuMP.num_constraints(
 end
 
 function JuMP.num_constraints(
-    element::OptiElement; count_variable_in_set_constraints=true
+    element::OptiElement; count_variable_in_set_constraints=false
 )::Int64
     num_cons = 0
     con_types = JuMP.list_of_constraint_types(element)

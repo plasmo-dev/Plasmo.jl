@@ -15,6 +15,9 @@ using DataStructures
 using SparseArrays
 using Graphs
 using Printf
+using Distributed
+using DistributedArrays
+using UUIDs
 
 using MathOptInterface
 const MOI = MathOptInterface
@@ -66,6 +69,7 @@ export OptiGraph,
     containing_optigraphs,
     source_graph,
     assemble_optigraph,
+    traverse_parents,
 
     # partition
 
@@ -112,11 +116,38 @@ export OptiGraph,
     set_jump_model,
     extract_variables,
     is_separable,
-    extract_separable_terms
+    extract_separable_terms,
+
+    # distributed functions
+
+    local_graph,
+    print_local_graph,
+    get_local_graph,
+    RemoteOptiGraph, 
+    RemoteVariableRef,
+    RemoteNodeRef,
+    InterWorkerEdge,
+    RemoteEdgeRef,
+    get_constraint,
+    summarize_optigraph,
+    all_remote_edges,
+    num_remote_edges,
+    local_remote_edges,
+    num_local_remote_edges, 
+    num_remote_link_constraints,
+    all_remote_link_constraints,
+    num_local_remote_link_constraints,
+    local_remote_link_constraints,
+    distribute_graph,
+    get_worker,
+    get_graph,
+    get_darray
 
 include("core_types.jl")
 
 include("node_variables.jl")
+
+include("distributed/core_types.jl")
 
 include("optigraph.jl")
 
@@ -143,6 +174,24 @@ include("graph_functions/topology.jl")
 include("graph_functions/partition.jl")
 
 include("utils.jl")
+
+include("distributed/local_conversions.jl")
+
+include("distributed/remote_conversions.jl")
+
+include("distributed/optigraph.jl")
+
+include("distributed/optinode.jl")
+
+include("distributed/optiedge.jl")
+
+include("distributed/remote_variables.jl")
+
+include("distributed/jump_interop.jl")
+
+include("distributed/utils.jl")
+
+include("distributed/distribute_optigraph.jl")
 
 # extensions
 function __init__()
