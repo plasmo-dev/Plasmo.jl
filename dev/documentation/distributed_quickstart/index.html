@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Quickstart · Plasmo.jl</title><meta name="title" content="Quickstart · Plasmo.jl"/><meta property="og:title" content="Quickstart · Plasmo.jl"/><meta property="twitter:title" content="Quickstart · Plasmo.jl"/><meta name="description" content="Documentation for Plasmo.jl."/><meta property="og:description" content="Documentation for Plasmo.jl."/><meta property="twitter:description" content="Documentation for Plasmo.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Plasmo.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Plasmo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../quickstart/">Quickstart</a></li><li><a class="tocitem" href="../modeling/">Modeling with OptiGraphs</a></li><li><a class="tocitem" href="../graph_processing/">Graph Processing and Analysis</a></li><li><a class="tocitem" href="../api_docs/">API Documentation</a></li><li><span class="tocitem">Distributed Memory</span><ul><li><a class="tocitem" href="../distributed/">Introduction</a></li><li class="is-active"><a class="tocitem" href>Quickstart</a><ul class="internal"><li><a class="tocitem" href="#Performance-Tips-and-Suggestions"><span>Performance Tips and Suggestions</span></a></li></ul></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../../tutorials/supply_chain/">Supply Chain Optimization</a></li><li><a class="tocitem" href="../../tutorials/MHMPC/">Multi-Horizon Model Predictive Control</a></li><li><a class="tocitem" href="../../tutorials/quadcopter/">Optimal Control of a Quadcopter</a></li><li><a class="tocitem" href="../../tutorials/HVAC/">Hierarchical HVAC Optimization</a></li><li><a class="tocitem" href="../../tutorials/gas_pipeline/">Optimal Control of a Natural Gas Network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Distributed Memory</a></li><li class="is-active"><a href>Quickstart</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Quickstart</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl/blob/main/docs/src/documentation/distributed_quickstart.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Distributed-OptiGraph-QuickStart"><a class="docs-heading-anchor" href="#Distributed-OptiGraph-QuickStart">Distributed OptiGraph QuickStart</a><a id="Distributed-OptiGraph-QuickStart-1"></a><a class="docs-heading-anchor-permalink" href="#Distributed-OptiGraph-QuickStart" title="Permalink"></a></h1><p>In this quickstart, we give an example of how to build a <code>RemoteOptiGraph</code> in Plasmo.jl and then give several suggestions for best practices. </p><p>The <code>RemoteOptiGraph</code> object can be instantiated by calling <code>RemoteOptiGraph(worker = workerid)</code> where <code>workerid</code> is the index of a remote worker that has been added to the main process. The <code>RemoteOptiGraph</code> object contains a DistributedArray.jl object that stores a reference to the array on the main worker and places the actual data of the array on a remote worker or workers. In the case of Plasmo, this is only a length one array, and an <code>OptiGraph</code> is stored in this DistributedArray on worker <code>workerid</code>. </p><p>As with a normal <code>OptiGraph</code>, the <code>RemoteOptiGraph</code> supports nesting other subgraphs within it. Each <code>RemoteOptiGraph</code> contains a vector of subgraphs called <code>subgraphs</code> and a reference to a parent graph called <code>parent_graph</code>. New subgraphs can be added to an existing <code>RemoteOptiGraph</code> via the function <code>add_subgraph</code>. Note that subgraphs or parent graphs do not need to be stored on the same remote worker as the other <code>RemoteOptiGraph</code>s. </p><p>Functions in Plasmo and JuMP have been extended to work with Plasmo&#39;s <code>RemoteOptiGraph</code>s. For instance, macros for adding nodes, variables, constraints, expressions, linking constraints, and objectives have all been extended to work with the <code>RemoteOptiGraph</code>. Consequently, a user can build their graph remotely using the same functions they would for a normal, shared-memory <code>OptiGraph</code>. Below, we give a code snippet showing how a user can build the graph remotely. </p><pre><code class="language-julia hljs"># Load in packages
+using Plasmo, Distributed, JuMP, HiGHS, Ipopt
+
+# Add a new remote processor
+if nprocs() == 1
+    addprocs(1)
+end
+
+# Load packages on the remote worker
+@everywhere begin
+    using Plasmo, JuMP, Distributed, HiGHS, Ipopt
+end
+
+# Instantiate optigraph on worker 2
+rg = Plasmo.RemoteOptiGraph(worker=2)
+
+# Add nodes to the remote optigraph
+# n1 and n2 are accesible on the main worker and are `RemoteNodeRef`s
+@optinode(rg, n1)
+@optinode(rg, n2)
+
+# Add variables to the nodes
+@variable(n1, x)
+@variable(n1, y)
+@variable(n2, z &gt;= 0)
+
+# Many JuMP functions are extended to work with remote optigraphs
+all_vars = JuMP.all_variables(rg)
+JuMP.fix(x, 0)
+
+# Link constraints can be named and can link within a graph
+# This link constraint creates a constraint on a `RemoteEdgeRef`
+@linkconstraint(rg, lc1, x + rg[:n2][:z] &lt;= 1)
+
+# Linear, quadratic, and nonlinear constraints are all supported and can be named
+@constraint(n1, n1_con, x + y &lt;= 2); #linear constraint
+@constraint(n1, x^2 + y &lt;= 4); # quadratic constraint
+@constraint(n1, cos(x) + y^2*x &gt;= 1); #nonlinear constraint
+
+# Expressions can be defined on nodes and remote optigraphs
+@expression(n1, n1_expr, x + 2 * y)
+@expression(rg, rg_expr, x + y + z)
+
+# Add objective function
+@objective(rg, Min, x + sin(y) + z^2)
+
+# Set optimizer on the graph on the remote worker
+set_optimizer(rg, Ipopt.Optimizer)
+
+# solve the graph
+optimize!(rg)</code></pre><p>Subgraphs can easily be added to this problem, as shown below. </p><pre><code class="language-julia hljs"># Define another graph and add nodes
+rg2 = Plasmo.RemoteOptiGraph(worker = 2)
+
+# Add nodes and variables
+@optinode(rg2, n3)
+@optinode(rg2, n4)
+
+@variable(n3, x3)
+@variable(n3, y3)
+@variable(n4, z4)
+
+# Add subgraphs to `rg` using `add_subgraph`
+Plasmo.add_subgraph(rg, rg2)
+
+# A new graph can be directly instantiated as a subgraph on `rg`
+# by passing the worker index you want to build the graph on
+rg3 = Plasmo.add_subgraph(rg, worker = 2)
+
+# Add nodes and variables
+@optinode(rg3, n5)
+@variable(n5, x5)
+
+# Link constraints can be added between subgraphs
+# These are stored as constraints on `InterWorkerEdges
+@linkconstraint(rg, x + x3 + rg3[:n5][:x5] == 0);</code></pre><p>One note to make is that Plasmo returns light references to objects that are actually stored on the remote worker. For instance, in the above code, <code>n1</code> is a <code>RemoteNodeRef</code> that is stored on the main worker, and <code>x1</code> is a <code>RemoteVariableRef</code> that likewise lives on the remote. functions have been extended for working with these objects as you would with a <code>Plasmo.NodeVariableRef</code>, such that a user can call <code>fix(x1, 0)</code> (which is being called on the <code>RemoteVariableRef</code>) to fix the value of the <em>actual</em> <code>NodeVariableRef</code> which <code>x1</code> corersponds to. </p><p>In addition, two types of edges exist for <code>RemoteOptiGraph</code>s. The first is an <code>RemoteEdgeRef</code> which represents an edge stored on the remote worker inside the <code>OptiGraph</code>. In contrast, the <code>InterWorkerEdge</code> is an edge stored directly on the <code>RemoteOptiGraph</code> which connects the <code>OptiGraph</code> stored remotely with other subgraphs stored on the <code>RemoteOptiGraph</code>, or they connect multiple subgraphs stored on the <code>RemoteOptiGraph</code>.</p><h2 id="Performance-Tips-and-Suggestions"><a class="docs-heading-anchor" href="#Performance-Tips-and-Suggestions">Performance Tips and Suggestions</a><a id="Performance-Tips-and-Suggestions-1"></a><a class="docs-heading-anchor-permalink" href="#Performance-Tips-and-Suggestions" title="Permalink"></a></h2><h4 id="1.-Remember-that-each-macro-call-is-a-separate-call-to-the-remote"><a class="docs-heading-anchor" href="#1.-Remember-that-each-macro-call-is-a-separate-call-to-the-remote">1. Remember that each macro call is a separate call to the remote</a><a id="1.-Remember-that-each-macro-call-is-a-separate-call-to-the-remote-1"></a><a class="docs-heading-anchor-permalink" href="#1.-Remember-that-each-macro-call-is-a-separate-call-to-the-remote" title="Permalink"></a></h4><p>Plasmo&#39;s <code>RemoteOptiGraph</code> object can be used in place of a normal <code>OptiGraph</code> object in most code as these functions have been extended to handle the <code>RemoteOptiGraph</code>. For large-scale models, or code with lots of macro calls, it may not be ideal to have lots of macro (or other function) calls. A challenge of distributed programming is that communication between workers has an overhead cost, and the more calls to remote workers, the slower code will be. Consequently, it is recommended that the user be wise in how they call different functions on the <code>RemoteOptiGraph</code>. </p><h4 id="2.-Remember-that-some-functions-serialize-larger-objects-between-workers-than-other-functions"><a class="docs-heading-anchor" href="#2.-Remember-that-some-functions-serialize-larger-objects-between-workers-than-other-functions">2. Remember that some functions serialize larger objects between workers than other functions</a><a id="2.-Remember-that-some-functions-serialize-larger-objects-between-workers-than-other-functions-1"></a><a class="docs-heading-anchor-permalink" href="#2.-Remember-that-some-functions-serialize-larger-objects-between-workers-than-other-functions" title="Permalink"></a></h4><p>The larger the objects that are shared across workers, the slower the code will be, and not all functions will use the same amount of overhead. As an example, calling <code>all_variables</code> on a <code>RemoteOptiGraph</code> will create <code>RemoteVariableRef</code> objects for every variable on the graph, and it will share between the workers information for creating all variables (names as symbols and indices essentially as integers). In an ordinary JuMP model, calling <code>length(all_variables(m))</code> for a model <code>m</code> may not have noticeable overhead to it if a user only calls this once or twice, but calling <code>length(all_variables(g))</code> for a remote graph <code>g</code> may be noticeably slower since it is building <code>RemoteVariableRef</code>s for all variables on the graph. While this is best practice for both JuMP models and Plasmo <code>RemoteOptiGraph</code>s, using <code>JuMP.num_variables(g)</code> will be proportionally far more efficient in the case of the <code>RemoteOptiGraph</code> than it would be for a JuMP model.</p><h4 id="3.-Consider-defining-custom-build-functions"><a class="docs-heading-anchor" href="#3.-Consider-defining-custom-build-functions">3. Consider defining custom build functions</a><a id="3.-Consider-defining-custom-build-functions-1"></a><a class="docs-heading-anchor-permalink" href="#3.-Consider-defining-custom-build-functions" title="Permalink"></a></h4><p>As noted in 1., lots of macro calls and other function calls can slow down the code for especially large models. One option to avoid this is to build the graph directly on the remote worker inside a remote call or <code>@spawnat</code> call. for instance, the user could define a function that takes an <code>OptiGraph</code> object and constructs a large optimization problem on it for every worker, such as the following: </p><pre><code class="language-julia hljs">using Plasmo, Distributed, DistributedArrays
+addprocs(1)
+
+@everywhere begin
+    function build_subgraph_remotely(graph::OptiGraph)
+        @optinode(graph, n[1:10])
+        @variable(n[1], x[1:10] &gt;= 0)
+        @objective(n[1], Min, sum(x))
+        #etc.
+    end
+end</code></pre><p>The user can then call this on a remote graph by doing the following</p><pre><code class="language-julia hljs">rgraph = RemoteOptiGraph(worker = 2) # Define a RemoteOptiGraph on worker 2
+
+darray = rgraph.graph # Get the DistributedArray containing the OptiGraph
+
+@spawnat rgraph.worker begin
+    lgraph = localpart(darray)[1] # On the remote worker, retrieve the local graph
+    build_subgraph_remotely(lgraph) # run the function that was defined on this worker via the @everywhere call
+end</code></pre><p>This will add to the OptiGraph remotely so that there are not large amounts of remote calls. The user can still access the objects on this graph via <code>all_variables</code>, <code>all_nodes</code>, or by indexing for names. As with an <code>OptiGraph</code>, you can access objects by their symbols. For instance, calling <code>rgraph[:n]</code> returns a set of <code>RemoteNodeRef</code>s that correspond to the <code>n[1:10]</code> defined in the <code>build_subgraph_remotely</code> function. Similary, we can call <code>rgraph[:n][1][:x][1]</code> to get a <code>RemoteVariableRef</code> that corresponds to a variable stored on the graph on the remote worker. </p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../distributed/">« Introduction</a><a class="docs-footer-nextpage" href="../../tutorials/supply_chain/">Supply Chain Optimization »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Thursday 6 November 2025 19:31">Thursday 6 November 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
