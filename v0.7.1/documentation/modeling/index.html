@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Modeling with OptiGraphs · Plasmo.jl</title><meta name="title" content="Modeling with OptiGraphs · Plasmo.jl"/><meta property="og:title" content="Modeling with OptiGraphs · Plasmo.jl"/><meta property="twitter:title" content="Modeling with OptiGraphs · Plasmo.jl"/><meta name="description" content="Documentation for Plasmo.jl."/><meta property="og:description" content="Documentation for Plasmo.jl."/><meta property="twitter:description" content="Documentation for Plasmo.jl."/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.svg" alt="Plasmo.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">Plasmo.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">Introduction</a></li><li><a class="tocitem" href="../quickstart/">Quickstart</a></li><li class="is-active"><a class="tocitem" href>Modeling with OptiGraphs</a><ul class="internal"><li><a class="tocitem" href="#Creating-a-New-OptiGraph"><span>Creating a New OptiGraph</span></a></li><li><a class="tocitem" href="#Add-Variables-and-Constraints-using-OptiNodes"><span>Add Variables and Constraints using OptiNodes</span></a></li><li><a class="tocitem" href="#Add-Linking-Constraints-using-Edges"><span>Add Linking Constraints using Edges</span></a></li><li><a class="tocitem" href="#Add-an-Objective-Function"><span>Add an Objective Function</span></a></li><li><a class="tocitem" href="#Solving-and-Querying-Solutions"><span>Solving and Querying Solutions</span></a></li><li><a class="tocitem" href="#Plotting-OptiGraphs"><span>Plotting OptiGraphs</span></a></li><li><a class="tocitem" href="#Modeling-with-Subgraphs"><span>Modeling with Subgraphs</span></a></li><li><a class="tocitem" href="#Query-OptiGraph-Attributes"><span>Query OptiGraph Attributes</span></a></li><li><a class="tocitem" href="#Managing-Solutions-with-OptiGraphs"><span>Managing Solutions with OptiGraphs</span></a></li></ul></li><li><a class="tocitem" href="../graph_processing/">Graph Processing and Analysis</a></li><li><a class="tocitem" href="../api_docs/">API Documentation</a></li><li><span class="tocitem">Distributed Memory</span><ul><li><a class="tocitem" href="../distributed/">Introduction</a></li><li><a class="tocitem" href="../distributed_quickstart/">Quickstart</a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="../../tutorials/supply_chain/">Supply Chain Optimization</a></li><li><a class="tocitem" href="../../tutorials/MHMPC/">Multi-Horizon Model Predictive Control</a></li><li><a class="tocitem" href="../../tutorials/quadcopter/">Optimal Control of a Quadcopter</a></li><li><a class="tocitem" href="../../tutorials/HVAC/">Hierarchical HVAC Optimization</a></li><li><a class="tocitem" href="../../tutorials/gas_pipeline/">Optimal Control of a Natural Gas Network</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Modeling with OptiGraphs</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Modeling with OptiGraphs</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/plasmo-dev/Plasmo.jl/blob/main/docs/src/documentation/modeling.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="Modeling-with-OptiGraphs"><a class="docs-heading-anchor" href="#Modeling-with-OptiGraphs">Modeling with OptiGraphs</a><a id="Modeling-with-OptiGraphs-1"></a><a class="docs-heading-anchor-permalink" href="#Modeling-with-OptiGraphs" title="Permalink"></a></h1><p>The primary data structure in Plasmo.jl is the <a href="../api_docs/#Plasmo.OptiGraph"><code>OptiGraph</code></a>, a mathematical model composed of <a href="../api_docs/#Plasmo.OptiNode"><code>OptiNode</code></a>s (which represent self-contained optimization problems)  that are connected by <a href="../api_docs/#Plasmo.OptiEdge"><code>OptiEdge</code></a>s (which encapsulate linking constraints that couple optinodes). The optigraph is meant to offer a modular mechanism to create optimization problems and provide methods that can help develop specialized solution strategies, visualize problem structure, or perform graph processing tasks such as partitioning.</p><p>The optigraph ultimately describes the following mathematical representation of an optimization problem:</p><p class="math-container">\[\begin{aligned}
+    \min_{{\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}} &amp; \quad F(\{f_n(x_n)\}_{n \in \mathcal{N(\mathcal{G})}}) \quad &amp; (\textrm{Objective}) \\
+    \textrm{s.t.} &amp; \quad x_n \in \mathcal{X}_n,      \quad n \in \mathcal{N(\mathcal{G})}, \quad &amp; (\textrm{Node Constraints})\\
+    &amp; \quad g_e(\{x_n\}_{n \in \mathcal{N}(e)}) = 0,  \quad e \in \mathcal{E(\mathcal{G})}. &amp;(\textrm{Edge (Link) Constraints})
+\end{aligned}\]</p><p>In this formulation, <span>$\mathcal{G}$</span> represents the optigraph, <span>${\{x_n}\}_{n \in \mathcal{N}(\mathcal{G})}$</span> describes a collection of decision variables over the set of optinodes <span>$\mathcal{N}(\mathcal{G})$</span>, and <span>$x_n$</span> is the set of decision variables on optinode <span>$n$</span>. The objective function for the optigraph <span>$F(\{f_n(x_n)\}_{n \in \mathcal{N(\mathcal{G})}})$</span> is given as a composition of optinode objective functions <span>$f_n(x_n)$</span> (it could be a separable summation of node objectives or any nonlinear function defined over optinode variables).  The constraints of an optinode <span>$n$</span> are represented by the set <span>$\mathcal{X}_n$</span> while the linking constraints that correspond to an edge <span>$e$</span> are represented by the vector function <span>$g_e(\{x_n\}_{n \in \mathcal{N}(e)})$</span>.</p><p>From an implementation standpoint, an optigraph extends much of the modeling functionality and syntax from <a href="https://github.com/jump-dev/JuMP.jl">JuMP</a>.  We also sometimes drop the &#39;opti&#39; prefix and refer to objects as graphs, nodes, and edges throughout the documentation, but we note when the &#39;opti&#39; distincition is important.</p><div class="admonition is-info" id="Info-bf520958136e9027"><header class="admonition-header">Info<a class="admonition-anchor" href="#Info-bf520958136e9027" title="Permalink"></a></header><div class="admonition-body"><p>The <a href="../api_docs/#Plasmo.OptiNode"><code>OptiNode</code></a> and <a href="../api_docs/#Plasmo.OptiGraph"><code>OptiGraph</code></a> each extend a <code>JuMP.AbstractModel</code> and support JuMP macros such as   <code>@variable</code>, <code>@constraint</code>, <code>@expression</code>, and <code>@objective</code> as well as many other JuMP methods that work on a <code>JuMP.Model</code>.   The <a href="../api_docs/#Plasmo.OptiEdge"><code>OptiEdge</code></a> supports most JuMP methods as well but does not support <code>@variable</code> or <code>@objective</code>.</p></div></div><h2 id="Creating-a-New-OptiGraph"><a class="docs-heading-anchor" href="#Creating-a-New-OptiGraph">Creating a New OptiGraph</a><a id="Creating-a-New-OptiGraph-1"></a><a class="docs-heading-anchor-permalink" href="#Creating-a-New-OptiGraph" title="Permalink"></a></h2><p>An optigraph does not require any arguments to construct but it is recommended to include the optional <code>name</code> argument for tracking and model management purposes. We begin by creating a new optigraph named <code>graph1</code>.</p><pre><code class="language-julia-repl hljs">julia&gt; using Plasmo
+
+julia&gt; graph1 = OptiGraph(;name=:graph1)
+An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                0
+          Edges:         0                0
+      Subgraphs:         0                0
+      Variables:         0                0
+    Constraints:         0                0</code></pre><h2 id="Add-Variables-and-Constraints-using-OptiNodes"><a class="docs-heading-anchor" href="#Add-Variables-and-Constraints-using-OptiNodes">Add Variables and Constraints using OptiNodes</a><a id="Add-Variables-and-Constraints-using-OptiNodes-1"></a><a class="docs-heading-anchor-permalink" href="#Add-Variables-and-Constraints-using-OptiNodes" title="Permalink"></a></h2><p>Optinodes contain modular groups of optimization variables, constraints, and other model data. The typical way to add optinodes to an graph is by using the <a href="../api_docs/#Plasmo.@optinode"><code>@optinode</code></a> macro where the below snippet adds the node <code>n1</code> to <code>graph1</code>. </p><pre><code class="language-julia-repl hljs">julia&gt; @optinode(graph1, n1)
+n1</code></pre><div class="admonition is-info" id="Note-ff1d71f952b01a9c"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-ff1d71f952b01a9c" title="Permalink"></a></header><div class="admonition-body"><p>You can also use the <a href="../api_docs/#Plasmo.add_node"><code>add_node</code></a> method to add individual optinodes. In this case, the above snippet would look like: n1 = add_node(graph1)</p></div></div><p>The <a href="../api_docs/#Plasmo.@optinode"><code>@optinode</code></a> macro is more useful for creating containers of optinodes like shown in the below code snippet. Here, we create two more optinodes referred to as <code>nodes1</code>. This macro returns a <code>JuMP.DenseAxisArray</code> which allows us to refer to each optinode using the produced index sets. For example, <code>nodes1[2]</code> and <code>nodes1[3]</code> each return the corresponding optinode.</p><pre><code class="language-julia-repl hljs">julia&gt; @optinode(graph1, nodes1[2:3])
+1-dimensional DenseAxisArray{OptiNode{OptiGraph},1,...} with index sets:
+    Dimension 1, 2:3
+And data, a 2-element Vector{OptiNode{OptiGraph}}:
+ nodes1[2]
+ nodes1[3]
+
+julia&gt; nodes1[2]
+nodes1[2]
+
+julia&gt; nodes1[3]
+nodes1[3]</code></pre><p>Each optinode supports adding variables, constraints, expressions, and an objective function.  Here we loop through each optinode in <code>graph1</code> using the <a href="../api_docs/#Plasmo.local_nodes"><code>local_nodes</code></a> function and we construct underlying model elements.</p><pre><code class="language-julia-repl hljs">julia&gt;  for node in all_nodes(graph1)
+            @variable(node,x &gt;= 0)
+            @variable(node, y &gt;= 2)
+            @constraint(node, node_constraint_1, x + y &gt;= 3)
+            @constraint(node, node_constraint_2, x^3 &gt;= 1)
+            @objective(node, Min, x + y)
+        end
+
+julia&gt; graph1
+An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         0                0
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        12               12
+</code></pre><p>Variables within an optinode can be accessed directly by indexing the associated symbol. This enclosed name-space is useful for referencing variables on different optinodes when creating linking constraints or optigraph objective functions.</p><pre><code class="language-julia-repl hljs">julia&gt; n1[:x]
+n1[:x]
+
+julia&gt; nodes1[2][:x]
+nodes1[2][:x]</code></pre><h2 id="Add-Linking-Constraints-using-Edges"><a class="docs-heading-anchor" href="#Add-Linking-Constraints-using-Edges">Add Linking Constraints using Edges</a><a id="Add-Linking-Constraints-using-Edges-1"></a><a class="docs-heading-anchor-permalink" href="#Add-Linking-Constraints-using-Edges" title="Permalink"></a></h2><p>An <a href="../api_docs/#Plasmo.OptiEdge">OptiEdge</a> can be used to store linking constraints that couple variables across optinodes. The simplest way to create a linking constraint is to use the <a href="../api_docs/#Plasmo.@linkconstraint"><code>@linkconstraint</code></a> macro which accepts the same input as the <code>JuMP.@constraint</code> macro, but it requires an expression with at least two variables that exists on two different optinodes. The actual constraint is stored on the edge that connects the optinodes referred to in  the linking constraint. This optiedge is created if it does not already exist.</p><pre><code class="language-julia-repl hljs">julia&gt; @linkconstraint(graph1, link_reference, n1[:x] + nodes1[2][:x] + nodes1[3][:x] == 3)
+n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3
+</code></pre><div class="admonition is-info" id="Note-f065c536d9e699ee"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-f065c536d9e699ee" title="Permalink"></a></header><div class="admonition-body"><p>Some users may choose to create the edge manually and add the constraint like following:</p><pre><code class="language-julia hljs">edge = add_edge(graph1, n1, nodes1[2], nodes1[3])
+@constraint(edge, link_reference, n1[:x] + nodes1[2][:x] + nodes1[3][:x] == 3)</code></pre><p>Both approaches are equivalent.</p></div></div><h2 id="Add-an-Objective-Function"><a class="docs-heading-anchor" href="#Add-an-Objective-Function">Add an Objective Function</a><a id="Add-an-Objective-Function-1"></a><a class="docs-heading-anchor-permalink" href="#Add-an-Objective-Function" title="Permalink"></a></h2><p>By default, the graph objective is empty even if objective functions exist on nodes. We leave it up to the user to determine what the objective function for the graph should be  given its contained nodes. We provide the convenience function <a href="../api_docs/#Plasmo.set_to_node_objectives"><code>set_to_node_objectives</code></a> which will set the graph objective function to the sum of all the node objectives.  We can set the graph objective like following:</p><pre><code class="language-julia-repl hljs">julia&gt; set_to_node_objectives(graph1)
+
+julia&gt; objective_function(graph1)
+n1[:x] + n1[:y] + nodes1[2][:x] + nodes1[2][:y] + nodes1[3][:x] + nodes1[3][:y]
+</code></pre><h2 id="Solving-and-Querying-Solutions"><a class="docs-heading-anchor" href="#Solving-and-Querying-Solutions">Solving and Querying Solutions</a><a id="Solving-and-Querying-Solutions-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-and-Querying-Solutions" title="Permalink"></a></h2><p>An optimizer can be specified using the <a href="../api_docs/#JuMP.set_optimizer"><code>set_optimizer</code></a> function which supports any <a href="https://github.com/jump-dev/MathOptInterface.jl">MathOptInterface.jl</a> optimizer.  For example, we use the <code>Ipopt.Optimizer</code> from the <a href="https://github.com/jump-dev/Ipopt.jl">Ipopt.jl</a> to solve the optigraph like following:</p><pre><code class="language-julia-repl hljs">julia&gt; using Ipopt
+
+julia&gt; using Suppressor # suppress complete output
+
+julia&gt; set_optimizer(graph1, Ipopt.Optimizer);
+
+julia&gt; set_optimizer_attribute(graph1, &quot;print_level&quot;, 0); #suppress Ipopt output
+
+julia&gt; @suppress optimize!(graph1)
+</code></pre><p>The solution of an optigraph is stored directly on its optinodes and optiedges. Variables values, constraint duals, objective function values, and solution status codes can be queried just like in JuMP.</p><pre><code class="language-julia-repl hljs">julia&gt; termination_status(graph1)   
+LOCALLY_SOLVED::TerminationStatusCode = 4
+
+julia&gt; value(n1[:x])    
+1.0
+
+julia&gt; value(nodes1[2][:x])
+1.0
+
+julia&gt; value(nodes1[3][:x])
+1.0
+
+julia&gt; round(objective_value(graph1))
+9.0
+
+julia&gt; round(dual(link_reference), digits = 2)
+-0.25
+
+julia&gt; round(dual(n1[:node_constraint_1]), digits = 2)
+0.5
+
+julia&gt; round(dual(n1[:node_constraint_2]), digits = 2)
+0.25</code></pre><h2 id="Plotting-OptiGraphs"><a class="docs-heading-anchor" href="#Plotting-OptiGraphs">Plotting OptiGraphs</a><a id="Plotting-OptiGraphs-1"></a><a class="docs-heading-anchor-permalink" href="#Plotting-OptiGraphs" title="Permalink"></a></h2><p>We can also plot the structure of <code>graph1</code> using both graph and matrix layouts from the <a href="https://github.com/plasmo-dev/PlasmoPlots.jl">PlasmoPlots</a> package.</p><pre><code class="language-julia hljs">using PlasmoPlots
+
+plt_graph = layout_plot(
+    graph1,
+    node_labels=true,
+    markersize=30,
+    labelsize=15,
+    linewidth=4,
+    layout_options=Dict(
+        :tol=&gt;0.01,
+        :iterations=&gt;2
+    ),
+    plt_options=Dict(
+        :legend=&gt;false,
+        :framestyle=&gt;:box,
+        :grid=&gt;false,
+        :size=&gt;(400,400),
+        :axis =&gt; nothing
+    )
+);
+
+plt_matrix = matrix_layout(graph1, node_labels=true, markersize=15);   </code></pre><p><img src="../../assets/graph1_layout.svg" alt="graph_modeling1"/> <img src="../../assets/matrix1_layout.svg" alt="matrix_modeling1"/></p><div class="admonition is-info" id="Info-d7b682a05a4a455"><header class="admonition-header">Info<a class="admonition-anchor" href="#Info-d7b682a05a4a455" title="Permalink"></a></header><div class="admonition-body"><p>The <code>layout_plot</code> and <code>matrix_plot</code> functions both return a <code>Plots.plot</code> object which can be used for further customization and saving using <code>Plots.jl</code></p></div></div><h2 id="Modeling-with-Subgraphs"><a class="docs-heading-anchor" href="#Modeling-with-Subgraphs">Modeling with Subgraphs</a><a id="Modeling-with-Subgraphs-1"></a><a class="docs-heading-anchor-permalink" href="#Modeling-with-Subgraphs" title="Permalink"></a></h2><p>A fundamental feature of modeling with optigraphs is the ability to create nested optimization structures using subgraphs (i.e. sub-optigraphs).  Subgraphs are created using the <a href="../api_docs/#Plasmo.add_subgraph"><code>add_subgraph</code></a> method which embeds an optigraph as a subgraph within a higher level optigraph.  This is demonstrated in the below snippets. First, we create two new optigraphs in the same fashion as above.</p><pre><code class="language-julia hljs"># create graph2
+graph2 = OptiGraph(;name=:graph2);
+@optinode(graph2, nodes2[1:3]);
+for node in all_nodes(graph2)
+    @variable(node, x &gt;= 0)
+    @variable(node, y &gt;= 2)
+    @constraint(node,x + y &gt;= 5)
+    @objective(node, Min, y)
+end
+@linkconstraint(graph2, nodes2[1][:x] + nodes2[2][:x] + nodes2[3][:x] == 5);
+
+# create graph3
+graph3 = OptiGraph(;name=:graph3);
+@optinode(graph3, nodes3[1:3]);
+for node in all_nodes(graph3)
+    @variable(node, x &gt;= 0)
+    @variable(node, y &gt;= 2)
+    @constraint(node,x + y &gt;= 5)
+    @objective(node, Min, y)
+end
+@linkconstraint(graph3, nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] == 7);
+
+graph3
+
+# output
+
+An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        10               10
+</code></pre><p>We now have three optigraphs (<code>graph1</code>,<code>graph2</code>, and <code>graph3</code>), each with their own local optinodes and optiedges.   These three optigraphs can be embedded into a higher level optigraph using the following snippet:</p><pre><code class="language-julia-repl hljs">julia&gt; graph0 = OptiGraph(;name=:root_graph)
+An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                0
+          Edges:         0                0
+      Subgraphs:         0                0
+      Variables:         0                0
+    Constraints:         0                0
+
+
+julia&gt; add_subgraph(graph0, graph1);
+
+julia&gt; graph0
+An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                3
+          Edges:         0                1
+      Subgraphs:         1                1
+      Variables:         0                6
+    Constraints:         0               13
+
+julia&gt; add_subgraph(graph0, graph2);
+
+julia&gt; graph0
+An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                6
+          Edges:         0                2
+      Subgraphs:         2                2
+      Variables:         0               12
+    Constraints:         0               23
+
+
+julia&gt; add_subgraph(graph0, graph3);
+
+julia&gt; graph0
+An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                9
+          Edges:         0                3
+      Subgraphs:         3                3
+      Variables:         0               18
+    Constraints:         0               33
+</code></pre><p>Here, we see the distinction between local and total graph elements. After we add all three subgraphs to <code>graph0</code>, we see that it contains 0 local optinodes, but contains 9 total optinodes which are elements of its subgraphs. This hierarchical distinction is also made for optiedges and nested subgraphs.</p><p>Using this nested approach, linking constraints can be expressed both locally and globally. For instance, we can add a linking constraint to <code>graph0</code> that connects optinodes across its subgraphs like following:</p><pre><code class="language-julia-repl hljs">julia&gt; @linkconstraint(graph0, nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] == 10)
+nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
+
+julia&gt; graph0
+An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         0                9
+          Edges:         1                4
+      Subgraphs:         3                3
+      Variables:         0               18
+    Constraints:         1               34
+</code></pre><p><code>graph0</code> now contains 1 local edge, and 4 total edges (3 from the subgraphs). The higher level edge linking constraint  can be thought of as a global constraint that connects subgraphs. This hierarchical construction can be useful for developing optimization problems separately and then coupling them in a higher level optigraph.</p><p>We can lastly plot the hierarchical optigraph and see the nested subgraph structure.</p><pre><code class="language-julia hljs">using PlasmoPlots
+
+plt_graph0 = PlasmoPlots.layoutplot(
+    graph0,
+    node_labels=true,
+    markersize=60,
+    labelsize=30,
+    linewidth=4,
+    subgraph_colors=true,
+    layout_options = Dict(
+        :tol=&gt;0.001,
+        :C=&gt;2,
+        :K=&gt;4,
+        :iterations=&gt;5
+    )
+)
+
+plt_matrix0 = PlasmoPlots.matrix_plot(
+    graph0,
+    node_labels = true,
+    subgraph_colors = true,
+    markersize = 16
+)</code></pre><p><img src="../../assets/graph0_layout.svg" alt="graph_modeling2"/> <img src="../../assets/matrix0_layout.svg" alt="matrix_modeling2"/></p><h2 id="Query-OptiGraph-Attributes"><a class="docs-heading-anchor" href="#Query-OptiGraph-Attributes">Query OptiGraph Attributes</a><a id="Query-OptiGraph-Attributes-1"></a><a class="docs-heading-anchor-permalink" href="#Query-OptiGraph-Attributes" title="Permalink"></a></h2><p>Plasmo.jl offers various methods to inspect the optigraph data structures (see the <a href="../api_docs/#API-Documentation">API Documentation</a> for a full list). We can use <a href="../api_docs/#Plasmo.local_nodes"><code>local_nodes</code></a> to retrieve an array of the optinodes contained directly within an optigraph, or we can use <a href="../api_docs/#Plasmo.all_nodes"><code>all_nodes</code></a> to recursively retrieve all of the optinodes in an optigraph (which includes the nodes in its subgraphs).</p><pre><code class="language-julia-repl hljs">julia&gt; local_nodes(graph1)
+3-element Vector{OptiNode{OptiGraph}}:
+ n1
+ nodes1[2]
+ nodes1[3]
+
+julia&gt; local_nodes(graph0)
+OptiNode{OptiGraph}[]
+
+julia&gt; all_nodes(graph0)
+9-element Vector{OptiNode{OptiGraph}}:
+ n1
+ nodes1[2]
+ nodes1[3]
+ nodes2[1]
+ nodes2[2]
+ nodes2[3]
+ nodes3[1]
+ nodes3[2]
+ nodes3[3]
+</code></pre><p>It is also possible to query for optiedges in the same way using <a href="../api_docs/#Plasmo.local_edges"><code>local_edges</code></a> and <a href="../api_docs/#Plasmo.all_edges"><code>all_edges</code></a>.</p><pre><code class="language-julia-repl hljs">julia&gt; local_edges(graph1)
+1-element Vector{OptiEdge{OptiGraph}}:
+ graph1.e1
+
+julia&gt; local_edges(graph0)
+1-element Vector{OptiEdge{OptiGraph}}:
+ root_graph.e1
+
+julia&gt; all_edges(graph0)
+4-element Vector{OptiEdge{OptiGraph}}:
+ root_graph.e1
+ graph1.e1
+ graph2.e1
+ graph3.e1
+</code></pre><p>We can query linking constraints using <a href="../api_docs/#Plasmo.local_link_constraints"><code>local_link_constraints</code></a> and <a href="../api_docs/#Plasmo.all_link_constraints"><code>all_link_constraints</code></a>.</p><pre><code class="language-julia-repl hljs">julia&gt; local_link_constraints(graph1)
+1-element Vector{ConstraintRef}:
+ n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3
+
+julia&gt; local_link_constraints(graph0)
+1-element Vector{ConstraintRef}:
+ nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
+
+julia&gt; all_link_constraints(graph0)
+4-element Vector{ConstraintRef}:
+ nodes1[3][:x] + nodes2[2][:x] + nodes3[1][:x] = 10
+ n1[:x] + nodes1[2][:x] + nodes1[3][:x] = 3
+ nodes2[1][:x] + nodes2[2][:x] + nodes2[3][:x] = 5
+ nodes3[1][:x] + nodes3[2][:x] + nodes3[3][:x] = 7</code></pre><p>We can lastly query subgraphs using <a href="../api_docs/#Plasmo.local_subgraphs"><code>local_subgraphs</code></a> and <a href="../api_docs/#Plasmo.all_subgraphs"><code>all_subgraphs</code></a> methods.</p><pre><code class="language-julia-repl hljs">julia&gt; local_subgraphs(graph0)
+3-element Vector{OptiGraph}:
+ An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        13               13
+
+ An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        10               10
+
+ An OptiGraph
+                 #local elements  #total elements
+--------------------------------------------------
+          Nodes:         3                3
+          Edges:         1                1
+      Subgraphs:         0                0
+      Variables:         6                6
+    Constraints:        10               10
+</code></pre><h2 id="Managing-Solutions-with-OptiGraphs"><a class="docs-heading-anchor" href="#Managing-Solutions-with-OptiGraphs">Managing Solutions with OptiGraphs</a><a id="Managing-Solutions-with-OptiGraphs-1"></a><a class="docs-heading-anchor-permalink" href="#Managing-Solutions-with-OptiGraphs" title="Permalink"></a></h2><p>While it is common to use an optigraph as a means to build a singular optimization problem that can be solved with standard solvers, it is also possible to come up with custom solution strategies that consist of solving smaller subgraphs or use optigraph elements to generate new  optigraphs we can solve. To demonstrate, assume we first want to solve each subgraph in <code>graph0</code> in isolation. This can be done like following:</p><pre><code class="language-julia hljs"># optimize each subgraph with Ipopt
+for subgraph in local_subgraphs(graph0)
+    @objective(subgraph, Min, sum(all_variables(subgraph)))
+    set_optimizer(subgraph, Ipopt.Optimizer)
+    set_optimizer_attribute(subgraph, &quot;print_level&quot;, 0);
+    optimize!(subgraph)
+end
+
+# check termination status of each solve
+termination_status.(local_subgraphs(graph0))
+
+# output
+
+3-element Vector{MathOptInterface.TerminationStatusCode}:
+ LOCALLY_SOLVED::TerminationStatusCode = 4
+ LOCALLY_SOLVED::TerminationStatusCode = 4
+ LOCALLY_SOLVED::TerminationStatusCode = 4</code></pre><p>We can query the value of each solution using <a href="../api_docs/#JuMP.value"><code>value</code></a> like before, but lets instead specify the graph argument for clarity.</p><pre><code class="language-julia-repl hljs">julia&gt; value(graph1, n1[:x])
+1.0
+
+julia&gt; n2 = graph2[1] # get first node on graph2
+nodes2[1]
+
+julia&gt; round(value(graph2, n2[:x]); digits=2)
+1.67
+
+julia&gt; n3 = graph3[1] # get first node on graph3
+nodes3[1]
+
+julia&gt; round(value(graph3, n3[:x]); digits=2)
+2.33</code></pre><p>Now assume we want to use these subgraph solutions to initialize the full graph solution. We could do this using <a href="../api_docs/#JuMP.set_start_value"><code>JuMP.set_start_value</code></a> like following:</p><pre><code class="language-julia-repl hljs">julia&gt; set_start_value.(all_variables(graph1), value.(graph1, all_variables(graph1)));
+
+julia&gt; set_start_value.(all_variables(graph2), value.(graph2, all_variables(graph2)));
+
+julia&gt; set_start_value.(all_variables(graph3), value.(graph3, all_variables(graph3)));</code></pre><p>Now that each subgraph has a new initial solution, the total initial solution can be used to optimize <code>graph0</code> since all of the subgraph attributes will be copied over.</p><pre><code class="language-julia-repl hljs">julia&gt; @objective(graph0, Min, sum(all_variables(graph0))); # set graph0 objective
+
+julia&gt; set_optimizer(graph0, Ipopt.Optimizer);
+
+julia&gt; set_optimizer_attribute(graph0, &quot;print_level&quot;, 0);
+
+julia&gt; optimize!(graph0);
+
+julia&gt; termination_status(graph0)
+LOCALLY_SOLVED::TerminationStatusCode = 4
+</code></pre><p>While somewhat simple, this example shows what kinds of model approaches can be taken with Plasmo.jl. Checkout <a href="../graph_processing/#Graph-Processing-and-Analysis">Graph Processing and Analysis</a> for more advanced functionality  that makes use of the optigraph structure to define and solve problems.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../quickstart/">« Quickstart</a><a class="docs-footer-nextpage" href="../graph_processing/">Graph Processing and Analysis »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.15.0 on <span class="colophon-date" title="Wednesday 12 November 2025 02:52">Wednesday 12 November 2025</span>. Using Julia version 1.6.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
