@@ -180,7 +180,9 @@ Add a new optinode to `graph`. By default, the node label is set to be "n<i+1>" 
 the number of nodes in the graph.
 """
 function add_node(
-    graph::OptiGraph; label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1), index = Symbol(UUIDs.uuid4())
+    graph::OptiGraph;
+    label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1),
+    index=Symbol(UUIDs.uuid4()),
 )
     node_index = NodeIndex(index)
     node = OptiNode(Ref(graph), node_index, Ref(label))
@@ -709,7 +711,12 @@ function num_local_constraints(graph::OptiGraph; count_variable_in_set_constrain
     if num_local_elements(graph) == 0
         return 0
     else
-        return sum(JuMP.num_constraints.(local_elements(graph), count_variable_in_set_constraints=count_variable_in_set_constraints))
+        return sum(
+            JuMP.num_constraints.(
+                local_elements(graph);
+                count_variable_in_set_constraints=count_variable_in_set_constraints,
+            ),
+        )
     end
 end
 
@@ -943,8 +950,9 @@ function JuMP.all_constraints(
     func_type::Type{<:Union{JuMP.AbstractJuMPScalar,Vector{<:JuMP.AbstractJuMPScalar}}},
     set_type::Type{<:MOI.AbstractSet},
 )
-    all_graph_constraints =
-        JuMP.all_constraints.(all_elements(graph), Ref(func_type), Ref(set_type))
+    all_graph_constraints = JuMP.all_constraints.(
+        all_elements(graph), Ref(func_type), Ref(set_type)
+    )
     return vcat(all_graph_constraints...)
 end
 
@@ -1512,8 +1520,8 @@ include any graph structure information.
 Plasmo does not support loading the file back into Julia as an OptiGraph.
 """
 function JuMP.write_to_file(graph::OptiGraph, filename::String)
-    m = MOI.FileFormats.Model(filename=filename)
-    f = () -> MOI.FileFormats.Model(filename=filename)
+    m = MOI.FileFormats.Model(; filename=filename)
+    f = () -> MOI.FileFormats.Model(; filename=filename)
 
     inner = MOI.instantiate(f)
     moi_graph_model = graph.backend.moi_backend.model_cache.model

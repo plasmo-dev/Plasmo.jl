@@ -1,5 +1,6 @@
 using Plasmo
-using Plots; pyplot()
+using Plots;
+pyplot()
 using PlasmoPlots
 
 graph = OptiGraph()

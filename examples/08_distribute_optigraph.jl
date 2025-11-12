@@ -59,7 +59,6 @@ add_subgraph(g, g3)
 @linkconstraint(g, lc2, g1[:n1][:y] + g3[:n2][:x] >= -2)
 @linkconstraint(g, lc3, g2[:n2][:y] - g3[:n1][:x] == 0)
 
-workers = [2,2,2]
+workers = [2, 2, 2]
 
 rg = Plasmo.distribute_graph(g, workers)
-

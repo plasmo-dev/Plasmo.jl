@@ -40,7 +40,9 @@ function JuMP.jump_function_type(
     return JuMP.GenericQuadExpr{C,RemoteVariableRef}
 end
 
-function JuMP.jump_function(obj::RemoteOptiObject, f::MOI.ScalarQuadraticFunction{C}) where {C}
+function JuMP.jump_function(
+    obj::RemoteOptiObject, f::MOI.ScalarQuadraticFunction{C}
+) where {C}
     return JuMP.GenericQuadExpr{C,RemoteVariableRef}(obj, f)
 end
 

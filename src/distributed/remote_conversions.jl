@@ -86,30 +86,40 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::Array{RemoteVari
     return map(x -> _remote_var_to_proxy(rgraph, x), var)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:RemoteVariableRef,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _remote_var_to_proxy(rgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:RemoteVariableRef,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _remote_var_to_proxy(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:ProxyVariableRef,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _proxy_var_to_remote(rgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:ProxyVariableRef,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _proxy_var_to_remote(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{RemoteVariableRef})
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{RemoteVariableRef}
+)
     pvars = _convert_remote_to_proxy(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(pvars, var.axes, var.lookup, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{ProxyVariableRef})
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{ProxyVariableRef}
+)
     rvars = _convert_proxy_to_remote(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(rvars, var.axes, var.lookup, var.names)
 end
 
 #################################### Expressions ####################################
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, Plasmo.ProxyVariableRef})
-    new_func = GenericAffExpr{Float64, Plasmo.RemoteVariableRef}(func.constant)
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64,Plasmo.ProxyVariableRef}
+)
+    new_func = GenericAffExpr{Float64,Plasmo.RemoteVariableRef}(func.constant)
     for (var, val) in func.terms
         rnode = _convert_proxy_to_remote(rgraph, var.node)
         remote_var = _proxy_var_to_remote(var, rnode)
@@ -118,9 +128,13 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericAffExpr{
     return new_func
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pnode::ProxyNodeRef, func::GenericAffExpr{Float64, Plasmo.ProxyVariableRef})
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph,
+    pnode::ProxyNodeRef,
+    func::GenericAffExpr{Float64,Plasmo.ProxyVariableRef},
+)
     rnode = _convert_proxy_to_remote(rgraph, pnode)
-    new_func = GenericAffExpr{Float64, Plasmo.RemoteVariableRef}(func.constant)
+    new_func = GenericAffExpr{Float64,Plasmo.RemoteVariableRef}(func.constant)
     for (var, val) in func.terms
         remote_var = _proxy_var_to_remote(var, rnode)
         new_func.terms[remote_var] = val
@@ -128,9 +142,11 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pnode::ProxyNodeRef, 
     return new_func
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64, Plasmo.ProxyVariableRef})
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64,Plasmo.ProxyVariableRef}
+)
     new_aff = _convert_proxy_to_remote(rgraph, func.aff)
-    new_terms = OrderedDict{UnorderedPair{RemoteVariableRef}, Float64}()
+    new_terms = OrderedDict{UnorderedPair{RemoteVariableRef},Float64}()
     for (pair, val) in func.terms
         rnode1 = _convert_proxy_to_remote(rgraph, pair.a.node)
         remote_var1 = _proxy_var_to_remote(pair.a, rnode1)
@@ -139,26 +155,32 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericQuadExpr
         new_pair = UnorderedPair(remote_var1, remote_var2)
         new_terms[new_pair] = val
     end
-    return GenericQuadExpr{Float64, Plasmo.RemoteVariableRef}(new_aff, new_terms)
+    return GenericQuadExpr{Float64,Plasmo.RemoteVariableRef}(new_aff, new_terms)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pnode::ProxyNodeRef, func::GenericQuadExpr{Float64, Plasmo.ProxyVariableRef})
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph,
+    pnode::ProxyNodeRef,
+    func::GenericQuadExpr{Float64,Plasmo.ProxyVariableRef},
+)
     rnode = _convert_proxy_to_remote(rgraph, pnode)
     new_aff = _convert_proxy_to_remote(rgraph, pnode, func.aff)
-    new_terms = OrderedDict{UnorderedPair{RemoteVariableRef}, Float64}()
+    new_terms = OrderedDict{UnorderedPair{RemoteVariableRef},Float64}()
     for (pair, val) in func.terms
         remote_var1 = _proxy_var_to_remote(pair.a, rnode)
         remote_var2 = _proxy_var_to_remote(pair.b, rnode)
         new_pair = UnorderedPair(remote_var1, remote_var2)
         new_terms[new_pair] = val
     end
-    return GenericQuadExpr{Float64, Plasmo.RemoteVariableRef}(new_aff, new_terms)
+    return GenericQuadExpr{Float64,Plasmo.RemoteVariableRef}(new_aff, new_terms)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{Plasmo.ProxyVariableRef})
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{Plasmo.ProxyVariableRef}
+)
     V = Plasmo.RemoteVariableRef
     ret = JuMP.GenericNonlinearExpr{V}(func.head, Any[])
-    stack = Tuple{JuMP.GenericNonlinearExpr, Any}[]
+    stack = Tuple{JuMP.GenericNonlinearExpr,Any}[]
 
     for arg in reverse(func.args)
         push!(stack, (ret, arg))
@@ -178,8 +200,10 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericNonlinea
     return ret
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
-    new_func = GenericAffExpr{Float64, Plasmo.ProxyVariableRef}(func.constant)
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64,Plasmo.RemoteVariableRef}
+)
+    new_func = GenericAffExpr{Float64,Plasmo.ProxyVariableRef}(func.constant)
     for var in keys(func.terms)
         pvar = _remote_var_to_proxy(rgraph, var)
         new_func.terms[pvar] = func.terms[var]
@@ -187,22 +211,26 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericAffExpr{
     return new_func
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64, Plasmo.RemoteVariableRef})
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64,Plasmo.RemoteVariableRef}
+)
     new_aff = _convert_remote_to_proxy(rgraph, func.aff)
-    new_terms = OrderedDict{UnorderedPair{ProxyVariableRef}, Float64}()
+    new_terms = OrderedDict{UnorderedPair{ProxyVariableRef},Float64}()
     for pair in keys(func.terms)
         pvar1 = _remote_var_to_proxy(rgraph, pair.a)
         pvar2 = _remote_var_to_proxy(rgraph, pair.b)
         new_pair = UnorderedPair(pvar1, pvar2)
         new_terms[new_pair] = func.terms[pair]
     end
-    return GenericQuadExpr{Float64, Plasmo.ProxyVariableRef}(new_aff, new_terms)
+    return GenericQuadExpr{Float64,Plasmo.ProxyVariableRef}(new_aff, new_terms)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{Plasmo.RemoteVariableRef})
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{Plasmo.RemoteVariableRef}
+)
     V = Plasmo.ProxyVariableRef
     ret = JuMP.GenericNonlinearExpr{V}(func.head, Any[])
-    stack = Tuple{JuMP.GenericNonlinearExpr, Any}[]
+    stack = Tuple{JuMP.GenericNonlinearExpr,Any}[]
 
     for arg in reverse(func.args)
         push!(stack, (ret, arg))
@@ -222,17 +250,23 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericNonlinea
     return ret
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Array{E}) where {E <: ProxyExpr}
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, func::Array{E}
+) where {E<:ProxyExpr}
     return map(x -> _convert_proxy_to_remote(rgraph, x), func)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Array{E}) where {E <: RemoteExpr}
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, func::Array{E}
+) where {E<:RemoteExpr}
     return map(x -> _convert_remote_to_proxy(rgraph, x), func)
 end
 
 #################################### Expression Supports ####################################
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef)
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef
+)
     rnode = _convert_proxy_to_remote(rgraph, pnode)
     return _proxy_var_to_remote(func, rnode)
 end
@@ -249,15 +283,21 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Array{Float64})
     return func
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, RemoteVariableRef})
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64,RemoteVariableRef}
+)
     return func
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64, RemoteVariableRef})
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64,RemoteVariableRef}
+)
     return func
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{RemoteVariableRef})
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{RemoteVariableRef}
+)
     return func
 end
 
@@ -273,15 +313,21 @@ function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Array{Float64})
     return func
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64, ProxyVariableRef})
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, func::GenericAffExpr{Float64,ProxyVariableRef}
+)
     return func
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64, ProxyVariableRef})
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, func::GenericQuadExpr{Float64,ProxyVariableRef}
+)
     return func
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{ProxyVariableRef})
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, func::GenericNonlinearExpr{ProxyVariableRef}
+)
     return func
 end
 
@@ -307,41 +353,57 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, cref::JuMP.Constraint
     return JuMP.ConstraintRef(rmodel, cref.index, cref.shape)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, func::Array{E}) where {E <: JuMP.ConstraintRef}
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, func::Array{E}
+) where {E<:JuMP.ConstraintRef}
     return map(x -> _convert_remote_to_proxy(rgraph, x), func)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, func::Array{E}) where {E <: JuMP.ConstraintRef}
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, func::Array{E}
+) where {E<:JuMP.ConstraintRef}
     return map(x -> _convert_proxy_to_remote(rgraph, x), func)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.ConstraintRef}
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}
+) where {T<:JuMP.ConstraintRef}
     vars = _convert_remote_to_proxy(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.ConstraintRef}
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}
+) where {T<:JuMP.ConstraintRef}
     vars = _convert_proxy_to_remote(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.ScalarConstraint{E, S}) where {E<:ProxyExpr, S<:MOI.AbstractSet}
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.ScalarConstraint{E,S}
+) where {E<:ProxyExpr,S<:MOI.AbstractSet}
     pexpr = var.func
     rexpr = _convert_proxy_to_remote(rgraph, pexpr)
     return JuMP.ScalarConstraint(rexpr, var.set)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.ScalarConstraint{E, S}) where {E<:RemoteExpr, S<:MOI.AbstractSet}
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.ScalarConstraint{E,S}
+) where {E<:RemoteExpr,S<:MOI.AbstractSet}
     rexpr = var.func
     pexpr = _convert_proxy_to_remote(rgraph, rexpr)
     return JuMP.ScalarConstraint(pexpr, var.set)
@@ -349,8 +411,9 @@ end
 
 #################################### Check Node Variables ####################################
 
-
-function _check_node_variables(rnode::RemoteNodeRef, jump_func::GenericAffExpr{Float64, Plasmo.RemoteVariableRef})
+function _check_node_variables(
+    rnode::RemoteNodeRef, jump_func::GenericAffExpr{Float64,Plasmo.RemoteVariableRef}
+)
     for var in keys(jump_func.terms)
         if var.node != rnode
             error("Variable $var belongs to node $(var.node) but $rnode was specified")
@@ -359,20 +422,28 @@ function _check_node_variables(rnode::RemoteNodeRef, jump_func::GenericAffExpr{F
     return nothing
 end
 
-function _check_node_variables(rnode::RemoteNodeRef, jump_func::GenericQuadExpr{Float64, Plasmo.RemoteVariableRef})
+function _check_node_variables(
+    rnode::RemoteNodeRef, jump_func::GenericQuadExpr{Float64,Plasmo.RemoteVariableRef}
+)
     for pair in keys(jump_func.terms)
         if pair.a.node != rnode
-            error("Variable $(pair.a) belongs to node $(pair.a.node) but $rnode was specified")
+            error(
+                "Variable $(pair.a) belongs to node $(pair.a.node) but $rnode was specified"
+            )
         end
         if pair.b.node != rnode
-            error("Variable $(pair.b) belongs to node $(pair.b.node) but $rnode was specified")
+            error(
+                "Variable $(pair.b) belongs to node $(pair.b.node) but $rnode was specified"
+            )
         end
     end
     _check_node_variables(rnode, jump_func.aff)
     return nothing
 end
 
-function _check_node_variables(rnode::RemoteNodeRef, jump_func::GenericNonlinearExpr{RemoteVariableRef})
+function _check_node_variables(
+    rnode::RemoteNodeRef, jump_func::GenericNonlinearExpr{RemoteVariableRef}
+)
     for arg in jump_func.args
         _check_node_variables(rnode, arg)
     end
@@ -381,7 +452,9 @@ end
 
 function _check_node_variables(rnode::RemoteNodeRef, jump_func::RemoteVariableRef)
     if jump_func.node != rnode
-        error("Variable $(jump_func) belongs to node $(jump_func.node) but $rnode was specified")
+        error(
+            "Variable $(jump_func) belongs to node $(jump_func.node) but $rnode was specified",
+        )
     end
 end
 
@@ -395,32 +468,44 @@ end
 # this still needs to register the empty set to the model or it could cause
 # issues for the user later
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::Array{T}) where {T<:JuMP.AbstractJuMPScalar}
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::Array{T}
+) where {T<:JuMP.AbstractJuMPScalar}
     return map(x -> _convert_remote_to_proxy(rgraph, x), var)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::Array{T}) where {T<:JuMP.AbstractJuMPScalar}
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::Array{T}
+) where {T<:JuMP.AbstractJuMPScalar}
     return map(x -> _convert_proxy_to_remote(rgraph, x), var)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.AbstractJuMPScalar}
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}
+) where {T<:JuMP.AbstractJuMPScalar}
     vars = _convert_remote_to_proxy(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.AbstractJuMPScalar}
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray{T}
+) where {T<:JuMP.AbstractJuMPScalar}
     vars = _convert_proxy_to_remote(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::Array{T}) where {T}
@@ -439,32 +524,40 @@ function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::Set{T}) where {T
     return Set([_convert_proxy_to_remote(rgraph, v) for v in var])
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray)
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray
+)
     pvars = _convert_remote_to_proxy(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(pvars, var.axes, var.lookup, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray)
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.DenseAxisArray
+)
     rvars = _convert_proxy_to_remote(rgraph, var.data)
     return JuMP.Containers.DenseAxisArray(rvars, var.axes, var.lookup, var.names)
 end
 
-function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_remote_to_proxy(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_remote_to_proxy(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_remote(rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_proxy_to_remote(
+    rgraph::RemoteOptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_proxy_to_remote(rgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
 function _convert_remote_to_proxy(rgraph::RemoteOptiGraph, obj::Any)
     if !(isa(obj, Real))
         @warn(
-           "Object of type $(typeof(obj)) is being passed to the remote worker and does not
-           have a proxy equivalent set up and will be serialized in passing. This 
-           could cause unexpected slow performance"
+            "Object of type $(typeof(obj)) is being passed to the remote worker and does not
+            have a proxy equivalent set up and will be serialized in passing. This 
+            could cause unexpected slow performance"
         )
     end
     return obj

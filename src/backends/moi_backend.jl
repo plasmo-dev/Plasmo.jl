@@ -158,7 +158,7 @@ function MOIU.state(backend::GraphMOIBackend)
 end
 
 function MOIU.reset_optimizer(
-    backend::GraphMOIBackend, optimizer::MOI.AbstractOptimizer, ::Bool=true
+    backend::GraphMOIBackend, optimizer::MOI.AbstractOptimizer, (::Bool)=true
 )
     JuMP.error_if_direct_mode(backend, :reset_optimizer)
     MOIU.reset_optimizer(JuMP.backend(backend), optimizer)

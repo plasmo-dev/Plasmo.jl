@@ -30,8 +30,12 @@ Base.print(io::IO, rcref::InterWorkerEdgeConstraintRef) = Base.print(io, Base.st
 Base.show(io::IO, rcref::InterWorkerEdgeConstraintRef) = Base.print(io, Base.string(rcref))
 
 # return source graph (will be a RemoteOptiGraph)
-function source_graph(redge::InterWorkerEdge) return redge.remote_graph end
-function source_graph(redge::RemoteEdgeRef) return redge.remote_graph end
+function source_graph(redge::InterWorkerEdge)
+    return redge.remote_graph
+end
+function source_graph(redge::RemoteEdgeRef)
+    return redge.remote_graph
+end
 
 function Base.setindex!(edge::InterWorkerEdge, value::Any, name::Symbol)
     t = (edge, name)
@@ -46,10 +50,7 @@ end
 
 # Extend Constraint Object call
 function JuMP.constraint_object(
-    con_ref::ConstraintRef{
-        InterWorkerEdge,
-        MOI.ConstraintIndex{FuncType,SetType},
-    },
+    con_ref::ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{FuncType,SetType}}
 ) where {FuncType<:MOI.AbstractScalarFunction,SetType<:MOI.AbstractScalarSet}
     model = con_ref.model
     return model.constraints[con_ref]
@@ -69,7 +70,7 @@ end
 function add_edge(
     rgraph::RemoteOptiGraph,
     rnodes::RemoteNodeRef...;
-    label = Symbol(rgraph.label, Symbol(".e"), length(rgraph.optiedges)+1)
+    label=Symbol(rgraph.label, Symbol(".e"), length(rgraph.optiedges)+1),
 )
     if has_edge(rgraph, Set(rnodes)) # check if the edge exists
         redge = get_edge(rgraph, Set(rnodes))
@@ -81,7 +82,13 @@ function add_edge(
         end
 
         # build new edge
-        redge = InterWorkerEdge(rgraph, OrderedSet(collect(rnodes)), OrderedDict{MOI.ConstraintIndex, Plasmo.InterWorkerEdgeConstraintRef}(), OrderedDict{Plasmo.InterWorkerEdgeConstraintRef, JuMP.AbstractConstraint}(), label)
+        redge = InterWorkerEdge(
+            rgraph,
+            OrderedSet(collect(rnodes)),
+            OrderedDict{MOI.ConstraintIndex,Plasmo.InterWorkerEdgeConstraintRef}(),
+            OrderedDict{Plasmo.InterWorkerEdgeConstraintRef,JuMP.AbstractConstraint}(),
+            label,
+        )
         push!(rgraph.optiedges, redge)
         rgraph.element_data.optiedge_map[Set(collect(rnodes))] = redge
     end
@@ -104,8 +111,7 @@ function has_edge(rgraph::RemoteOptiGraph, rnodes::Set{RemoteNodeRef})
     else
         return false
     end
-end 
-
+end
 
 """
     get_edge(rgraph::RemoteOptiGraph, rnodes::Set{<:RemoteNodeRef})
@@ -254,8 +260,7 @@ function num_local_remote_edges(rgraph::RemoteOptiGraph)
     return fetch(f)
 end
 
-
-function all_nodes(edge::E) where {E<:Union{InterWorkerEdge, RemoteEdgeRef}}
+function all_nodes(edge::E) where {E<:Union{InterWorkerEdge,RemoteEdgeRef}}
     return collect(edge.nodes)
 end
 
@@ -385,7 +390,6 @@ function JuMP.num_constraints(
         end
     end
     return ncrefs
-    
 end
 
 function JuMP.num_constraints(redge::InterWorkerEdge)
@@ -434,14 +438,14 @@ function incident_edges(rgraph::RemoteOptiGraph)
     return assigned_edges
 end
 
-function JuMP.all_variables(edge::E) where {E<:Union{InterWorkerEdge, RemoteEdgeRef}}
+function JuMP.all_variables(edge::E) where {E<:Union{InterWorkerEdge,RemoteEdgeRef}}
     con_refs = JuMP.all_constraints(edge)
     vars = vcat(extract_variables.(con_refs)...)
     return unique(vars)
 end
 
 function JuMP.dual(rgraph::RemoteOptiGraph, rcref::RemoteEdgeConstraintRef)
-    redge = JuMP.owner_model(rcref) 
+    redge = JuMP.owner_model(rcref)
     @assert rgraph == source_graph(redge)
     darray = rgraph.graph
     pedge = _convert_remote_to_proxy(rgraph, redge)
@@ -460,7 +464,7 @@ function JuMP.dual(rcref::RemoteEdgeConstraintRef)
     rgraph = redge.remote_graph
     darray = rgraph.graph
     pcref = _convert_remote_to_proxy(rgraph, rcref)
-    
+
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         lcref = _convert_proxy_to_local(lgraph, pcref)
@@ -470,9 +474,8 @@ function JuMP.dual(rcref::RemoteEdgeConstraintRef)
 end
 
 function JuMP.set_normalized_rhs(
-    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}}, 
-    value::Number
-)  where {
+    rcref::JuMP.ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{F,S}}, value::Number
+) where {
     T,
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
@@ -483,11 +486,10 @@ function JuMP.set_normalized_rhs(
 end
 
 function JuMP.set_normalized_rhs(
-    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
-    value::Number
-)  where {
+    rcref::JuMP.ConstraintRef{R,MOI.ConstraintIndex{F,S}}, value::Number
+) where {
     T,
-    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef},
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }
@@ -505,9 +507,8 @@ function JuMP.set_normalized_rhs(
 end
 
 function JuMP.add_to_function_constant(
-    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}}, 
-    value::Number
-)  where {
+    rcref::JuMP.ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{F,S}}, value::Number
+) where {
     T,
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
@@ -518,11 +519,10 @@ function JuMP.add_to_function_constant(
 end
 
 function JuMP.add_to_function_constant(
-    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
-    value::Number
-)  where {
+    rcref::JuMP.ConstraintRef{R,MOI.ConstraintIndex{F,S}}, value::Number
+) where {
     T,
-    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef},
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }
@@ -539,11 +539,14 @@ function JuMP.add_to_function_constant(
     return nothing
 end
 
-function JuMP.delete(rmodel::R, rcref::JuMP.ConstraintRef) where {R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef}}
+function JuMP.delete(
+    rmodel::R, rcref::JuMP.ConstraintRef
+) where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef}}
     if rcref.model != rmodel
-        error("The constraint reference you are trying to delete " * 
-            "does not belong to the remote node/edge"
-        ) 
+        error(
+            "The constraint reference you are trying to delete " *
+            "does not belong to the remote node/edge",
+        )
     end
     rgraph = rmodel.remote_graph
     darray = rgraph.graph
@@ -561,9 +564,10 @@ end
 
 function JuMP.delete(redge::InterWorkerEdge, rcref::JuMP.ConstraintRef)
     if rcref.model != redge
-        error("The constraint reference you are trying to delete " * 
-            "does not belong to the InterWorkerEdge"
-        ) 
+        error(
+            "The constraint reference you are trying to delete " *
+            "does not belong to the InterWorkerEdge",
+        )
     end
     delete!(redge.constraint_refs, rcref.index)
     delete!(redge.constraints, rcref)

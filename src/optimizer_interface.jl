@@ -82,7 +82,7 @@ function MOIU.state(graph)
 end
 
 function MOIU.reset_optimizer(
-    graph::OptiGraph, optimizer::MOI.AbstractOptimizer, ::Bool=true
+    graph::OptiGraph, optimizer::MOI.AbstractOptimizer, (::Bool)=true
 )
     MOIU.reset_optimizer(JuMP.backend(graph), optimizer)
     return nothing
@@ -161,7 +161,7 @@ Optimize `graph` using the current set optimizer.
 function JuMP.optimize!(
     graph::OptiGraph;
     #ignore_optimize_hook = (graph.optimize_hook === nothing),
-    silence_zero_objective_warning = false,
+    silence_zero_objective_warning=false,
     kwargs...,
 )
     # TODO: optimize hooks for optigraphs

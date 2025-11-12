@@ -118,4 +118,3 @@ new_graph = assemble_optigraph(partition)
 @objective(new_graph, Min, sum(node[:x] for node in nodes))
 set_optimizer(new_graph, Ipopt.Optimizer)
 optimize!(new_graph)
-

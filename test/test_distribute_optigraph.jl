@@ -59,7 +59,6 @@ function _create_test_graph()
 end
 
 function test_distribute_optigraph()
-
     g = OptiGraph()
     g1 = _create_test_graph()
     g2 = _create_test_graph()
@@ -73,7 +72,7 @@ function test_distribute_optigraph()
     @linkconstraint(g, lc2, g1[:n1][:y] + g3[:n2][:x] >= -2)
     @linkconstraint(g, lc3, g2[:n2][:y] - g3[:n1][:x] == 0)
 
-    workers = [2,2,2]
+    workers = [2, 2, 2]
 
     rg = Plasmo.distribute_graph(g, workers)
     subgraphs = local_subgraphs(g)

@@ -17,15 +17,17 @@ function _get_variable_subgraph(vref::NodeVariableRef, subgraphs::Vector{OptiGra
     end
 end
 
-function _convert_local_to_remote(con::JuMP.ScalarConstraint, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
+function _convert_local_to_remote(
+    con::JuMP.ScalarConstraint, variable_map::Dict{NodeVariableRef,RemoteVariableRef}
+)
     rfunc = _convert_local_to_remote(con.func, variable_map)
     return ScalarConstraint(rfunc, con.set)
 end
 
 function _build_variable_map(graph::OptiGraph, graph_map::Dict)
     edges = local_edges(graph)
-    variable_map = Dict{NodeVariableRef, RemoteVariableRef}()
-    node_map = Dict{OptiNode, RemoteNodeRef}()
+    variable_map = Dict{NodeVariableRef,RemoteVariableRef}()
+    node_map = Dict{OptiNode,RemoteNodeRef}()
     subgraphs = collect(keys(graph_map))
     for e in edges
         for c in all_constraints(e)
@@ -35,7 +37,9 @@ function _build_variable_map(graph::OptiGraph, graph_map::Dict)
                     node = JuMP.owner_model(var)
                     variable_subgraph = _get_variable_subgraph(var, subgraphs)
                     if !(node in keys(node_map))
-                        rnode = RemoteNodeRef(graph_map[variable_subgraph], node.idx, node.label)
+                        rnode = RemoteNodeRef(
+                            graph_map[variable_subgraph], node.idx, node.label
+                        )
                         node_map[node] = rnode
                     else
                         rnode = node_map[node]
@@ -49,8 +53,11 @@ function _build_variable_map(graph::OptiGraph, graph_map::Dict)
     return variable_map
 end
 
-function _convert_local_to_remote(func::GenericAffExpr{Float64, Plasmo.NodeVariableRef}, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
-    new_func = GenericAffExpr{Float64, Plasmo.RemoteVariableRef}(func.constant)
+function _convert_local_to_remote(
+    func::GenericAffExpr{Float64,Plasmo.NodeVariableRef},
+    variable_map::Dict{NodeVariableRef,RemoteVariableRef},
+)
+    new_func = GenericAffExpr{Float64,Plasmo.RemoteVariableRef}(func.constant)
     for (var, val) in func.terms
         remote_var = variable_map[var]
         new_func.terms[remote_var] = val
@@ -58,22 +65,28 @@ function _convert_local_to_remote(func::GenericAffExpr{Float64, Plasmo.NodeVaria
     return new_func
 end
 
-function _convert_local_to_remote(func::GenericQuadExpr{Float64, Plasmo.NodeVariableRef}, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
+function _convert_local_to_remote(
+    func::GenericQuadExpr{Float64,Plasmo.NodeVariableRef},
+    variable_map::Dict{NodeVariableRef,RemoteVariableRef},
+)
     new_aff = _convert_local_to_remote(func.aff, variable_map)
-    new_terms = OrderedDict{UnorderedPair{RemoteVariableRef}, Float64}()
+    new_terms = OrderedDict{UnorderedPair{RemoteVariableRef},Float64}()
     for (pair, val) in func.terms
         remote_var1 = variable_map[pair.a]
         remote_var2 = variable_map[pair.b]
         new_pair = UnorderedPair(remote_var1, remote_var2)
         new_terms[new_pair] = val
     end
-    return GenericQuadExpr{Float64, Plasmo.RemoteVariableRef}(new_aff, new_terms)
+    return GenericQuadExpr{Float64,Plasmo.RemoteVariableRef}(new_aff, new_terms)
 end
 
-function _convert_local_to_remote(func::GenericNonlinearExpr{Plasmo.NodeVariableRef}, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
+function _convert_local_to_remote(
+    func::GenericNonlinearExpr{Plasmo.NodeVariableRef},
+    variable_map::Dict{NodeVariableRef,RemoteVariableRef},
+)
     V = Plasmo.RemoteVariableRef
     ret = JuMP.GenericNonlinearExpr{V}(func.head, Any[])
-    stack = Tuple{JuMP.GenericNonlinearExpr, Any}[]
+    stack = Tuple{JuMP.GenericNonlinearExpr,Any}[]
 
     for arg in reverse(func.args)
         push!(stack, (ret, arg))
@@ -93,41 +106,44 @@ function _convert_local_to_remote(func::GenericNonlinearExpr{Plasmo.NodeVariable
     return ret
 end
 
-function _convert_local_to_remote(func::NodeVariableRef, variable_map::Dict{NodeVariableRef, RemoteVariableRef})
+function _convert_local_to_remote(
+    func::NodeVariableRef, variable_map::Dict{NodeVariableRef,RemoteVariableRef}
+)
     return variable_map[func]
 end
 
 function _convert_local_to_remote(
-    func::T, 
-    variable_map::Dict{NodeVariableRef, RemoteVariableRef}
-) where {T <: Union{
-        RemoteVariableRef, 
-        Float64, 
-        GenericAffExpr{Float64, RemoteVariableRef}, 
-        GenericQuadExpr{Float64, RemoteVariableRef}, 
-        GenericNonlinearExpr{RemoteVariableRef}, 
-        Nothing
-    }}
+    func::T, variable_map::Dict{NodeVariableRef,RemoteVariableRef}
+) where {
+    T<:Union{
+        RemoteVariableRef,
+        Float64,
+        GenericAffExpr{Float64,RemoteVariableRef},
+        GenericQuadExpr{Float64,RemoteVariableRef},
+        GenericNonlinearExpr{RemoteVariableRef},
+        Nothing,
+    },
+}
     return func
 end
 
 function distribute_graph(graph::OptiGraph, workers::Vector{Int})
     subgraphs = local_subgraphs(graph)
-    @assert length(subgraphs) == length(workers) 
-    graph_map = Dict{OptiGraph, RemoteOptiGraph}()
+    @assert length(subgraphs) == length(workers)
+    graph_map = Dict{OptiGraph,RemoteOptiGraph}()
     rgraph = RemoteOptiGraph()
     for i in 1:length(workers)
-        darray = distribute([subgraphs[i]], procs=[workers[i]])
+        darray = distribute([subgraphs[i]]; procs=[workers[i]])
         new_rgraph = RemoteOptiGraph(
-            workers[i], 
-            darray, 
+            workers[i],
+            darray,
             nothing,
-            Vector{RemoteOptiGraph}(), 
-            Vector{Plasmo.InterWorkerEdge}(), 
+            Vector{RemoteOptiGraph}(),
+            Vector{Plasmo.InterWorkerEdge}(),
             Plasmo.RemoteElementData(),
             Dict{Symbol,Any}(),
             subgraphs[i].label, #not sure yet whether the remote and local should have the same name, but doing that for now
-            Dict{Symbol, Any}()
+            Dict{Symbol,Any}(),
         )
         add_subgraph(rgraph, new_rgraph)
         graph_map[subgraphs[i]] = new_rgraph

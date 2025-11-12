@@ -41,7 +41,7 @@ function test_simple_graph()
     @test JuMP.result_count(graph) == 1
     @test JuMP.raw_status(graph) == "kHighsModelStatusOptimal"
 
-    constraints = all_constraints(graph, include_variable_in_set_constraints=true)
+    constraints = all_constraints(graph; include_variable_in_set_constraints=true)
     @test JuMP.dual(constraints[1]) == 1.0
     @test JuMP.dual(constraints[2]) == 0.0
     @test JuMP.dual(constraints[3]) == -2.0
@@ -103,7 +103,7 @@ function test_direct_moi_graph()
     @test JuMP.result_count(graph) == 1
     @test JuMP.raw_status(graph) == "kHighsModelStatusOptimal"
 
-    constraints = all_constraints(graph, include_variable_in_set_constraints=true)
+    constraints = all_constraints(graph; include_variable_in_set_constraints=true)
     @test JuMP.dual(constraints[1]) == 1.0
     @test JuMP.dual(constraints[2]) == 0.0
     @test JuMP.dual(constraints[3]) == -2.0
