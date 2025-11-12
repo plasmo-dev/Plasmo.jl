@@ -14,7 +14,7 @@ end
 end
 
 # Instantiate optigraph
-rg = Plasmo.RemoteOptiGraph(worker=2)
+rg = Plasmo.RemoteOptiGraph(; worker=2)
 
 @optinode(rg, n1)
 @optinode(rg, n2)
@@ -47,7 +47,7 @@ optimize!(rg)
 remote_obj = JuMP.objective_function(rg)
 
 # Define another graph and add nodes
-rg2 = Plasmo.RemoteOptiGraph(worker = 2)
+rg2 = Plasmo.RemoteOptiGraph(; worker=2)
 
 @optinode(rg2, n3)
 @optinode(rg2, n4)
@@ -58,7 +58,7 @@ rg2 = Plasmo.RemoteOptiGraph(worker = 2)
 
 # Add subgraphs to `rg` using two different methods
 Plasmo.add_subgraph(rg, rg2)
-rg3 = Plasmo.add_subgraph(rg, worker = 2)
+rg3 = Plasmo.add_subgraph(rg; worker=2)
 
 @optinode(rg3, n5)
 @variable(n5, x5)

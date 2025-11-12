@@ -128,7 +128,9 @@ end
 function _extract_separable_terms(
     func::JuMP.GenericNonlinearExpr{RemoteVariableRef}, graph::RemoteOptiGraph
 )
-    node_terms = OrderedDict{RemoteNodeRef,Vector{JuMP.GenericNonlinearExpr{RemoteVariableRef}}}()
+    node_terms = OrderedDict{
+        RemoteNodeRef,Vector{JuMP.GenericNonlinearExpr{RemoteVariableRef}}
+    }()
     nodes = collect_nodes(func)
     nodes = intersect(nodes, all_nodes(graph))
     for node in nodes
@@ -142,7 +144,9 @@ end
 
 function _extract_separable_terms(
     func::JuMP.GenericNonlinearExpr{RemoteVariableRef},
-    node_terms::OrderedDict{RemoteNodeRef,Vector{JuMP.GenericNonlinearExpr{RemoteVariableRef}}},
+    node_terms::OrderedDict{
+        RemoteNodeRef,Vector{JuMP.GenericNonlinearExpr{RemoteVariableRef}}
+    },
 )
     # check for a constant multiplier
     multiplier = 1.0

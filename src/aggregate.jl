@@ -388,7 +388,9 @@ how many levels of subgraphs remain in the new aggregated optigraph. For example
 Return a new aggregated optigraph and reference map that maps elements from the old 
 optigraph to the new aggregate optigraph.
 """
-function aggregate_to_depth(graph::OptiGraph, max_depth::Int64=0; name=Symbol(UUIDs.uuid4()))
+function aggregate_to_depth(
+    graph::OptiGraph, max_depth::Int64=0; name=Symbol(UUIDs.uuid4())
+)
     if num_subgraphs(graph) == 0
         error("`aggregate_to_depth` requires the graph to contain subgraphs.")
     end

@@ -27,8 +27,7 @@ using Distributed
 using DistributedArrays
 
 function test_simple_remote_graph()
-
-    graph = RemoteOptiGraph(worker = 2)
+    graph = RemoteOptiGraph(; worker=2)
     @optinode(graph, nodes[1:2])
 
     @variable(nodes[1], x >= 1)
@@ -57,7 +56,7 @@ function test_simple_remote_graph()
     @test JuMP.primal_status(graph) == MOI.FEASIBLE_POINT
     @test JuMP.dual_status(graph) == MOI.FEASIBLE_POINT
 
-    constraints = all_constraints(graph, include_variable_in_set_constraints=true)
+    constraints = all_constraints(graph; include_variable_in_set_constraints=true)
 
     @test JuMP.dual(constraints[1]) == 1.0
     @test JuMP.dual(constraints[2]) == 0.0
@@ -96,8 +95,7 @@ function test_simple_remote_graph()
 end
 
 function _create_test_nonlinear_optigraph()
-    
-    graph = RemoteOptiGraph(worker = 2)
+    graph = RemoteOptiGraph(; worker=2)
 
     n1 = add_node(graph)
     n2 = add_node(graph)
@@ -238,8 +236,7 @@ function test_objective_functions()
 end
 
 function test_subgraphs()
-    
-    graph = RemoteOptiGraph(worker = 2; name=:root)
+    graph = RemoteOptiGraph(; worker=2, name=:root)
 
     @optinode(graph, n0)
     @variable(n0, x)
@@ -282,7 +279,7 @@ function test_subgraphs()
     @test length(local_remote_link_constraints(graph)) == 0
     @test length(all_remote_link_constraints(graph)) == 58
 
-    F = GenericAffExpr{Float64, RemoteVariableRef}
+    F = GenericAffExpr{Float64,RemoteVariableRef}
     @test num_local_link_constraints(graph, F, S) == 1
     @test length(local_link_constraints(graph, F, S)) == 1
     @test num_link_constraints(graph, F, S) == 1
@@ -313,9 +310,9 @@ function test_subgraphs()
     # check that node solution matches source graph solution
     @test value(n11[:x]) == value(sg1, n11[:x])
 
-    g = RemoteOptiGraph(worker = 2)
-    g1 = RemoteOptiGraph(worker = 2)
-    g2 = RemoteOptiGraph(worker = 2)
+    g = RemoteOptiGraph(; worker=2)
+    g1 = RemoteOptiGraph(; worker=2)
+    g2 = RemoteOptiGraph(; worker=2)
 
     add_subgraph(g, g1)
     add_subgraph(g1, g2)
@@ -332,8 +329,7 @@ function test_subgraphs()
 end
 
 function test_variable_constraints()
-    
-    graph = RemoteOptiGraph(worker = 2)
+    graph = RemoteOptiGraph(; worker=2)
     set_optimizer(graph, HiGHS.Optimizer)
 
     @optinode(graph, nodes[1:2])
@@ -390,8 +386,8 @@ function test_variable_constraints()
     set_integer(n2[:x])
     @test is_integer(n2[:x]) == true
     optimize!(graph)
-    
-    graph = RemoteOptiGraph(worker = 2)
+
+    graph = RemoteOptiGraph(; worker=2)
 
     @optinode(graph, nodes[1:2])
     n1, n2 = all_nodes(graph)
@@ -454,7 +450,7 @@ function test_nlp_exceptions()
 end
 
 function test_delete_extensions()
-    graph = RemoteOptiGraph(worker = 2)
+    graph = RemoteOptiGraph(; worker=2)
     @optinode(graph, nodes[1:2])
 
     @variable(nodes[1], x >= 1)

@@ -7,11 +7,17 @@ end
 Base.print(io::IO, rvar::RemoteVariableRef) = Base.print(io, Base.string(rvar))
 Base.show(io::IO, rvar::RemoteVariableRef) = Base.print(io, rvar)
 
-function JuMP.index(rvar::RemoteVariableRef) return rvar.index end
-function JuMP.owner_model(rvar::RemoteVariableRef) return rvar.node end
-function JuMP.name(rvar::RemoteVariableRef) return Base.string(rvar) end
-function remote_graph(rvar::R) where {R <: Union{RemoteVariableRef, RemoteVariableArrayRef}}
-    return rvar.node.remote_graph 
+function JuMP.index(rvar::RemoteVariableRef)
+    return rvar.index
+end
+function JuMP.owner_model(rvar::RemoteVariableRef)
+    return rvar.node
+end
+function JuMP.name(rvar::RemoteVariableRef)
+    return Base.string(rvar)
+end
+function remote_graph(rvar::R) where {R<:Union{RemoteVariableRef,RemoteVariableArrayRef}}
+    return rvar.node.remote_graph
 end
 
 function get_node(rvar::RemoteVariableRef)
@@ -50,7 +56,9 @@ function source_graph(rvar::RemoteVariableRef)
     return source_graph(rvar.node)
 end
 
-function source_graph(rexpr::E) where {E <: Union{RemoteAffExpr, RemoteQuadExpr, RemoteNonlinearExpr}}
+function source_graph(
+    rexpr::E
+) where {E<:Union{RemoteAffExpr,RemoteQuadExpr,RemoteNonlinearExpr}}
     vars = extract_variables(rexpr)
     if length(vars) > 0
         return source_graph(vars[1])
@@ -82,7 +90,7 @@ function JuMP.all_variables(rnode::RemoteNodeRef)
     rgraph = rnode.remote_graph
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
-    
+
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         lnode = _convert_proxy_to_local(lgraph, pnode)
@@ -171,9 +179,8 @@ end
 # most of these are just wrapped @spawnat calls
 
 function JuMP.value(
-    rgraph::RemoteOptiGraph, 
-    rexpr::E
-) where {E <: Union{RemoteAffExpr, RemoteQuadExpr, RemoteNonlinearExpr}}
+    rgraph::RemoteOptiGraph, rexpr::E
+) where {E<:Union{RemoteAffExpr,RemoteQuadExpr,RemoteNonlinearExpr}}
     darray = rgraph.graph
     pexpr = _convert_remote_to_proxy(rgraph, rexpr)
     f = @spawnat rgraph.worker begin
@@ -186,13 +193,15 @@ end
 
 function JuMP.value(
     rexpr::E
-) where {E <: Union{RemoteAffExpr, RemoteQuadExpr, RemoteNonlinearExpr}}
+) where {E<:Union{RemoteAffExpr,RemoteQuadExpr,RemoteNonlinearExpr}}
     rgraph = source_graph(rexpr)
     if isnothing(rgraph)
         if isa(rexpr, RemoteQuadExpr) || isa(rexpr, RemoteAffExpr)
             return rexpr.constant
         else
-            error("Expression has no variables in it; use JuMP.value(rgraph, expr) to retrieve a value")
+            error(
+                "Expression has no variables in it; use JuMP.value(rgraph, expr) to retrieve a value",
+            )
         end
     else
         darray = rgraph.graph
@@ -351,14 +360,14 @@ function JuMP.unset_integer(rvar::RemoteVariableRef)
     return nothing
 end
 
-function JuMP.fix(rvar::RemoteVariableRef, value::Number; force::Bool = false)
+function JuMP.fix(rvar::RemoteVariableRef, value::Number; force::Bool=false)
     rgraph = remote_graph(rvar)
     darray = rgraph.graph
     pvar = _convert_remote_to_proxy(rgraph, rvar)
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         lvar = _proxy_var_to_local(lgraph, pvar)
-        JuMP.fix(lvar, value; force = force)
+        JuMP.fix(lvar, value; force=force)
     end
     return nothing
 end
@@ -411,7 +420,7 @@ function JuMP.start_value(rvar::RemoteVariableRef)
     return fetch(f)
 end
 
-function JuMP.set_start_value(rvar::RemoteVariableRef, value::Union{Nothing, Real})
+function JuMP.set_start_value(rvar::RemoteVariableRef, value::Union{Nothing,Real})
     rgraph = remote_graph(rvar)
     darray = rgraph.graph
     pvar = _convert_remote_to_proxy(rgraph, rvar)
@@ -442,7 +451,7 @@ function JuMP.LowerBoundRef(rvar::RemoteVariableRef)
     rgraph = remote_graph(rvar)
     darray = rgraph.graph
     pvar = _convert_remote_to_proxy(rgraph, rvar)
-        
+
     f = @spawnat rgraph.worker begin #TODO: Decide if this should test if there is a lower bound first; doing so results in a second call to the remote, rather than doing it all within the same @spawnat call
         lgraph = localpart(darray)[1]
         lvar = _proxy_var_to_local(lgraph, pvar)
@@ -533,9 +542,10 @@ end
 
 function JuMP.delete(rnode::RemoteNodeRef, rvar::RemoteVariableRef)
     if rvar.node != rnode
-        error("The variable reference you are trying to delete " * 
-            "does not belong to the node"
-        ) 
+        error(
+            "The variable reference you are trying to delete " *
+            "does not belong to the node",
+        )
     end
     rgraph = rnode.remote_graph
     darray = rgraph.graph
@@ -577,7 +587,6 @@ function JuMP.is_parameter(nvref::RemoteVariableRef)
         JuMP.is_parameter(lvar)
     end
     return fetch(f)
-
 end
 
 function JuMP.parameter_value(nvref::RemoteVariableRef)
@@ -609,23 +618,26 @@ end
 # These functions allow for making sure dictionary keys recognize two RemoteNodeRefs
 # instantiated at different times will still be equal to one another
 function Base.isequal(rvar1::RemoteVariableRef, rvar2::RemoteVariableRef)
-    return rvar1.node == rvar2.node && rvar1.index == rvar2.index && rvar1.name == rvar2.name
+    return rvar1.node == rvar2.node &&
+           rvar1.index == rvar2.index &&
+           rvar1.name == rvar2.name
 end
 
 function Base.:(==)(rvar1::RemoteVariableRef, rvar2::RemoteVariableRef)
-    return rvar1.node == rvar2.node && rvar1.index == rvar2.index && rvar1.name == rvar2.name
+    return rvar1.node == rvar2.node &&
+           rvar1.index == rvar2.index &&
+           rvar1.name == rvar2.name
 end
 
 function Base.hash(rvar::RemoteVariableRef, h::UInt)
     return hash((rvar.node, rvar.index, rvar.name), h)
 end
 
-
 function JuMP.set_normalized_coefficient(
-    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}},
+    rcref::JuMP.ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{F,S}},
     var::RemoteVariableRef,
-    value::Number
-)  where {
+    value::Number,
+) where {
     T,
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
@@ -637,12 +649,12 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    rcref::JuMP.ConstraintRef{R,MOI.ConstraintIndex{F,S}},
     var::RemoteVariableRef,
-    value::Number
-)  where {
+    value::Number,
+) where {
     T,
-    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef},
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }
@@ -662,10 +674,12 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    constraints::AbstractVector{<:JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}}},
+    constraints::AbstractVector{
+        <:JuMP.ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{F,S}}
+    },
     variables::AbstractVector{<:RemoteVariableRef},
-    coeffs::AbstractVector{<:Number}
-)  where {
+    coeffs::AbstractVector{<:Number},
+) where {
     T,
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
@@ -682,12 +696,12 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    constraints::AbstractVector{<:JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}}, 
+    constraints::AbstractVector{<:JuMP.ConstraintRef{R,MOI.ConstraintIndex{F,S}}},
     variables::AbstractVector{<:RemoteVariableRef},
-    coeffs::AbstractVector{<:Number}
-)  where {
+    coeffs::AbstractVector{<:Number},
+) where {
     T,
-    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef},
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }
@@ -715,11 +729,11 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}},
+    rcref::JuMP.ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{F,S}},
     var1::RemoteVariableRef,
     var2::RemoteVariableRef,
-    value::Number
-)  where {
+    value::Number,
+) where {
     T,
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
@@ -732,13 +746,13 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    rcref::JuMP.ConstraintRef{R,MOI.ConstraintIndex{F,S}},
     var1::RemoteVariableRef,
     var2::RemoteVariableRef,
-    value::Number
-)  where {
+    value::Number,
+) where {
     T,
-    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef},
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }
@@ -760,16 +774,20 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    constraints::AbstractVector{<:JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}}},
+    constraints::AbstractVector{
+        <:JuMP.ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{F,S}}
+    },
     variables1::AbstractVector{<:RemoteVariableRef},
     variables2::AbstractVector{<:RemoteVariableRef},
-    coeffs::AbstractVector{<:Number}
-)  where {
+    coeffs::AbstractVector{<:Number},
+) where {
     T,
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }
-    c, n1, n2, m = length(constraints), length(variables1), length(variables2), length(coeffs)
+    c, n1, n2, m = length(constraints),
+    length(variables1), length(variables2),
+    length(coeffs)
     if !(c == n1 == n2 == m)
         msg = "The number of constraints ($c), variables ($n1)/($n2) and coefficients ($m) must match"
         throw(DimensionMismatch(msg))
@@ -781,17 +799,19 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.set_normalized_coefficient(
-    constraints::AbstractVector{<:JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}}, 
+    constraints::AbstractVector{<:JuMP.ConstraintRef{R,MOI.ConstraintIndex{F,S}}},
     variables1::AbstractVector{<:RemoteVariableRef},
     variables2::AbstractVector{<:RemoteVariableRef},
-    coeffs::AbstractVector{<:Number}
-)  where {
+    coeffs::AbstractVector{<:Number},
+) where {
     T,
-    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef},
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }
-    c, n1, n2, m = length(constraints), length(variables1), length(variables2), length(coeffs)
+    c, n1, n2, m = length(constraints),
+    length(variables1), length(variables2),
+    length(coeffs)
     if !(c == n1 == n2 == m)
         msg = "The number of constraints ($c), variables ($n1)/($n2) and coefficients ($m) must match"
         throw(DimensionMismatch(msg))
@@ -818,9 +838,9 @@ function JuMP.set_normalized_coefficient(
 end
 
 function JuMP.normalized_coefficient(
-    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}},
-    var::RemoteVariableRef
-)  where {
+    rcref::JuMP.ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{F,S}},
+    var::RemoteVariableRef,
+) where {
     T,
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
@@ -835,11 +855,10 @@ function JuMP.normalized_coefficient(
 end
 
 function JuMP.normalized_coefficient(
-    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
-    var::RemoteVariableRef
-)  where {
+    rcref::JuMP.ConstraintRef{R,MOI.ConstraintIndex{F,S}}, var::RemoteVariableRef
+) where {
     T,
-    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef},
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }
@@ -858,10 +877,10 @@ function JuMP.normalized_coefficient(
 end
 
 function JuMP.normalized_coefficient(
-    rcref::JuMP.ConstraintRef{InterWorkerEdge, MOI.ConstraintIndex{F,S}},
+    rcref::JuMP.ConstraintRef{InterWorkerEdge,MOI.ConstraintIndex{F,S}},
     var1::RemoteVariableRef,
-    var2::RemoteVariableRef
-)  where {
+    var2::RemoteVariableRef,
+) where {
     T,
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
@@ -873,12 +892,12 @@ function JuMP.normalized_coefficient(
 end
 
 function JuMP.normalized_coefficient(
-    rcref::JuMP.ConstraintRef{R, MOI.ConstraintIndex{F,S}}, 
+    rcref::JuMP.ConstraintRef{R,MOI.ConstraintIndex{F,S}},
     var1::RemoteVariableRef,
-    var2::RemoteVariableRef
-)  where {
+    var2::RemoteVariableRef,
+) where {
     T,
-    R<:Union{AbstractRemoteEdgeRef, AbstractRemoteNodeRef},
+    R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef},
     S<:Union{MOI.LessThan{T},MOI.GreaterThan{T},MOI.EqualTo{T}},
     F<:Union{MOI.ScalarAffineFunction{T},MOI.ScalarQuadraticFunction{T}},
 }

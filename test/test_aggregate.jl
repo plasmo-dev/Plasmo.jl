@@ -20,7 +20,7 @@ function _create_test_optigraph()
         @constraint(node, x^2 + y^2 <= 10)
         @constraint(node, x^3 + y <= 4)
     end
-    @linkconstraint(graph, links[i=1:9], nodes[i][:x] == nodes[i + 1][:x])
+    @linkconstraint(graph, links[i = 1:9], nodes[i][:x] == nodes[i + 1][:x])
     @objective(graph, Min, sum(node[:y] for node in nodes))
     return graph
 end
@@ -41,7 +41,7 @@ function _create_test_model()
     model = Model()
     @variable(model, x[1:10] >= 0)
     @variable(model, y[1:5] >= 2)
-    @constraint(model, cons[j=1:5], x[j] + y[j] <= 10)
+    @constraint(model, cons[j = 1:5], x[j] + y[j] <= 10)
     @constraint(model, sum_con_ref, sum(x) <= y[1]^4)
     @objective(model, Min, sum(x) + sum(y)^3)
     return model
@@ -94,7 +94,7 @@ function test_aggregate_to_depth()
     @test num_edges(agg_graph) == 3
     @test num_subgraphs(agg_graph) == 0
     @test num_variables(agg_graph) == 80
-    @test num_constraints(agg_graph, count_variable_in_set_constraints = true) == 319
+    @test num_constraints(agg_graph, count_variable_in_set_constraints=true) == 319
     @test num_local_link_constraints(agg_graph) == 3
 end
 

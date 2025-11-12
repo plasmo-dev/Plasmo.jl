@@ -24,7 +24,7 @@ function get_node(graph::OptiGraph, sym::Symbol)
     for n in all_nodes(graph)
         if n.label.x == sym
             return n
-        end 
+        end
     end
     error("Symbol $sym not saved on OptiGraph")
 end
@@ -109,30 +109,39 @@ function _convert_local_to_proxy(lgraph::OptiGraph, var::Array{NodeVariableRef})
     return map(x -> _local_var_to_proxy(lgraph, x), var)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:NodeVariableRef,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _local_var_to_proxy(lgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:NodeVariableRef,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _local_var_to_proxy(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:ProxyVariableRef,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _proxy_var_to_local(lgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
-
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:ProxyVariableRef,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _proxy_var_to_local(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{NodeVariableRef})
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{NodeVariableRef}
+)
     pvars = _convert_local_to_proxy(lgraph, var.data)
     return JuMP.Containers.DenseAxisArray(pvars, var.axes, var.lookup, var.names)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{ProxyVariableRef})
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{ProxyVariableRef}
+)
     lvars = _convert_proxy_to_local(lgraph, var.data)
     return JuMP.Containers.DenseAxisArray(lvars, var.axes, var.lookup, var.names)
 end
 #################################### Expressions ####################################
 
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericAffExpr{Float64, Plasmo.ProxyVariableRef})
-    new_func = GenericAffExpr{Float64, Plasmo.NodeVariableRef}(func.constant)
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, func::GenericAffExpr{Float64,Plasmo.ProxyVariableRef}
+)
+    new_func = GenericAffExpr{Float64,Plasmo.NodeVariableRef}(func.constant)
     for (var, val) in func.terms
         lnode = _convert_proxy_to_local(lgraph, var.node)
         local_var = _proxy_var_to_local(var, lnode)
@@ -141,9 +150,13 @@ function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericAffExpr{Float64
     return new_func
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef, func::GenericAffExpr{Float64, Plasmo.ProxyVariableRef})
+function _convert_proxy_to_local(
+    lgraph::OptiGraph,
+    pnode::ProxyNodeRef,
+    func::GenericAffExpr{Float64,Plasmo.ProxyVariableRef},
+)
     lnode = _convert_proxy_to_local(lgraph, pnode)
-    new_func = GenericAffExpr{Float64, Plasmo.NodeVariableRef}(func.constant)
+    new_func = GenericAffExpr{Float64,Plasmo.NodeVariableRef}(func.constant)
     for (var, val) in func.terms
         local_var = _proxy_var_to_local(var, lnode)
         new_func.terms[local_var] = val
@@ -151,9 +164,11 @@ function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef, func::G
     return new_func
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericQuadExpr{Float64, Plasmo.ProxyVariableRef})
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, func::GenericQuadExpr{Float64,Plasmo.ProxyVariableRef}
+)
     new_aff = _convert_proxy_to_local(lgraph, func.aff)
-    new_terms = OrderedDict{UnorderedPair{NodeVariableRef}, Float64}()
+    new_terms = OrderedDict{UnorderedPair{NodeVariableRef},Float64}()
     for (pair, val) in func.terms
         lnode1 = _convert_proxy_to_local(lgraph, pair.a.node)
         local_var1 = _proxy_var_to_local(pair.a, lnode1)
@@ -162,26 +177,32 @@ function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericQuadExpr{Float6
         new_pair = UnorderedPair(local_var1, local_var2)
         new_terms[new_pair] = val
     end
-    return GenericQuadExpr{Float64, Plasmo.NodeVariableRef}(new_aff, new_terms)
+    return GenericQuadExpr{Float64,Plasmo.NodeVariableRef}(new_aff, new_terms)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef, func::GenericQuadExpr{Float64, Plasmo.ProxyVariableRef})
+function _convert_proxy_to_local(
+    lgraph::OptiGraph,
+    pnode::ProxyNodeRef,
+    func::GenericQuadExpr{Float64,Plasmo.ProxyVariableRef},
+)
     lnode = _convert_proxy_to_local(lgraph, pnode)
     new_aff = _convert_proxy_to_local(lgraph, pnode, func.aff)
-    new_terms = OrderedDict{UnorderedPair{NodeVariableRef}, Float64}()
+    new_terms = OrderedDict{UnorderedPair{NodeVariableRef},Float64}()
     for (pair, val) in func.terms
         local_var1 = _proxy_var_to_local(pair.a, lnode)
         local_var2 = _proxy_var_to_local(pair.b, lnode)
         new_pair = UnorderedPair(local_var1, local_var2)
         new_terms[new_pair] = val
     end
-    return GenericQuadExpr{Float64, Plasmo.NodeVariableRef}(new_aff, new_terms)
+    return GenericQuadExpr{Float64,Plasmo.NodeVariableRef}(new_aff, new_terms)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericNonlinearExpr{Plasmo.ProxyVariableRef})
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, func::GenericNonlinearExpr{Plasmo.ProxyVariableRef}
+)
     V = Plasmo.NodeVariableRef
     ret = JuMP.GenericNonlinearExpr{V}(func.head, Any[])
-    stack = Tuple{JuMP.GenericNonlinearExpr, Any}[]
+    stack = Tuple{JuMP.GenericNonlinearExpr,Any}[]
 
     for arg in reverse(func.args)
         push!(stack, (ret, arg))
@@ -201,8 +222,10 @@ function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericNonlinearExpr{P
     return ret
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericAffExpr{Float64, Plasmo.NodeVariableRef})
-    new_func = GenericAffExpr{Float64, Plasmo.ProxyVariableRef}(func.constant)
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, func::GenericAffExpr{Float64,Plasmo.NodeVariableRef}
+)
+    new_func = GenericAffExpr{Float64,Plasmo.ProxyVariableRef}(func.constant)
     for var in keys(func.terms)
         pvar = _local_var_to_proxy(lgraph, var)
         new_func.terms[pvar] = func.terms[var]
@@ -210,22 +233,26 @@ function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericAffExpr{Float64
     return new_func
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericQuadExpr{Float64, Plasmo.NodeVariableRef})
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, func::GenericQuadExpr{Float64,Plasmo.NodeVariableRef}
+)
     new_aff = _convert_local_to_proxy(lgraph, func.aff)
-    new_terms = OrderedDict{UnorderedPair{ProxyVariableRef}, Float64}()
+    new_terms = OrderedDict{UnorderedPair{ProxyVariableRef},Float64}()
     for pair in keys(func.terms)
         pvar1 = _local_var_to_proxy(lgraph, pair.a)
         pvar2 = _local_var_to_proxy(lgraph, pair.b)
         new_pair = UnorderedPair(pvar1, pvar2)
         new_terms[new_pair] = func.terms[pair]
     end
-    return GenericQuadExpr{Float64, Plasmo.ProxyVariableRef}(new_aff, new_terms)
+    return GenericQuadExpr{Float64,Plasmo.ProxyVariableRef}(new_aff, new_terms)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericNonlinearExpr{Plasmo.NodeVariableRef})
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, func::GenericNonlinearExpr{Plasmo.NodeVariableRef}
+)
     V = Plasmo.ProxyVariableRef
     ret = JuMP.GenericNonlinearExpr{V}(func.head, Any[])
-    stack = Tuple{JuMP.GenericNonlinearExpr, Any}[]
+    stack = Tuple{JuMP.GenericNonlinearExpr,Any}[]
 
     for arg in reverse(func.args)
         push!(stack, (ret, arg))
@@ -245,17 +272,19 @@ function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericNonlinearExpr{P
     return ret
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, func::Array{E}) where {E <: ProxyExpr}
+function _convert_proxy_to_local(lgraph::OptiGraph, func::Array{E}) where {E<:ProxyExpr}
     return map(x -> _convert_proxy_to_local(lgraph, x), func)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, func::Array{E}) where {E <: NodeExpr}
+function _convert_local_to_proxy(lgraph::OptiGraph, func::Array{E}) where {E<:NodeExpr}
     return map(x -> _convert_local_to_proxy(lgraph, x), func)
 end
 
 #################################### Expression Supports ####################################
 
-function _convert_proxy_to_local(lgraph::OptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef)
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, pnode::ProxyNodeRef, func::ProxyVariableRef
+)
     lnode = _convert_proxy_to_local(lgraph, pnode)
     return _proxy_var_to_local(func, lnode)
 end
@@ -272,15 +301,21 @@ function _convert_proxy_to_local(lgraph::OptiGraph, func::Array{Float64})
     return func
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericAffExpr{Float64, NodeVariableRef})
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, func::GenericAffExpr{Float64,NodeVariableRef}
+)
     return func
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericQuadExpr{Float64, NodeVariableRef})
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, func::GenericQuadExpr{Float64,NodeVariableRef}
+)
     return func
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, func::GenericNonlinearExpr{NodeVariableRef})
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, func::GenericNonlinearExpr{NodeVariableRef}
+)
     return func
 end
 
@@ -296,15 +331,21 @@ function _convert_local_to_proxy(lgraph::OptiGraph, func::Array{Float64})
     return func
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericAffExpr{Float64, ProxyVariableRef})
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, func::GenericAffExpr{Float64,ProxyVariableRef}
+)
     return func
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericQuadExpr{Float64, ProxyVariableRef})
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, func::GenericQuadExpr{Float64,ProxyVariableRef}
+)
     return func
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, func::GenericNonlinearExpr{ProxyVariableRef})
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, func::GenericNonlinearExpr{ProxyVariableRef}
+)
     return func
 end
 
@@ -330,41 +371,57 @@ function _convert_proxy_to_local(lgraph::OptiGraph, cref::JuMP.ConstraintRef)# T
     return JuMP.ConstraintRef(lmodel, cref.index, cref.shape)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, func::Array{E}) where {E <: JuMP.ConstraintRef}
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, func::Array{E}
+) where {E<:JuMP.ConstraintRef}
     return map(x -> _convert_local_to_proxy(lgraph, x), func)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, func::Array{E}) where {E <: JuMP.ConstraintRef}
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, func::Array{E}
+) where {E<:JuMP.ConstraintRef}
     return map(x -> _convert_proxy_to_local(lgraph, x), func)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.ConstraintRef}
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}
+) where {T<:JuMP.ConstraintRef}
     vars = _convert_local_to_proxy(lgraph, var.data)
     return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.ConstraintRef}
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}
+) where {T<:JuMP.ConstraintRef}
     vars = _convert_proxy_to_local(lgraph, var.data)
     return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:JuMP.ConstraintRef,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.ScalarConstraint{E, S}) where {E<:ProxyExpr, S<:MOI.AbstractSet}
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::JuMP.ScalarConstraint{E,S}
+) where {E<:ProxyExpr,S<:MOI.AbstractSet}
     pexpr = var.func
     lexpr = _convert_proxy_to_local(lgraph, pexpr)
     return JuMP.ScalarConstraint(lexpr, var.set)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.ScalarConstraint{E, S}) where {E<:NodeExpr, S<:MOI.AbstractSet}
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::JuMP.ScalarConstraint{E,S}
+) where {E<:NodeExpr,S<:MOI.AbstractSet}
     lexpr = var.func
     pexpr = _convert_local_to_proxy(lgraph, lexpr)
     return JuMP.ScalarConstraint(pexpr, var.set)
@@ -376,32 +433,44 @@ end
 # this still needs to register the empty set to the model or it could cause
 # issues for the user later
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::Array{T}) where {T<:JuMP.AbstractJuMPScalar}
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::Array{T}
+) where {T<:JuMP.AbstractJuMPScalar}
     return map(x -> _convert_local_to_proxy(lgraph, x), var)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::Array{T}) where {T<:JuMP.AbstractJuMPScalar}
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::Array{T}
+) where {T<:JuMP.AbstractJuMPScalar}
     return map(x -> _convert_proxy_to_local(lgraph, x), var)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.AbstractJuMPScalar}
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}
+) where {T<:JuMP.AbstractJuMPScalar}
     vars = _convert_local_to_proxy(lgraph, var.data)
     return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}) where {T <: JuMP.AbstractJuMPScalar}
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::JuMP.Containers.DenseAxisArray{T}
+) where {T<:JuMP.AbstractJuMPScalar}
     vars = _convert_proxy_to_local(lgraph, var.data)
     return JuMP.Containers.DenseAxisArray(vars, var.axes, var.lookup, var.names)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T<:JuMP.AbstractJuMPScalar,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
 function _convert_local_to_proxy(lgraph::OptiGraph, var::Array{T}) where {T}
@@ -430,14 +499,18 @@ function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.DenseAx
     return JuMP.Containers.DenseAxisArray(lvars, var.axes, var.lookup, var.names)
 end
 
-function _convert_local_to_proxy(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_local_to_proxy(
+    lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_local_to_proxy(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
-function _convert_proxy_to_local(lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T, N, K}) where {T,N,K<:Tuple{N, Any}}
-    od = OrderedDict{K, T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
-    return JuMP.Containers.SparseAxisArray(od, var.names)    
+function _convert_proxy_to_local(
+    lgraph::OptiGraph, var::JuMP.Containers.SparseAxisArray{T,N,K}
+) where {T,N,K<:Tuple{N,Any}}
+    od = OrderedDict{K,T}(k => _convert_proxy_to_local(lgraph, v) for (k, v) in var)
+    return JuMP.Containers.SparseAxisArray(od, var.names)
 end
 
 #TODO: Abstract Array

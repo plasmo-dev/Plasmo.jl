@@ -22,7 +22,16 @@ const RemoteNodeConstraintRef = JuMP.ConstraintRef{
 
 const RemoteConstraintRef = JuMP.ConstraintRef{
     <:R,MOI.ConstraintIndex{FT,ST},<:JuMP.AbstractShape
-} where {R<:Union{AbstractRemoteEdgeRef,AbstractRemoteNodeRef,AbstractInterWorkerEdge, AbstractRemoteOptiNode},FT<:MOI.AbstractFunction,ST<:AbstractSet}
+} where {
+    R<:Union{
+        AbstractRemoteEdgeRef,
+        AbstractRemoteNodeRef,
+        AbstractInterWorkerEdge,
+        AbstractRemoteOptiNode,
+    },
+    FT<:MOI.AbstractFunction,
+    ST<:AbstractSet,
+}
 
 """
     RemoteElementData
@@ -30,11 +39,11 @@ const RemoteConstraintRef = JuMP.ConstraintRef{
 A data structure for saving names for nodes or edges and for saving mappings relating to InterWorkerEdges. 
 """
 struct RemoteElementData
-    node_obj_dict::OrderedDict{Tuple{AbstractRemoteNodeRef, Symbol}, Any}
-    edge_obj_dict::OrderedDict{Tuple{AbstractInterWorkerEdge, Symbol}, Any}
+    node_obj_dict::OrderedDict{Tuple{AbstractRemoteNodeRef,Symbol},Any}
+    edge_obj_dict::OrderedDict{Tuple{AbstractInterWorkerEdge,Symbol},Any}
 
-    optiedge_map::OrderedDict{Set{AbstractRemoteNodeRef}, AbstractInterWorkerEdge}
-    last_constraint_index::OrderedDict{AbstractInterWorkerEdge, Int64}
+    optiedge_map::OrderedDict{Set{AbstractRemoteNodeRef},AbstractInterWorkerEdge}
+    last_constraint_index::OrderedDict{AbstractInterWorkerEdge,Int64}
 end
 
 """
@@ -50,11 +59,11 @@ The RemoteOptiGraph acts a "wrapper" for an OptiGraph distributed to a remote wo
 """
 mutable struct RemoteOptiGraph <: AbstractOptiGraph
     # worker assignment where the `graph` object will lieve
-    worker::Int 
+    worker::Int
     # OptiGraph stored on worker
-    graph::DArray{OptiGraph, 1, Vector{OptiGraph}} # I think this should only be allowed to be a length one vector. If it is anymore, than the user should just create a new RemoteOptiGraph object
+    graph::DArray{OptiGraph,1,Vector{OptiGraph}} # I think this should only be allowed to be a length one vector. If it is anymore, than the user should just create a new RemoteOptiGraph object
     # parent graph pointer
-    parent_graph::Union{Nothing, RemoteOptiGraph}
+    parent_graph::Union{Nothing,RemoteOptiGraph}
     # Vector of nested RemoteOptiGraphs; these can be stored on different workers
     subgraphs::Vector{RemoteOptiGraph} # These are nested remote optigraph objects; all remote optigraphs live on the main worker, but they contain a distributed optigraph that does not have to live on the main worker
     # Set of edges and data for them
@@ -62,7 +71,7 @@ mutable struct RemoteOptiGraph <: AbstractOptiGraph
     element_data::RemoteElementData
     obj_dict::Dict{Symbol,Any}
     label::Symbol
-    ext::Dict{Symbol, Any}
+    ext::Dict{Symbol,Any}
 end #TODO: Maybe add an obj_dict and node_obj_dict for saving and referencing remotenoderefs or RemoteVariableRefs; this would allow for registering expression names to a remote optigraph, which is currently not done
 
 """
@@ -90,7 +99,6 @@ struct ProxyNodeRef <: AbstractProxyNodeRef
     node_idx::NodeIndex
     node_label::Base.RefValue{Symbol}
 end
-
 
 """
     RemoteVariableRef
@@ -148,50 +156,42 @@ optigraph and/or its sub-RemoteOptiGraphs. These edges are intended for use by d
 struct InterWorkerEdge <: AbstractInterWorkerEdge
     remote_graph::Plasmo.RemoteOptiGraph #TODO: Decide if this should be `remote_graph` or just `graph`
     nodes::OrderedSet{Plasmo.RemoteNodeRef}
-    constraint_refs::OrderedDict{MOI.ConstraintIndex, Plasmo.InterWorkerEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
-    constraints::OrderedDict{Plasmo.InterWorkerEdgeConstraintRef, JuMP.AbstractConstraint}
+    constraint_refs::OrderedDict{MOI.ConstraintIndex,Plasmo.InterWorkerEdgeConstraintRef} #TODO: probably move this to the graph rather than being an attribute of the edge ref; see note on EdgeData struct
+    constraints::OrderedDict{Plasmo.InterWorkerEdgeConstraintRef,JuMP.AbstractConstraint}
     label::Symbol
 end
 
 function RemoteElementData()
     return RemoteElementData(
-        OrderedDict{Tuple{RemoteNodeRef, Symbol}, Any}(),
-        OrderedDict{Tuple{InterWorkerEdge, Symbol}, Any}(),
-        OrderedDict{Set{RemoteNodeRef}, InterWorkerEdge}(),
-        OrderedDict{InterWorkerEdge, Int64}()
+        OrderedDict{Tuple{RemoteNodeRef,Symbol},Any}(),
+        OrderedDict{Tuple{InterWorkerEdge,Symbol},Any}(),
+        OrderedDict{Set{RemoteNodeRef},InterWorkerEdge}(),
+        OrderedDict{InterWorkerEdge,Int64}(),
     )
 end
 
-const RemoteAffExpr = JuMP.GenericAffExpr{Float64, RemoteVariableRef}
-const ProxyAffExpr = JuMP.GenericAffExpr{Float64, ProxyVariableRef}
+const RemoteAffExpr = JuMP.GenericAffExpr{Float64,RemoteVariableRef}
+const ProxyAffExpr = JuMP.GenericAffExpr{Float64,ProxyVariableRef}
 
-const RemoteQuadExpr = JuMP.GenericQuadExpr{Float64, RemoteVariableRef}
-const ProxyQuadExpr = JuMP.GenericQuadExpr{Float64, ProxyVariableRef}
+const RemoteQuadExpr = JuMP.GenericQuadExpr{Float64,RemoteVariableRef}
+const ProxyQuadExpr = JuMP.GenericQuadExpr{Float64,ProxyVariableRef}
 
 const RemoteNonlinearExpr = JuMP.GenericNonlinearExpr{RemoteVariableRef}
 const ProxyNonlinearExpr = JuMP.GenericNonlinearExpr{ProxyVariableRef}
 
-const RemoteExpr = Union{
-    RemoteAffExpr, RemoteQuadExpr, RemoteNonlinearExpr
-}
+const RemoteExpr = Union{RemoteAffExpr,RemoteQuadExpr,RemoteNonlinearExpr}
 
-const ProxyExpr = Union{
-    ProxyAffExpr, ProxyQuadExpr, ProxyNonlinearExpr
-}
+const ProxyExpr = Union{ProxyAffExpr,ProxyQuadExpr,ProxyNonlinearExpr}
 
 const NodeExpr = Union{
-    JuMP.GenericAffExpr{Float64, NodeVariableRef},
-    JuMP.GenericQuadExpr{Float64, NodeVariableRef},
-    JuMP.GenericNonlinearExpr{NodeVariableRef}
+    JuMP.GenericAffExpr{Float64,NodeVariableRef},
+    JuMP.GenericQuadExpr{Float64,NodeVariableRef},
+    JuMP.GenericNonlinearExpr{NodeVariableRef},
 }
 
-const RemoteOptiObject = Union{
-    RemoteNodeRef, RemoteEdgeRef, RemoteOptiGraph, InterWorkerEdge
-}
+const RemoteOptiObject = Union{RemoteNodeRef,RemoteEdgeRef,RemoteOptiGraph,InterWorkerEdge}
 
-const RemoteOptiRef = Union{
-    RemoteNodeRef, RemoteEdgeRef
-}
+const RemoteOptiRef = Union{RemoteNodeRef,RemoteEdgeRef}
 
 """
     RemoteOptiGraph(; name::Symbol, worker::Int = 1)
@@ -203,17 +203,17 @@ function RemoteOptiGraph(; name::Symbol=Symbol(:rg, Symbol(UUIDs.uuid4())), work
     if !(worker in procs())
         error("The provided worker $worker is not in existing workers: $(procs())")
     end
-    darray = distribute([OptiGraph(name=name)], procs=[worker])
+    darray = distribute([OptiGraph(; name=name)]; procs=[worker])
     rgraph = RemoteOptiGraph(
-        worker, 
-        darray, 
+        worker,
+        darray,
         nothing,
-        Vector{RemoteOptiGraph}(), 
-        Vector{Plasmo.InterWorkerEdge}(), 
+        Vector{RemoteOptiGraph}(),
+        Vector{Plasmo.InterWorkerEdge}(),
         RemoteElementData(),
         Dict{Symbol,Any}(),
         name, #not sure yet whether the remote and local should have the same name, but doing that for now
-        Dict{Symbol, Any}()
+        Dict{Symbol,Any}(),
     )
     return rgraph
 end

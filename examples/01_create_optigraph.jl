@@ -1,7 +1,7 @@
 using Plasmo
 using Ipopt
 
-graph = OptiGraph(;name=:graph)
+graph = OptiGraph(; name=:graph)
 
 # add nodes to a OptiGraph
 n1 = add_node(graph)

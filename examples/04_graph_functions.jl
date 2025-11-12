@@ -3,7 +3,7 @@ using Graphs
 using HiGHS
 
 function create_optigraph(name)
-    graph = OptiGraph(;name=name)
+    graph = OptiGraph(; name=name)
     @optinode(graph, nodes[1:3])
 
     # node 1
@@ -35,7 +35,7 @@ end
 
 ### create optigraph
 
-graph = OptiGraph(;name=:graph)
+graph = OptiGraph(; name=:graph)
 
 graph1 = create_optigraph(:sg1)
 graph2 = create_optigraph(:sg2)
@@ -69,7 +69,7 @@ all_neighbors(projection, n1)
 
 # query the neighbors to `n1` in `graph1`
 subproj1 = hyper_projection(graph1)
-all_neighbors(subproj1, n1)          
+all_neighbors(subproj1, n1)
 
 # create an induced subgraph from a given set of nodes
 induced_graph = induced_subgraph(projection, [n1, n2, n3])

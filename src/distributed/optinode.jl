@@ -12,10 +12,12 @@ end
 Base.print(io::IO, rcref::RemoteNodeConstraintRef) = Base.print(io, Base.string(rcref))
 Base.show(io::IO, rcref::RemoteNodeConstraintRef) = Base.print(io, rcref)
 
-function source_graph(rnode::RemoteNodeRef) return rnode.remote_graph end
+function source_graph(rnode::RemoteNodeRef)
+    return rnode.remote_graph
+end
 
 ###### Set Index for registering names to the OptiGraph stored on the RemoteOptiGraph ######
-function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol) 
+function Base.setindex!(rnode::RemoteNodeRef, value::Any, name::Symbol)
     rgraph = rnode.remote_graph
     t = (rnode, name)
     rgraph.element_data.node_obj_dict[t] = value
@@ -64,7 +66,7 @@ function Base.haskey(rnode::RemoteNodeRef, sym::Symbol)
 
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
-        
+
         lnode = Plasmo._convert_proxy_to_local(lgraph, pnode)
         haskey(lnode, sym)
     end
@@ -122,7 +124,9 @@ end
 # build constraint refs
 # vectorconstraints are not yet supported for the RemoteOptiGraph case
 function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.VectorConstraint)
-    error("Constraint $con is a vector constraint. Vector constraints are not yet supported in RemoteOptiGraphs")
+    error(
+        "Constraint $con is a vector constraint. Vector constraints are not yet supported in RemoteOptiGraphs",
+    )
 end
 
 function _build_constraint_ref(rnode::RemoteNodeRef, con::JuMP.ScalarConstraint)
@@ -162,9 +166,10 @@ end
 
 function JuMP.delete(rnode::RemoteNodeRef, rcref::JuMP.ConstraintRef)
     if rcref.model != rnode
-        error("The constraint reference you are trying to delete " * 
-            "does not belong to the remote node"
-        ) 
+        error(
+            "The constraint reference you are trying to delete " *
+            "does not belong to the remote node",
+        )
     end
     rgraph = rnode.remote_graph
     darray = rgraph.graph
@@ -203,7 +208,9 @@ function JuMP.num_constraints(rnode::RemoteNodeRef; count_variable_in_set_constr
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         lnode = _convert_proxy_to_local(lgraph, pnode)
-        JuMP.num_constraints(lnode, count_variable_in_set_constraints = count_variable_in_set_constraints)
+        JuMP.num_constraints(
+            lnode, count_variable_in_set_constraints=count_variable_in_set_constraints
+        )
     end
     return fetch(f)
 end
@@ -226,25 +233,31 @@ function JuMP.all_constraints(
     return _convert_proxy_to_remote(rgraph, pcons)
 end
 
-function JuMP.all_constraints(rnode::RemoteNodeRef; include_variable_in_set_constraints=false)
+function JuMP.all_constraints(
+    rnode::RemoteNodeRef; include_variable_in_set_constraints=false
+)
     rgraph = source_graph(rnode)
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
     f = @spawnat rgraph.worker begin
         lgraph = localpart(darray)[1]
         lnode = _convert_proxy_to_local(lgraph, pnode)
-        lcons = JuMP.all_constraints(lnode, include_variable_in_set_constraints = include_variable_in_set_constraints)
+        lcons = JuMP.all_constraints(
+            lnode, include_variable_in_set_constraints=include_variable_in_set_constraints
+        )
         _convert_local_to_proxy(lgraph, lcons)
     end
     pcons = fetch(f)
     return _convert_proxy_to_remote(rgraph, pcons)
 end
 
-function JuMP.constraint_object(cref::ConstraintRef{
-        R,
-        MOI.ConstraintIndex{FuncType,SetType},
-    },
-) where {R<:Union{RemoteNodeRef, RemoteEdgeRef},FuncType<:MOI.AbstractScalarFunction,SetType<:MOI.AbstractScalarSet}
+function JuMP.constraint_object(
+    cref::ConstraintRef{R,MOI.ConstraintIndex{FuncType,SetType}}
+) where {
+    R<:Union{RemoteNodeRef,RemoteEdgeRef},
+    FuncType<:MOI.AbstractScalarFunction,
+    SetType<:MOI.AbstractScalarSet,
+}
     rmodel = cref.model
     rgraph = source_graph(rmodel)
     darray = rgraph.graph
@@ -296,7 +309,9 @@ function JuMP.add_variable(rnode::RemoteNodeRef, v::JuMP.AbstractVariable, name:
     return rvref
 end
 
-function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.AbstractVariable, name::String="")
+function _add_remote_node_variable(
+    rnode::RemoteNodeRef, v::JuMP.AbstractVariable, name::String=""
+)
     rgraph = rnode.remote_graph
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
@@ -307,7 +322,6 @@ function _add_remote_node_variable(rnode::RemoteNodeRef, v::JuMP.AbstractVariabl
         lnode = _convert_proxy_to_local(lgraph, pnode)
         nvref = JuMP.add_variable(lnode, v, name)
         _convert_local_to_proxy(lgraph, nvref)
-
     end
     pvref = fetch(f)
 
@@ -345,9 +359,7 @@ function JuMP.set_objective(
     return func
 end
 
-function JuMP.set_objective_function(
-    rnode::RemoteNodeRef, func::JuMP.AbstractJuMPScalar
-)
+function JuMP.set_objective_function(rnode::RemoteNodeRef, func::JuMP.AbstractJuMPScalar)
     rgraph = rnode.remote_graph
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
@@ -362,9 +374,7 @@ function JuMP.set_objective_function(
     return func
 end
 
-function JuMP.set_objective_sense(
-    rnode::RemoteNodeRef, sense::MOI.OptimizationSense
-)
+function JuMP.set_objective_sense(rnode::RemoteNodeRef, sense::MOI.OptimizationSense)
     rgraph = rnode.remote_graph
     darray = rgraph.graph
     pnode = _convert_remote_to_proxy(rgraph, rnode)
