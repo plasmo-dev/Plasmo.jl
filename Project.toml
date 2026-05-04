@@ -31,7 +31,7 @@ JuMP = "1.2"
 MathOptInterface = "1.6"
 Reexport = "1"
 Requires = "1"
-julia = "1.6"
+julia = "1.10"
 
 [extras]
 HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"
