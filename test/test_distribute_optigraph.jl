@@ -93,6 +93,25 @@ function test_distribute_optigraph()
     @test length(redge_con1.func) == length(constraint_object(lc1).func)
     @test length(redge_con2.func) == length(constraint_object(lc2).func)
     @test length(redge_con3.func) == length(constraint_object(lc3).func)
+    
+    set_optimizer(rsubgraphs[1], Ipopt.Optimizer)
+    set_optimizer(rsubgraphs[2], Ipopt.Optimizer)
+    set_optimizer(rsubgraphs[3], Ipopt.Optimizer)
+
+    # ensure that the subgraphs can be solved and are callable
+    @test try
+        optimize!(rsubgraphs[1])
+        optimize!(rsubgraphs[2])
+        optimize!(rsubgraphs[3])
+
+        true
+    catch
+        false
+    end
+
+    @test  isa(rsubgraphs[1][:n1][:x], RemoteVariableRef)
+    @test  isa(rsubgraphs[2][:n1][:x], RemoteVariableRef)
+    @test  isa(rsubgraphs[3][:n1][:x], RemoteVariableRef)
 end
 
 function run_tests()

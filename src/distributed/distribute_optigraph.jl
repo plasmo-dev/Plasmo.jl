@@ -129,14 +129,25 @@ end
 
 function distribute_graph(graph::OptiGraph, workers::Vector{Int})
     subgraphs = local_subgraphs(graph)
-    @assert length(subgraphs) == length(workers)
+    if any(i -> MOIU.state(i.backend) != MOIU.NO_OPTIMIZER, subgraphs)
+        @warn "One or more subgraphs have an optimizer attached; distributing the graph can be slower if optimizers are attached to subgraphs. Consider attaching optimizers after distribution."
+    end
+    @assert length(subgraphs) == length(workers) 
     graph_map = Dict{OptiGraph,RemoteOptiGraph}()
     rgraph = RemoteOptiGraph()
+    darrays = Vector{DArray}(undef, length(subgraphs))
+    @sync for (i, g) in enumerate(subgraphs)
+        g.parent_graph = nothing
+        @async begin
+            darray = distribute([g], procs=[workers[i]])
+            darrays[i] = darray
+        end
+    end
+
     for i in 1:length(workers)
-        darray = distribute([subgraphs[i]]; procs=[workers[i]])
         new_rgraph = RemoteOptiGraph(
             workers[i],
-            darray,
+            darrays[i],
             nothing,
             Vector{RemoteOptiGraph}(),
             Vector{Plasmo.InterWorkerEdge}(),

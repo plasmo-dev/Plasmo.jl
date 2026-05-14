@@ -31,11 +31,11 @@ end
 # https://github.com/jump-dev/MathOptInterface.jl/issues/234#issuecomment-366868878
 # """
 function Base.hash(nvref::NodeVariableRef, h::UInt)
-    return hash(objectid(JuMP.owner_model(nvref)), hash(nvref.index.value, h))
+    return hash(JuMP.owner_model(nvref).node_hash, hash(nvref.index.value, h))
 end
 
 function Base.isequal(v1::NodeVariableRef, v2::NodeVariableRef)
-    return owner_model(v1) === owner_model(v2) && v1.index == v2.index
+    return owner_model(v1) == owner_model(v2) && v1.index == v2.index
 end
 
 function get_node(nvref::NodeVariableRef)

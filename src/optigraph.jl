@@ -182,10 +182,11 @@ the number of nodes in the graph.
 function add_node(
     graph::OptiGraph;
     label=Symbol(graph.label, Symbol(".n"), length(graph.optinodes) + 1),
-    index=Symbol(UUIDs.uuid4()),
+    index=UUIDs.uuid4(),
 )
-    node_index = NodeIndex(index)
-    node = OptiNode(Ref(graph), node_index, Ref(label))
+    node_index = NodeIndex(Symbol(index))
+    node_hash = isa(index, UUIDs.UUID) ? hash(index.value) : hash(index)
+    node = OptiNode(Ref(graph), node_index, Ref(label), node_hash)
     push!(graph.optinodes, node)
     add_node(graph_backend(graph), node)
     return node
