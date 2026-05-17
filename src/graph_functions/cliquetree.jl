@@ -96,11 +96,11 @@ function apply_clique_tree!(
         subgraph = bag_to_graph[j] = OptiGraph()
 
         for v in residual(tree, j)
-            add_node!(subgraph, optinodes[v])
+            add_node(subgraph, optinodes[v])
         end
 
         set_to_node_objectives(subgraph)
-        add_subgraph!(graph, subgraph)
+        add_subgraph(graph, subgraph)
     end
 
     # Link each bag with its parent using equality constraints
