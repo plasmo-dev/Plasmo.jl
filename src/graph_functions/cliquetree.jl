@@ -104,7 +104,7 @@ function apply_clique_tree!(
     end
 
     # Link each bag with its parent using equality constraints
-    for j in reverse(eachindex(tree))
+    for j in Base.Iterators.reverse(eachindex(tree))
         for v in residual(tree, j)
             node = optinodes[v]
 
