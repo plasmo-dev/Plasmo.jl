@@ -98,9 +98,9 @@ In addition, two types of edges exist for `RemoteOptiGraph`s. The first is an `R
 
 ## Building Remote vs. Building Locally
 
-The RemoteOptiGraph is designed so as to capture problem structure for problems distributed to multiple workers. Different modeling paradigms could be used for constructing a RemoteOptiGraph, and users may choose different approaches to constructing the same problem. For instance, a user could build a graph locally and then distribute to remote processors, or they could directly construct the graph on the remote processors (see suggestion #3 below). For large-scale applications, it is recommended that users build the graph remotely to avoid serialization time and to potentially better parallelize model construction. 
+The RemoteOptiGraph is designed so as to capture problem structure for problems distributed to multiple workers. Different modeling paradigms could be used for constructing a RemoteOptiGraph, and users may choose different approaches to construct the same problem. For instance, a user could build a graph locally and then distribute to remote processors, or they could directly construct the graph on the remote processors (see suggestion #3 below). For large-scale applications, it is recommended that users build the graph remotely to avoid serialization time and to potentially better parallelize model construction. 
 
-For benchmarking, Plasmo does support building an OptiGraph locally and then distributing its graphs to a remote worker via the `distribute_graph` function. This function is not recommended for extremely large models, but an example of its use is given below.
+For benchmarking, Plasmo does support building an OptiGraph locally and then distributing its graphs to a remote worker via the `distribute_graph` function. This function is not recommended for very large models, but an example of its use is given below.
 
 ```julia
 using Distributed
