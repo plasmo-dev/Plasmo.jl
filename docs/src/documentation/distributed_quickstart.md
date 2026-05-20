@@ -96,6 +96,48 @@ One note to make is that Plasmo returns light references to objects that are act
 
 In addition, two types of edges exist for `RemoteOptiGraph`s. The first is an `RemoteEdgeRef` which represents an edge stored on the remote worker inside the `OptiGraph`. In contrast, the `InterWorkerEdge` is an edge stored directly on the `RemoteOptiGraph` which connects the `OptiGraph` stored remotely with other subgraphs stored on the `RemoteOptiGraph`, or they connect multiple subgraphs stored on the `RemoteOptiGraph`.
 
+## Building Remote vs. Building Locally
+
+The RemoteOptiGraph is designed so as to capture problem structure for problems distributed to multiple workers. Different modeling paradigms could be used for constructing a RemoteOptiGraph, and users may choose different approaches to constructing the same problem. For instance, a user could build a graph locally and then distribute to remote processors, or they could directly construct the graph on the remote processors (see suggestion #3 below). For large-scale applications, it is recommended that users build the graph remotely to avoid serialization time and to potentially better parallelize model construction. 
+
+For benchmarking, Plasmo does support building an OptiGraph locally and then distributing its graphs to a remote worker via the `distribute_graph` function. This function is not recommended for extremely large models, but an example of its use is given below.
+
+```julia
+using Distributed
+addprocs(1)
+@everywhere begin
+    using Plasmo, HiGHS, Distributed
+end
+
+# Generate toy graph
+g = OptiGraph()
+g1 = OptiGraph()
+g2 = OptiGraph()
+
+@optinode(g1, n1); @optinode(g2, n2);
+@variable(n1, 0 <= x[1:10]); @variable(n2, 0 <= y[1:10]);
+@objective(n1, Min, sum(x[i] * i for i in 1:10))
+@objective(n2, Min, sum(y));
+
+add_subgraph(g, g1)
+add_subgraph(g, g2)
+
+@linkconstraint(g, [i in 1:10], n1[:x][i] + n2[:y][i] >= 5)
+
+# Distribute both g1 and g2 to remote worker 2
+rg = distribute_graph(g, [2, 2])
+
+remote_subgraphs = local_subgraphs(rg)
+rg1 = remote_subgraphs[1] # corresponds to g1
+rg2 = remote_subgraphs[2] # corresponds to g2
+
+rn1 = rg1[:n1] # RemoteNodeRef for n1
+rn2 = rg2[:n2] # RemoteNodeRef for n2
+
+rx = rn1[:x] # vector of RemoteVariableRef for x
+ry = rn2[:y] # vector of RemoteVariableRef for y
+```
+
 ## Performance Tips and Suggestions
 
 #### 1. Remember that each macro call is a separate call to the remote
@@ -104,7 +146,7 @@ Plasmo's `RemoteOptiGraph` object can be used in place of a normal `OptiGraph` o
 
 #### 2. Remember that some functions serialize larger objects between workers than other functions
 
-The larger the objects that are shared across workers, the slower the code will be, and not all functions will use the same amount of overhead. As an example, calling `all_variables` on a `RemoteOptiGraph` will create `RemoteVariableRef` objects for every variable on the graph, and it will share between the workers information for creating all variables (names as symbols and indices essentially as integers). In an ordinary JuMP model, calling `length(all_variables(m))` for a model `m` may not have noticeable overhead to it if a user only calls this once or twice, but calling `length(all_variables(g))` for a remote graph `g` may be noticeably slower since it is building `RemoteVariableRef`s for all variables on the graph. While this is best practice for both JuMP models and Plasmo `RemoteOptiGraph`s, using `JuMP.num_variables(g)` will be proportionally far more efficient in the case of the `RemoteOptiGraph` than it would be for a JuMP model.
+The larger the objects that are shared across workers, the slower the code will be, and not all functions will use the same amount of overhead. As an example, calling `all_variables` on a `RemoteOptiGraph` will create `RemoteVariableRef` objects for every variable on the graph, and it will share between the workers information for creating all variables (names as symbols and indices essentially as integers). In an ordinary JuMP model, calling `length(all_variables(m))` for a model `m` may not have noticeable overhead to it if a user only calls this once or twice, but calling `length(all_variables(g))` for a remote graph `g` may be noticeably slower since it is building `RemoteVariableRef`s for all variables on the graph. While it is best practice for both JuMP models and Plasmo `RemoteOptiGraph`s, using `JuMP.num_variables(g)` will be proportionally far more efficient in the case of the `RemoteOptiGraph` than it would be for a JuMP model.
 
 #### 3. Consider defining custom build functions
 

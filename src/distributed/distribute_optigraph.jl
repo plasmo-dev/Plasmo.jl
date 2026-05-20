@@ -127,6 +127,17 @@ function _convert_local_to_remote(
     return func
 end
 
+"""
+    distribute_graph(graph::OptiGraph, workers::Vector{Int})
+
+Distributes the given `OptiGraph` across the specified workers. This function assumes that the `graph` is already partitioned into subgraphs
+and requires that the `workers` vector be equal in length to the number of local subgraphs of `graph`, and it assumes that the specified
+worker indices exist. This function will serialize each of the local subgraphs to the corresponding worker, and represent it with a 
+`RemoteOptiGraph`. It will also create the InterworkerEdges to represent the coupling constraints between subgraphs. 
+
+This function is recommended for benchmarking rather than for large-scale applications. For large-scale applications, it is recommended that
+the remote OptiGraphs be constructed directly on the workers. 
+"""
 function distribute_graph(graph::OptiGraph, workers::Vector{Int})
     subgraphs = local_subgraphs(graph)
     if any(i -> MOIU.state(i.backend) != MOIU.NO_OPTIMIZER, subgraphs)
