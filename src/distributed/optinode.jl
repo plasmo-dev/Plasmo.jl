@@ -84,7 +84,7 @@ function add_node(rgraph::RemoteOptiGraph)
 
     f = @spawnat wid begin
         lgraph = localpart(darray)[1]
-        n = add_node(lgraph; index=Symbol(UUIDs.uuid4()))
+        n = add_node(lgraph)
         _convert_local_to_proxy(lgraph, n)
     end
     pnode = fetch(f)

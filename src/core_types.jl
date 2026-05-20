@@ -32,6 +32,7 @@ struct OptiNode{GT<:AbstractOptiGraph} <: AbstractOptiNode
     source_graph::Base.RefValue{<:GT}
     idx::NodeIndex
     label::Base.RefValue{Symbol}
+    node_hash::UInt
 end
 
 """
