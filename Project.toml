@@ -5,6 +5,7 @@ authors = ["Jordan Jalving <jhjalving@gmail.com>"]
 repo = "https://github.com/plasmo-dev/Plasmo.jl.git"
 
 [deps]
+CliqueTrees = "60701a23-6482-424a-84db-faee86b9b1f8"
 DataStructures = "864edb3b-99cc-5e75-8d2d-829cb0a9cfe8"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 DistributedArrays = "aaf54ef3-cdf8-58ed-94cc-d582ad619b94"
@@ -21,6 +22,7 @@ Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 UUIDs = "cf7118a7-6976-5b1a-9a39-7adc72f591a4"
 
 [compat]
+CliqueTrees = "1"
 DataStructures = "0.18, 0.19"
 DistributedArrays = "0.6"
 GraphOptInterface = "0.1"
@@ -29,7 +31,7 @@ JuMP = "1.2"
 MathOptInterface = "1.6"
 Reexport = "1"
 Requires = "1"
-julia = "1.6"
+julia = "1.10"
 
 [extras]
 HiGHS = "87dc4568-4c63-4d18-b0c0-bb2238e4078b"

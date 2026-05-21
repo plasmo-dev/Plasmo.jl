@@ -79,6 +79,10 @@ export OptiGraph,
     n_subpartitions,
     all_subpartitions,
 
+    # clique tree
+
+    apply_clique_tree!,
+
     # aggregate
 
     aggregate,
@@ -172,6 +176,8 @@ include("graph_functions/projections.jl")
 include("graph_functions/topology.jl")
 
 include("graph_functions/partition.jl")
+
+include("graph_functions/cliquetree.jl")
 
 include("utils.jl")
 
