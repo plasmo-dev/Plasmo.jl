@@ -95,7 +95,7 @@ The resulting `RemoteOptiGraph` is visualized below. Here, the object `graph` is
 
 ### Solving the RemoteOptiGraph
 
-The RemoteOptiGraphs are not designed to be solved as a monolithic problem. In other words, unlike a Plasmo `OptiGraph`, calling `optimize!(graph)` for the above problem will not solve the storage problem above. Instead, the `RemoteOptiGraph` can instead be used for developing algorithms. For example, `graph` can be solved using Benders decomposition, where the storage sizing variables are the master problem and the `operation_graph` is the subproblem. The accompanying package, [PlasmoBenders.jl](https://github.com/plasmo-dev/PlasmoAlgorithms.jl/tree/main/lib/PlasmoBenders) allows users to directly solve a graph defined in Plasmo using Benders decomposition. For instance, the user can call the following code to apply Benders decomposition to solve `graph`. 
+The RemoteOptiGraphs are not designed to be solved as a monolithic problem. In other words, unlike a Plasmo `OptiGraph`, calling `optimize!(graph)` for the above problem will not solve the storage problem above. Instead, the `RemoteOptiGraph` can be used for developing algorithms. For example, `graph` can be solved using Benders decomposition, where the storage sizing variables are the master problem and the `operation_graph` is the subproblem. The accompanying package, [PlasmoBenders.jl](https://github.com/plasmo-dev/PlasmoAlgorithms.jl/tree/main/lib/PlasmoBenders) allows users to directly solve a graph defined in Plasmo using Benders decomposition. For instance, the user can call the following code to apply Benders decomposition to solve `graph`. 
 
 ```julia
 using PlasmoBenders

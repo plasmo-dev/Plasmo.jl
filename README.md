@@ -25,7 +25,7 @@ The core object in Plasmo.jl is the `OptiGraph`, a graph data structure that rep
 
 The core data structure in Plasmo.jl is the `OptiGraph`. The optigraph contains a set of optinodes which represent self-contained optimization problems and optiedges that represent coupling between optinodes (which produces an underlying [hypergraph](https://en.wikipedia.org/wiki/Hypergraph) structure of optinodes and optiedges). Optigraphs can further be embedded within other optigraphs to create nested hierarchical graph structures. The graph structures obtained using Plasmo.jl can be used for simple model and data management, but they can also be used to perform graph partitioning or develop interfaces to structured optimization solvers.
 
-Beginning in Plasmo v0.7, Plasmo now also supports building OptiGraphs across distributed memory using the `RemoteOptiGraph` modeling object. 
+Beginning in Plasmo v0.7, there is support for building OptiGraphs across distributed memory using the `RemoteOptiGraph` modeling object. 
 
 
 ## License
