@@ -28,6 +28,7 @@ makedocs(;
         "Distributed Memory" => [
             "Introduction" => "documentation/distributed.md",
             "Quickstart" => "documentation/distributed_quickstart.md",
+            "Modeling with RemoteOptiGraphs" => "documentation/remote_modeling.md",
         ],
         "Tutorials" => [
             "Supply Chain Optimization" => "tutorials/supply_chain.md",
@@ -35,6 +36,7 @@ makedocs(;
             "Optimal Control of a Quadcopter" => "tutorials/quadcopter.md",
             "Hierarchical HVAC Optimization" => "tutorials/HVAC.md",
             "Optimal Control of a Natural Gas Network" => "tutorials/gas_pipeline.md",
+            "Storage Sizing Example" => "tutorials/storage_sizing.md",
         ],
     ],
 )

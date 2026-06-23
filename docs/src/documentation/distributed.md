@@ -111,7 +111,15 @@ Several reference types and objects have been defined for working with the distr
 
 The other important data structure is the `InterWorkerEdge`. This object captures constraints between multiple `RemoteOptiGraph`s. Since `RemoteOptiGraph`s can capture nested structures, constraints between these structures are stored on the `InterWorkerEdge`. These constraints are stored directly on the `RemoteOptiGraph` object. In this way, the `RmeoteOptiEdge` structure is different than the `RemoteEdgeRef`, since the latter represents an edges contained in the `OptiGraph` object stored on the remote worker.
 
-Finally, we note on these `RemoteOptiGraph` objects are likely most useful for decomposition approaches or situations where there are memory limiations. Unlike the `OptiGraph` abstraction, calling `JuMP.optimize!` on a `RemoteOptiGraph` only optimizes the `OptiGraph` that is stored remotely on the `RemoteOptiGraph` and does NOT consider subgraphs. When optimizing an `OptiGraph`, calling `JuMP.optimize!` will include all subgraphs in the optimization problem, but this is not the case of the remote. 
+Finally, we note on these `RemoteOptiGraph` objects are likely most useful for decomposition approaches or situations where there are memory limiations. Unlike the `OptiGraph` abstraction, calling `JuMP.optimize!` on a `RemoteOptiGraph` only optimizes the `OptiGraph` that is stored remotely on the `RemoteOptiGraph` and does NOT consider subgraphs. When optimizing an `OptiGraph`, calling `JuMP.optimize!` will include all subgraphs in the optimization problem, but this is not the case of the remote.
+
+## RemoteOptiGraph Example
+
+As an example, the figure below shows code snippets and the corresponding graph being constructed at each snippet. 
+
+![remotegraph_tutorial](../assets/remoteoptigraph_tutorial.png)
+
+A further example is given in the [Storage Sizing Example](@ref).
 
 ## Decomposition Schemes for Working with `RemoteOptiGraph`s
 
