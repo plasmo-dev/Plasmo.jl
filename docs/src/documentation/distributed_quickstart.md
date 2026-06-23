@@ -46,9 +46,9 @@ Functions in Plasmo and JuMP have been extended to work with Plasmo's `RemoteOpt
 
 The `@optinode` call adds a `OptiNode` to the `OptiGraph` stored on worker 2 and returns a `RemoteNodeRef` corresponding to that `OptiNode`. The `@variable` call adds a variable to that corresponding `OptiNode` and returns a `RemoteVariableRef`. One note to make is that these remote reference objects are stored on the main worker and correspond to the standard objects stored on the remote worker. For instance, in the above code, `n1` is a `RemoteNodeRef` and `x1` is a `RemoteVariableRef` that both "live" on the main worker. 
 
-Functions have been extended for working with these objects as you would with a `Plasmo.NodeVariableRef`, such that a user can call `fix(x1, 0)` (which is being called on the `RemoteVariableRef`) to fix the value of the _actual_ `NodeVariableRef` which `x1` corersponds to. 
-```julia
+Functions have been extended for working with these objects as you would with a `Plasmo.NodeVariableRef`, such that a user can call `fix(x1, 0)` (which is being called on the `RemoteVariableRef`) to fix the value of the _actual_ `NodeVariableRef` which `x1` corresponds to. 
 
+```julia
 # Many JuMP functions are extended to work with remote optigraphs
 all_vars = JuMP.all_variables(rg)
 JuMP.fix(x, 0)

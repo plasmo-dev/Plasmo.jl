@@ -1,6 +1,6 @@
 # Storage Sizing Example
 
-This tutorial reproduces a sizing and inventory optimization problem used [here](https://arxiv.org/abs/2501.02098) for a process that converts raw material $X$ into product $Y$, as discussed in the first version of [this manuscript](https://arxiv.org/abs/2511.14966). Because product prices fluctuate and production and sales are constrained, the model optimizes the capacity and use of storage to maximize profit over time.
+This tutorial reproduces a sizing and inventory optimization problem used [here](https://arxiv.org/abs/2501.02098) for a process that converts raw material $X$ into product $Y$. Much of the text and code were first used in the first version of [this manuscript](https://arxiv.org/abs/2511.14966). Because product prices fluctuate and production and sales are constrained, the model optimizes the capacity and use of storage to maximize profit over time.
 
 ### Mathematical Formulation
 The mathematical formulation is given by: 
@@ -15,7 +15,7 @@ The mathematical formulation is given by:
         &\; y^{stored}_1 = \bar{y}^{stored}
     \end{aligned}
 ```
-\noindent where the decision variables are the maximum storage size, $s_{size}$; the amount of raw material purchased, $x^{buy}_t$; the amount of product sent to storage (can be negative for product removal from storage), $y^{save}_t$; the amount of product sold $y^{sell}_t$; and the amount of product in storage, $y^{stored}_t$. $\alpha$ is the cost of building the storage, $\beta_t$ is the cost of buying $X$, $\gamma_t$ is the cost of selling $Y$, and $\zeta$ is a conversion factor from $X$ to $Y$. The parameters $\overline{d}^{sell}$, $\underline{d}^{save}$, and $\overline{d}^{save}$ are upper and lower bounds on their respective variables, while $\overline{y}^{stored}$ is the initial amount in storage. In the formulation, constraints \eqref{eq:storage_mass_balance} and \eqref{eq:y_mass_balance} are mass balances on storage and $Y$, respectively, and constraint \eqref{eq:storage_upper_bound} limits the amount of $Y$ in storage by $s_{size}$.
+where the decision variables are the maximum storage size, $s_{size}$; the amount of raw material purchased, $x^{buy}_t$; the amount of product sent to storage (can be negative for product removal from storage), $y^{save}_t$; the amount of product sold $y^{sell}_t$; and the amount of product in storage, $y^{stored}_t$. $\alpha$ is the cost of building the storage, $\beta_t$ is the cost of buying $X$, $\gamma_t$ is the cost of selling $Y$, and $\zeta$ is a conversion factor from $X$ to $Y$. The parameters $\overline{d}^{sell}$, $\underline{d}^{save}$, and $\overline{d}^{save}$ are upper and lower bounds on their respective variables, while $\overline{y}^{stored}$ is the initial amount in storage. In the formulation, constraints include mass balances on storage and $Y$ and limits on the amount of $Y$ in storage based on $s_{size}$.
 
 ### Building the Model
 
@@ -77,7 +77,7 @@ end
 Linking constraints are then added between the planning and operations level. These are implicitly `InterWorkerEdge`s since they connect across `RemoteOptiGraph`s.
 
 ```julia
-# Link planning decision to operations decisiosn
+# Link planning decision to operations decisions
 @linkconstraint(graph, [i = 1:T], operation_nodes[i][:y_stored] <= planning_node[:storage_size])
 ```
 
@@ -95,7 +95,7 @@ The resulting `RemoteOptiGraph` is visualized below. Here, the object `graph` is
 
 ### Solving the RemoteOptiGraph
 
-The RemoteOptiGraphs are not designed to be solved as a monolithic problem. In other words, unlike a Plasmo `OptiGraph`, calling `optimize!(graph)` for the above problem will not solve the storage problem above. Instead, the `RemoteOptiGraph` can instead be used for developing algorithsm. For example, `graph` can be solved using Benders decomposition, where the storage sizing variables are the master problem and the `operation_graph` is the subproblem. The accompanying package, [PlasmoBenders.jl](https://github.com/plasmo-dev/PlasmoAlgorithms.jl/tree/main/lib/PlasmoBenders) allows users to directly solve a graph defined in Plasmo using Benders decomposition. For instance, the user can call the following code to apply Benders decomposition to solve `graph`. 
+The RemoteOptiGraphs are not designed to be solved as a monolithic problem. In other words, unlike a Plasmo `OptiGraph`, calling `optimize!(graph)` for the above problem will not solve the storage problem above. Instead, the `RemoteOptiGraph` can instead be used for developing algorithms. For example, `graph` can be solved using Benders decomposition, where the storage sizing variables are the master problem and the `operation_graph` is the subproblem. The accompanying package, [PlasmoBenders.jl](https://github.com/plasmo-dev/PlasmoAlgorithms.jl/tree/main/lib/PlasmoBenders) allows users to directly solve a graph defined in Plasmo using Benders decomposition. For instance, the user can call the following code to apply Benders decomposition to solve `graph`. 
 
 ```julia
 using PlasmoBenders

@@ -68,7 +68,7 @@ The larger the objects that are shared across workers, the slower the code will 
 
 #### 3. Consider defining custom build functions
 
-As noted in 1., lots of macro calls and other function calls can slow down the code for especially large models. One option to avoid this is to build the graph directly on the remote worker inside a remote call or `@spawnat` call. for instance, the user could define a function that takes an `OptiGraph` object and constructs a large optimization problem on it for every worker, such as the following: 
+As noted in 1., lots of macro calls and other function calls can slow down the code for especially large models. One option to avoid this is to build the graph directly on the remote worker inside a remote call or `@spawnat` call. For instance, the user could define a function that takes an `OptiGraph` object and constructs a large optimization problem on it for every worker, such as the following: 
 
 ```julia
 using Plasmo, Distributed, DistributedArrays
@@ -97,4 +97,4 @@ darray = rgraph.graph # Get the DistributedArray containing the OptiGraph
 end
 ```
 
-This will add to the OptiGraph remotely so that there are not large amounts of remote calls. The user can still access the objects on this graph via `all_variables`, `all_nodes`, or by indexing for names. As with an `OptiGraph`, you can access objects by their symbols. For instance, calling `rgraph[:n]` returns a set of `RemoteNodeRef`s that correspond to the `n[1:10]` defined in the `build_subgraph_remotely` function. Similary, we can call `rgraph[:n][1][:x][1]` to get a `RemoteVariableRef` that corresponds to a variable stored on the graph on the remote worker. 
+This will add to the OptiGraph remotely so that there are not large amounts of remote calls. The user can still access the objects on this graph via `all_variables`, `all_nodes`, or by indexing for names. As with an `OptiGraph`, you can access objects by their symbols. For instance, calling `rgraph[:n]` returns a set of `RemoteNodeRef`s that correspond to the `n[1:10]` defined in the `build_subgraph_remotely` function. Similarly, we can call `rgraph[:n][1][:x][1]` to get a `RemoteVariableRef` that corresponds to a variable stored on the graph on the remote worker. 
